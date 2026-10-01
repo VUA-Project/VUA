@@ -48,6 +48,8 @@ Current owners, versions and statuses only. [Governance](meta/documentation-gove
 | schemas/bdl/v0.2 | 0.2 | Frozen | Production | 2026-09-22 |
 | docs/protocols/production-evidence-v0.1.md | 0.1 | Frozen | Data | 2026-09-08 |
 | docs/protocols/inspection-evidence-v0.1.md | 0.1 | Frozen | Production | 2026-09-13 |
+| schemas/catalog-sync/v0.1 | 0.1 | Frozen | Data | 2026-10-02 |
+| docs/protocols/catalog-sync-v0.1.md | 0.1 | Frozen | Data | 2026-10-02 |
 | docs/protocols/download-events-v0.1.md | 0.1 | Frozen | Data | 2026-09-06 |
 | docs/protocols/material-intake-v0.1.md | 0.1 | Implementation baseline | Production | 2026-09-06 |
 | docs/protocols/material-intake-v0.2.md | 0.2.1 | Frozen | Core | 2026-09-21 |

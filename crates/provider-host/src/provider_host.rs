@@ -1655,6 +1655,14 @@ fn served_capabilities(state: &HostState) -> Value {
             "operationId": "dependencies.queries",
             "availability": dependencies_queries_availability,
         },
+        {
+            "operationId": "catalog.ingestLibraryPage",
+            "availability": if state.warehouse.is_some() {
+                "available"
+            } else {
+                "unavailable"
+            },
+        },
         {"operationId": "project.import-copy", "availability": project_ops_availability},
         {"operationId": "project.setNote", "availability": project_ops_availability},
         {"operationId": "packages.query", "availability": packages_availability},
@@ -5324,6 +5332,9 @@ fn catalog_request(
         ));
     };
     match method {
+        "catalog.ingestLibraryPage" => {
+            catalog_ingest_library_page(warehouse, request, request_id, correlation_id)
+        }
         "catalog.list" => catalog_list(warehouse, request, request_id, correlation_id),
         "catalog.detail" => catalog_detail(warehouse, request, request_id, correlation_id),
         "catalog.status" => catalog_status(warehouse, request, request_id, correlation_id),
@@ -5707,6 +5718,92 @@ fn catalog_store_failed(request_id: &str, correlation_id: &str) -> FrameOutcome 
         "vua.catalog.store_failed",
         "errors.catalog.storeFailed",
         "internal",
+    ))
+}
+
+/// Catalog-sync v0.1 (N5 S1): one archived account-library page, shipped by
+/// the Electron partition-session reader, parsed and folded into the BDL
+/// products table through the W17 observation write face. Upsert semantics
+/// make page replays safe (same-content overwrite, never a second row);
+/// per-item write-face violations are reported as rejected items, never
+/// silently dropped. Task orchestration (nine-state sync task, cancellation)
+/// rides with the Electron reader slice; this face is the ledger's ingest.
+fn catalog_ingest_library_page(
+    warehouse: Arc<WarehouseServices>,
+    request: &Value,
+    request_id: &str,
+    correlation_id: &str,
+) -> FrameOutcome {
+    const CATALOG_SYNC_SCHEMA_VERSION: &str = "0.1";
+    if request.pointer("/params/schemaVersion").and_then(Value::as_str)
+        != Some(CATALOG_SYNC_SCHEMA_VERSION)
+    {
+        return FrameOutcome::Response(application_error(
+            request_id,
+            correlation_id,
+            "vua.catalog.unsupported_schema",
+            "errors.catalog.unsupportedSchema",
+            "validation",
+        ));
+    }
+    let non_empty = |pointer: &str| {
+        request
+            .pointer(pointer)
+            .and_then(Value::as_str)
+            .filter(|value| !value.is_empty())
+    };
+    let (Some(html), Some(source_url), Some(fetched_at)) = (
+        non_empty("/params/html"),
+        non_empty("/params/sourceUrl"),
+        non_empty("/params/fetchedAt"),
+    ) else {
+        return catalog_invalid_params(request_id, correlation_id);
+    };
+    let run_id = non_empty("/params/runId");
+
+    let page = match vua_acquisition::library_page::extract_library_page(html) {
+        Ok(page) => page,
+        Err(_) => {
+            return FrameOutcome::Response(application_error(
+                request_id,
+                correlation_id,
+                "vua.catalog.not_a_library_page",
+                "errors.catalog.notALibraryPage",
+                "validation",
+            ));
+        }
+    };
+
+    let page_hash = vua_acquisition::library_page::page_content_hash(html);
+    let mut upserted = 0u64;
+    let mut rejected = Vec::new();
+    for (index, item) in page.items.iter().enumerate() {
+        let observation = vua_acquisition::library_page::library_item_to_observation(
+            item,
+            &page_hash,
+            fetched_at,
+            run_id,
+        );
+        match warehouse.bdl.record_product_observation(&observation) {
+            Ok(_) => upserted += 1,
+            Err(error) => rejected.push(json!({
+                "index": index,
+                "code": "vua.catalog.invalid_observation",
+                "reason": error.to_string(),
+            })),
+        }
+    }
+
+    FrameOutcome::Response(application_success(
+        request_id,
+        json!({
+            "schemaVersion": CATALOG_SYNC_SCHEMA_VERSION,
+            "sourceUrl": source_url,
+            "parsedCount": page.items.len(),
+            "upsertedCount": upserted,
+            "rejectedItems": rejected,
+            "nextPageUrl": page.next_page_url,
+        }),
     ))
 }
 

@@ -7,6 +7,7 @@
 #![allow(clippy::result_large_err)]
 
 pub mod artifact_inspection;
+pub mod library_page;
 pub mod warehouse_download_adopt;
 pub mod warehouse_import;
 pub mod warehouse_maintenance;
@@ -17,6 +18,10 @@ mod test_support;
 pub use artifact_inspection::{
     ArtifactInspector, DownloadInspectionOutcome, DownloadInspectionRequest, InspectionError,
     InspectionPolicy, StagingRejection,
+};
+pub use library_page::{
+    extract_library_page, library_item_to_observation, page_content_hash, LibraryPage,
+    LibraryPageError, LibraryPageItem, LIBRARY_PAGE_PROCESSOR_VERSION,
 };
 pub use warehouse_download_adopt::{
     submit_warehouse_import_downloads, AdoptedDownload, DownloadAdoptError,
