@@ -5333,7 +5333,7 @@ fn catalog_request(
     };
     match method {
         "catalog.ingestLibraryPage" => {
-            catalog_ingest_library_page(warehouse, request, request_id, correlation_id)
+            catalog_ingest_library_page(state, warehouse, request, request_id, correlation_id)
         }
         "catalog.list" => catalog_list(warehouse, request, request_id, correlation_id),
         "catalog.detail" => catalog_detail(warehouse, request, request_id, correlation_id),
@@ -5729,6 +5729,7 @@ fn catalog_store_failed(request_id: &str, correlation_id: &str) -> FrameOutcome 
 /// silently dropped. Task orchestration (nine-state sync task, cancellation)
 /// rides with the Electron reader slice; this face is the ledger's ingest.
 fn catalog_ingest_library_page(
+    state: &HostState,
     warehouse: Arc<WarehouseServices>,
     request: &Value,
     request_id: &str,
@@ -5794,6 +5795,39 @@ fn catalog_ingest_library_page(
         }
     }
 
+    // Nine-state task folding, keyed on the run id (the Electron reader
+    // always sends one). Progress payloads carry per-page facts; the
+    // observed last page completes the run (rejected items complete as
+    // succeeded-with-warnings). A mid-run abort leaves the task
+    // non-terminal — restart recovery surfaces it as inspect-required,
+    // never silent continuation. Task-store failure fails the request
+    // loudly (at-least-once replay is safe: upserts are idempotent).
+    if let Some(run_id) = run_id {
+        if let Err(_error) = fold_catalog_sync_task(
+            state,
+            &CatalogSyncFold {
+                run_id,
+                fetched_at,
+                page_number: request
+                    .pointer("/params/pageNumber")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(1),
+                parsed: page.items.len() as u64,
+                upserted,
+                rejected: rejected.len() as u64,
+                next_page_url: page.next_page_url.as_deref(),
+            },
+        ) {
+            return FrameOutcome::Response(application_error(
+                request_id,
+                correlation_id,
+                "vua.catalog.store_failed",
+                "errors.catalog.storeFailed",
+                "internal",
+            ));
+        }
+    }
+
     FrameOutcome::Response(application_success(
         request_id,
         json!({
@@ -5805,6 +5839,104 @@ fn catalog_ingest_library_page(
             "nextPageUrl": page.next_page_url,
         }),
     ))
+}
+
+struct CatalogSyncFold<'a> {
+    run_id: &'a str,
+    fetched_at: &'a str,
+    page_number: u64,
+    parsed: u64,
+    upserted: u64,
+    rejected: u64,
+    next_page_url: Option<&'a str>,
+}
+
+/// Catalog-sync run → nine-state task. Accept-then-run on the first page,
+/// per-page progress, completion on the observed last page. Terminal tasks
+/// are never re-mutated (a replayed last page of a finished run is a
+/// no-op). Payload facts are per-page; `pages` carries the ordinal, so the
+/// completion result names the run's total page count honestly.
+fn fold_catalog_sync_task(
+    state: &HostState,
+    fold: &CatalogSyncFold<'_>,
+) -> Result<(), SqliteStoreError> {
+    let summary = || {
+        json!({
+            "pages": fold.page_number,
+            "pageParsedCount": fold.parsed,
+            "pageUpsertedCount": fold.upserted,
+            "pageRejectedCount": fold.rejected,
+            "nextPageUrl": fold.next_page_url,
+        })
+    };
+    let task_id = fold.run_id.to_owned();
+    if state.store.task(&task_id)?.is_none() {
+        state.store.accept_task(&NewTask {
+            task_id: task_id.clone(),
+            correlation_id: fold.run_id.to_owned(),
+            occurred_at: fold.fetched_at.to_owned(),
+        })?;
+    }
+    let Some(task) = state.store.task(&task_id)? else {
+        return Ok(());
+    };
+    if task.state.is_terminal() {
+        return Ok(());
+    }
+    if task.state == TaskState::Queued {
+        // Walk both steps like the download fold: a page already ingested
+        // means the run is already transferring (Queued → Preparing →
+        // Running, idempotently for redeliveries).
+        state.store.mutate_task(
+            &task_id,
+            task.revision,
+            fold.fetched_at,
+            TaskMutation::Transition {
+                state: TaskState::Preparing,
+                payload: summary(),
+            },
+        )?;
+        if let Some(task) = state.store.task(&task_id)? {
+            state.store.mutate_task(
+                &task_id,
+                task.revision,
+                fold.fetched_at,
+                TaskMutation::Transition {
+                    state: TaskState::Running,
+                    payload: summary(),
+                },
+            )?;
+        }
+    } else {
+        state.store.mutate_task(
+            &task_id,
+            task.revision,
+            fold.fetched_at,
+            TaskMutation::Progress {
+                payload: summary(),
+            },
+        )?;
+    }
+    if fold.next_page_url.is_none() {
+        let Some(task) = state.store.task(&task_id)? else {
+            return Ok(());
+        };
+        state.store.mutate_task(
+            &task_id,
+            task.revision,
+            fold.fetched_at,
+            TaskMutation::Complete {
+                state: if fold.rejected > 0 {
+                    TaskState::SucceededWithWarnings
+                } else {
+                    TaskState::Succeeded
+                },
+                error: None,
+                result: Some(summary()),
+            },
+        )?;
+    }
+    Ok(())
 }
 
 fn catalog_list(

@@ -213,6 +213,32 @@ export class RemoteContentManager {
     }
   }
 
+  /**
+   * 以本管理器的分区会话发起一次只读 GET（N5 S1 账号库同步读取器专用）。
+   * 会话 Cookie 只在本方法内部的 Electron 网络层使用；返回面只有
+   * status/body/finalUrl 文本——凭据与 Cookie 永不出分区边界。来源守卫
+   * 沿用允许清单：清单外 URL 直接抛错，不发起请求。
+   */
+  async fetchWithSession(url: string): Promise<{
+    readonly status: number;
+    readonly body: string;
+    readonly finalUrl: string;
+  }> {
+    this.#assertUsable();
+    if (!isAllowedRemoteOrigin(url, this.#options.allowedOrigins)) {
+      throw new Error("origin_not_allowed");
+    }
+    const response = await this.#session.fetch(url, {
+      redirect: "follow",
+      headers: { accept: "text/html,application/xhtml+xml" },
+    });
+    return {
+      status: response.status,
+      body: await response.text(),
+      finalUrl: response.url,
+    };
+  }
+
   /** 宿主窗口尺寸变化时重排可见视图(骨架行为:占满内容区) */
   refreshBounds(): void {
     for (const managed of this.#views.values()) {

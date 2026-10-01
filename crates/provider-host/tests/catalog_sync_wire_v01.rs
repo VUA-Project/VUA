@@ -216,3 +216,73 @@ fn wrong_schema_version_is_rejected() {
     let code = frame["error"]["code"].as_str().unwrap_or_default();
     assert_eq!(code, "vua.catalog.unsupported_schema");
 }
+
+/// The tasks table row for one run, read through an auxiliary connection
+/// (the production surface has no direct task introspection here).
+fn task_state(world: &World, task_id: &str) -> Option<String> {
+    rusqlite::Connection::open(&world.database_path)
+        .expect("aux connection opens")
+        .query_row("SELECT state FROM tasks WHERE task_id = ?1", [task_id], |row| {
+            row.get::<_, String>(0)
+        })
+        .ok()
+}
+
+#[test]
+fn sync_run_folds_into_a_nine_state_task() {
+    let world = make_world("task");
+    let vector = read_example("library-page.request.json");
+    let mut page_one = vector.clone();
+    page_one["runId"] = json!("catalog-sync-task-1");
+    page_one["pageNumber"] = json!(1);
+    // Page two: same grammar, observed last page (no rel="next").
+    let mut page_two = vector.clone();
+    page_two["runId"] = json!("catalog-sync-task-1");
+    page_two["pageNumber"] = json!(2);
+    page_two["sourceUrl"] = json!("https://booth.pm/en/library?page=2");
+    page_two["html"] = json!(
+        "<html><body><ul class=\"market-items\">\
+         <li class=\"item-card l-card\" data-product-id=\"777001\" data-product-name=\"Last page item\">\
+         <div class=\"item-card__wrap\"></div></li></ul>\
+         <div class=\"pager\"><span>2</span></div></body></html>"
+    );
+
+    // First page only: the run task is running (non-terminal).
+    let mid = run_frames(&world, &[ingest_request(page_one.clone())]);
+    assert_eq!(mid[0]["payload"]["ok"], json!(true));
+    assert_eq!(
+        task_state(&world, "catalog-sync-task-1").as_deref(),
+        Some("running")
+    );
+
+    // Second (last) page completes the run.
+    let frames = run_frames(&world, &[ingest_request(page_two.clone())]);
+    assert_eq!(frames[0]["payload"]["ok"], json!(true));
+    assert_eq!(frames[0]["payload"]["value"]["nextPageUrl"], json!(null));
+    assert_eq!(
+        task_state(&world, "catalog-sync-task-1").as_deref(),
+        Some("succeeded")
+    );
+
+    // A replayed last page of the finished run folds to a no-op.
+    let replay = run_frames(&world, &[ingest_request(page_two.clone())]);
+    assert_eq!(replay[0]["payload"]["ok"], json!(true));
+    assert_eq!(
+        task_state(&world, "catalog-sync-task-1").as_deref(),
+        Some("succeeded")
+    );
+}
+
+#[test]
+fn ingest_without_run_id_creates_no_task() {
+    let world = make_world("no-task");
+    let mut vector = read_example("library-page.request.json");
+    vector.as_object_mut().expect("vector").remove("runId");
+    let frames = run_frames(&world, &[ingest_request(vector)]);
+    assert_eq!(frames[0]["payload"]["ok"], json!(true));
+    let count: i64 = rusqlite::Connection::open(&world.database_path)
+        .expect("aux connection opens")
+        .query_row("SELECT COUNT(*) FROM tasks", [], |row| row.get(0))
+        .expect("count");
+    assert_eq!(count, 0);
+}

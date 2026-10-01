@@ -46,10 +46,13 @@ replays safe: same-content overwrite, never a second row; every successful write
 ## Boundaries
 
 Only the account's own library pagination is read; no whole-site crawl, no purchase or payment
-interaction, no entitlement expansion. Task orchestration (nine-state sync task, cancellation,
-partial-page-run reporting) rides with the Electron reader slice and does not change this face.
-Real logged-in runs are user-run local evidence; until then this face's runtime coverage is
-synthetic vectors only.
+interaction, no entitlement expansion. When `runId` is present, each page folds the run's
+nine-state task (first page walks Queued → Preparing → Running, later pages are progress, the
+observed last page completes as Succeeded — SucceededWithWarnings when items were rejected); a
+mid-run abort leaves the task non-terminal for restart recovery to surface as inspect-required,
+and a replayed last page of a finished run is a no-op. Progress payloads carry per-page facts with
+the page ordinal. Real logged-in runs are user-run local evidence; until then this face's runtime
+coverage is synthetic vectors only.
 
 ## Document changelog
 
