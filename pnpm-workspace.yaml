@@ -3,3 +3,8 @@ packages:
   - packages/*
 minimumReleaseAgeExclude:
   - electron@44.1.1
+
+# pnpm 10+ 默认拦截依赖 postinstall;electron 的 dist 二进制必须由其
+# install 脚本落地,否则 dev 起 vite 不起壳(新 worktree 全新安装即踩)
+onlyBuiltDependencies:
+  - electron
