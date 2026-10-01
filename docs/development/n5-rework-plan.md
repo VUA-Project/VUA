@@ -54,7 +54,8 @@ set artifact mode. Multi-select → "download selected" → per-item tasks in th
 account-library pages **inside the partition session** (cookies never leave Electron; no session
 identifiers cross IPC) and ships raw page events to the provider, mirroring the `download.ingest`
 pattern. The provider parses (pure logic, synthetic-testable), validates against the closed sets,
-and writes through the existing W17 observation face (`record_product_observation`: upsert
+and writes through the observation face ([bdl.md](../architecture/bdl.md#observation-write-face),
+`record_product_observation`: upsert
 idempotency, tombstones, `catalog_updated_seq` in-transaction). Sync is an orchestrator nine-state
 task: cancellable, per-page partial-failure honesty, expired-session → blocked with a re-sign-in
 route. Only the account's own library pagination is read; no whole-site crawl. Capability
@@ -111,7 +112,7 @@ inside the slices that need them, not as a standalone "finish BDL" slice.
 
 | Slice | Contents | Primary audit rows |
 | --- | --- | --- |
-| S1 Library sync | Capability investigation (real page formats, read-only); catalog-sync v0.1 contract (schema + vectors + consumer test); partition-session reader in Electron; provider parse + W17 writes; aggregate state query; library page skeleton with three-state badges and sign-in empty state; capability advertisement | E1, B1, F2 |
+| S1 Library sync | Capability investigation (real page formats, read-only); catalog-sync v0.1 contract (schema + vectors + consumer test); partition-session reader in Electron; provider parse + observation-face writes; aggregate state query; library page skeleton with three-state badges and sign-in empty state; capability advertisement | E1, B1, F2 |
 | S2 Selective download | D5 initiation method; download → auto-adopt → state transition; duplicate-decision dialog | E1, E2, A2 |
 | S3 Library management | Unified menu (relink, correct source, remove-record vs delete-files with Recipe effects); version chips and switching; local-import entries as unknown-source | B4, B5, E2 |
 | S4 Inspection & dependencies | Wire `ArtifactInspector` as the single intake gate; dependency-observation ingestion + consumer page after the pending ruling | A3, D1 |

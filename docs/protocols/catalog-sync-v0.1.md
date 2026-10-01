@@ -10,8 +10,9 @@
 
 N5 S1 ([rework plan](../development/n5-rework-plan.md) D4): the Electron partition-session reader
 fetches the signed-in account's library pages and ships each archived page to the provider; the
-provider parses it and folds the items into the BDL products table through the existing W17
-observation write face (`record_product_observation`). This is the missing catalog producer the
+provider parses it and folds the items into the BDL products table through the observation write
+face (`record_product_observation`, [BDL boundary](../architecture/bdl.md#observation-write-face)).
+This is the missing catalog producer the
 [capability audit](../development/n5-capability-audit.md) row E1 identified.
 
 ## Request
