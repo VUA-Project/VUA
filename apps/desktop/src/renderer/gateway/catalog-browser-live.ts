@@ -80,7 +80,7 @@ function word<T extends string>(value: unknown, vocabulary: readonly T[]): T | n
 /**
  * bdl-queries 三键信封解包(BOARD #36 缺陷②同类修复批,2026-09-18):
  * live wire 对 catalog.list / catalog.detail / catalog.status 应答
- * {schemaVersion "0.4", operation, result 本体}(provider-host
+ * {schemaVersion "0.5", operation, result 本体}(provider-host
  * bdl_query_success),此前平铺读 value.{total,entries}/value.product/
  * value.{health,revision} 恒 undefined → 目录页真机恒 not-connected
  * (引擎健康,#22 live/fixture 形状分裂)。词表外信封 = null(调用方按
@@ -89,7 +89,10 @@ function word<T extends string>(value: unknown, vocabulary: readonly T[]): T | n
 function bdlQueryResult(value: unknown, operation: string): Record<string, unknown> | null {
   const envelope = asRecord(value);
   if (envelope === null) return null;
-  if (envelope.schemaVersion !== "0.4" || envelope.operation !== operation) return null;
+  // bdl-queries 家族信封已随 v0.5 依赖批升版(v0.4→v0.5 只升共享信封常量,
+  // 六方法词面不变);此处钉死旧版会让一切成功应答被判形态不齐而回落
+  // not-connected——真机首验(2026-10-02)抓出的存量缺陷
+  if (envelope.schemaVersion !== "0.5" || envelope.operation !== operation) return null;
   return asRecord(envelope.result);
 }
 

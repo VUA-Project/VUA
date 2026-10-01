@@ -185,7 +185,7 @@ function projectEntryList(value: unknown): AcquireView | null {
 /**
  * bdl-queries 三键信封解包(BOARD #36 缺陷②同类修复批,2026-09-18):
  * live wire 对 warehouse.listEntries / entryDetail 应答
- * {schemaVersion "0.4", operation, result 本体}(provider-host
+ * {schemaVersion "0.5", operation, result 本体}(provider-host
  * bdl_query_success),此前平铺读 value.entries/value.entry 恒 undefined
  * → 仓储页真机恒 not-connected(引擎健康,#22 live/fixture 形状分裂)。
  * 词表外信封 = null(调用方按未接入处理)。
@@ -193,7 +193,8 @@ function projectEntryList(value: unknown): AcquireView | null {
 function bdlQueryResult(value: unknown, operation: string): Record<string, unknown> | null {
   const envelope = asRecord(value);
   if (envelope === null) return null;
-  if (envelope.schemaVersion !== "0.4" || envelope.operation !== operation) return null;
+  // 同 catalog-browser-live:bdl-queries 信封 v0.5(真机首验 2026-10-02 修复)
+  if (envelope.schemaVersion !== "0.5" || envelope.operation !== operation) return null;
   return asRecord(envelope.result);
 }
 
