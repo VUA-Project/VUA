@@ -1244,6 +1244,23 @@ export interface RemoteContentApiV1 {
   events: { subscribe(listener: (event: RemoteContentEventV1) => void): () => void };
 }
 
+/** 账号库同步触发结果(N5 S1):触发面只启动/中止运行,进度与终态走
+ * provider 九态任务面(通知中心),本面不返回运行过程。 */
+export type CatalogSyncStartOutcomeV1 =
+  | { readonly status: "started"; readonly runId: string }
+  | { readonly status: "already_running"; readonly runId: string }
+  | { readonly status: "blocked"; readonly reason: "sign-in-required" };
+
+/** 账号库同步窄面(N5 S1):渲染层显式触发/中止一次 BOOTH 账号库同步。
+ * 会话与凭据留在 Main 侧分区会话内,本面不携带任何 Cookie/令牌;未登录
+ * (登录线索 "none")返回 blocked 引导登录,不空跑。 */
+export interface CatalogSyncApiV1 {
+  start(): Promise<CatalogSyncStartOutcomeV1>;
+  /** 请求中止当前运行(无运行时为 no-op);中止如实记为 aborted,已完成
+   * 页的目录更新保留。 */
+  stop(): Promise<void>;
+}
+
 /** 壳能力自报(桌面壳静态声明;proposal 015 §11 仲裁方案 a):能力拥有者
  *  (Electron 壳)自报,不经 provider 转述——远程 web 内容隔离于桌面壳内,
  *  其能力报告不属于 provider capability 面。 */
@@ -1397,6 +1414,7 @@ export interface VuaDesktopApiV1 {
   readonly dialog: DesktopDialogApiV1;
   readonly window: DesktopWindowApiV1;
   readonly remoteContent: RemoteContentApiV1;
+  readonly catalogSync: CatalogSyncApiV1;
   readonly capabilities: DesktopCapabilitiesV1;
   readonly navigationConfirm: DesktopNavigationConfirmApiV1;
   readonly editorSettings: DesktopEditorSettingsApiV1;

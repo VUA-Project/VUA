@@ -114,6 +114,12 @@ const api: VuaDesktopApiV1 = Object.freeze({
       },
     }),
   }),
+  // 账号库同步窄面(N5 S1):只触发/中止;进度与终态走任务面。会话凭据
+  // 不经过本面(见 contracts CatalogSyncApiV1 注释)
+  catalogSync: Object.freeze({
+    start: () => ipcRenderer.invoke("vua:catalog-sync:start"),
+    stop: () => ipcRenderer.invoke("vua:catalog-sync:stop"),
+  }),
   // 壳能力自报(proposal 015 §11 方案 a):能力拥有者静态声明;内嵌浏览
   // 基座(remote-content + U9 导航策略)随本壳交付,呈现两态由渲染层据此
   // 驱动(端到端可用才翻转呈现,desktop 架构 1.1.0)。沙箱 preload 不能

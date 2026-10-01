@@ -15,6 +15,7 @@ import type { OrchestratorProviderV01 } from "@vua/orchestrator-provider";
 import { routeDesktopGatewayInvoke } from "./gateway-router.js";
 import { DownloadPort } from "./download-port.js";
 import { createDownloadEventSink } from "./download-ingest.js";
+import { startCatalogSync, type CatalogSyncInvoke, type CatalogSyncRun } from "./catalog-sync.js";
 import { RemoteContentManager } from "./remote-content.js";
 import { createDesktopOrchestratorProvider } from "./provider-bootstrap.js";
 import {
@@ -51,6 +52,8 @@ let overlayWindow: BrowserWindow | null = null;
 let provider: OrchestratorProviderV01 | null = null;
 let remoteContent: RemoteContentManager | null = null;
 let downloadPort: DownloadPort | null = null;
+// 账号库同步当前运行(N5 S1):单并发守卫的持有位;结果落 provider 任务面
+let catalogSyncRun: CatalogSyncRun | null = null;
 // 系统资源占用采集器(顶栏占用查看器):whenReady 启动,退出前 stop
 const systemUsage = new SystemUsageCollector();
 let providerHandshake: Awaited<ReturnType<OrchestratorProviderV01["start"]>> | null = null;
@@ -443,6 +446,57 @@ function registerIpc(provider: OrchestratorProviderV01): void {
   ipcMain.handle("vua:remote-content:sign-in-hint", (event) => {
     assertLocalSender(senderFrameUrl(event));
     return remoteContent!.signInHint();
+  });
+
+  // 账号库同步触发面(N5 S1,计划 D4):分区会话逐页抓取 → provider
+  // catalog.ingestLibraryPage 折叠;进度与终态走九态任务面(通知中心),
+  // 本面只回触发结果。登录线索 "none" 返回 blocked 引导登录不空跑;
+  // "unknown" 放行走真抓取(探测失败不冒充事实,HTTP 结果才是)。凭据
+  // 全程留在 remoteContent 的分区会话内,IPC 面零 Cookie/令牌。
+  ipcMain.handle("vua:catalog-sync:start", async (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    if (remoteContent === null) throw new Error("remote content is unavailable");
+    if (catalogSyncRun !== null) {
+      return { status: "already_running", runId: catalogSyncRun.runId };
+    }
+    const hint = await remoteContent.signInHint();
+    if (hint === "none") {
+      return { status: "blocked", reason: "sign-in-required" };
+    }
+    const content = remoteContent;
+    const invokeCatalogSyncPage: CatalogSyncInvoke = (params) => {
+      if (provider === null) {
+        return Promise.reject(new Error("provider is not running"));
+      }
+      return provider
+        .invoke({
+          contractVersion: APPLICATION_CONTRACT_VERSION,
+          requestId: crypto.randomUUID(),
+          correlationId: crypto.randomUUID(),
+          commandId: crypto.randomUUID(),
+          kind: "command",
+          method: "catalog.ingestLibraryPage",
+          params,
+        })
+        .then((response) =>
+          response.ok
+            ? { ok: true as const, value: response.value }
+            : { ok: false as const, error: { code: response.error.code } },
+        );
+    };
+    const run = startCatalogSync({
+      fetch: (url) => content.fetchWithSession(url),
+      invoke: invokeCatalogSyncPage,
+    });
+    catalogSyncRun = run;
+    void run.result.finally(() => {
+      if (catalogSyncRun === run) catalogSyncRun = null;
+    });
+    return { status: "started", runId: run.runId };
+  });
+  ipcMain.handle("vua:catalog-sync:stop", (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    catalogSyncRun?.stop();
   });
 
   // 导航确认作答(015 §12):只受理本地来源;未知 confirmId/重复作答忽略
