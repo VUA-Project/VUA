@@ -359,6 +359,17 @@ export class MockOrchestratorProviderV01 implements OrchestratorProviderV01 {
           true,
           false,
         ));
+      case "catalog.ingestLibraryPage":
+        // 模拟 Provider 无 catalog-sync 投递域:诚实不可用(同 download.* 纪律,
+        // 绝不伪造落账回执)
+        return this.#failure(request, this.#error(
+          "vua.catalog.unavailable",
+          "unavailable",
+          "errors.catalog.unavailable",
+          request.correlationId,
+          true,
+          false,
+        ));
       case "download.ingest":
       case "download.retry":
         // 模拟 Provider 未配置下载域:诚实不可用(同 production.* 纪律)

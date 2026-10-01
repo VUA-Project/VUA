@@ -1,5 +1,6 @@
 import { isDeploymentCommandId, isDeploymentParams, type DeploymentPlanParams, type DeploymentExecuteParams, type DeploymentPlanResult, type DeploymentAccepted } from "./environment-deployment.js";
 import { isDownloadEventV01 } from "./download-events.js";
+import { isCatalogSyncPageRequestV01, type CatalogSyncPageRequestV01 } from "./catalog-sync.js";
 
 export const APPLICATION_CONTRACT_VERSION = "0.1" as const;
 
@@ -1927,6 +1928,17 @@ export interface DownloadIntentEventV03 {
   };
 }
 
+// ---- catalog-sync(账号库同步页投递;词表见 catalog-sync v0.1 冻结面) ----
+
+/** Main → AMF 单页归档投递(账号库同步读取器,N5 S1):HTML 原样进、逐项
+ *  观察落账出;请求零 Cookie/凭据(会话留在 Electron 分区会话内) */
+export interface CatalogIngestLibraryPageCommandV01 extends ApplicationRequestBaseV01 {
+  readonly kind: "command";
+  readonly method: "catalog.ingestLibraryPage";
+  readonly commandId: string;
+  readonly params: CatalogSyncPageRequestV01;
+}
+
 // ---- warehouse 写命令(bdl-commands v0.1 冻结业务词表的 TS 面,proposal 005;
 //      wire 信封 schemaVersion/operation 由应用契约 response 层承载,镜像按
 //      既有惯例剥除;稳定错误码词表见 docs/protocols/bdl-commands-v0.1.md) ----
@@ -2731,6 +2743,7 @@ export type ApplicationRequestV01 =
   | CatalogListQueryV03
   | CatalogDetailQueryV03
   | CatalogStatusQueryV03
+  | CatalogIngestLibraryPageCommandV01
   | WarehouseListEntriesQueryV03
   | WarehouseEntryDetailQueryV03
   | DownloadsListCompletedQueryV04
@@ -3508,6 +3521,17 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
     const ingestParams = value.params as { schemaVersion?: unknown; events?: unknown };
     if (ingestParams.schemaVersion !== "0.1" || !Array.isArray(ingestParams.events)) return false;
     return ingestParams.events.every((event) => isDownloadEventV01(event));
+  }
+  if (value.kind === "command" && value.method === "catalog.ingestLibraryPage") {
+    if (!hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "commandId", "params"])
+      || !isIdentifier(value.commandId)) {
+      return false;
+    }
+    const ingestPageParams = value.params as Record<string, unknown>;
+    const ingestPageKeys = ["schemaVersion", "sourceUrl", "html", "fetchedAt"];
+    if (ingestPageParams.pageNumber !== undefined) ingestPageKeys.push("pageNumber");
+    if (ingestPageParams.runId !== undefined) ingestPageKeys.push("runId");
+    return hasExactKeys(ingestPageParams, ingestPageKeys) && isCatalogSyncPageRequestV01(value.params);
   }
   if (value.kind === "command" && value.method === "download.retry") {
     return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "commandId", "params"])
