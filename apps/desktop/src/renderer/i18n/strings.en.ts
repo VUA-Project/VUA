@@ -1014,6 +1014,18 @@ demoTaskTitle: "Demo task",
     },
   },
   warehouse: {
+    catalogSync: {
+      action: "Sync BOOTH library",
+      startedHint: "Library sync started. Progress appears in the notification center.",
+      alreadyRunning: "A library sync is already running.",
+      signInTitle: "Sign in to BOOTH to sync your library",
+      signInDescription:
+        "Your catalog is empty. Sign in with your own BOOTH account in the embedded browser, then sync; VUA never handles your credentials.",
+      signInAction: "Open sign-in page",
+      syncTitle: "Sync your BOOTH library",
+      syncDescription:
+        "Your catalog is empty. Sync to list the material available to your own BOOTH account; nothing is downloaded until you choose it.",
+    },
     subtitle:
       "Manage product information and assets saved on this PC. Open BOOTH product pages in the app or your browser, and use your own account for purchases.",
     searchPlaceholder: "Search title or product ID",

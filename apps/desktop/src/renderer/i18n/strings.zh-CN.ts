@@ -1001,6 +1001,18 @@ rolled_back: "已回滚",
   },
   /** Warehouse 目录浏览(G8):卡片墙、搜索筛选、详情抽屉与三态文案 */
   warehouse: {
+    catalogSync: {
+      action: "同步 BOOTH 库",
+      startedHint: "库同步已开始，进度见通知中心。",
+      alreadyRunning: "已有库同步正在进行。",
+      signInTitle: "登录 BOOTH 后同步你的素材库",
+      signInDescription:
+        "目录还是空的。在内嵌浏览器中登录你自己的 BOOTH 账号后再同步；VUA 不会接触你的凭据。",
+      signInAction: "打开登录页",
+      syncTitle: "同步你的 BOOTH 素材库",
+      syncDescription:
+        "目录还是空的。同步后列出你自己 BOOTH 账号可用的素材；在你选择之前不会下载任何文件。",
+    },
     subtitle: "管理商品信息和保存在本机的素材。可以在应用内或浏览器中打开 BOOTH 商品页，使用自己的账号购买。",
     searchPlaceholder: "搜索标题或商品 ID",
     searchAria: "搜索目录商品",

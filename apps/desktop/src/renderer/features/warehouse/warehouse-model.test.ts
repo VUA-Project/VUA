@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
   albumIndexFromOffset,
+  catalogEmptyCard,
   emptyWarehouseQuery,
   hasActiveFilter,
   priceKind,
@@ -65,4 +66,35 @@ test("albumIndexFromOffset: 媒体区均分映射,边界 clamp", () => {
   assert.equal(albumIndexFromOffset(10, 0, 5), 0);
   assert.equal(albumIndexFromOffset(10, 100, 1), 0);
   assert.equal(albumIndexFromOffset(10, 100, 0), 0);
+});
+
+test("catalogEmptyCard: 无账户线索的空目录 → 登录引导卡", () => {
+  assert.deepEqual(
+    catalogEmptyCard({ remoteBrowser: true, signInHint: "none", filtered: false, catalogEmpty: true }),
+    { kind: "sign-in" },
+  );
+});
+
+test("catalogEmptyCard: stored/unknown/未探测 → 同步引导卡(探测失败不挡同步)", () => {
+  for (const signInHint of ["stored", "unknown", null] as const) {
+    assert.deepEqual(
+      catalogEmptyCard({ remoteBrowser: true, signInHint, filtered: false, catalogEmpty: true }),
+      { kind: "sync-available" },
+    );
+  }
+});
+
+test("catalogEmptyCard: 无远程浏览基座/筛选中/目录非空 → 保持通用空态", () => {
+  assert.deepEqual(
+    catalogEmptyCard({ remoteBrowser: false, signInHint: "none", filtered: false, catalogEmpty: true }),
+    { kind: "hidden" },
+  );
+  assert.deepEqual(
+    catalogEmptyCard({ remoteBrowser: true, signInHint: "none", filtered: true, catalogEmpty: true }),
+    { kind: "hidden" },
+  );
+  assert.deepEqual(
+    catalogEmptyCard({ remoteBrowser: true, signInHint: "none", filtered: false, catalogEmpty: false }),
+    { kind: "hidden" },
+  );
 });

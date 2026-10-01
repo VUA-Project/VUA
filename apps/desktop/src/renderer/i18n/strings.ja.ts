@@ -961,6 +961,18 @@ rolled_back: "ロールバック済み",
     },
   },
   warehouse: {
+    catalogSync: {
+      action: "BOOTHライブラリを同期",
+      startedHint: "ライブラリ同期を開始しました。進行状況は通知センターに表示されます。",
+      alreadyRunning: "ライブラリ同期が既に実行中です。",
+      signInTitle: "BOOTHにログインしてライブラリを同期",
+      signInDescription:
+        "カタログは空です。内蔵ブラウザーで自分のBOOTHアカウントにログインしてから同期してください。VUAが資格情報を扱うことはありません。",
+      signInAction: "ログインページを開く",
+      syncTitle: "BOOTHライブラリを同期",
+      syncDescription:
+        "カタログは空です。同期すると自分のBOOTHアカウントで利用可能な素材を一覧表示します。選択するまでファイルはダウンロードされません。",
+    },
     subtitle: "商品情報と、この PC に保存した素材を管理します。BOOTH の商品ページはアプリ内またはブラウザーで開けます。購入にはご自身のアカウントを使用してください。",
     searchPlaceholder: "タイトルまたは商品 ID で検索",
     searchAria: "カタログ商品を検索",

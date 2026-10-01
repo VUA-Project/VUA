@@ -960,6 +960,18 @@ rolled_back: "롤백됨",
     },
   },
   warehouse: {
+    catalogSync: {
+      action: "BOOTH 라이브러리 동기화",
+      startedHint: "라이브러리 동기화를 시작했습니다. 진행 상황은 알림 센터에 표시됩니다.",
+      alreadyRunning: "라이브러리 동기화가 이미 실행 중입니다.",
+      signInTitle: "BOOTH에 로그인하여 라이브러리를 동기화하세요",
+      signInDescription:
+        "카탈로그가 비어 있습니다. 내장 브라우저에서 자신의 BOOTH 계정으로 로그인한 뒤 동기화하세요. VUA는 자격 증명을 다루지 않습니다.",
+      signInAction: "로그인 페이지 열기",
+      syncTitle: "BOOTH 라이브러리 동기화",
+      syncDescription:
+        "카탈로그가 비어 있습니다. 동기화하면 자신의 BOOTH 계정에서 사용 가능한 자료가 나열됩니다. 선택하기 전에는 파일이 다운로드되지 않습니다.",
+    },
     subtitle: "이 PC에 저장된 상품 정보와 에셋을 관리합니다. 앱이나 브라우저에서 BOOTH 상품 페이지를 열고 본인 계정으로 구매하세요.",
     searchPlaceholder: "제목 또는 상품 ID 검색",
     searchAria: "카탈로그 상품 검색",

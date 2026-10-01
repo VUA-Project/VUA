@@ -38,12 +38,14 @@ import { WarehouseAcquire } from "./WarehouseAcquire.tsx";
 import { ContentDialog } from "../../components/primitives/ContentDialog.tsx";
 import { ImportPage } from "../import/ImportPage.tsx";
 import {
+  catalogEmptyCard,
   emptyWarehouseQuery,
   hasActiveFilter,
   priceKind,
   toPortQuery,
   type WarehouseQueryState,
 } from "./warehouse-model.ts";
+import { BOOTH_SIGN_IN_URL } from "../import/import-model.ts";
 import "./warehouse.css";
 
 const copy = strings.warehouse;
@@ -431,6 +433,34 @@ export function WarehousePage({
   // 弹窗关闭即卸载 ImportPage——其「卸载即在途关闭内嵌视图」生命周期语义原样生效
   const [importDialogOpen, setImportDialogOpen] = useState(false);
 
+  /** 账号库同步(N5 S1):登录线索只读探测 + 触发反馈;进度与终态走九态
+   * 任务面(通知中心),本页只回触发结果,不伪造运行过程 */
+  const remoteBrowser = window.vua?.capabilities?.remoteBrowser === true;
+  const [signInHint, setSignInHint] = useState<"stored" | "none" | "unknown" | null>(null);
+  const [syncNotice, setSyncNotice] = useState<"started" | "already" | null>(null);
+  useEffect(() => {
+    if (!remoteBrowser) return;
+    let active = true;
+    void window.vua?.remoteContent?.signInHint().then((hint) => {
+      if (active) setSignInHint(hint);
+    });
+    return () => {
+      active = false;
+    };
+  }, [remoteBrowser]);
+  const startCatalogSync = async (): Promise<void> => {
+    const catalogSync = window.vua?.catalogSync;
+    if (catalogSync === undefined) return;
+    const outcome = await catalogSync.start();
+    if (outcome.status === "blocked") {
+      // 登录引导:空态卡翻为登录形态(主进程门控已确认无账户 Cookie)
+      setSignInHint("none");
+      setSyncNotice(null);
+      return;
+    }
+    setSyncNotice(outcome.status === "started" ? "started" : "already");
+  };
+
   // 指针聚光 + 微倾斜:回调 ref 追踪 wall-scroll 元素(视图切换会重建它),
   // hook 内部按场景模式决定是否挂载监听(非 animated 模式零开销)
   const [wallEl, setWallEl] = useState<HTMLDivElement | null>(null);
@@ -474,6 +504,15 @@ export function WarehousePage({
 
   const resultsView =
     listState.kind === "loaded" && listState.view.kind === "results" ? listState.view : null;
+
+  /** 目录空态卡(N5 S1):未登录→登录引导;已登录/未知→同步引导;筛选中
+   *  或非空保持原通用空态(搜索无结果 ≠ 目录未接入) */
+  const emptyCard = catalogEmptyCard({
+    remoteBrowser,
+    signInHint,
+    filtered: hasActiveFilter(query),
+    catalogEmpty: resultsView !== null && resultsView.items.length === 0,
+  });
 
   /** 素材卡右键菜单(S-XII):仅真实动作——查看详情/已购标记。
    *  sourceUrl 只在详情负载上,打开来源/复制链接归详情抽屉,卡片菜单不猜 URL */
@@ -540,6 +579,18 @@ export function WarehousePage({
           <Button variant="primary" onClick={() => setImportDialogOpen(true)}>
             {strings.importPage.title}
           </Button>
+          {section === "catalog" && remoteBrowser ? (
+            <Button variant="default" onClick={() => void startCatalogSync()}>
+              {copy.catalogSync.action}
+            </Button>
+          ) : null}
+          {syncNotice !== null ? (
+            <span className="vua-caption vua-text-secondary" role="status">
+              {syncNotice === "started"
+                ? copy.catalogSync.startedHint
+                : copy.catalogSync.alreadyRunning}
+            </span>
+          ) : null}
         </div>
         {dataSource === "fixture" ? (
           <div>
@@ -671,11 +722,39 @@ export function WarehousePage({
                   ))}
                 </div>
               ) : resultsView !== null && resultsView.items.length === 0 ? (
-                /* 搜索/筛选无结果 ≠ 目录未接入 */
-                <EmptyState
-                  title={copy.states.emptyResultTitle}
-                  description={copy.states.emptyResultDescription}
-                />
+                /* 目录空态(N5 S1):登录引导卡/同步引导卡/通用空态三态 */
+                emptyCard.kind === "sign-in" ? (
+                  <EmptyState
+                    title={copy.catalogSync.signInTitle}
+                    description={copy.catalogSync.signInDescription}
+                    action={
+                      <Button
+                        variant="default"
+                        onClick={() =>
+                          void window.vua?.remoteContent?.open({ url: BOOTH_SIGN_IN_URL })
+                        }
+                      >
+                        {copy.catalogSync.signInAction}
+                      </Button>
+                    }
+                  />
+                ) : emptyCard.kind === "sync-available" ? (
+                  <EmptyState
+                    title={copy.catalogSync.syncTitle}
+                    description={copy.catalogSync.syncDescription}
+                    action={
+                      <Button variant="primary" onClick={() => void startCatalogSync()}>
+                        {copy.catalogSync.action}
+                      </Button>
+                    }
+                  />
+                ) : (
+                  /* 搜索/筛选无结果 ≠ 目录未接入 */
+                  <EmptyState
+                    title={copy.states.emptyResultTitle}
+                    description={copy.states.emptyResultDescription}
+                  />
+                )
               ) : resultsView !== null ? (
                 <div className="vua-warehouse__wall" role="list">
                   {resultsView.items.map((item) => (
