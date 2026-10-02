@@ -252,7 +252,9 @@ pub fn page_content_hash(html: &str) -> String {
     format!("sha256:{}", crate::artifact_inspection::hex_lower(&digest))
 }
 
-/// Maps one listing item onto the observation write face. `page_hash` is
+/// Maps one listing item onto the observation write face. `library_type` records
+/// which account library listed the item (BDL v0.3; None for library-agnostic
+/// observations). `page_hash` is
 /// [`page_content_hash`] of the whole page; `observed_at` is the fetch time
 /// (RFC 3339), never a BOOTH publish time.
 pub fn library_item_to_observation(
@@ -260,6 +262,7 @@ pub fn library_item_to_observation(
     page_hash: &str,
     observed_at: &str,
     run_id: Option<&str>,
+    library_type: Option<&str>,
 ) -> ProductObservation {
     // Currency, the Adult badge, availability and shop display name are not
     // observable on a listing card; the price pair rule then forces the
@@ -283,6 +286,7 @@ pub fn library_item_to_observation(
     ProductObservation {
         product_id: format!("booth:{}", item.native_product_id),
         native_product_id: item.native_product_id.clone(),
+        library_type: library_type.map(str::to_owned),
         source_locale: locale_of(&source_url),
         source_category: item.category.clone(),
         title: item.name.clone(),
@@ -463,7 +467,7 @@ mod tests {
         let page = extract_library_page(FIXTURE).expect("fixture parses");
         let hash = page_content_hash(FIXTURE);
         let observation =
-            library_item_to_observation(&page.items[0], &hash, "2026-10-02T00:00:00.000Z", Some("sync-1"));
+            library_item_to_observation(&page.items[0], &hash, "2026-10-02T00:00:00.000Z", Some("sync-1"), Some("bought"));
 
         // Identity pair agrees; evidence fields are caller-attached.
         assert_eq!(observation.product_id, "booth:1693144");
@@ -507,6 +511,7 @@ mod tests {
             &page.items[1],
             "sha256:fixed",
             "2026-10-02T00:00:00.000Z",
+            None,
             None,
         );
         assert_eq!(

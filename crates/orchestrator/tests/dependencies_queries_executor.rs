@@ -33,6 +33,7 @@ fn product(
             .strip_prefix("booth:")
             .expect("booth:<digits> identity")
             .to_owned(),
+        library_type: None,
         source_url: source_url.to_owned(),
         final_url: None,
         status,

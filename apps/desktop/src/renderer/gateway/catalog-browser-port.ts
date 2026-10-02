@@ -35,11 +35,15 @@ export type CatalogRelationKind = "compatible_with" | "addon_for" | "requires";
 export type CatalogAvailabilityStatus = "available" | "unavailable" | "unknown";
 
 /** 列表查询:全部条件 AND 组合;缺省不过滤 */
+export type CatalogLibraryType = "bought" | "gifts" | "free_downloads";
+
 export interface CatalogBrowserQuery {
   /** 标题 / productId 子串匹配(大小写不敏感) */
   readonly text?: string;
   /** 对派生稳定枚举精确匹配;live 随请求发送,由 AMF 侧过滤 */
   readonly availabilityStatus?: CatalogAvailabilityStatus;
+  /** BDL v0.3/bdl-queries v0.6:按账号库类型精确匹配(已购/礼物/免费) */
+  readonly libraryType?: CatalogLibraryType;
   /** 分页:1–200,缺省 50(AMF 默认);快照实现本地应用 */
   readonly limit?: number;
   /** 分页偏移:≥ 0,缺省 0 */
@@ -57,6 +61,8 @@ export interface CatalogProductSummary {
   readonly productId: string;
   /** v0.3 允许无题观测:未解析出标题时为 null,UI 回落 productId */
   readonly title: string | null;
+  /** BDL v0.3:条目来自哪个账号库(已购/礼物/免费);null = 未知 */
+  readonly libraryType: CatalogLibraryType | null;
   /** 字符串金额 + 币种;来源缺价格时为 null,UI 显示"无价格信息"而非猜测 */
   readonly price: CatalogPrice | null;
   readonly imageUrl: string | null;

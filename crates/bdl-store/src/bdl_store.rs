@@ -43,10 +43,11 @@ use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-pub const BDL_FORMAT_VERSION: &str = "0.2";
-const BDL_MIGRATION_VERSION: i64 = 2;
+pub const BDL_FORMAT_VERSION: &str = "0.3";
+const BDL_MIGRATION_VERSION: i64 = 3;
 const MIGRATION_001: &str = include_str!("../../../schemas/bdl/v0.1/001_initial.sql");
 const MIGRATION_002: &str = include_str!("../../../schemas/bdl/v0.2/002_dependency_observations.sql");
+const MIGRATION_003: &str = include_str!("../../../schemas/bdl/v0.3/003_library_type.sql");
 
 #[derive(Debug)]
 pub enum BdlStoreError {
@@ -352,6 +353,9 @@ pub struct ProductObservation {
     /// (the store rejects a mismatched pair).
     pub product_id: String,
     pub native_product_id: String,
+    /// Which account library listed the product (BDL v0.3):
+    /// bought | gifts | free_downloads; None = not library-derived.
+    pub library_type: Option<String>,
     pub source_url: String,
     pub final_url: Option<String>,
     pub status: ProductObservationStatus,
@@ -392,6 +396,16 @@ pub struct ProductObservation {
 fn validate_product_observation(
     observation: &ProductObservation,
 ) -> Result<(), BdlStoreError> {
+    if let Some(library_type) = &observation.library_type {
+        if !matches!(
+            library_type.as_str(),
+            "bought" | "gifts" | "free_downloads"
+        ) {
+            return Err(BdlStoreError::InvalidObservation(
+                "library_type must be bought|gifts|free_downloads or null",
+            ));
+        }
+    }
     let expected_product_id = format!("booth:{}", observation.native_product_id);
     if observation.product_id != expected_product_id
         || !observation
@@ -622,6 +636,7 @@ struct ObservedCard {
     price_currency: Option<String>,
     image_urls: Option<String>,
     availability: Option<String>,
+    library_type: Option<String>,
 }
 
 impl ObservedCard {
@@ -650,6 +665,7 @@ impl ObservedCard {
         Ok(CatalogProductSummary {
             product_id: self.product_id.clone(),
             title: self.title.clone(),
+            library_type: self.library_type.clone(),
             price: self.as_price()?,
             image_url: image_urls.first().cloned(),
             availability_raw: self.availability.clone(),
@@ -953,6 +969,16 @@ impl BdlStore {
                 connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
             transaction.execute_batch(MIGRATION_001)?;
             transaction.execute_batch(MIGRATION_002)?;
+            transaction.execute_batch(MIGRATION_003)?;
+            transaction.pragma_update(None, "user_version", BDL_MIGRATION_VERSION)?;
+            transaction.commit()?;
+        }
+        if migration == 2 {
+            // Existing v0.2 database: 003 adds products.library_type
+            // (additive ALTER, no rebuild) and bumps the format stamp.
+            let transaction =
+                connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+            transaction.execute_batch(MIGRATION_003)?;
             transaction.pragma_update(None, "user_version", BDL_MIGRATION_VERSION)?;
             transaction.commit()?;
         }
@@ -965,6 +991,7 @@ impl BdlStore {
             let transaction =
                 connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
             transaction.execute_batch(MIGRATION_002)?;
+            transaction.execute_batch(MIGRATION_003)?;
             transaction.pragma_update(None, "user_version", BDL_MIGRATION_VERSION)?;
             transaction.commit()?;
         }
@@ -1876,7 +1903,7 @@ impl BdlStore {
             connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
         transaction.execute(
             "INSERT INTO products(
-                product_id, native_product_id, source_url, final_url, status,
+                product_id, native_product_id, library_type, source_url, final_url, status,
                 source_locale, source_category, title, description,
                 age_restriction, adult, availability, price_amount,
                 price_currency, shop_name, shop_url, image_urls, video_urls,
@@ -1884,11 +1911,12 @@ impl BdlStore {
                 content_hash, observed_at, run_id, processor_version,
                 missing_fields
              ) VALUES (
-                ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14,
-                ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26
+                ?1, ?2, ?27, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13,
+                ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26
              )
              ON CONFLICT(product_id) DO UPDATE SET
                 native_product_id = excluded.native_product_id,
+                library_type = excluded.library_type,
                 source_url = excluded.source_url,
                 final_url = excluded.final_url,
                 status = excluded.status,
@@ -1940,6 +1968,7 @@ impl BdlStore {
                 observation.run_id,
                 observation.processor_version,
                 missing_fields,
+                observation.library_type,
             ],
         )?;
         transaction.execute(
@@ -2154,7 +2183,7 @@ impl BdlStore {
         let connection = self.connection.lock().expect("SQLite connection poisoned");
         let mut statement = connection.prepare(
             "SELECT product_id, title, price_amount, price_currency,
-                    image_urls, availability
+                    image_urls, availability, library_type
              FROM products
              WHERE status = 'complete'
              ORDER BY product_id",
@@ -2168,6 +2197,7 @@ impl BdlStore {
                     price_currency: row.get(3)?,
                     image_urls: row.get(4)?,
                     availability: row.get(5)?,
+                    library_type: row.get(6)?,
                 })
             })?
             .collect::<Result<Vec<_>, _>>()?;
@@ -2197,6 +2227,12 @@ impl BdlStore {
                     }
                     None => true,
                 }
+            })
+            // BDL v0.3: the library-type filter matches the stored column
+            // verbatim; NULL rows only match when no filter is asked.
+            .filter(|card| match &params.library_type {
+                Some(expected) => card.library_type.as_deref() == Some(expected.as_str()),
+                None => true,
             })
             .collect();
 
@@ -2717,7 +2753,7 @@ mod tests {
         let migration: i64 = connection
             .pragma_query_value(None, "user_version", |row| row.get(0))
             .unwrap();
-        assert_eq!(migration, 2, "fresh databases are born v0.2 (001 + 002)");
+        assert_eq!(migration, 3, "fresh databases are born v0.3 (001 + 002 + 003)");
         let dep_table: i64 = connection
             .query_row("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'dependency_observations'", [], |row| row.get(0))
             .unwrap();

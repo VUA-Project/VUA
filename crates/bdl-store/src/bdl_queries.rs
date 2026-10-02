@@ -28,7 +28,7 @@ use serde_json::Value;
 /// collapses onto this single const stamped at the single envelope
 /// assembly point. Consumers key on this core-owned constant, never a
 /// private literal.
-pub const BDL_QUERIES_SCHEMA_VERSION: &str = "0.5";
+pub const BDL_QUERIES_SCHEMA_VERSION: &str = "0.6";
 
 /// The five read-only operations. Transport envelopes belong to the
 /// application contract; this enum pins the operation vocabulary only.
@@ -164,6 +164,8 @@ pub struct CatalogPrice {
 pub struct CatalogProductSummary {
     pub product_id: String,
     pub title: Option<String>,
+    /// BDL v0.3: which account library listed the product (null = unknown).
+    pub library_type: Option<String>,
     pub price: Option<CatalogPrice>,
     pub image_url: Option<String>,
     pub image_urls: Vec<String>,
@@ -275,19 +277,21 @@ impl std::fmt::Display for CatalogParamsError {
 pub struct CatalogListParams {
     pub text: Option<String>,
     pub availability_status: Option<AvailabilityStatus>,
+    /// BDL v0.3: bought | gifts | free_downloads; None = no filter.
+    pub library_type: Option<String>,
     pub limit: i64,
     pub offset: i64,
 }
 
 impl Default for CatalogListParams {
     fn default() -> Self {
-        Self { text: None, availability_status: None, limit: 50, offset: 0 }
+        Self { text: None, availability_status: None, library_type: None, limit: 50, offset: 0 }
     }
 }
 
 impl CatalogListParams {
     pub fn from_value(value: &Value) -> Result<Self, CatalogParamsError> {
-        const KEYS: [&str; 4] = ["text", "availabilityStatus", "limit", "offset"];
+        const KEYS: [&str; 5] = ["text", "availabilityStatus", "libraryType", "limit", "offset"];
         let object = value
             .as_object()
             .ok_or(CatalogParamsError::InvalidValue {
@@ -378,7 +382,23 @@ impl CatalogListParams {
                 });
             }
         };
-        Ok(Self { text, availability_status, limit, offset })
+        // BDL v0.3: libraryType 闭集(bought|gifts|free_downloads);空串/null 无筛选
+        let library_type = match object.get("libraryType") {
+            None | Some(Value::Null) => None,
+            Some(Value::String(raw)) if raw.is_empty() => None,
+            Some(Value::String(raw))
+                if matches!(raw.as_str(), "bought" | "gifts" | "free_downloads") =>
+            {
+                Some(raw.clone())
+            }
+            Some(_) => {
+                return Err(CatalogParamsError::InvalidValue {
+                    key: "libraryType",
+                    reason: "must be bought|gifts|free_downloads".into(),
+                });
+            }
+        };
+        Ok(Self { text, availability_status, library_type, limit, offset })
     }
 }
 

@@ -56,7 +56,7 @@ describe("startCatalogSync", () => {
     ];
     const invoke: CatalogSyncInvoke = async (params) => {
       call += 1;
-      expect(params.schemaVersion).toBe("0.1");
+      expect(params.schemaVersion).toBe("0.2");
       expect(params.html).toBe(call === 1 ? "<page1/>" : "<page2/>");
       expect(params.pageNumber).toBe(call);
       expect(params.runId).toMatch(/^catalog-sync-/);

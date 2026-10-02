@@ -88,7 +88,11 @@ export const CATALOG_SYNC_DEFAULT_START_URL = "https://accounts.booth.pm/library
 
 export function startCatalogSync(
   options: CatalogSyncRunnerOptions,
-  start?: { readonly runId?: string; readonly startUrl?: string },
+  start?: {
+    readonly runId?: string;
+    readonly startUrl?: string;
+    readonly libraryType?: "bought" | "gifts" | "free_downloads";
+  },
 ): CatalogSyncRun {
   const pageDelayMs = options.pageDelayMs ?? 1_500;
   const maxPages = options.maxPages ?? 50;
@@ -152,12 +156,15 @@ export function startCatalogSync(
       let invokeResult: CatalogSyncInvokeResult;
       try {
         invokeResult = await options.invoke({
-          schemaVersion: "0.1",
+          schemaVersion: "0.2",
           sourceUrl: url,
           html: outcome.body,
           fetchedAt,
           pageNumber,
           runId,
+          ...(start?.libraryType === undefined
+            ? {}
+            : { libraryType: start.libraryType }),
         });
       } catch (error) {
         log(JSON.stringify({ channel: "catalog-sync", runId, invokeError: String(error), url }));

@@ -117,10 +117,10 @@ const api: VuaDesktopApiV1 = Object.freeze({
   // 账号库同步窄面(N5 S1):只触发/中止;进度与终态走任务面。会话凭据
   // 不经过本面(见 contracts CatalogSyncApiV1 注释)
   catalogSync: Object.freeze({
-    // startUrl 可选:默认已购库;gifts/free_downloads 库经此指定
-    // (来源守卫在 Main 侧 fetchWithSession 的允许清单,IPC 面不放宽)
-    start: (request?: { readonly startUrl?: string }) =>
-      ipcRenderer.invoke("vua:catalog-sync:start", request),
+    // libraryType 可选:同步哪个账号库(缺省已购);入口由 Main 按类型派生
+    start: (request?: {
+      readonly libraryType?: "bought" | "gifts" | "free_downloads";
+    }) => ipcRenderer.invoke("vua:catalog-sync:start", request),
     stop: () => ipcRenderer.invoke("vua:catalog-sync:stop"),
   }),
   // 壳能力自报(proposal 015 §11 方案 a):能力拥有者静态声明;内嵌浏览

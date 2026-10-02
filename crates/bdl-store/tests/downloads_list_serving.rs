@@ -1,4 +1,4 @@
-//! Contract anchor for `schemas/bdl-queries/v0.5` (IMP-2 batch-B data
+//! Contract anchor for `schemas/bdl-queries/v0.6` (IMP-2 batch-B data
 //! source — proposal 015 §7 data stance, accepted; v0.4 -> v0.5
 //! ride-along: the additive six->eight operation rise leaves the
 //! `downloads.listCompleted` word face identical, only the shared family
@@ -28,7 +28,7 @@ use vua_bdl_store::download_events::{
 use vua_bdl_store::{BdlStore, CompletedDownloadRow, BDL_QUERIES_SCHEMA_VERSION};
 
 fn schema_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/bdl-queries/v0.5")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/bdl-queries/v0.6")
 }
 
 /// The frozen v0.5 schemas (the CURRENT generation: the validators key on

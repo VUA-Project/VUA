@@ -1,0 +1,1216 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ph-r.com/vua/schemas/bdl-queries/v0.5/result.schema.json",
+  "title": "VUA BDL read query result v0.5",
+  "description": "Results for the eight read-only BDL queries (docs/protocols/bdl-queries-v0.5). Every absent fact is an honest null or empty array — never guessed, never inflated. Paths never appear: storedPath semantics stop at AMF/BDL and users do not browse the disk. v0.2 availability is dual-field: availabilityRaw preserves the verbatim observed word as evidence; availabilityStatus is the stable enum derived by the AMF/BDL processor under versioned rules — the renderer never derives it. v0.5 adds the dependencies.* results under the clues-not-conclusions law: dependencies.lookup is the SUGGESTION face — every match carries verbatim evidence, resolvedProductId surfaces ONLY for human-confirmed resolutions, and advisory (a suggestion, never a fact claim) is null unless the versioned advisory rule table admits the row; dependencies.listByProduct is the UNFILTERED observation face — unconfirmed resolutions surface there as labeled clues (confirmed:false). total:0 + matches:[] means 'no matching nominal', not 'no such dependency'.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "operation"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "0.6"
+    },
+    "operation": {
+      "enum": [
+        "catalog.list",
+        "catalog.detail",
+        "catalog.status",
+        "warehouse.listEntries",
+        "warehouse.entryDetail",
+        "downloads.listCompleted",
+        "dependencies.lookup",
+        "dependencies.listByProduct"
+      ]
+    },
+    "result": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "catalog.list"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "$ref": "#/$defs/catalogListResult"
+          }
+        },
+        "required": [
+          "result"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "catalog.detail"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "$ref": "#/$defs/catalogDetailResult"
+          }
+        },
+        "required": [
+          "result"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "catalog.status"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "$ref": "#/$defs/catalogStatusResult"
+          }
+        },
+        "required": [
+          "result"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "warehouse.listEntries"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "$ref": "#/$defs/warehouseListEntriesResult"
+          }
+        },
+        "required": [
+          "result"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "warehouse.entryDetail"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "$ref": "#/$defs/warehouseEntryDetailResult"
+          }
+        },
+        "required": [
+          "result"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "downloads.listCompleted"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "$ref": "#/$defs/downloadsListCompletedResult"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "dependencies.lookup"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "$ref": "#/$defs/dependenciesLookupResult"
+          }
+        },
+        "required": [
+          "result"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "dependencies.listByProduct"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "result": {
+            "$ref": "#/$defs/dependenciesListByProductResult"
+          }
+        },
+        "required": [
+          "result"
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "price": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "description": "Single-price products only; null = no price information (never guessed, never converted). Variant prices live in subproducts.",
+      "properties": {
+        "amount": {
+          "type": "string",
+          "minLength": 1
+        },
+        "currency": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "availabilityPair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw",
+        "status"
+      ],
+      "description": "v0.2 dual field: raw = the verbatim observed word (evidence; may be a bare word or a full schema.org URL, shown as-is in detail views); status = the stable enum derived by the AMF/BDL processor per the versioned rule table in the protocol (unrecognized or missing raw → unknown with raw preserved).",
+      "properties": {
+        "raw": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "enum": [
+            "available",
+            "unavailable",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "productSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "productId",
+        "title",
+        "price",
+        "imageUrl",
+        "imageUrls",
+        "availabilityRaw",
+        "availabilityStatus",
+        "entityCount",
+        "entityTypes",
+        "libraryType"
+      ],
+      "properties": {
+        "productId": {
+          "type": "string",
+          "pattern": "^booth:[0-9]+$"
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "price": {
+          "$ref": "#/$defs/price"
+        },
+        "imageUrl": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Always imageUrls[0] or null; carried by the vuaimg cache protocol."
+        },
+        "imageUrls": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Verbatim observed source URLs (BOOTH properties)."
+        },
+        "availabilityRaw": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Verbatim observed word; never normalized for display or filtering."
+        },
+        "availabilityStatus": {
+          "enum": [
+            "available",
+            "unavailable",
+            "unknown"
+          ],
+          "description": "Derived by the processor; the only field UI badges and filters consume."
+        },
+        "entityCount": {
+          "const": 0,
+          "description": "Honest empty slot in v0.2: entity storage is BDL v2."
+        },
+        "entityTypes": {
+          "const": [],
+          "description": "Honest empty slot in v0.2."
+        },
+        "libraryType": {
+          "enum": [
+            "bought",
+            "gifts",
+            "free_downloads",
+            null
+          ],
+          "description": "BDL v0.3: which account library listed the product; null = unknown/legacy row."
+        }
+      }
+    },
+    "catalogListResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total",
+        "entries"
+      ],
+      "properties": {
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total matching entries for pagination, computed before limit/offset."
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/productSummary"
+          }
+        }
+      }
+    },
+    "subproduct": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "variationId",
+        "name",
+        "price",
+        "availabilityRaw",
+        "availabilityStatus"
+      ],
+      "properties": {
+        "variationId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "price": {
+          "$ref": "#/$defs/price"
+        },
+        "availabilityRaw": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "availabilityStatus": {
+          "enum": [
+            "available",
+            "unavailable",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "productDetail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "productId",
+        "title",
+        "price",
+        "imageUrl",
+        "imageUrls",
+        "availabilityRaw",
+        "availabilityStatus",
+        "entityCount",
+        "entityTypes",
+        "description",
+        "shopName",
+        "shopUrl",
+        "ageRestriction",
+        "adult",
+        "videoUrls",
+        "sourceCategory",
+        "subproducts"
+      ],
+      "properties": {
+        "productId": {
+          "type": "string",
+          "pattern": "^booth:[0-9]+$"
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "price": {
+          "$ref": "#/$defs/price"
+        },
+        "imageUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "imageUrls": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "availabilityRaw": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "availabilityStatus": {
+          "enum": [
+            "available",
+            "unavailable",
+            "unknown"
+          ]
+        },
+        "entityCount": {
+          "const": 0
+        },
+        "entityTypes": {
+          "const": []
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "shopName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "shopUrl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ageRestriction": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "adult": {
+          "type": "boolean",
+          "description": "True only with the explicit BOOTH Adult badge."
+        },
+        "videoUrls": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "sourceCategory": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "BOOTH display category, no inference."
+        },
+        "subproducts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/subproduct"
+          }
+        }
+      }
+    },
+    "catalogDetailResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "product"
+      ],
+      "properties": {
+        "product": {
+          "$ref": "#/$defs/productDetail"
+        }
+      }
+    },
+    "catalogStatusResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "health",
+        "revision"
+      ],
+      "properties": {
+        "health": {
+          "enum": [
+            "unknown",
+            "ok",
+            "incompatible"
+          ],
+          "description": "incompatible = the BDL version fence rejecting the store; corrupted and stale are renderer-reserved states that v0.2 never sends."
+        },
+        "revision": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "catalogUpdatedSeq",
+            "datasetRevision"
+          ],
+          "properties": {
+            "catalogUpdatedSeq": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "description": "null until the observation-pipeline bookkeeping counter exists."
+            },
+            "datasetRevision": {
+              "type": "string",
+              "minLength": 1,
+              "description": "v0.2 = the BDL format_version."
+            }
+          }
+        }
+      }
+    },
+    "warehouseArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relativePath",
+        "artifactSha256",
+        "state",
+        "sizeBytes",
+        "role"
+      ],
+      "properties": {
+        "relativePath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artifactSha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "clean",
+            "quarantined"
+          ],
+          "description": "Wire three-state mapped from the storage lifecycle: pending ← untrusted|inspected, clean ← admitted, quarantined ← rejected."
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "role": {
+          "enum": [
+            "original",
+            "generated_vpm"
+          ],
+          "description": "Physical role within the entry: originals are removed by the delete-originals flow, generated VPM packages survive."
+        }
+      }
+    },
+    "warehouseListEntriesResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entries"
+      ],
+      "properties": {
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "warehouseItemId",
+              "folderName",
+              "displayName",
+              "kind",
+              "createdAt",
+              "artifacts",
+              "artifactMode",
+              "effectiveArtifactMode"
+            ],
+            "properties": {
+              "warehouseItemId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "folderName": {
+                "type": "string",
+                "minLength": 1
+              },
+              "displayName": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "enum": [
+                  "imported_material",
+                  "downloaded_material"
+                ],
+                "description": "Closed entry-kind vocabulary (v0.3)."
+              },
+              "createdAt": {
+                "type": "string",
+                "minLength": 1
+              },
+              "artifacts": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/warehouseArtifactRef"
+                }
+              },
+              "artifactMode": {
+                "enum": [
+                  "use_original_unitypackage",
+                  "generate_vpm",
+                  null
+                ],
+                "description": "Per-entry consumption-preference override; null = follows the global default."
+              },
+              "effectiveArtifactMode": {
+                "enum": [
+                  "use_original_unitypackage",
+                  "generate_vpm"
+                ],
+                "description": "Dynamically resolved at read time: override ?? the shell-level global default. A preference only — never a statement that a VPM exists."
+              }
+            }
+          }
+        }
+      }
+    },
+    "warehouseArtifactFact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relativePath",
+        "artifactSha256",
+        "state",
+        "sizeBytes",
+        "suggestedFileName",
+        "inspectedAt",
+        "rejectionReason",
+        "sourceCorrelated",
+        "mappedProductIds",
+        "role"
+      ],
+      "properties": {
+        "relativePath": {
+          "type": "string",
+          "minLength": 1
+        },
+        "artifactSha256": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "state": {
+          "enum": [
+            "pending",
+            "clean",
+            "quarantined"
+          ]
+        },
+        "sizeBytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "suggestedFileName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "inspectedAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Mechanical verdict time; null while pending."
+        },
+        "rejectionReason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Honest verdict text; non-null only when quarantined."
+        },
+        "sourceCorrelated": {
+          "type": "boolean",
+          "description": "Existence of an artifact_mappings row."
+        },
+        "mappedProductIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^booth:[0-9]+$"
+          }
+        },
+        "role": {
+          "enum": [
+            "original",
+            "generated_vpm"
+          ],
+          "description": "Physical role within the entry: originals are removed by the delete-originals flow, generated VPM packages survive."
+        }
+      }
+    },
+    "warehouseEntryDetailResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entry"
+      ],
+      "properties": {
+        "entry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "warehouseItemId",
+            "folderName",
+            "displayName",
+            "kind",
+            "createdAt",
+            "artifacts",
+            "artifactMode",
+            "effectiveArtifactMode"
+          ],
+          "properties": {
+            "warehouseItemId": {
+              "type": "string",
+              "minLength": 1
+            },
+            "folderName": {
+              "type": "string",
+              "minLength": 1
+            },
+            "displayName": {
+              "type": "string",
+              "minLength": 1
+            },
+            "kind": {
+              "enum": [
+                "imported_material",
+                "downloaded_material"
+              ],
+              "description": "Closed entry-kind vocabulary (v0.3)."
+            },
+            "createdAt": {
+              "type": "string",
+              "minLength": 1
+            },
+            "artifacts": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/warehouseArtifactFact"
+              }
+            },
+            "artifactMode": {
+              "enum": [
+                "use_original_unitypackage",
+                "generate_vpm",
+                null
+              ],
+              "description": "Per-entry consumption-preference override; null = follows the global default."
+            },
+            "effectiveArtifactMode": {
+              "enum": [
+                "use_original_unitypackage",
+                "generate_vpm"
+              ],
+              "description": "Dynamically resolved at read time: override ?? the shell-level global default. A preference only — never a statement that a VPM exists."
+            }
+          }
+        }
+      }
+    },
+    "downloadsListCompletedResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "downloads"
+      ],
+      "properties": {
+        "downloads": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "downloadId",
+              "sourceUrl",
+              "suggestedFileName",
+              "receivedBytes",
+              "completedAt",
+              "adoptedWarehouseItemIds"
+            ],
+            "properties": {
+              "downloadId": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Port-assigned identity (download-events v0.1); the warehouse.importDownloads request field."
+              },
+              "sourceUrl": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The completed delivery's source URL as reported by the port (transport fact; adoption never asserts product identity from it)."
+              },
+              "suggestedFileName": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1,
+                "description": "Server-suggested or derived file name; null when the port reported none."
+              },
+              "receivedBytes": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "The completed delivery's own reported size — the size the adoption guard re-verifies."
+              },
+              "completedAt": {
+                "type": "string",
+                "minLength": 1,
+                "description": "occurredAt of the completed event."
+              },
+              "adoptedWarehouseItemIds": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "description": "Warehouse entries whose content rows carry this download correlation (local_artifacts.download_id). Empty = not yet adopted. Repeat adoption is not prevented by the write face; the UI uses this to mark adopted downloads."
+              }
+            }
+          }
+        }
+      }
+    },
+    "dependencyMatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One matching dependency observation on the lookup suggestion face. The evidence keys are verbatim storage (zero normalization); the derived keys (resolvedProductId, advisory) obey the suggestion gates: resolvedProductId surfaces ONLY when the resolution is human-confirmed, and advisory is null unless the versioned advisory rule table admits the row. Deliberately absent (admission rule): extractedBy and observedAt stay off the lookup wire (observedAt is not a freshness judge for suggestions); paths never appear.",
+      "required": [
+        "productId",
+        "productTitle",
+        "availabilityRaw",
+        "availabilityStatus",
+        "depKind",
+        "depName",
+        "versionHint",
+        "rawQuote",
+        "sourceSpan",
+        "extractionMethod",
+        "resolvedProductId",
+        "advisory"
+      ],
+      "properties": {
+        "productId": {
+          "type": "string",
+          "pattern": "^booth:[0-9]+$",
+          "description": "The product whose page declares the dependency."
+        },
+        "productTitle": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The declaring product's title; null = honest absence (never guessed)."
+        },
+        "availabilityRaw": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The declaring product's verbatim availability word (dual-field law, evidence)."
+        },
+        "availabilityStatus": {
+          "enum": [
+            "available",
+            "unavailable",
+            "unknown"
+          ],
+          "description": "Derived stable enum for the declaring product; the only field UI consumes."
+        },
+        "depKind": {
+          "enum": [
+            "shader",
+            "tool_package",
+            "avatar_base",
+            "other"
+          ],
+          "description": "Mirrors the FROZEN BDL v0.2 dep_kind closed set (no fifth member; engine/SDK pins are 'other' with the pin in versionHint)."
+        },
+        "depName": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The dependency's name AS WRITTEN on the page; never normalized, never matched into an equivalence."
+        },
+        "versionHint": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The version string AS WRITTEN ('2.3.2~'); null = the page pinned no version (honest absence). Carries ALL version constraints."
+        },
+        "rawQuote": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Verbatim quote from the page — the evidence body, zero semantic rewriting."
+        },
+        "sourceSpan": {
+          "enum": [
+            "body",
+            "subproduct_name",
+            "image",
+            "title",
+            "description_link"
+          ],
+          "description": "Where on the page the quote was lifted from (BDL v0.2 closed set)."
+        },
+        "extractionMethod": {
+          "enum": [
+            "explicit_heading",
+            "bullet",
+            "one_line",
+            "prose",
+            "title",
+            "link"
+          ],
+          "description": "The page-layout form the quote was lifted from (BDL v0.2 closed set) — confidence dimension 1."
+        },
+        "resolvedProductId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^booth:[0-9]+$",
+          "description": "The resolution target, surfaced ONLY when the resolution is human-confirmed (confirmed_by_human = 1). Unconfirmed resolutions never enter the suggestion face — they are clues, and clues surface on dependencies.listByProduct as confirmed:false. null = no resolution, or an unconfirmed one."
+        },
+        "advisory": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/installAdvisory"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "A SUGGESTION with evidence, never a fact claim; null = this observation surfaces no suggestion (layout below the rule's line, unconfirmed resolution, or no provable install source — the row stays valid in the library)."
+        }
+      }
+    },
+    "installAdvisory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "installSource",
+        "confidence"
+      ],
+      "properties": {
+        "installSource": {
+          "enum": [
+            "vpm",
+            "booth_page",
+            "external_page",
+            "unknown"
+          ],
+          "description": "The suggested install-source type (proposal 030 §3.2 closed set), derived by the versioned advisory rule table. Rule v1 derives only booth_page/external_page from a confirmed resolution target's source host; vpm/unknown stay in the closed set for rule evolution and are never emitted by v1 (no VPM-repo fact lives in the store — claiming one would be a guess)."
+        },
+        "confidence": {
+          "enum": [
+            "strong",
+            "weak"
+          ],
+          "description": "Two tiers over the layout dimension only: strong = explicit_heading/one_line (the author states the dependency as a dedicated declaration), weak = bullet (listed line, real but compressed). The mapping body lives in the versioned advisory rule table; rule changes bump the protocol, never rewrite in place."
+        }
+      }
+    },
+    "dependenciesLookupResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total",
+        "matches"
+      ],
+      "properties": {
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total matching observations, computed before limit/offset. total:0 + matches:[] means NO MATCHING NOMINAL under the versioned rule — not 'no such dependency': rows below the suggestion gates stay in the library (listByProduct is the unfiltered face)."
+        },
+        "matches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/dependencyMatch"
+          },
+          "description": "Ordered by productId ascending, then observation identity ascending (identity-derived, deterministic pagination)."
+        }
+      }
+    },
+    "resolutionEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "linkText",
+        "linkUrl",
+        "span",
+        "note"
+      ],
+      "description": "The FROZEN BDL v0.2 resolution_evidence element shape, reused verbatim.",
+      "properties": {
+        "linkText": {
+          "type": "string",
+          "minLength": 1
+        },
+        "linkUrl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "span": {
+          "enum": [
+            "body",
+            "subproduct_name",
+            "image",
+            "title",
+            "description_link"
+          ]
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "resolution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "productId",
+        "confirmed",
+        "evidence"
+      ],
+      "description": "A link resolution WITH its confirmation state: confirmed:false is a labeled CLUE (the mislink evidence of proposal 030 §1 sample 3 — identity resolution is default-unconfirmed), confirmed:true is a human-ruled conclusion. The store-level hard law (resolution present ⇒ evidence non-empty) rides the frozen schema CHECK.",
+      "properties": {
+        "productId": {
+          "type": "string",
+          "pattern": "^booth:[0-9]+$"
+        },
+        "confirmed": {
+          "type": "boolean",
+          "description": "true only with the explicit, on-record human confirmation (confirmed_by_human = 1); the flip itself is a write action of the production build slice, never of this read family."
+        },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/resolutionEvidence"
+          }
+        }
+      }
+    },
+    "dependencyObservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One dependency observation on the UNFILTERED face: the full evidence body including the extraction identity (extractedBy), the observation time (observedAt — the confirmation workflow judges freshness), and the resolution WITH its labeled confirmation state. Deliberately different from lookup: no advisory (the suggestion derivation is lookup's job; this face lists observations, including low-confidence rows, as they are).",
+      "required": [
+        "depKind",
+        "depName",
+        "versionHint",
+        "rawQuote",
+        "sourceSpan",
+        "extractionMethod",
+        "extractedBy",
+        "observedAt",
+        "resolution"
+      ],
+      "properties": {
+        "depKind": {
+          "enum": [
+            "shader",
+            "tool_package",
+            "avatar_base",
+            "other"
+          ]
+        },
+        "depName": {
+          "type": "string",
+          "minLength": 1,
+          "description": "AS WRITTEN on the page; never normalized."
+        },
+        "versionHint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "rawQuote": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Verbatim quote, zero semantic rewriting."
+        },
+        "sourceSpan": {
+          "enum": [
+            "body",
+            "subproduct_name",
+            "image",
+            "title",
+            "description_link"
+          ]
+        },
+        "extractionMethod": {
+          "enum": [
+            "explicit_heading",
+            "bullet",
+            "one_line",
+            "prose",
+            "title",
+            "link"
+          ]
+        },
+        "extractedBy": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Extractor identity ('human' in the first landing; open word face — BDL v0.2 confidence dimension 2, never merged with extractionMethod)."
+        },
+        "observedAt": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Pipeline observation time, NOT a BOOTH publish time."
+        },
+        "resolution": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/resolution"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "null = the page carried no resolvable link clue; otherwise the resolution with its honest confirmation state."
+        }
+      }
+    },
+    "dependenciesListByProductResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "productId",
+        "productStatus",
+        "observations"
+      ],
+      "properties": {
+        "productId": {
+          "type": "string",
+          "pattern": "^booth:[0-9]+$"
+        },
+        "productStatus": {
+          "enum": [
+            "complete",
+            "missing"
+          ],
+          "description": "Tombstone honesty: missing = the source page died (404/410 kept, never deleted) — the observations stay listed and readable, because the confirmation workflow must still see them."
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/dependencyObservation"
+          },
+          "description": "Ordered by observation identity ascending (insertion order, deterministic). The two-face contrast with lookup IS the clues-not-conclusions law: lookup surfaces only confirmed resolutions, this face lists every clue with its label."
+        }
+      }
+    }
+  }
+}

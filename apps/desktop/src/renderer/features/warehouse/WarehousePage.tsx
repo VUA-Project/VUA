@@ -419,8 +419,10 @@ export function WarehousePage({
 }) {
   const dataSource = useDataSource();
   const connected = dataSource !== "none";
-  // 单库页(用户方向 2026-10-02):云端/本地不再分轨切换,改为来源筛选
-  const [source, setSource] = useState<"all" | "cloud" | "local">("all");
+  // 单库页(用户方向 2026-10-02):云端三来源 + 本地,来源只作筛选
+  const [source, setSource] = useState<
+    "all" | "bought" | "gifts" | "free" | "local"
+  >("all");
 
   const [query, setQuery] = useState<WarehouseQueryState>(emptyWarehouseQuery);
   const [listState, setListState] = useState<ListState>({ kind: "loading" });
@@ -456,7 +458,11 @@ export function WarehousePage({
   const startCatalogSync = async (): Promise<void> => {
     const catalogSync = window.vua?.catalogSync;
     if (catalogSync === undefined) return;
-    const outcome = await catalogSync.start();
+    const libraryType =
+      source === "gifts" ? "gifts" : source === "free" ? "free_downloads" : "bought";
+    const outcome = await catalogSync.start(
+      libraryType === "bought" ? undefined : { libraryType },
+    );
     if (outcome.status === "blocked") {
       // 登录引导:空态卡翻为登录形态(主进程门控已确认无账户 Cookie);
       // 同时给可见反馈——用户动作无可见响应等同于坏(设计标准反馈纪律)
@@ -522,7 +528,13 @@ export function WarehousePage({
     if (!connected) return;
     let active = true;
     setListState((prev) => (prev.kind === "loaded" ? prev : { kind: "loading" }));
-    catalogBrowser.list(toPortQuery(query)).then(
+    catalogBrowser
+      .list(
+        source === "bought" || source === "gifts" || source === "free"
+          ? { ...toPortQuery(query), libraryType: source === "free" ? "free_downloads" : source }
+          : toPortQuery(query),
+      )
+      .then(
       (view) => {
         if (active) setListState({ kind: "loaded", view });
       },
@@ -533,7 +545,7 @@ export function WarehousePage({
     return () => {
       active = false;
     };
-  }, [query, connected, reloadKey]);
+  }, [query, connected, reloadKey, source]);
 
   // 详情查询
   useEffect(() => {
@@ -601,7 +613,9 @@ export function WarehousePage({
           onChange={(event) => setSource(event.target.value as typeof source)}
         >
           <option value="all">{copy.filters.sourceAll}</option>
-          <option value="cloud">{copy.filters.sourceCloud}</option>
+          <option value="bought">{copy.filters.sourceBought}</option>
+          <option value="gifts">{copy.filters.sourceGifts}</option>
+          <option value="free">{copy.filters.sourceFree}</option>
           <option value="local">{copy.filters.sourceLocal}</option>
         </select>
         <p className="vua-text-secondary">{copy.subtitle}</p>
@@ -638,7 +652,7 @@ export function WarehousePage({
         ) : null}
       </section>
 
-      {source !== "cloud" ? (
+      {source === "all" || source === "local" ? (
         <section className="vua-warehouse__group" aria-label={copy.acquire.viewLocal}>
           <h2 className="vua-warehouse__group-title">{copy.acquire.viewLocal}</h2>
           <WarehouseAcquire />

@@ -25,6 +25,7 @@ fn observation(native_id: &str) -> ProductObservation {
     ProductObservation {
         product_id: format!("booth:{native_id}"),
         native_product_id: native_id.to_owned(),
+        library_type: None,
         source_url: format!("https://booth.pm/ja/items/{native_id}"),
         final_url: None,
         status: ProductObservationStatus::Complete,

@@ -5735,10 +5735,12 @@ fn catalog_ingest_library_page(
     request_id: &str,
     correlation_id: &str,
 ) -> FrameOutcome {
-    const CATALOG_SYNC_SCHEMA_VERSION: &str = "0.1";
-    if request.pointer("/params/schemaVersion").and_then(Value::as_str)
-        != Some(CATALOG_SYNC_SCHEMA_VERSION)
-    {
+    // v0.2 增补可选 libraryType;v0.1 请求(无该字段)继续接受
+    const CATALOG_SYNC_SCHEMA_VERSIONS: [&str; 2] = ["0.1", "0.2"];
+    let request_schema_version = request.pointer("/params/schemaVersion").and_then(Value::as_str);
+    if !request_schema_version.is_some_and(|version| {
+        CATALOG_SYNC_SCHEMA_VERSIONS.contains(&version)
+    }) {
         return FrameOutcome::Response(application_error(
             request_id,
             correlation_id,
@@ -5761,6 +5763,15 @@ fn catalog_ingest_library_page(
         return catalog_invalid_params(request_id, correlation_id);
     };
     let run_id = non_empty("/params/runId");
+    // BDL v0.3: 库类型闭集(bought|gifts|free_downloads);缺省 None(如 v0.1 请求)
+    let library_type = match request.pointer("/params/libraryType").and_then(Value::as_str) {
+        None => None,
+        Some("") => None,
+        Some(raw) if matches!(raw, "bought" | "gifts" | "free_downloads") => Some(raw),
+        Some(_) => {
+            return catalog_invalid_params(request_id, correlation_id);
+        }
+    };
 
     let page = match vua_acquisition::library_page::extract_library_page(html) {
         Ok(page) => page,
@@ -5784,6 +5795,7 @@ fn catalog_ingest_library_page(
             &page_hash,
             fetched_at,
             run_id,
+            library_type,
         );
         match warehouse.bdl.record_product_observation(&observation) {
             Ok(_) => upserted += 1,
@@ -5831,7 +5843,7 @@ fn catalog_ingest_library_page(
     FrameOutcome::Response(application_success(
         request_id,
         json!({
-            "schemaVersion": CATALOG_SYNC_SCHEMA_VERSION,
+            "schemaVersion": request_schema_version.unwrap_or("0.1"),
             "sourceUrl": source_url,
             "parsedCount": page.items.len(),
             "upsertedCount": upserted,

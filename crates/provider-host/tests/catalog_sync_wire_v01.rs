@@ -262,7 +262,7 @@ fn wrong_schema_version_is_rejected() {
     let frames = run_frames(
         &world,
         &[ingest_request(json!({
-            "schemaVersion": "0.2",
+            "schemaVersion": "0.3",
             "sourceUrl": "https://booth.pm/en/library?page=1",
             "html": "<html><body><ul class=\"market-items\"></ul></body></html>",
             "fetchedAt": "2026-10-02T00:00:00.000Z",
@@ -406,4 +406,23 @@ fn fold_events_are_published_as_event_frames() {
         "expected a full lifecycle of task events, got {:?}",
         kinds
     );
+}
+
+
+#[test]
+fn v02_requests_carry_library_type_into_observations() {
+    let world = make_world("v02");
+    let mut vector = read_example("library-page.request.json");
+    vector.as_object_mut().unwrap().insert("libraryType".into(), serde_json::json!("bought"));
+    let frames = run_frames(&world, &[ingest_request(vector), catalog_list_request()]);
+    assert_eq!(frames[0]["payload"]["ok"], json!(true));
+    // 全部条目按 bought 类型入库并可按该类型筛出
+    let filtered = run_frames(
+        &world,
+        &[json!({ "method": "catalog.list", "params": { "libraryType": "bought" } })],
+    );
+    let value = &filtered[0]["payload"]["value"];
+    assert_eq!(value["result"]["total"], json!(2));
+    let entries = value["result"]["entries"].as_array().unwrap();
+    assert!(entries.iter().all(|e| e["libraryType"] == json!("bought")));
 }

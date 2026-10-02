@@ -17,6 +17,7 @@ fn product(product_id: &str, status: ProductObservationStatus) -> ProductObserva
             .strip_prefix("booth:")
             .expect("booth:<digits> identity")
             .to_owned(),
+        library_type: None,
         source_url: format!("https://booth.pm/ja/items/{}", product_id.trim_start_matches("booth:")),
         final_url: None,
         status,

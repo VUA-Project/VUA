@@ -1255,9 +1255,11 @@ export type CatalogSyncStartOutcomeV1 =
  * 会话与凭据留在 Main 侧分区会话内,本面不携带任何 Cookie/令牌;未登录
  * (登录线索 "none")返回 blocked 引导登录,不空跑。 */
 export interface CatalogSyncApiV1 {
-  /** startUrl 可选:库类型入口(已购默认 /library,gifts /library/gifts,
-   *  free_downloads /library/free_downloads);来源守卫在 Main 允许清单 */
-  start(request?: { readonly startUrl?: string }): Promise<CatalogSyncStartOutcomeV1>;
+  /** libraryType 可选:同步哪个账号库(缺省已购);Main 按类型派生入口,
+   *  来源守卫在 fetchWithSession 的允许清单 */
+  start(request?: {
+    readonly libraryType?: "bought" | "gifts" | "free_downloads";
+  }): Promise<CatalogSyncStartOutcomeV1>;
   /** 请求中止当前运行(无运行时为 no-op);中止如实记为 aborted,已完成
    * 页的目录更新保留。 */
   stop(): Promise<void>;

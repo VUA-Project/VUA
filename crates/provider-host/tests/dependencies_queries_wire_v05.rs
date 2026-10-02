@@ -2,7 +2,7 @@
 //! batch, proposal 030 §5.7 case A).
 //!
 //! The host consumes the data-side frozen vectors from
-//! `schemas/bdl-queries/v0.5/examples` through the REAL frame loop. The
+//! `schemas/bdl-queries/v0.6/examples` through the REAL frame loop. The
 //! REAL query executor (reading the BDL library) is a later
 //! data/production-domain implementation ring, so this batch rides a FAKE
 //! port implementing the core `DependenciesQueriesPort` — the wire
@@ -39,7 +39,7 @@ use vua_bdl_store::{
 use vua_provider_host::{run_provider_host_full, WarehouseConfig};
 
 fn schema_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/bdl-queries/v0.5")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/bdl-queries/v0.6")
 }
 
 fn read_json(relative: &str) -> Value {
@@ -262,7 +262,7 @@ fn frozen_lookup_vector_rides_the_real_frame_loop_verbatim() {
     let frozen = read_json("examples/dependencies-lookup.result.json");
     let envelope = &payload["value"];
     assert_eq!(envelope["schemaVersion"], BDL_QUERIES_SCHEMA_VERSION);
-    assert_eq!(envelope["schemaVersion"], "0.5");
+    assert_eq!(envelope["schemaVersion"], "0.6");
     assert_eq!(envelope["operation"], "dependencies.lookup");
     assert_eq!(envelope["result"], frozen["result"], "the wire facts must equal the frozen vector");
     assert!(
@@ -288,7 +288,7 @@ fn frozen_list_by_product_vector_rides_the_real_frame_loop_verbatim() {
     assert_eq!(payload["ok"], true, "payload: {payload}");
     let frozen = read_json("examples/dependencies-listbyproduct.result.json");
     let envelope = &payload["value"];
-    assert_eq!(envelope["schemaVersion"], "0.5");
+    assert_eq!(envelope["schemaVersion"], "0.6");
     assert_eq!(envelope["operation"], "dependencies.listByProduct");
     assert_eq!(envelope["result"], frozen["result"], "the wire facts must equal the frozen vector");
     assert!(
@@ -588,7 +588,7 @@ fn real_executor_answers_lookup_through_the_real_frame_loop() {
     assert_eq!(payload["ok"], true);
     let envelope = &payload["value"];
     assert_eq!(envelope["schemaVersion"], BDL_QUERIES_SCHEMA_VERSION);
-    assert_eq!(envelope["schemaVersion"], "0.5");
+    assert_eq!(envelope["schemaVersion"], "0.6");
     assert_eq!(envelope["operation"], "dependencies.lookup");
     result_validator().validate(envelope).expect("validates the frozen result schema");
     let result = &envelope["result"];
@@ -623,6 +623,7 @@ fn product_observation(
             .strip_prefix("booth:")
             .expect("booth:<digits>")
             .to_owned(),
+        library_type: None,
         source_url: format!("https://booth.pm/ja/items/{}", &product_id["booth:".len()..]),
         final_url: None,
         status,

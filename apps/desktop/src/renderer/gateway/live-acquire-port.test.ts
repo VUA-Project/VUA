@@ -14,7 +14,7 @@ import type { AcquireEntryDetailView, AcquireView } from "./acquire-port.ts";
  * wire 投影(client 纪律)、断连语义与事件驱动重取。不经 Kernel 全链路
  * (路由臂由 contracts 守卫测试与 mock provider 覆盖)。
  * BOARD #36 缺陷②同类修复批(2026-09-18):mock 应答统一钉 live 形状
- * (bdl-queries 三键信封,schemaVersion "0.5" + operation + result)——
+ * (bdl-queries 三键信封,schemaVersion "0.6" + operation + result)——
  * 此前 mock 钉契约平铺值、live 实答带信封,测试全绿真机不通(#22 教训)。
  */
 
@@ -53,7 +53,7 @@ function wireEntry(overrides: Record<string, unknown> = {}) {
 /** live 信封(provider-host bdl_query_success 同形):三键包裹 result 本体 */
 const okBdl = (operation: string, result: unknown): GatewayResult<DesktopGatewaySuccessValueV1> => ({
   ok: true,
-  value: { schemaVersion: "0.5", operation, result } as unknown as DesktopGatewaySuccessValueV1,
+  value: { schemaVersion: "0.6", operation, result } as unknown as DesktopGatewaySuccessValueV1,
 });
 
 const okList = (entries: readonly unknown[]): GatewayResult<DesktopGatewaySuccessValueV1> =>

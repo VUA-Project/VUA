@@ -463,13 +463,19 @@ function registerIpc(provider: OrchestratorProviderV01): void {
     if (hint === "none") {
       return { status: "blocked", reason: "sign-in-required" };
     }
-    // 可选库类型入口(已购/gifts/free_downloads);字符串校验后透传,
-    // 来源守卫由 fetchWithSession 的允许清单最终把关
-    const startUrl =
-      typeof (request as { startUrl?: unknown } | null | undefined)?.startUrl === "string" &&
-      (request as { startUrl: string }).startUrl.length > 0
-        ? (request as { startUrl: string }).startUrl
+    // 库类型(已购缺省/gifts/free_downloads)→ 入口派生;来源守卫由
+    // fetchWithSession 的允许清单最终把关
+    const libraryTypeRaw = (request as { libraryType?: unknown } | null | undefined)?.libraryType;
+    const libraryType =
+      libraryTypeRaw === "gifts" || libraryTypeRaw === "free_downloads" || libraryTypeRaw === "bought"
+        ? libraryTypeRaw
         : undefined;
+    const startUrl =
+      libraryType === "gifts"
+        ? "https://accounts.booth.pm/library/gifts?page=1"
+        : libraryType === "free_downloads"
+          ? "https://accounts.booth.pm/library/free_downloads?page=1"
+          : undefined;
     const content = remoteContent;
     const invokeCatalogSyncPage: CatalogSyncInvoke = (params) => {
       if (provider === null) {
@@ -496,7 +502,10 @@ function registerIpc(provider: OrchestratorProviderV01): void {
         fetch: (url) => content.fetchWithSession(url),
         invoke: invokeCatalogSyncPage,
       },
-      startUrl === undefined ? {} : { startUrl },
+      {
+        ...(startUrl === undefined ? {} : { startUrl }),
+        ...(libraryType === undefined ? {} : { libraryType }),
+      },
     );
     catalogSyncRun = run;
     void run.result.finally(() => {
