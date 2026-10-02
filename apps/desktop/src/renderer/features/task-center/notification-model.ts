@@ -27,11 +27,17 @@ export function visibleNotifications(
   dismissed: ReadonlySet<string>,
   showCompleted: boolean,
 ): readonly TaskItem[] {
+  // notifyOnComplete(用户裁决 2026-10-02):短任务的完成通知保留到手动
+  // 清除——默认"终态不显示"对秒级完成的任务是零反馈。同族只保留最新
+  // 一条:一次会话多次短任务(如反复库同步)不该堆出完成通知山;旧任务
+  // 事实仍可经任务列表/详情面查询(清除的是通知,不是事实)。
+  const persistent = tasks
+    .filter((task) => task.notifyOnComplete === true && !dismissed.has(task.id))
+    .sort((a, b) => (a.id < b.id ? 1 : -1));
+  const latestPersistentId = persistent[0]?.id ?? null;
   return tasks.filter((task) => {
     if (dismissed.has(task.id)) return false;
-    // notifyOnComplete(用户裁决 2026-10-02):短任务的完成通知保留到手动
-    // 清除——默认"终态不显示"对秒级完成的任务是零反馈
-    if (task.notifyOnComplete === true) return true;
+    if (task.notifyOnComplete === true) return task.id === latestPersistentId;
     return showCompleted || !isTerminalStatus(task.status);
   });
 }

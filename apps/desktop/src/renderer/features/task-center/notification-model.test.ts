@@ -118,3 +118,29 @@ test("notifyOnComplete: 终态通知保留到手动清除(用户裁决 2026-10-0
   const plain = { id: "other-1", status: "completed" as const, title: "x", originPage: "warehouse" as const, cancellable: false };
   assert.equal(visibleNotifications([plain], new Set(), false).length, 0);
 });
+
+
+test("notifyOnComplete 同族只显示最新一条(反复同步不堆通知山)", () => {
+  const mk = (id: string, statusOverride?: "completed" | "running") => ({
+    id,
+    status: statusOverride ?? ("completed" as const),
+    title: "库同步",
+    originPage: "warehouse" as const,
+    cancellable: false,
+    notifyOnComplete: true,
+  });
+  const a = mk("catalog-sync-1", "completed");
+  const b = mk("catalog-sync-2", "completed");
+  const c = mk("catalog-sync-3", "completed");
+  const visible = visibleNotifications([a, b, c], new Set(), false);
+  assert.equal(visible.length, 1);
+  assert.equal(visible[0]?.id, "catalog-sync-3");
+  // 最新一条被手动清除后,次新的一条顶上(不是整族消失)
+  const afterDismiss = visibleNotifications([a, b, c], new Set(["catalog-sync-3"]), false);
+  assert.equal(afterDismiss.length, 1);
+  assert.equal(afterDismiss[0]?.id, "catalog-sync-2");
+  // 运行中的任务不受此规则影响(恒显)
+  const running = mk("catalog-sync-4", "running");
+  const withRunning = visibleNotifications([a, b, running], new Set(), false);
+  assert.equal(withRunning.filter((t) => t.id === "catalog-sync-4").length, 1);
+});

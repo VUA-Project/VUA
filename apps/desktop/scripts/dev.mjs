@@ -120,7 +120,10 @@ async function waitForRenderer() {
 const killedStale = preflightPort(VITE_PORT);
 if (killedStale) await waitPortFree(VITE_PORT);
 
-const vite = spawn("pnpm", ["exec", "vite"], { stdio: "inherit", shell: useShell });
+// --force:每次启动重建依赖预打包。真机 2026-10-02/03 三次踩中陈旧
+// @vua/contracts 预打包(运行时导入 undefined → 渲染崩溃整树卸载);
+// 几秒的重建代价换掉这一整类缺陷
+const vite = spawn("pnpm", ["exec", "vite", "--force"], { stdio: "inherit", shell: useShell });
 
 // Electron 额外参数透传(W25 走查取证护栏,2026-09-23):VUA_ELECTRON_ARGS
 // 以空格分词追加到 electron 命令(如 --remote-debugging-port=51993,供
