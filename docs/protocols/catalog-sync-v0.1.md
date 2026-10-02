@@ -1,6 +1,6 @@
 # Catalog-sync v0.1 — account-library page ingest
 
-> Document version: 0.1
+> Document version: 0.1.1
 > Status: **Frozen** (2026-10-02) — schema + positive/negative vectors + consumer test shipped together; machine-readable vocabulary in `schemas/catalog-sync/v0.1/`
 > Updated: 2026-10-02
 > Maintainer: Data
@@ -24,17 +24,28 @@ tokens or credentials; the partition session stays inside Electron.
 
 ## Parsing and honesty rules
 
-The listing grammar (`li.item-card[data-product-id]` with name/brand/category/price attributes,
-`.item-card__thumbnail` images, `a[rel="next"]` pagination) was verified read-only against the
-public site on 2026-10-02; the signed-in library page itself is not reachable without an account
-and remains pending real-run verification. A page with no recognizable listing structure is the
-contract error `vua.catalog.not_a_library_page`, never an empty success. Per item: currency, the
-Adult badge, availability and shop display name are not observable on a listing card, so the price
-pair is omitted entirely (amount and currency are admitted together or not at all) and the gaps are
-recorded in `missing_fields` — never guessed. Item URLs normalize scheme/relative forms onto
-`https://booth.pm`; a card without a link derives the canonical URL from the observed product id.
-A full product-page observation (the existing `booth_extraction` grammar) refines these fields
-later.
+Two listing grammars, discriminated by structure presence (patch 0.1.1: the original
+public-browse grammar was the only one known at freeze; real signed-in verification
+2026-10-02 added the account-library grammar, which is the one production uses):
+
+- **Account-library rows** (verified signed-in, 2026-10-02): the library lives at
+  `accounts.booth.pm` — `/library` (bought), `/library/gifts`, `/library/free_downloads`;
+  cards are anchors to `/items/{id}` (a thumbnail anchor plus a title anchor; no data
+  attributes, no price). One entry per unique product id (multiple anchors per item
+  collapse). Same grammar across all three library types.
+- **Public browse cards** (`li.item-card[data-product-id]` with name/brand/category/price
+  attributes), verified read-only on the public site.
+
+Pagination is `a[rel="next"]` in both; its href may be relative (the Electron reader
+resolves it against the current page and fails honestly when unresolvable). A page with
+no recognizable listing structure at all is the contract error
+`vua.catalog.not_a_library_page`, never an empty success. Per item: currency, the Adult
+badge, availability and shop display name are not observable on a listing, so the price
+pair is omitted entirely (amount and currency are admitted together or not at all) and
+the gaps are recorded in `missing_fields` — never guessed. Item URLs normalize
+scheme/relative forms onto `https://booth.pm`; a card without a link derives the
+canonical URL from the observed product id. A full product-page observation (the existing
+`booth_extraction` grammar) refines these fields later.
 
 ## Result
 
@@ -59,3 +70,7 @@ coverage is synthetic vectors only.
 
 - 1.0.0 (2026-10-02): initial freeze with schema, positive/negative vectors, and the wire consumer
   test (`crates/provider-host/tests/catalog_sync_wire_v01.rs`).
+
+- 0.1.1 (2026-10-02): patch — parsing section rewritten from real signed-in library
+  pages (accounts.booth.pm library rows, three library types, relative rel=next); wire
+  schema and semantics unchanged.

@@ -1,6 +1,6 @@
 # N5 rework plan — unified library and acquisition producers
 
-> Document version: 1.0.0
+> Document version: 1.1.0
 > Status: Accepted
 > Scope: Implementation direction for the N5 material-management rework, within the accepted N5 scope
 > Updated: 2026-10-02
@@ -113,6 +113,15 @@ inside the slices that need them, not as a standalone "finish BDL" slice.
 | Slice | Contents | Primary audit rows |
 | --- | --- | --- |
 | S1 Library sync | Capability investigation (real page formats, read-only); catalog-sync v0.1 contract (schema + vectors + consumer test); partition-session reader in Electron; provider parse + observation-face writes; aggregate state query; library page skeleton with three-state badges and sign-in empty state; capability advertisement | E1, B1, F2 |
+
+S1 addendum (1.1.0, user direction + real-machine verification 2026-10-02): the account
+library has **three** types — bought (`/library`), gifts (`/library/gifts`), and free
+downloads (`/library/free_downloads`, newly added by BOOTH) — all sharing the library-row
+grammar and the sync face (the trigger accepts a per-type startUrl). Real signed-in runs
+verified: login persistence across restarts, bought and gifts pagination (2 pages each),
+free downloads single page (user will grow it to re-verify pagination), 35 unique
+products with zero duplicates, resync idempotency, and honest inspect-required recovery
+for an interrupted run. UI-side library-type selection rides with S2.
 | S2 Selective download | D5 initiation method; download → auto-adopt → state transition; duplicate-decision dialog | E1, E2, A2 |
 | S3 Library management | Unified menu (relink, correct source, remove-record vs delete-files with Recipe effects); version chips and switching; local-import entries as unknown-source | B4, B5, E2 |
 | S4 Inspection & dependencies | Wire `ArtifactInspector` as the single intake gate; dependency-observation ingestion + consumer page after the pending ruling | A3, D1 |
@@ -131,3 +140,6 @@ parser relocation (D6) waits for N1's merge. Expect a small rebase, not a redesi
 
 - 1.0.0 (2026-10-02): initial plan consolidating the post-audit design discussion: unified library
   vision, D1–D9 decisions, slice sequence S1–S4, N1 coexistence notes.
+
+- 1.1.0 (2026-10-02): S1 addendum — third library type (free downloads) per user
+  direction; real-machine verification facts recorded.
