@@ -1,6 +1,6 @@
 # N5 rework plan — unified library and acquisition producers
 
-> Document version: 1.1.0
+> Document version: 1.2.0
 > Status: Accepted
 > Scope: Implementation direction for the N5 material-management rework, within the accepted N5 scope
 > Updated: 2026-10-02
@@ -122,6 +122,11 @@ verified: login persistence across restarts, bought and gifts pagination (2 page
 free downloads single page (user will grow it to re-verify pagination), 35 unique
 products with zero duplicates, resync idempotency, and honest inspect-required recovery
 for an interrupted run. UI-side library-type selection rides with S2.
+
+User direction (2026-10-02, third round): the two warehouse track cards (catalog vs
+local assets) merge into ONE library page; cloud-vs-local becomes a filter, not a
+section switch. The merged-page layout rework (wall visibility floor, production
+section placement, below-fold empty card) rides the S3 UI slice.
 | S2 Selective download | D5 initiation method; download → auto-adopt → state transition; duplicate-decision dialog | E1, E2, A2 |
 | S3 Library management | Unified menu (relink, correct source, remove-record vs delete-files with Recipe effects); version chips and switching; local-import entries as unknown-source | B4, B5, E2 |
 | S4 Inspection & dependencies | Wire `ArtifactInspector` as the single intake gate; dependency-observation ingestion + consumer page after the pending ruling | A3, D1 |
@@ -143,3 +148,6 @@ parser relocation (D6) waits for N1's merge. Expect a small rebase, not a redesi
 
 - 1.1.0 (2026-10-02): S1 addendum — third library type (free downloads) per user
   direction; real-machine verification facts recorded.
+
+- 1.2.0 (2026-10-02): user direction — merge the two warehouse tracks into one library
+  page with a cloud/local filter; layout rework rides S3.

@@ -73,7 +73,11 @@
   gap: var(--vua-space-4);
   align-items: stretch;
   flex: 1;
-  min-height: 0;
+  /* 卡片墙可见性地板(真机 2026-10-02:flex:1 + min-height:0 会被同页的
+     生产区段等兄弟节点挤成 0——35 张卡片渲染在 DOM 里却完全不可见)。
+     超出时页面级滚动由 .vua-page(overflow-y:auto)按外壳设计承担;
+     轨道合并布局重排(用户方向 2026-10-02)时统一整理。 */
+  min-height: 60vh;
 }
 
 .vua-warehouse__content[data-drawer-open] {

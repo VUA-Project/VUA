@@ -114,6 +114,7 @@ Current owners, versions and statuses only. [Governance](meta/documentation-gove
 | docs/development/engineering-rules.md | 1.0.0 | Accepted | Integration | 2026-09-29 |
 | docs/architecture/unity-deployment.md | 2.0.0 | Accepted | Environment | 2026-10-01 |
 | docs/development/n5-capability-audit.md | 1.0.0 | Draft | Data | 2026-10-02 |
+| docs/development/n5-rework-plan.md | 1.2.0 | Accepted | Data | 2026-10-02 |
 | docs/development/n5-rework-plan.md | 1.1.0 | Accepted | Data | 2026-10-02 |
 | docs/development/n5-rework-plan.md | 1.0.0 | Accepted | Data | 2026-10-02 |
 | docs/README.md | 1.0.0 | Accepted | Integration | 2026-10-01 |
