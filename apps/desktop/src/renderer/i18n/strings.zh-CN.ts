@@ -1002,6 +1002,7 @@ rolled_back: "已回滚",
   /** Warehouse 目录浏览(G8):卡片墙、搜索筛选、详情抽屉与三态文案 */
   warehouse: {
     catalogSync: {
+      signInRequired: "请先登录 BOOTH 再同步。",
       action: "同步 BOOTH 库",
       startedHint: "库同步已开始，进度见通知中心。",
       alreadyRunning: "已有库同步正在进行。",

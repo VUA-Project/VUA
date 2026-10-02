@@ -437,7 +437,7 @@ export function WarehousePage({
    * 任务面(通知中心),本页只回触发结果,不伪造运行过程 */
   const remoteBrowser = window.vua?.capabilities?.remoteBrowser === true;
   const [signInHint, setSignInHint] = useState<"stored" | "none" | "unknown" | null>(null);
-  const [syncNotice, setSyncNotice] = useState<"started" | "already" | null>(null);
+  const [syncNotice, setSyncNotice] = useState<"started" | "already" | "blocked" | null>(null);
   useEffect(() => {
     if (!remoteBrowser) return;
     let active = true;
@@ -453,9 +453,10 @@ export function WarehousePage({
     if (catalogSync === undefined) return;
     const outcome = await catalogSync.start();
     if (outcome.status === "blocked") {
-      // 登录引导:空态卡翻为登录形态(主进程门控已确认无账户 Cookie)
+      // 登录引导:空态卡翻为登录形态(主进程门控已确认无账户 Cookie);
+      // 同时给可见反馈——用户动作无可见响应等同于坏(设计标准反馈纪律)
       setSignInHint("none");
-      setSyncNotice(null);
+      setSyncNotice("blocked");
       return;
     }
     setSyncNotice(outcome.status === "started" ? "started" : "already");
@@ -588,7 +589,9 @@ export function WarehousePage({
             <span className="vua-caption vua-text-secondary" role="status">
               {syncNotice === "started"
                 ? copy.catalogSync.startedHint
-                : copy.catalogSync.alreadyRunning}
+                : syncNotice === "already"
+                  ? copy.catalogSync.alreadyRunning
+                  : copy.catalogSync.signInRequired}
             </span>
           ) : null}
         </div>

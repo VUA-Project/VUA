@@ -961,6 +961,7 @@ rolled_back: "롤백됨",
   },
   warehouse: {
     catalogSync: {
+      signInRequired: "먼저 BOOTH에 로그인한 뒤 동기화하세요.",
       action: "BOOTH 라이브러리 동기화",
       startedHint: "라이브러리 동기화를 시작했습니다. 진행 상황은 알림 센터에 표시됩니다.",
       alreadyRunning: "라이브러리 동기화가 이미 실행 중입니다.",

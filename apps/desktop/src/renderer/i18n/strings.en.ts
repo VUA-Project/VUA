@@ -1015,6 +1015,7 @@ demoTaskTitle: "Demo task",
   },
   warehouse: {
     catalogSync: {
+      signInRequired: "Sign in to BOOTH first, then sync.",
       action: "Sync BOOTH library",
       startedHint: "Library sync started. Progress appears in the notification center.",
       alreadyRunning: "A library sync is already running.",
