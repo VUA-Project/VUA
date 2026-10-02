@@ -120,8 +120,6 @@ Current owners, versions and statuses only. [Governance](meta/documentation-gove
 | docs/architecture/unity-deployment.md | 2.0.0 | Accepted | Environment | 2026-10-01 |
 | docs/development/n5-capability-audit.md | 1.0.0 | Draft | Data | 2026-10-02 |
 | docs/development/n5-rework-plan.md | 1.2.0 | Accepted | Data | 2026-10-02 |
-| docs/development/n5-rework-plan.md | 1.1.0 | Accepted | Data | 2026-10-02 |
-| docs/development/n5-rework-plan.md | 1.0.0 | Accepted | Data | 2026-10-02 |
 | docs/README.md | 1.0.0 | Accepted | Integration | 2026-10-01 |
 | docs/project-context.md | 3.0.1 | Accepted | Integration | 2026-10-01 |
 | docs/migration/asset-ledger.md | 1.0.0 | Historical reference; no current implementation authority | Integration | 2026-10-02 |
