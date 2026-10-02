@@ -960,7 +960,11 @@ export function WarehousePage({
                 </div>
               ) : detailState.view.kind === "detail" ? (
                 /* key=productId:切换商品时重置组件内状态(如来源跳转失败标记) */
-                <DetailContent key={detailState.view.product.productId} product={detailState.view.product} />
+                <DetailContent
+                  key={detailState.view.product.productId}
+                  product={detailState.view.product}
+                  onEnriched={() => setDetailReloadKey((key) => key + 1)}
+                />
               ) : detailState.view.kind === "error" ? (
                 /* W17 透传呈现:application 错误文案 + 重试;与 not-found/断连区分 */
                 <div className="vua-warehouse-detail__content">
