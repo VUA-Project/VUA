@@ -10,7 +10,7 @@ import {
 function pageResult(overrides: Partial<CatalogSyncPageResultV01>): CatalogSyncPageResultV01 {
   return {
     schemaVersion: "0.1",
-    sourceUrl: "https://booth.pm/en/library",
+    sourceUrl: CATALOG_SYNC_DEFAULT_START_URL,
     parsedCount: 2,
     upsertedCount: 2,
     rejectedItems: [],
@@ -46,13 +46,13 @@ const noDelay = { pageDelayMs: 0, sleep: async () => {} };
 describe("startCatalogSync", () => {
   it("walks pages until the observed last page and accumulates counts", async () => {
     const { fetch, urls } = makeFetch({
-      "https://booth.pm/en/library": { body: "<page1/>" },
-      "https://booth.pm/en/library?page=2": { body: "<page2/>" },
+      [CATALOG_SYNC_DEFAULT_START_URL]: { body: "<page1/>" },
+      "https://accounts.booth.pm/library?page=2": { body: "<page2/>" },
     });
     let call = 0;
     const results = [
-      pageResult({ sourceUrl: "https://booth.pm/en/library", nextPageUrl: "https://booth.pm/en/library?page=2" }),
-      pageResult({ sourceUrl: "https://booth.pm/en/library?page=2", parsedCount: 3, upsertedCount: 1, nextPageUrl: null }),
+      pageResult({ sourceUrl: CATALOG_SYNC_DEFAULT_START_URL, nextPageUrl: "https://accounts.booth.pm/library?page=2" }),
+      pageResult({ sourceUrl: "https://accounts.booth.pm/library?page=2", parsedCount: 3, upsertedCount: 1, nextPageUrl: null }),
     ];
     const invoke: CatalogSyncInvoke = async (params) => {
       call += 1;
@@ -73,8 +73,8 @@ describe("startCatalogSync", () => {
     expect(result.upsertedCount).toBe(3);
     expect(result.nextPageUrl).toBeNull();
     expect(urls).toEqual([
-      "https://booth.pm/en/library",
-      "https://booth.pm/en/library?page=2",
+      CATALOG_SYNC_DEFAULT_START_URL,
+      "https://accounts.booth.pm/library?page=2",
     ]);
   });
 
@@ -100,18 +100,18 @@ describe("startCatalogSync", () => {
 
   it("stops with page_limit_reached at the cap and reports the unfetched next page", async () => {
     const { fetch } = makeFetch({
-      "https://booth.pm/en/library": {},
-      "https://booth.pm/en/library?page=2": {},
+      [CATALOG_SYNC_DEFAULT_START_URL]: {},
+      "https://accounts.booth.pm/library?page=2": {},
     });
-    const invoke = okInvoke(pageResult({ nextPageUrl: "https://booth.pm/en/library?page=2" }));
+    const invoke = okInvoke(pageResult({ nextPageUrl: "https://accounts.booth.pm/library?page=2" }));
     const result = await startCatalogSync({ fetch, invoke, maxPages: 2, ...noDelay }).result;
     expect(result.status).toBe("page_limit_reached");
     expect(result.pages).toBe(2);
-    expect(result.nextPageUrl).toBe("https://booth.pm/en/library?page=2");
+    expect(result.nextPageUrl).toBe("https://accounts.booth.pm/library?page=2");
   });
 
   it("fails honestly on a non-200 page", async () => {
-    const { fetch } = makeFetch({ "https://booth.pm/en/library": { status: 404 } });
+    const { fetch } = makeFetch({ [CATALOG_SYNC_DEFAULT_START_URL]: { status: 404 } });
     const invoke = okInvoke(pageResult({}));
     const result = await startCatalogSync({ fetch, invoke, ...noDelay }).result;
     expect(result.status).toBe("failed");
@@ -120,7 +120,7 @@ describe("startCatalogSync", () => {
   });
 
   it("fails honestly when the provider rejects the page", async () => {
-    const { fetch } = makeFetch({ "https://booth.pm/en/library": {} });
+    const { fetch } = makeFetch({ [CATALOG_SYNC_DEFAULT_START_URL]: {} });
     const invoke: CatalogSyncInvoke = async () => ({
       ok: false,
       error: { code: "vua.catalog.not_a_library_page" },
@@ -141,7 +141,7 @@ describe("startCatalogSync", () => {
   });
 
   it("treats a receipt without nextPageUrl as the last page (no guessing)", async () => {
-    const { fetch } = makeFetch({ "https://booth.pm/en/library": {} });
+    const { fetch } = makeFetch({ [CATALOG_SYNC_DEFAULT_START_URL]: {} });
     const invoke: CatalogSyncInvoke = async () => ({ ok: true, value: { schemaVersion: "0.1" } });
     const result = await startCatalogSync({ fetch, invoke, ...noDelay }).result;
     expect(result.status).toBe("completed");
@@ -151,10 +151,10 @@ describe("startCatalogSync", () => {
 
   it("aborts between pages on stop() and reports aborted with partial counts", async () => {
     const { fetch } = makeFetch({
-      "https://booth.pm/en/library": {},
-      "https://booth.pm/en/library?page=2": {},
+      [CATALOG_SYNC_DEFAULT_START_URL]: {},
+      "https://accounts.booth.pm/library?page=2": {},
     });
-    const invoke = okInvoke(pageResult({ nextPageUrl: "https://booth.pm/en/library?page=2" }));
+    const invoke = okInvoke(pageResult({ nextPageUrl: "https://accounts.booth.pm/library?page=2" }));
     let gate: (() => void) | null = null;
     const sleep = () =>
       new Promise<void>((resolve) => {
@@ -174,10 +174,10 @@ describe("startCatalogSync", () => {
 
   it("paces pages with the configured delay", async () => {
     const { fetch } = makeFetch({
-      "https://booth.pm/en/library": {},
-      "https://booth.pm/en/library?page=2": {},
+      [CATALOG_SYNC_DEFAULT_START_URL]: {},
+      "https://accounts.booth.pm/library?page=2": {},
     });
-    const invoke = okInvoke(pageResult({ nextPageUrl: "https://booth.pm/en/library?page=2" }));
+    const invoke = okInvoke(pageResult({ nextPageUrl: "https://accounts.booth.pm/library?page=2" }));
     const sleeps: number[] = [];
     await startCatalogSync({
       fetch,
@@ -196,5 +196,35 @@ describe("startCatalogSync", () => {
     const invoke = okInvoke(pageResult({}));
     await startCatalogSync({ fetch, invoke, ...noDelay }).result;
     expect(urls).toEqual([CATALOG_SYNC_DEFAULT_START_URL]);
+  });
+});
+
+describe("relative next-page continuation (real library grammar)", () => {
+  it("resolves a relative rel=next href against the current page before fetching", async () => {
+    const { fetch, urls } = makeFetch({
+      "https://accounts.booth.pm/library?page=1": { body: "<page1/>" },
+      "https://accounts.booth.pm/library?page=2": { body: "<page2/>" },
+    });
+    let call = 0;
+    const results = [
+      pageResult({ nextPageUrl: "/library?page=2" }),
+      pageResult({ nextPageUrl: null }),
+    ];
+    const invoke: CatalogSyncInvoke = async () => ({ ok: true, value: results[call++] });
+    const result = await startCatalogSync({ fetch, invoke, ...noDelay }).result;
+    expect(result.status).toBe("completed");
+    expect(result.pages).toBe(2);
+    expect(urls).toEqual([
+      "https://accounts.booth.pm/library?page=1",
+      "https://accounts.booth.pm/library?page=2",
+    ]);
+  });
+
+  it("fails honestly when the next href cannot be resolved", async () => {
+    const { fetch } = makeFetch({ "https://accounts.booth.pm/library?page=1": {} });
+    const invoke = okInvoke(pageResult({ nextPageUrl: "http://[invalid" }));
+    const result = await startCatalogSync({ fetch, invoke, ...noDelay }).result;
+    expect(result.status).toBe("failed");
+    expect(result.error?.code).toBe("next_page_url_unresolvable");
   });
 });

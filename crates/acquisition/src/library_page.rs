@@ -65,28 +65,131 @@ pub struct LibraryPage {
     pub next_page_url: Option<String>,
 }
 
-/// Extracts one listing page. An empty-but-real library page (container or
-/// pager present, zero cards) extracts as an empty page; a page with no
-/// recognizable listing structure at all is `NotALibraryPage`.
+/// Extracts one listing page. Two grammars, tried in order:
+///
+/// - **Library rows** (verified on the real signed-in account library,
+///   2026-10-02): cards are anchors to `/items/{id}` — a thumbnail anchor
+///   (`img.l-library-item-thumbnail`) plus a title anchor whose text is the
+///   display title. No data attributes, no price. The three library types
+///   (`/library`, `/library/gifts`, `/library/free_downloads`) share this
+///   grammar.
+/// - **Browse cards** (verified read-only on the public site): the
+///   `li.item-card[data-product-id]` grammar from the original
+///   investigation.
+///
+/// Pagination is `a[rel="next"]` in both. An empty-but-real library page
+/// (list header, nav items, or pager present, zero rows) extracts as an
+/// empty page; a page with no recognizable listing structure at all is
+/// `NotALibraryPage`.
 pub fn extract_library_page(html: &str) -> Result<LibraryPage, LibraryPageError> {
     let document = Html::parse_document(html);
+    // 判别按结构存在性,不按提取结果:浏览卡内部也含 /items/ 锚点,结果判别
+    // 会让行语法抢先命中浏览页并丢失 data 属性事实
+    let has_browse_cards = document
+        .select(
+            &Selector::parse("li.item-card[data-product-id]").expect("static selector"),
+        )
+        .next()
+        .is_some();
+    let items = if has_browse_cards {
+        extract_browse_cards(&document)
+    } else {
+        extract_library_rows(&document)
+    };
+
+    let next_page_url = document
+        .select(&Selector::parse("a[rel='next']").expect("static selector"))
+        .next()
+        .and_then(|link| link.value().attr("href"))
+        .map(str::to_owned)
+        .filter(|href| !href.is_empty());
+
+    if items.is_empty() && next_page_url.is_none() {
+        let shell = Selector::parse(
+            ".market-items, .pager, #js-library-search-header, a.nav-item",
+        )
+        .expect("static selector");
+        if document.select(&shell).next().is_none() {
+            return Err(LibraryPageError::NotALibraryPage);
+        }
+    }
+
+    Ok(LibraryPage { items, next_page_url })
+}
+
+/// Grammar A: account-library rows. One entry per unique product id; the
+/// title comes from the anchor that carries text, the thumbnail from the
+/// first anchor's image.
+fn extract_library_rows(document: &Html) -> Vec<LibraryPageItem> {
+    let anchor = Selector::parse("a[href*='/items/']").expect("static selector");
+    let image = Selector::parse("img").expect("static selector");
+    let mut items: Vec<LibraryPageItem> = Vec::new();
+    let mut index: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+
+    for element in document.select(&anchor) {
+        let href = element.value().attr("href").unwrap_or_default();
+        let Some(native_product_id) = product_id_from_href(href) else {
+            continue;
+        };
+        let text = element_text(element);
+        match index.get(&native_product_id) {
+            Some(&position) => {
+                let item = &mut items[position];
+                if item.item_url.is_none() {
+                    item.item_url = non_empty(Some(href));
+                }
+                if item.name.is_none() && !text.is_empty() {
+                    item.name = Some(text);
+                }
+                if item.thumbnail_url.is_none() {
+                    item.thumbnail_url = element
+                        .select(&image)
+                        .next()
+                        .and_then(|img| img.value().attr("src"))
+                        .and_then(|src| non_empty(Some(src)));
+                }
+            }
+            None => {
+                let thumbnail_url = element
+                    .select(&image)
+                    .next()
+                    .and_then(|img| img.value().attr("src"))
+                    .and_then(|src| non_empty(Some(src)));
+                index.insert(native_product_id.clone(), items.len());
+                items.push(LibraryPageItem {
+                    native_product_id,
+                    name: if text.is_empty() { None } else { Some(text) },
+                    brand: None,
+                    category: None,
+                    price_amount: None,
+                    item_url: non_empty(Some(href)),
+                    thumbnail_url,
+                });
+            }
+        }
+    }
+    items
+}
+
+/// Grammar B: public browse cards (`li.item-card[data-product-id]`).
+fn extract_browse_cards(document: &Html) -> Vec<LibraryPageItem> {
     let card = Selector::parse("li.item-card[data-product-id]").expect("static selector");
     let card_link = Selector::parse("a[href*='/items/']").expect("static selector");
     let thumbnail = Selector::parse(".item-card__thumbnail img").expect("static selector");
 
     let mut items = Vec::new();
-    let mut seen = Vec::new();
     for element in document.select(&card) {
         let value = element.value();
         let native_product_id = match value.attr("data-product-id") {
             Some(id) if !id.is_empty() => id.to_owned(),
             _ => continue,
         };
-        if seen.iter().any(|existing| existing == &native_product_id) {
+        if items
+            .iter()
+            .any(|item: &LibraryPageItem| item.native_product_id == native_product_id)
+        {
             continue;
         }
-        seen.push(native_product_id.clone());
-
         let item_url = element
             .select(&card_link)
             .next()
@@ -96,16 +199,14 @@ pub fn extract_library_page(html: &str) -> Result<LibraryPage, LibraryPageError>
         let thumbnail_url = element
             .select(&thumbnail)
             .next()
-            .and_then(|image| {
-                image
-                    .value()
+            .and_then(|img| {
+                img.value()
                     .attr("data-origin")
-                    .or_else(|| image.value().attr("src"))
-                    .or_else(|| image.value().attr("data-lazy"))
+                    .or_else(|| img.value().attr("src"))
+                    .or_else(|| img.value().attr("data-lazy"))
             })
             .map(str::to_owned)
             .filter(|url| !url.is_empty());
-
         items.push(LibraryPageItem {
             native_product_id,
             name: non_empty(value.attr("data-product-name")),
@@ -116,23 +217,31 @@ pub fn extract_library_page(html: &str) -> Result<LibraryPage, LibraryPageError>
             thumbnail_url,
         });
     }
+    items
+}
 
-    let next_page_url = document
-        .select(&Selector::parse("a[rel='next']").expect("static selector"))
-        .next()
-        .and_then(|link| link.value().attr("href"))
-        .map(str::to_owned)
-        .filter(|href| !href.is_empty());
-
-    if items.is_empty() && next_page_url.is_none() {
-        let shell =
-            Selector::parse(".market-items, .pager").expect("static selector");
-        if document.select(&shell).next().is_none() {
-            return Err(LibraryPageError::NotALibraryPage);
-        }
+/// `/items/{digits}` → the digits; works for absolute and relative hrefs.
+fn product_id_from_href(href: &str) -> Option<String> {
+    let start = href.find("/items/")? + "/items/".len();
+    let tail = &href[start..];
+    let end = tail
+        .find(|c: char| !c.is_ascii_digit())
+        .unwrap_or(tail.len());
+    if end == 0 {
+        None
+    } else {
+        Some(tail[..end].to_owned())
     }
+}
 
-    Ok(LibraryPage { items, next_page_url })
+fn element_text(element: scraper::ElementRef<'_>) -> String {
+    element
+        .text()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// `sha256:<64 hex>` of the page HTML — the write face's content-addressed
@@ -407,5 +516,90 @@ mod tests {
         assert_eq!(observation.title, None);
         assert!(observation.missing_fields.iter().any(|field| field == "title"));
         assert_eq!(observation.run_id, None);
+    }
+}
+
+#[cfg(test)]
+mod library_rows_tests {
+    use super::*;
+
+    /// Real account-library row grammar (verified signed-in 2026-10-02;
+    /// ids/titles anonymized): thumbnail anchor + title anchor per item,
+    /// shop links are not item links, `a[rel="next"]` pagination.
+    const ROWS: &str = r#"<!DOCTYPE html><html><body>
+<div id="js-library-search-header"></div>
+<div class="bg-white">
+  <div class="flex gap-8 border-b">
+    <a href="https://booth.pm/zh-cn/items/7463144"><img class="l-library-item-thumbnail" src="https://booth.pximg.net/first.jpg"></a>
+    <div>
+      <a class="no-underline" href="https://booth.pm/zh-cn/items/7463144"><div class="font-bold">Sample outfit A (shop-one)</div></a>
+      <a href="https://shop-one.booth.pm/">shop-one</a>
+    </div>
+  </div>
+  <div class="flex gap-8 border-b">
+    <a href="/zh-cn/items/5511003"><img src="https://booth.pximg.net/second.jpg"></a>
+    <a class="no-underline" href="/zh-cn/items/5511003"><div class="font-bold">Sample gift B (shop-two)</div></a>
+  </div>
+</div>
+<nav><ul>
+  <li class="current"><a class="nav-item" href="/library">1</a></li>
+  <li><a rel="next" class="nav-item" href="/library?page=2">2</a></li>
+</ul></nav>
+</body></html>"#;
+
+    #[test]
+    fn library_rows_extract_with_titles_thumbnails_and_next() {
+        let page = extract_library_page(ROWS).expect("rows parse");
+        assert_eq!(page.items.len(), 2);
+        assert_eq!(page.next_page_url.as_deref(), Some("/library?page=2"));
+        let first = &page.items[0];
+        assert_eq!(first.native_product_id, "7463144");
+        assert_eq!(first.name.as_deref(), Some("Sample outfit A (shop-one)"));
+        assert_eq!(first.thumbnail_url.as_deref(), Some("https://booth.pximg.net/first.jpg"));
+        // 库行无品牌/价格事实:留空而不是猜
+        assert_eq!(first.brand, None);
+        assert_eq!(first.price_amount, None);
+        let second = &page.items[1];
+        assert_eq!(second.native_product_id, "5511003");
+        assert_eq!(second.thumbnail_url.as_deref(), Some("https://booth.pximg.net/second.jpg"));
+    }
+
+    #[test]
+    fn library_rows_last_page_has_no_next() {
+        let html = ROWS.replace(r#"<li><a rel="next" class="nav-item" href="/library?page=2">2</a></li>"#, "");
+        let page = extract_library_page(&html).expect("rows parse");
+        assert_eq!(page.next_page_url, None);
+        assert_eq!(page.items.len(), 2);
+    }
+
+    #[test]
+    fn duplicate_item_anchors_collapse_to_one_row() {
+        let html = ROWS.replace("</div>
+</div>
+<nav>", "</div>
+</div>
+<a href=\"/zh-cn/items/5511003\">dup</a>
+<nav>");
+        let page = extract_library_page(&html).expect("rows parse");
+        assert_eq!(page.items.len(), 2);
+        // 标题来自首个非空锚点,重复锚点不覆盖
+        assert_eq!(page.items[1].name.as_deref(), Some("Sample gift B (shop-two)"));
+    }
+
+    #[test]
+    fn empty_library_page_with_header_is_not_an_error() {
+        let html = r#"<html><body><div id="js-library-search-header"></div><div class="bg-white"></div></body></html>"#;
+        let page = extract_library_page(html).expect("empty library parses");
+        assert!(page.items.is_empty());
+        assert_eq!(page.next_page_url, None);
+    }
+
+    #[test]
+    fn product_id_from_href_shapes() {
+        assert_eq!(product_id_from_href("https://booth.pm/zh-cn/items/7463144").as_deref(), Some("7463144"));
+        assert_eq!(product_id_from_href("/ja/items/42?x=1").as_deref(), Some("42"));
+        assert_eq!(product_id_from_href("/items/123/foo").as_deref(), Some("123"));
+        assert_eq!(product_id_from_href("/items/abc"), None);
+        assert_eq!(product_id_from_href("https://booth.pm/library"), None);
     }
 }

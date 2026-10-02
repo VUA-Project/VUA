@@ -79,7 +79,12 @@ export interface CatalogSyncRun {
   stop(): void;
 }
 
-export const CATALOG_SYNC_DEFAULT_START_URL = "https://booth.pm/en/library";
+/**
+ * 默认起始页 = 已购素材库(账号库三类型之一,真机验证 2026-10-02:库页位于
+ * accounts.booth.pm,而非早先假设的 booth.pm/en/library——后者未登录 404
+ * 掩盖了错误路径)。gifts 与 free_downloads 两库经 start.startUrl 指定。
+ */
+export const CATALOG_SYNC_DEFAULT_START_URL = "https://accounts.booth.pm/library?page=1";
 
 export function startCatalogSync(
   options: CatalogSyncRunnerOptions,
@@ -170,7 +175,19 @@ export function startCatalogSync(
       upsertedCount += value?.upsertedCount ?? 0;
       rejectedCount += value?.rejectedItems?.length ?? 0;
       // 回执缺 nextPageUrl 字段视同末页（保守停止，不猜测续页）。
-      url = value?.nextPageUrl ?? null;
+      // 真实库页的 rel="next" 是相对地址(/library?page=2)——按当前页解析为
+      // 绝对地址再抓取;解析不了就诚实失败,不猜协议与主机。
+      const rawNext = value?.nextPageUrl ?? null;
+      if (rawNext === null) {
+        url = null;
+      } else {
+        try {
+          url = new URL(rawNext, url).href;
+        } catch {
+          log(JSON.stringify({ channel: "catalog-sync", runId, badNextPageUrl: rawNext }));
+          return failure("next_page_url_unresolvable", url);
+        }
+      }
     }
 
     return {

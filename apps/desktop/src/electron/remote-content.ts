@@ -204,9 +204,10 @@ export class RemoteContentManager {
    */
   async signInHint(): Promise<"stored" | "none" | "unknown"> {
     try {
-      const cookies = await this.#session.cookies.get({ domain: "booth.pm" });
-      const accountCookies = cookies.filter((cookie) => cookie.domain === "accounts.booth.pm"
-        || cookie.domain === ".accounts.booth.pm");
+      // 真机修正(2026-10-02):登录会话 Cookie 是 accounts.booth.pm 的
+      // host-only Cookie——按 booth.pm 查询再过滤永远取不到它们,已登录
+      // 也被误报 "none"。直接按账户域查询。
+      const accountCookies = await this.#session.cookies.get({ domain: "accounts.booth.pm" });
       return accountCookies.length > 0 ? "stored" : "none";
     } catch {
       return "unknown";

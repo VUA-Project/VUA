@@ -453,7 +453,7 @@ function registerIpc(provider: OrchestratorProviderV01): void {
   // 本面只回触发结果。登录线索 "none" 返回 blocked 引导登录不空跑;
   // "unknown" 放行走真抓取(探测失败不冒充事实,HTTP 结果才是)。凭据
   // 全程留在 remoteContent 的分区会话内,IPC 面零 Cookie/令牌。
-  ipcMain.handle("vua:catalog-sync:start", async (event) => {
+  ipcMain.handle("vua:catalog-sync:start", async (event, request: unknown) => {
     assertLocalSender(senderFrameUrl(event));
     if (remoteContent === null) throw new Error("remote content is unavailable");
     if (catalogSyncRun !== null) {
@@ -463,6 +463,13 @@ function registerIpc(provider: OrchestratorProviderV01): void {
     if (hint === "none") {
       return { status: "blocked", reason: "sign-in-required" };
     }
+    // 可选库类型入口(已购/gifts/free_downloads);字符串校验后透传,
+    // 来源守卫由 fetchWithSession 的允许清单最终把关
+    const startUrl =
+      typeof (request as { startUrl?: unknown } | null | undefined)?.startUrl === "string" &&
+      (request as { startUrl: string }).startUrl.length > 0
+        ? (request as { startUrl: string }).startUrl
+        : undefined;
     const content = remoteContent;
     const invokeCatalogSyncPage: CatalogSyncInvoke = (params) => {
       if (provider === null) {
@@ -484,10 +491,13 @@ function registerIpc(provider: OrchestratorProviderV01): void {
             : { ok: false as const, error: { code: response.error.code } },
         );
     };
-    const run = startCatalogSync({
-      fetch: (url) => content.fetchWithSession(url),
-      invoke: invokeCatalogSyncPage,
-    });
+    const run = startCatalogSync(
+      {
+        fetch: (url) => content.fetchWithSession(url),
+        invoke: invokeCatalogSyncPage,
+      },
+      startUrl === undefined ? {} : { startUrl },
+    );
     catalogSyncRun = run;
     void run.result.finally(() => {
       if (catalogSyncRun === run) catalogSyncRun = null;
