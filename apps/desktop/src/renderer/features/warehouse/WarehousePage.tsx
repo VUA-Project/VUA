@@ -12,6 +12,7 @@ import {
 } from "../../components/primitives/ContextMenu.tsx";
 import { Icon } from "@vua/design-system";
 import {
+  useAcquireView,
   useGateway,
   useDataSource,
   type CatalogAvailabilityStatus,
@@ -36,7 +37,8 @@ import { useDebugMode } from "../../app/debug-mode.ts";
 import { useCardSpotlight } from "./use-card-spotlight.ts";
 import { registerTaskIdentity } from "../../gateway/task-identity.ts";
 import { CardAlbumMedia, DetailAlbum } from "./WarehouseAlbum.tsx";
-import { WarehouseAcquire } from "./WarehouseAcquire.tsx";
+import { ArtifactCard, EntryDetail } from "./WarehouseAcquire.tsx";
+import { artifactCardMatches, artifactCards, inferGlobalDefaultMode } from "./acquire-model.ts";
 import { ContentDialog } from "../../components/primitives/ContentDialog.tsx";
 import { ImportPage } from "../import/ImportPage.tsx";
 import {
@@ -448,6 +450,8 @@ export function WarehousePage({
     "started" | "already" | "blocked" | "done" | "failed" | null
   >(null);
   const [syncRunId, setSyncRunId] = useState<string | null>(null);
+  /** 统一卡片墙:选中的本地条目(云端商品用 selectedId,两者互斥呈现) */
+  const [selectedLocalId, setSelectedLocalId] = useState<string | null>(null);
   useEffect(() => {
     if (!remoteBrowser) return;
     let active = true;
@@ -493,6 +497,16 @@ export function WarehousePage({
   // ——终态任务按通知中心纪律默认不再显示,完成反馈必须发生在用户正看
   // 着的地方(按钮旁),页面同时刷新让卡片立即可见
   const gateway = useGateway();
+  // 统一卡片墙数据源:本地条目(经 acquire 快照,与云端卡同一墙渲染)
+  const acquireView = useAcquireView();
+  const localEntries = acquireView !== null && acquireView.kind === "entries" ? acquireView.entries : [];
+  const localCards = artifactCards(localEntries).filter((card) =>
+    artifactCardMatches(card, query.text.trim()),
+  );
+  const selectedLocalEntry =
+    selectedLocalId === null
+      ? null
+      : (localEntries.find((entry) => entry.warehouseItemId === selectedLocalId) ?? null);
   useEffect(() => {
     if (syncNotice !== "started" || syncRunId === null) return;
     let active = true;
@@ -655,13 +669,7 @@ export function WarehousePage({
         ) : null}
       </section>
 
-      {source === "all" || source === "local" ? (
-        <section className="vua-warehouse__group" aria-label={copy.acquire.viewLocal}>
-          <h2 className="vua-warehouse__group-title">{copy.acquire.viewLocal}</h2>
-          <WarehouseAcquire />
-        </section>
-      ) : null}
-      {source !== "local" ? (
+      {true ? (
         <>
           {!connected ||
       (listState.kind === "loaded" && listState.view.kind === "not-connected") ? (
@@ -817,18 +825,53 @@ export function WarehousePage({
                     description={copy.states.emptyResultDescription}
                   />
                 )
-              ) : resultsView !== null ? (
+              ) : resultsView !== null || localCards.length > 0 ? (
                 <div className="vua-warehouse__wall" role="list">
-                  {resultsView.items.map((item) => (
-                    <WarehouseCard
-                      key={item.productId}
-                      item={item}
-                      purchased={lifecycleOf(lifecycle, item.productId).purchase === "user_confirmed"}
-                      selected={selectedId === item.productId}
-                      onOpen={() => setSelectedId(item.productId)}
-                      onMenu={(event) => openCardMenu(event, item)}
-                    />
-                  ))}
+                  {source !== "local"
+                    ? resultsView?.items.map((item) => (
+                        <WarehouseCard
+                          key={item.productId}
+                          item={item}
+                          purchased={lifecycleOf(lifecycle, item.productId).purchase === "user_confirmed"}
+                          selected={selectedId === item.productId}
+                          onOpen={() => {
+                            setSelectedLocalId(null);
+                            setSelectedId(item.productId);
+                          }}
+                          onMenu={(event) => openCardMenu(event, item)}
+                        />
+                      ))
+                    : null}
+                  {source !== "gifts" && source !== "bought" && source !== "free"
+                    ? localCards.map((card) => (
+                        <ArtifactCard
+                          key={card.key}
+                          card={card}
+                          selected={selectedLocalId === card.entry.warehouseItemId}
+                          onOpen={() => {
+                            setSelectedId(null);
+                            setSelectedLocalId(card.entry.warehouseItemId);
+                          }}
+                          onMenu={(event) => {
+                            event.preventDefault();
+                            setCardMenu({
+                              x: event.clientX,
+                              y: event.clientY,
+                              items: [
+                                {
+                                  id: "open",
+                                  label: copy.card.detailsCta,
+                                  onSelect: () => {
+                                    setSelectedId(null);
+                                    setSelectedLocalId(card.entry.warehouseItemId);
+                                  },
+                                },
+                              ],
+                            });
+                          }}
+                        />
+                      ))
+                    : null}
                 </div>
               ) : null}
             </div>
@@ -904,6 +947,34 @@ export function WarehousePage({
           ) : null}
         </div>
         )}
+
+        {selectedLocalEntry !== null ? (
+          <aside
+            className="vua-warehouse__drawer"
+            aria-label={copy.detail.panelAria}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setSelectedLocalId(null);
+            }}
+          >
+            <div className="vua-warehouse__drawer-header">
+              <h2 className="vua-warehouse-detail__title" title={selectedLocalEntry.displayName}>
+                {selectedLocalEntry.displayName}
+              </h2>
+              <Button
+                variant="subtle"
+                aria-label={copy.detail.closeAria}
+                onClick={() => setSelectedLocalId(null)}
+              >
+                {copy.detail.close}
+              </Button>
+            </div>
+            <EntryDetail
+              key={selectedLocalEntry.warehouseItemId}
+              entryId={selectedLocalEntry.warehouseItemId}
+              globalDefault={inferGlobalDefaultMode(localEntries)}
+            />
+          </aside>
+        ) : null}
         </>
       ) : null}
       {/* 素材直产链发起位(029 A6/未决项 1 桌面落形,用户裁决 2026-09-22 操作者

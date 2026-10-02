@@ -74,7 +74,7 @@ function stateTone(state: WarehouseArtifactState) {
 
 /* ---- 工件卡片(与云端目录卡同形同交互;卡片 = 条目 × 工件) ---- */
 
-function ArtifactCard({
+export function ArtifactCard({
   card,
   selected,
   onOpen,
@@ -155,7 +155,7 @@ function commandErrorTextFor(error: {
   return commandErrorText(error, copy.commandErrors as Record<string, string>);
 }
 
-function EntryDetail({
+export function EntryDetail({
   entryId,
   globalDefault,
 }: {
