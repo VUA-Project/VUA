@@ -5841,6 +5841,20 @@ fn catalog_ingest_library_page(
     ))
 }
 
+/// 任务事件发布:帧循环内同步变更的任务事件不会自动成为出站事件帧
+/// (只有 runtime 订阅线程转发的事件进 runtime_events 队列)。目录同步
+/// 折叠在帧循环内执行,必须显式发布其事件,否则渲染层 task.subscribe
+/// 永不触发重取——通知中心冻结在挂载快照(真机 2026-10-02 确诊)。
+fn publish_task_event(state: &HostState, event: Option<StoredTaskEvent>) {
+    if let Some(event) = event {
+        state
+            .runtime_events
+            .lock()
+            .expect("runtime events poisoned")
+            .push(event);
+    }
+}
+
 struct CatalogSyncFold<'a> {
     run_id: &'a str,
     fetched_at: &'a str,
@@ -5883,7 +5897,7 @@ fn fold_catalog_sync_task(
             {
                 continue;
             }
-            let _ = state.store.mutate_task(
+            if let Ok(event) = state.store.mutate_task(
                 &task.task_id,
                 task.revision,
                 fold.fetched_at,
@@ -5895,13 +5909,16 @@ fn fold_catalog_sync_task(
                         "supersededBy": fold.run_id,
                     })),
                 },
-            );
+            ) {
+                publish_task_event(state, event);
+            }
         }
-        state.store.accept_task(&NewTask {
+        let (_, event) = state.store.accept_task(&NewTask {
             task_id: task_id.clone(),
             correlation_id: fold.run_id.to_owned(),
             occurred_at: fold.fetched_at.to_owned(),
         })?;
+        publish_task_event(state, Some(event));
     }
     let Some(task) = state.store.task(&task_id)? else {
         return Ok(());
@@ -5913,7 +5930,7 @@ fn fold_catalog_sync_task(
         // Walk both steps like the download fold: a page already ingested
         // means the run is already transferring (Queued → Preparing →
         // Running, idempotently for redeliveries).
-        state.store.mutate_task(
+        let event = state.store.mutate_task(
             &task_id,
             task.revision,
             fold.fetched_at,
@@ -5922,8 +5939,9 @@ fn fold_catalog_sync_task(
                 payload: summary(),
             },
         )?;
+        publish_task_event(state, event);
         if let Some(task) = state.store.task(&task_id)? {
-            state.store.mutate_task(
+            let event = state.store.mutate_task(
                 &task_id,
                 task.revision,
                 fold.fetched_at,
@@ -5932,9 +5950,10 @@ fn fold_catalog_sync_task(
                     payload: summary(),
                 },
             )?;
+            publish_task_event(state, event);
         }
     } else {
-        state.store.mutate_task(
+        let event = state.store.mutate_task(
             &task_id,
             task.revision,
             fold.fetched_at,
@@ -5942,12 +5961,13 @@ fn fold_catalog_sync_task(
                 payload: summary(),
             },
         )?;
+        publish_task_event(state, event);
     }
     if fold.next_page_url.is_none() {
         let Some(task) = state.store.task(&task_id)? else {
             return Ok(());
         };
-        state.store.mutate_task(
+        let event = state.store.mutate_task(
             &task_id,
             task.revision,
             fold.fetched_at,
@@ -5961,6 +5981,7 @@ fn fold_catalog_sync_task(
                 result: Some(summary()),
             },
         )?;
+        publish_task_event(state, event);
     }
     Ok(())
 }

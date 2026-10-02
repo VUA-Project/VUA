@@ -100,10 +100,67 @@ fn run_frames(world: &World, requests: &[Value]) -> Vec<Value> {
         None,
     )
     .expect("the frame loop must stay alive for catalog-sync vectors");
-    String::from_utf8(output)
+    let frames: Vec<Value> = String::from_utf8(output)
         .expect("output is UTF-8")
         .lines()
         .map(|line| serde_json::from_str(line).expect("output lines are frames"))
+        .collect();
+    // 事件帧(任务事件)与响应帧同线输出;断言索引只对响应帧,
+    // 事件帧由专用断言检查
+    frames
+        .into_iter()
+        .filter(|frame| frame["kind"] == "response")
+        .collect()
+}
+
+/// 输出中的事件帧(kind == "event"):任务事件发布链路的在场证明
+fn event_frames(requests: &[Value], world: &World) -> Vec<Value> {
+    let warehouse = WarehouseConfig {
+        bdl: world.bdl.clone(),
+        warehouse_root: world.base.join("warehouse"),
+        global_default: ArtifactMode::UseOriginalUnitypackage,
+        executor: None,
+        dependencies_queries: None,
+    };
+    let frames_json = requests
+        .iter()
+        .enumerate()
+        .map(|(index, request)| {
+            json!({
+                "frameVersion": "0.1",
+                "frameId": format!("ev-frame-{index}"),
+                "kind": "request",
+                "payload": {
+                    "contractVersion": "0.1",
+                    "requestId": format!("ev-req-{index}"),
+                    "correlationId": format!("ev-corr-{index}"),
+                    "kind": "query",
+                    "method": request["method"],
+                    "params": request["params"],
+                },
+            })
+            .to_string()
+        })
+        .collect::<Vec<String>>()
+        .join("
+");
+    let mut output = Vec::new();
+    run_provider_host_with_services(
+        Cursor::new(frames_json + "
+"),
+        &mut output,
+        &world.database_path,
+        None,
+        None,
+        Some(warehouse),
+        None,
+    )
+    .expect("frame loop stays alive");
+    String::from_utf8(output)
+        .expect("output is UTF-8")
+        .lines()
+        .map(|line| serde_json::from_str::<Value>(line).expect("frames"))
+        .filter(|frame| frame["kind"] == "event")
         .collect()
 }
 
@@ -316,4 +373,37 @@ fn a_new_run_supersedes_orphaned_interrupted_sync_tasks() {
     // B 的夹具是末页(无 rel=next)→ 直接 succeeded;A 被如实终结为 cancelled
     assert_eq!(task_state(&world, "catalog-sync-fresh-b").as_deref(), Some("succeeded"));
     assert_eq!(task_state(&world, "catalog-sync-orphan-a").as_deref(), Some("cancelled"));
+}
+
+#[test]
+fn fold_events_are_published_as_event_frames() {
+    let world = make_world("events");
+    let vector = read_example("library-page.request.json");
+    let mut last_page = vector.clone();
+    last_page["runId"] = json!("catalog-sync-events-1");
+    // 末页夹具(无 rel=next)→ 一次投递即完成任务
+    last_page["html"] = json!(
+        "<html><body><ul class=\"market-items\">\
+         <li class=\"item-card l-card\" data-product-id=\"880001\" data-product-name=\"Eventful item\">\
+         <div class=\"item-card__wrap\"></div></li></ul>\
+         <div class=\"pager\"><span>1</span></div></body></html>"
+    );
+
+    let events = event_frames(&[ingest_request(last_page)], &world);
+    // 事件链:accepted → preparing → running → succeeded(终态)
+    let mut kinds: Vec<&str> = events
+        .iter()
+        .filter_map(|e| e["payload"]["kind"].as_str())
+        .collect();
+    kinds.dedup();
+    assert!(
+        events.iter().any(|e| e["payload"]["taskId"] == *"catalog-sync-events-1"),
+        "events must reference the run's task: {}",
+        serde_json::to_string(&events).unwrap_or_default()
+    );
+    assert!(
+        kinds.contains(&"task.succeeded") || events.len() >= 3,
+        "expected a full lifecycle of task events, got {:?}",
+        kinds
+    );
 }
