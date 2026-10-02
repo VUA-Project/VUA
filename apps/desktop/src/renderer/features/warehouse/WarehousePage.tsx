@@ -419,8 +419,8 @@ export function WarehousePage({
 }) {
   const dataSource = useDataSource();
   const connected = dataSource !== "none";
-  // 双轨汇合(§2.10):目录浏览 / 本地素材接管分段切换
-  const [section, setSection] = useState<"catalog" | "local">("catalog");
+  // 单库页(用户方向 2026-10-02):云端/本地不再分轨切换,改为来源筛选
+  const [source, setSource] = useState<"all" | "cloud" | "local">("all");
 
   const [query, setQuery] = useState<WarehouseQueryState>(emptyWarehouseQuery);
   const [listState, setListState] = useState<ListState>({ kind: "loading" });
@@ -593,35 +593,17 @@ export function WarehousePage({
     <div className="vua-page vua-warehouse">
       <section className="vua-page__hero">
         <h1 className="vua-title">{termLabel("warehouse")}</h1>
-        {/* 双轨视图头(S-IX-3):云端目录 / 本地文件,带图标的大号轨道卡 */}
-        <div className="vua-warehouse__tracks" role="group" aria-label={copy.acquire.viewSwitchAria}>
-          <button
-            type="button"
-            className="vua-warehouse__track-choice"
-            data-active={section === "catalog" || undefined}
-            aria-pressed={section === "catalog"}
-            onClick={() => setSection("catalog")}
-          >
-            <Icon name="cloud" size={20} />
-            <span className="vua-warehouse__track-choice-text">
-              <span className="vua-warehouse__track-choice-title">{copy.acquire.viewCatalog}</span>
-              <span className="vua-caption vua-text-secondary">{copy.acquire.trackCatalogDesc}</span>
-            </span>
-          </button>
-          <button
-            type="button"
-            className="vua-warehouse__track-choice"
-            data-active={section === "local" || undefined}
-            aria-pressed={section === "local"}
-            onClick={() => setSection("local")}
-          >
-            <Icon name="folder" size={20} />
-            <span className="vua-warehouse__track-choice-text">
-              <span className="vua-warehouse__track-choice-title">{copy.acquire.viewLocal}</span>
-              <span className="vua-caption vua-text-secondary">{copy.acquire.trackLocalDesc}</span>
-            </span>
-          </button>
-        </div>
+        {/* 来源筛选(用户方向 2026-10-02):云端/本地合并为单库页,来源只作筛选 */}
+        <select
+          className="vua-warehouse__filter"
+          aria-label={copy.filters.source}
+          value={source}
+          onChange={(event) => setSource(event.target.value as typeof source)}
+        >
+          <option value="all">{copy.filters.sourceAll}</option>
+          <option value="cloud">{copy.filters.sourceCloud}</option>
+          <option value="local">{copy.filters.sourceLocal}</option>
+        </select>
         <p className="vua-text-secondary">{copy.subtitle}</p>
         {/* 素材导入入口(2026-09-20 导航重构):原独立页(设计标准 §8.3)收敛为
             本页内弹窗——连续素材获取路径(云端内嵌浏览/已完成下载采纳/本地
@@ -630,7 +612,7 @@ export function WarehousePage({
           <Button variant="primary" onClick={() => setImportDialogOpen(true)}>
             {strings.importPage.title}
           </Button>
-          {section === "catalog" && remoteBrowser ? (
+          {source !== "local" && remoteBrowser ? (
             <Button variant="default" onClick={() => void startCatalogSync()}>
               {copy.catalogSync.action}
             </Button>
@@ -656,9 +638,15 @@ export function WarehousePage({
         ) : null}
       </section>
 
-      {section === "local" ? (
-        <WarehouseAcquire />
-      ) : !connected ||
+      {source !== "cloud" ? (
+        <section className="vua-warehouse__group" aria-label={copy.acquire.viewLocal}>
+          <h2 className="vua-warehouse__group-title">{copy.acquire.viewLocal}</h2>
+          <WarehouseAcquire />
+        </section>
+      ) : null}
+      {source !== "local" ? (
+        <>
+          {!connected ||
       (listState.kind === "loaded" && listState.view.kind === "not-connected") ? (
         <EmptyState
           title={copy.states.notConnectedTitle}
@@ -898,7 +886,9 @@ export function WarehousePage({
             </aside>
           ) : null}
         </div>
-      )}
+        )}
+        </>
+      ) : null}
       {/* 素材直产链发起位(029 A6/未决项 1 桌面落形,用户裁决 2026-09-22 操作者
           第 162 批):原寄宿车间页,现落位本页动作位——素材直产链的语义起点是
           素材(pickMaterial),与连续素材获取路径(§8.3)同页承接;v0.1 用例面

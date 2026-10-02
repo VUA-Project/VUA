@@ -903,3 +903,16 @@
   flex-direction: column;
   gap: var(--vua-space-2);
 }
+
+/* 单库页分组标题(用户方向 2026-10-02:云端/本地合并,来源只作筛选) */
+.vua-warehouse__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-3);
+}
+
+.vua-warehouse__group-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
