@@ -204,6 +204,8 @@ export interface CatalogListRequestV1 {
   readonly params: {
     readonly text?: string | null;
     readonly availabilityStatus?: CatalogAvailabilityStatusV03 | null;
+    /** bdl-queries v0.6:账号库类型闭集;缺省不过滤 */
+    libraryType?: "bought" | "gifts" | "free_downloads" | null;
     readonly limit?: number;
     readonly offset?: number;
   };
@@ -1638,11 +1640,15 @@ export function isDesktopGatewayRequestV1(value: unknown): value is DesktopGatew
     case "catalog.list": {
       if (!hasExactKeys(value, REQUEST_KEYS)) return false;
       const listParams = value.params as CatalogListRequestV1["params"];
-      if (!Object.keys(listParams).every((key) => key === "text" || key === "availabilityStatus" || key === "limit" || key === "offset")) {
+      if (!Object.keys(listParams).every((key) => key === "text" || key === "availabilityStatus" || key === "libraryType" || key === "limit" || key === "offset")) {
         return false;
       }
       if (listParams.text !== undefined && listParams.text !== null
         && (typeof listParams.text !== "string" || listParams.text.length < 1)) return false;
+      if (listParams.libraryType !== undefined && listParams.libraryType !== null
+        && !(["bought", "gifts", "free_downloads"] as readonly string[]).includes(listParams.libraryType)) {
+        return false;
+      }
       if (listParams.availabilityStatus !== undefined && listParams.availabilityStatus !== null
         && !(["available", "unavailable", "unknown"] as readonly string[]).includes(listParams.availabilityStatus)) {
         return false;

@@ -371,6 +371,8 @@ export interface CatalogListQueryV03 extends ApplicationRequestBaseV01 {
     readonly text?: string | null;
     /** 对派生稳定枚举精确匹配;缺省或 null 不过滤 */
     readonly availabilityStatus?: CatalogAvailabilityStatusV03 | null;
+    /** bdl-queries v0.6/BDL v0.3:按账号库类型精确匹配;缺省或 null 不过滤 */
+    readonly libraryType?: "bought" | "gifts" | "free_downloads" | null;
     /** 1–200,默认 50 */
     readonly limit?: number;
     /** ≥ 0,默认 0 */
@@ -3173,11 +3175,15 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
   if (value.kind === "query" && value.method === "catalog.list") {
     if (!hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])) return false;
     const listParams = value.params as CatalogListQueryV03["params"];
-    if (!Object.keys(listParams).every((key) => key === "text" || key === "availabilityStatus" || key === "limit" || key === "offset")) {
+    if (!Object.keys(listParams).every((key) => key === "text" || key === "availabilityStatus" || key === "libraryType" || key === "limit" || key === "offset")) {
       return false;
     }
     if (listParams.text !== undefined && listParams.text !== null
       && (typeof listParams.text !== "string" || listParams.text.length < 1)) return false;
+    if (listParams.libraryType !== undefined && listParams.libraryType !== null
+      && !(["bought", "gifts", "free_downloads"] as readonly string[]).includes(listParams.libraryType)) {
+      return false;
+    }
     if (listParams.availabilityStatus !== undefined && listParams.availabilityStatus !== null
       && !(["available", "unavailable", "unknown"] as readonly string[]).includes(listParams.availabilityStatus)) {
       return false;
