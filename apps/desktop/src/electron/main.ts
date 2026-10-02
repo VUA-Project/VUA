@@ -466,10 +466,12 @@ function registerIpc(provider: OrchestratorProviderV01): void {
     // 库类型(已购缺省/gifts/free_downloads)→ 入口派生;来源守卫由
     // fetchWithSession 的允许清单最终把关
     const libraryTypeRaw = (request as { libraryType?: unknown } | null | undefined)?.libraryType;
+    // 缺省显式化为 bought:观察面是“最新事实全量覆盖”,不带类型的同步
+    // 会把已分类行清回 NULL(真机 2026-10-03 确诊)
     const libraryType =
       libraryTypeRaw === "gifts" || libraryTypeRaw === "free_downloads" || libraryTypeRaw === "bought"
         ? libraryTypeRaw
-        : undefined;
+        : ("bought" as const);
     const startUrl =
       libraryType === "gifts"
         ? "https://accounts.booth.pm/library/gifts?page=1"

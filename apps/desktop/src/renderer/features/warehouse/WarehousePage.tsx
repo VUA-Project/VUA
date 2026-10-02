@@ -467,9 +467,9 @@ export function WarehousePage({
     if (catalogSync === undefined) return;
     const libraryType =
       source === "gifts" ? "gifts" : source === "free" ? "free_downloads" : "bought";
-    const outcome = await catalogSync.start(
-      libraryType === "bought" ? undefined : { libraryType },
-    );
+    // 显式携带类型(含 bought):wire 请求不带 libraryType 会让观察 upsert
+    // 把该列覆盖为 NULL(真机 2026-10-03:14 条已购行被清空的根因)
+    const outcome = await catalogSync.start({ libraryType });
     if (outcome.status === "blocked") {
       // 登录引导:空态卡翻为登录形态(主进程门控已确认无账户 Cookie);
       // 同时给可见反馈——用户动作无可见响应等同于坏(设计标准反馈纪律)
