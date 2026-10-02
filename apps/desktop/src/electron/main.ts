@@ -709,12 +709,20 @@ async function createWindow(): Promise<void> {
   // 远程内容管理器(F4-2):独立 partition Session;目录浏览域为种子允许清单,
   // 真实值随 catalog 契约冻结(F4-1②)调整;违规事件广播到本地来源窗口;
   // 确认层注入使 U9(1) 清单外「提示后放行」与 U9(3) 外部协议确认在视图内生效。
-  // accounts.booth.pm(W25 走查缺陷③b):登录/库/会话唯一账户子域——未登录
-  // 引导首导登录页需直行该域(否则登录引导被清单拒绝),视图内登录跳转
-  // 同域受益;仅内嵌浏览清单扩此域,下载域清单与本地窗口弹窗清单不动
+  // 登录链域(真机首验 2026-10-02 修正):BOOTH 登录实际走 pixiv SSO——
+  // accounts.booth.pm 起步 → oauth.secure.pixiv.net 授权 → accounts.pixiv.net
+  // 登录/选号 → 回跳 booth.pm。W25 走查缺陷③b 只认账户子域的假设不完整:
+  // 缺 pixiv 两域时 OAuth 跳转被导航策略无声拦截,「继续使用此账号」点击
+  // 无任何可见效果,登录永远无法完成。本清单只放行导航;下载域清单仍仅
+  // booth.pm(素材获取边界不变)。
   remoteContent = new RemoteContentManager({
     partition: "persist:vua-remote",
-    allowedOrigins: ["https://booth.pm", "https://accounts.booth.pm"],
+    allowedOrigins: [
+      "https://booth.pm",
+      "https://accounts.booth.pm",
+      "https://oauth.secure.pixiv.net",
+      "https://accounts.pixiv.net",
+    ],
     openExternal: (url) => void shell.openExternal(url),
     broadcast: (event) => broadcastRemoteContentEvent(rendererUrl, event),
     confirmNavigation,
