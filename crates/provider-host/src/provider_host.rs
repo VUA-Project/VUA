@@ -5871,6 +5871,32 @@ fn fold_catalog_sync_task(
     };
     let task_id = fold.run_id.to_owned();
     if state.store.task(&task_id)?.is_none() {
+        // 新运行的首页:终结同前缀的陈旧中断任务(真机 2026-10-02 缺陷:
+        // 运行失败/中断的任务没有运行方驱动,永不到达终态,通知中心按
+        // 设计不可清除非终态通知——用户被不朽通知卡死)。重同步即恢复,
+        // 被取代如实写入 result,不伪装成失败。best-effort:单条终结失败
+        // 不阻断本页折叠,下次同步重试清扫。
+        for task in state.store.tasks()? {
+            if task.task_id == task_id
+                || !task.task_id.starts_with("catalog-sync-")
+                || task.state.is_terminal()
+            {
+                continue;
+            }
+            let _ = state.store.mutate_task(
+                &task.task_id,
+                task.revision,
+                fold.fetched_at,
+                TaskMutation::Complete {
+                    state: TaskState::Cancelled,
+                    error: None,
+                    result: Some(json!({
+                        "reason": "superseded_by_resync",
+                        "supersededBy": fold.run_id,
+                    })),
+                },
+            );
+        }
         state.store.accept_task(&NewTask {
             task_id: task_id.clone(),
             correlation_id: fold.run_id.to_owned(),

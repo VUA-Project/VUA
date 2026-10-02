@@ -1016,6 +1016,8 @@ demoTaskTitle: "Demo task",
   warehouse: {
     catalogSync: {
       signInRequired: "Sign in to BOOTH first, then sync.",
+      completedHint: "Library sync finished.",
+      failedHint: "Library sync failed. Retry from the button; the task record keeps the failure.",
       action: "Sync BOOTH library",
       startedHint: "Library sync started. Progress appears in the notification center.",
       alreadyRunning: "A library sync is already running.",

@@ -286,3 +286,34 @@ fn ingest_without_run_id_creates_no_task() {
         .expect("count");
     assert_eq!(count, 0);
 }
+
+#[test]
+fn a_new_run_supersedes_orphaned_interrupted_sync_tasks() {
+    let world = make_world("supersede");
+    let vector = read_example("library-page.request.json");
+
+    // 运行 A:首页折叠后中断(非终态,模拟真机相对 URL 缺陷时代的孤儿)
+    let mut page_a = vector.clone();
+    page_a["runId"] = json!("catalog-sync-orphan-a");
+    page_a["pageNumber"] = json!(1);
+    let frames = run_frames(&world, &[ingest_request(page_a)]);
+    assert_eq!(frames[0]["payload"]["ok"], json!(true));
+    assert_eq!(task_state(&world, "catalog-sync-orphan-a").as_deref(), Some("running"));
+
+    // 运行 B:新同步首页 → A 被如实终结为 cancelled(被取代),B 正常运行
+    let mut page_b = vector.clone();
+    page_b["runId"] = json!("catalog-sync-fresh-b");
+    page_b["pageNumber"] = json!(1);
+    page_b["sourceUrl"] = json!("https://accounts.booth.pm/library?page=1");
+    page_b["html"] = json!(
+        "<html><body><ul class=\"market-items\">\
+         <li class=\"item-card l-card\" data-product-id=\"990001\" data-product-name=\"Fresh run item\">\
+         <div class=\"item-card__wrap\"></div></li></ul>\
+         <div class=\"pager\"><span>1</span></div></body></html>"
+    );
+    let frames = run_frames(&world, &[ingest_request(page_b)]);
+    assert_eq!(frames[0]["payload"]["ok"], json!(true));
+    // B 的夹具是末页(无 rel=next)→ 直接 succeeded;A 被如实终结为 cancelled
+    assert_eq!(task_state(&world, "catalog-sync-fresh-b").as_deref(), Some("succeeded"));
+    assert_eq!(task_state(&world, "catalog-sync-orphan-a").as_deref(), Some("cancelled"));
+}

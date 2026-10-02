@@ -963,6 +963,8 @@ rolled_back: "ロールバック済み",
   warehouse: {
     catalogSync: {
       signInRequired: "先にBOOTHへログインしてから同期してください。",
+      completedHint: "ライブラリ同期が完了しました。",
+      failedHint: "ライブラリ同期に失敗しました。ボタンから再試行できます。失敗の詳細はタスク記録にあります。",
       action: "BOOTHライブラリを同期",
       startedHint: "ライブラリ同期を開始しました。進行状況は通知センターに表示されます。",
       alreadyRunning: "ライブラリ同期が既に実行中です。",

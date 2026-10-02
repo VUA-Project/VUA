@@ -12,6 +12,7 @@ import {
 } from "../../components/primitives/ContextMenu.tsx";
 import { Icon } from "@vua/design-system";
 import {
+  useGateway,
   useDataSource,
   type CatalogAvailabilityStatus,
   type CatalogDetailView,
@@ -437,7 +438,10 @@ export function WarehousePage({
    * 任务面(通知中心),本页只回触发结果,不伪造运行过程 */
   const remoteBrowser = window.vua?.capabilities?.remoteBrowser === true;
   const [signInHint, setSignInHint] = useState<"stored" | "none" | "unknown" | null>(null);
-  const [syncNotice, setSyncNotice] = useState<"started" | "already" | "blocked" | null>(null);
+  const [syncNotice, setSyncNotice] = useState<
+    "started" | "already" | "blocked" | "done" | "failed" | null
+  >(null);
+  const [syncRunId, setSyncRunId] = useState<string | null>(null);
   useEffect(() => {
     if (!remoteBrowser) return;
     let active = true;
@@ -459,8 +463,45 @@ export function WarehousePage({
       setSyncNotice("blocked");
       return;
     }
-    setSyncNotice(outcome.status === "started" ? "started" : "already");
+    if (outcome.status === "started") {
+      setSyncRunId(outcome.runId);
+      setSyncNotice("started");
+    } else {
+      setSyncNotice("already");
+    }
   };
+
+  // 同步运行终态轮询(N5 S1):到终态后刷新目录并把提示行翻到完成/失败
+  // ——终态任务按通知中心纪律默认不再显示,完成反馈必须发生在用户正看
+  // 着的地方(按钮旁),页面同时刷新让卡片立即可见
+  const gateway = useGateway();
+  useEffect(() => {
+    if (syncNotice !== "started" || syncRunId === null) return;
+    let active = true;
+    const timer = window.setInterval(() => {
+      void gateway.task
+        .snapshot()
+        .then((view) => {
+          if (!active) return;
+          const run = view.tasks.find((task) => task.id === syncRunId);
+          if (run === undefined) return;
+          if (run.status === "completed" || run.status === "completedWithWarnings") {
+            setSyncNotice("done");
+            setSyncRunId(null);
+            setReloadKey((key) => key + 1);
+          } else if (run.status === "failed" || run.status === "cancelled") {
+            setSyncNotice("failed");
+            setSyncRunId(null);
+            setReloadKey((key) => key + 1);
+          }
+        })
+        .catch(() => {});
+    }, 2000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [syncNotice, syncRunId, gateway]);
 
   // 指针聚光 + 微倾斜:回调 ref 追踪 wall-scroll 元素(视图切换会重建它),
   // hook 内部按场景模式决定是否挂载监听(非 animated 模式零开销)
@@ -591,7 +632,11 @@ export function WarehousePage({
                 ? copy.catalogSync.startedHint
                 : syncNotice === "already"
                   ? copy.catalogSync.alreadyRunning
-                  : copy.catalogSync.signInRequired}
+                  : syncNotice === "blocked"
+                    ? copy.catalogSync.signInRequired
+                    : syncNotice === "done"
+                      ? copy.catalogSync.completedHint
+                      : copy.catalogSync.failedHint}
             </span>
           ) : null}
         </div>

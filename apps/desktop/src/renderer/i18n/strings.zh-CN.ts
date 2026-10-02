@@ -1003,6 +1003,8 @@ rolled_back: "已回滚",
   warehouse: {
     catalogSync: {
       signInRequired: "请先登录 BOOTH 再同步。",
+      completedHint: "库同步完成。",
+      failedHint: "库同步失败。可从按钮重试；失败详情见任务记录。",
       action: "同步 BOOTH 库",
       startedHint: "库同步已开始，进度见通知中心。",
       alreadyRunning: "已有库同步正在进行。",
