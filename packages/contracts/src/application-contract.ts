@@ -2039,7 +2039,11 @@ export interface WarehouseImportCommandV03 extends ApplicationRequestBaseV01 {
   readonly kind: "command";
   readonly method: "warehouse.import";
   readonly commandId: string;
-  readonly params: { readonly sourceFolders: readonly string[] };
+  readonly params: {
+    readonly sourceFolders: readonly string[];
+    /** N5 实验选项:导入完成后自动制成 VPM 包再入库(设置-实验性门控) */
+    readonly autoGenerate?: boolean;
+  };
 }
 
 /** warehouse.importDownloads 下载采纳命令(bdl-commands v0.4,IMP-3):只携
@@ -3586,7 +3590,7 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
   if (value.kind === "command" && value.method === "warehouse.import") {
     return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "commandId", "params"])
       && isIdentifier(value.commandId)
-      && hasExactKeys(value.params, ["sourceFolders"])
+      && hasExactKeys(value.params, ["sourceFolders", "autoGenerate"])
       && Array.isArray(value.params.sourceFolders)
       && value.params.sourceFolders.length > 0
       && value.params.sourceFolders.every(

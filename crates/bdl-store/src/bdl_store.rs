@@ -637,6 +637,7 @@ struct ObservedCard {
     image_urls: Option<String>,
     availability: Option<String>,
     library_type: Option<String>,
+    imported_artifacts: i64,
 }
 
 impl ObservedCard {
@@ -666,6 +667,7 @@ impl ObservedCard {
             product_id: self.product_id.clone(),
             title: self.title.clone(),
             library_type: self.library_type.clone(),
+            imported_artifacts: self.imported_artifacts.max(0) as u32,
             price: self.as_price()?,
             image_url: image_urls.first().cloned(),
             availability_raw: self.availability.clone(),
@@ -2182,11 +2184,13 @@ impl BdlStore {
     ) -> Result<CatalogListResult, BdlStoreError> {
         let connection = self.connection.lock().expect("SQLite connection poisoned");
         let mut statement = connection.prepare(
-            "SELECT product_id, title, price_amount, price_currency,
-                    image_urls, availability, library_type
-             FROM products
-             WHERE status = 'complete'
-             ORDER BY product_id",
+            "SELECT p.product_id, p.title, p.price_amount, p.price_currency,
+                    p.image_urls, p.availability, p.library_type,
+                    (SELECT COUNT(*) FROM artifact_mappings m
+                     WHERE m.product_id = p.product_id) AS imported_artifacts
+             FROM products p
+             WHERE p.status = 'complete'
+             ORDER BY p.product_id",
         )?;
         let observed: Vec<ObservedCard> = statement
             .query_map([], |row| {
@@ -2198,6 +2202,7 @@ impl BdlStore {
                     image_urls: row.get(4)?,
                     availability: row.get(5)?,
                     library_type: row.get(6)?,
+                    imported_artifacts: row.get(7)?,
                 })
             })?
             .collect::<Result<Vec<_>, _>>()?;

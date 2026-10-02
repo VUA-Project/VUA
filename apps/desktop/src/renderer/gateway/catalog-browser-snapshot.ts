@@ -280,6 +280,7 @@ export function createSnapshotCatalogBrowser(data: CatalogSnapshotData): Catalog
         productId,
         title: asString(detail.title) ?? productId,
         libraryType: null,
+        importedArtifacts: 0,
         price: parsePrice(detail.price),
         imageUrl: primary,
         // 相册数组:详情媒体全量;无媒体时由主图兜底成单图(列表兜底在下方回写)
@@ -326,6 +327,7 @@ export function createSnapshotCatalogBrowser(data: CatalogSnapshotData): Catalog
               productId,
               title: asString(item.title) ?? productId,
               libraryType: null,
+        importedArtifacts: 0,
               price: parsePrice(item.price),
               imageUrl: fallbackImage,
               imageUrls: fallbackGallery,

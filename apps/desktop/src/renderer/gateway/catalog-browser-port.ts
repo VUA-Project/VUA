@@ -63,6 +63,8 @@ export interface CatalogProductSummary {
   readonly title: string | null;
   /** BDL v0.3:条目来自哪个账号库(已购/礼物/免费);null = 未知 */
   readonly libraryType: CatalogLibraryType | null;
+  /** N5 D2:经 artifact_mappings 关联的本地工件数;0 = 仅云端,>0 = 已入库 */
+  readonly importedArtifacts: number;
   /** 字符串金额 + 币种;来源缺价格时为 null,UI 显示"无价格信息"而非猜测 */
   readonly price: CatalogPrice | null;
   readonly imageUrl: string | null;

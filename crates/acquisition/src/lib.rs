@@ -29,9 +29,10 @@ pub use warehouse_download_adopt::{
     DOWNLOADED_ENTRY_KIND,
 };
 pub use warehouse_import::{
-    submit_warehouse_import, ImportedArtifact, ImportError as WarehouseImportError,
-    SkippedSourceFile, WarehouseImportReport, WarehouseImportTaskResult, WarehouseImporter,
-    WarehouseImportTaskSpec, IMPORT_ENTRY_KIND,
+    submit_warehouse_import, AutoGenerateSpec, ImportedArtifact,
+    ImportError as WarehouseImportError, SkippedSourceFile, WarehouseImportReport,
+    WarehouseImportTaskResult, WarehouseImporter, WarehouseImportTaskSpec,
+    submit_warehouse_import_auto, IMPORT_ENTRY_KIND,
 };
 pub use warehouse_maintenance::{
     generate_vpm_job, submit_delete_originals, submit_generate_vpm, DeleteOriginalsResult,

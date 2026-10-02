@@ -588,12 +588,19 @@ impl<'a> DownloadEventConsumer<'a> {
                 value: download_id.to_string(),
             })
         })?;
+        // started 事件的 source_url 是采纳关联的唯一来源(N5 D2:机缘
+        // 关联,不做任何爬取)
+        let source_url = history
+            .first()
+            .map(|event| event.source_url.clone())
+            .unwrap_or_default();
         Ok(Some(StagingCompletion {
             staging_token: staging_token_for(download_id, &completed.occurred_at),
             download_id: download_id.to_string(),
             stored_path,
             reported_size_bytes,
             suggested_file_name: completed.suggested_file_name.clone(),
+            source_url,
         }))
     }
 }
@@ -607,6 +614,9 @@ pub struct StagingCompletion {
     pub stored_path: String,
     pub reported_size_bytes: u64,
     pub suggested_file_name: Option<String>,
+    /// The delivery's origin URL (from the started event) — the adopter's
+    /// only basis for opportunistic catalog correlation (booth item id).
+    pub source_url: String,
 }
 
 fn staging_token_for(download_id: &str, occurred_at: &str) -> String {

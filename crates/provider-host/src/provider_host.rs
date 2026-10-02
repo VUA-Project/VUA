@@ -2274,7 +2274,7 @@ fn warehouse_set_artifact_mode(
 /// default and the M5 batch import keep their shapes; v0.4 adds
 /// `warehouse.importDownloads` — the M6 download-adoption task, IMP-3 /
 /// user ruling U7-3).
-const BDL_COMMANDS_SCHEMA_VERSION: &str = "0.4";
+const BDL_COMMANDS_SCHEMA_VERSION: &str = "0.5";
 
 /// project-ops v0.2 is the frozen write-command face `project.import-copy`
 /// and `project.setNote` travel as (proposal 014, arbitrated 2026-09-09;
@@ -6101,7 +6101,11 @@ fn warehouse_import_submit(
     correlation_id: &str,
 ) -> FrameOutcome {
     let source_folders = match request.get("params") {
-        Some(Value::Object(params)) if params.keys().all(|key| key == "sourceFolders") => {
+        Some(Value::Object(params))
+            if params
+                .keys()
+                .all(|key| key == "sourceFolders" || key == "autoGenerate") =>
+        {
             match params.get("sourceFolders") {
                 Some(Value::Array(folders)) if !folders.is_empty() => folders
                     .iter()
@@ -6120,18 +6124,42 @@ fn warehouse_import_submit(
     let Some(source_folders) = source_folders else {
         return warehouse_invalid_params(request_id, correlation_id);
     };
-    let accepted = vua_acquisition::submit_warehouse_import(
-        &warehouse.runtime,
+    // N5 实验选项(用户方向 2026-10-02):autoGenerate=true 时导入完成每个
+    // 文件夹后自动制成 VPM 包再入库。实验门控在渲染层(UI 只在设置-实验
+    // 性开时显示该选项);此处在执行侧注入既有的 AutoGenerateSpec 管道。
+    let auto_generate = match request.pointer("/params/autoGenerate") {
+        None | Some(Value::Null) | Some(Value::Bool(false)) => None,
+        Some(Value::Bool(true)) => {
+            let executor = warehouse.executor.clone();
+            match executor {
+                Some(executor) => Some(vua_acquisition::AutoGenerateSpec {
+                    env_initial: warehouse.global_default,
+                    executor,
+                }),
+                None => {
+                    return FrameOutcome::Response(application_error(
+                        request_id,
+                        correlation_id,
+                        "vua.warehouse.unavailable",
+                        "errors.warehouse.unavailable",
+                        "unavailable",
+                    ));
+                }
+            }
+        }
+        Some(_) => return warehouse_invalid_params(request_id, correlation_id),
+    };
+    let accepted = vua_acquisition::submit_warehouse_import_auto(
+        warehouse.runtime.clone(),
         warehouse.bdl.clone(),
         Arc::new(SystemClock),
         vua_acquisition::WarehouseImportTaskSpec {
             correlation_id: correlation_id.to_owned(),
             source_folders,
             warehouse_root: warehouse.warehouse_root.clone(),
-            // The wire import face imports only; the auto-generation
-            // injection lands with the core orchestration follow-up (010).
-            auto_generate: None,
+            auto_generate: auto_generate.clone(),
         },
+        auto_generate,
         None,
     );
     match accepted {

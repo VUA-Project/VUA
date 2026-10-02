@@ -205,6 +205,7 @@ demoTaskTitle: "演示任务",
   /** 素材导入页(M6 IMP-2 批 A,proposal 015 对账):两段诚实呈现——云端
    *  (内嵌浏览,能力两态门控)与本地(W18 提交流原样迁移,零新增词表)。 */
   importPage: {
+  vpmImportOption: "导入时制成 VPM 包（实验性）",
     title: '素材导入',
     subtitle: '云端下载与本地导入,同一条连续获取路径',
     chooseAria: '导入来源选择',
@@ -1001,6 +1002,7 @@ rolled_back: "已回滚",
   },
   /** Warehouse 目录浏览(G8):卡片墙、搜索筛选、详情抽屉与三态文案 */
   warehouse: {
+    importedBadge: "已入库",
     catalogSync: {
       signInRequired: "请先登录 BOOTH 再同步。",
       completedHint: "库同步完成。",

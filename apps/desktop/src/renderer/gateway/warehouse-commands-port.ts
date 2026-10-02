@@ -79,7 +79,10 @@ export interface WarehouseCommandsPort {
    * 受理即导入任务身份;逐 folder 进度与条目落成经任务面/读面呈现;
    * 导入编排内的自动生成挂点在任务内(010 路径 A,服务端)
    */
-  importFolders(sourceFolders: readonly string[]): Promise<WarehouseCommandOutcome>;
+  importFolders(
+    sourceFolders: readonly string[],
+    options?: { readonly autoGenerate?: boolean },
+  ): Promise<WarehouseCommandOutcome>;
   /**
    * 采纳已完成下载为仓储条目(bdl-commands v0.4,IMP-3):只携带端口下载
    * 身份——暂存路径/大小/文件名是 BDL 下载事件日志的服务端事实,永不是

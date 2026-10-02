@@ -1,0 +1,6 @@
+{
+  "schemaVersion": "0.5",
+  "operation": "warehouse.importDownloads",
+  "taskId": "tsk_01JABCDEFGHJKLMNPQRSTUVWXYZ234",
+  "correlationId": "corr-import-downloads-1"
+}

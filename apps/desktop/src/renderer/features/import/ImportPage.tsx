@@ -37,6 +37,8 @@ import {
   type EmbeddedBrowseState,
 } from "./import-model.ts";
 import "./import-page.css";
+import { useAcquireView } from "../../gateway/GatewayProvider.tsx";
+import { entrySurfacesVisible, inferGlobalDefaultMode } from "../warehouse/acquire-model.ts";
 
 /**
  * 素材导入(M6 IMP-2 批 A;proposal 015 对账受理,design-standard §8.3):连续素
@@ -474,10 +476,20 @@ function LocalImportSection({ onRequestClose }: ImportCloseRequest) {
     return dialog.pickWarehouseFolders();
   };
 
+  // N5 实验选项(用户方向 2026-10-02):「制成 VPM 包再导入」只在设置-实验性
+  // 的「生成 VPM 包替代」开启时显示;推断同仓储条目面(entrySurfacesVisible)
+  const acquireView = useAcquireView();
+  const globalDefault = inferGlobalDefaultMode(
+    acquireView !== null && acquireView.kind === "entries" ? acquireView.entries : [],
+  );
+  const vpmOptionVisible = entrySurfacesVisible(globalDefault);
+  const [autoVpm, setAutoVpm] = useState(false);
   const submitImport = (folders: readonly string[]) => {
     setImportBusy(true);
     setImportFeedback(null);
-    void gateway.warehouseCommands.importFolders(folders).then((outcome: WarehouseCommandOutcome) => {
+    void gateway.warehouseCommands
+      .importFolders(folders, autoVpm ? { autoGenerate: true } : undefined)
+      .then((outcome: WarehouseCommandOutcome) => {
       setImportBusy(false);
       if (outcome.ok) {
         setPendingFolders(null);
@@ -531,6 +543,17 @@ function LocalImportSection({ onRequestClose }: ImportCloseRequest) {
             <Button variant="default" disabled={importBusy} onClick={() => setPendingFolders(null)}>
               {acquireCopy.importCancel}
             </Button>
+            {vpmOptionVisible ? (
+              <label className="vua-import__vpm-toggle">
+                <input
+                  type="checkbox"
+                  checked={autoVpm}
+                  disabled={importBusy}
+                  onChange={(event) => setAutoVpm(event.target.checked)}
+                />
+                {copy.vpmImportOption}
+              </label>
+            ) : null}
             <Button variant="primary" disabled={importBusy} onClick={() => submitImport(pendingFolders)}>
               {acquireCopy.importConfirmCta}
             </Button>

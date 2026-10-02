@@ -166,6 +166,10 @@ pub struct CatalogProductSummary {
     pub title: Option<String>,
     /// BDL v0.3: which account library listed the product (null = unknown).
     pub library_type: Option<String>,
+    /// N5 D2: local artifacts correlated to this product via
+    /// artifact_mappings (download adoption writes them opportunistically);
+    /// 0 = cloud-only, >0 = imported.
+    pub imported_artifacts: u32,
     pub price: Option<CatalogPrice>,
     pub image_url: Option<String>,
     pub image_urls: Vec<String>,

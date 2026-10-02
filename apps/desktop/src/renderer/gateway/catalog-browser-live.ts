@@ -159,6 +159,10 @@ function projectSummary(value: unknown): CatalogProductSummary | null {
     productId,
     title: asString(record.title),
     libraryType,
+    importedArtifacts:
+      typeof record.importedArtifacts === "number" && record.importedArtifacts >= 0
+        ? record.importedArtifacts
+        : 0,
     price: projectPrice(record.price),
     // 协议保证 imageUrl = imageUrls[0] 或 null;缺失时按媒体首图收窄
     imageUrl: asString(record.imageUrl) ?? imageUrls[0] ?? null,

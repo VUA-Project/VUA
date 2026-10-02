@@ -36,7 +36,7 @@ fn schema_dir() -> PathBuf {
 /// The frozen vector generation for the six v0.4 methods' examples: the
 /// v0.5 freeze added only the dependencies vectors (the additive rise
 /// keeps the six v0.4 word faces identical, so their vectors stay in the
-/// v0.4 generation dir verbatim — schemaVersion "0.4" and all). The route
+/// v0.4 generation dir verbatim — schemaVersion "0.5" and all). The route
 /// parses params only, so a vector drives the wire with its params alone.
 fn vector_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/bdl-queries/v0.4")

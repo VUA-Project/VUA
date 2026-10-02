@@ -195,6 +195,7 @@ demoTaskTitle: "데모 작업",
    *  정직한 섹션 — 클라우드(내장 브라우징, 능력 이중 상태 게이트)와
    *  로컬(W18 제출 흐름 그대로 이전, 어휘 추가 없음). */
   importPage: {
+  vpmImportOption: "가져올 때 VPM 패키지로 변환(실험적)",
     title: "에셋 가져오기",
     subtitle: "에셋을 다운로드하거나 PC에 있는 파일을 가져오세요.",
     chooseAria: "가져오기 소스 선택",
@@ -960,6 +961,7 @@ rolled_back: "롤백됨",
     },
   },
   warehouse: {
+    importedBadge: "가져옴",
     catalogSync: {
       signInRequired: "먼저 BOOTH에 로그인한 뒤 동기화하세요.",
       completedHint: "라이브러리 동기화가 완료되었습니다.",

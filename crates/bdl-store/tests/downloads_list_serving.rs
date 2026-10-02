@@ -41,7 +41,7 @@ fn read_schema(relative: &str) -> Value {
 /// The frozen vector generation for the v0.4-method examples: the v0.5
 /// freeze added only the dependencies vectors (the additive rise keeps the
 /// six v0.4 word faces identical, so their vectors stay in the v0.4
-/// generation dir verbatim — schemaVersion "0.4" and all).
+/// generation dir verbatim — schemaVersion "0.5" and all).
 fn vector_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/bdl-queries/v0.4")
 }

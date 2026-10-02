@@ -205,6 +205,7 @@ demoTaskTitle: "Demo task",
    *  two honest sections - cloud (embedded browse, capability-gated) and
    *  local (W18 submission flow migrated verbatim, zero new vocabulary). */
   importPage: {
+  vpmImportOption: "Convert to VPM packages on import (experimental)",
     title: "Import assets",
     subtitle: "Download assets or import files already on this PC.",
     chooseAria: "Import source selection",
@@ -1014,6 +1015,7 @@ demoTaskTitle: "Demo task",
     },
   },
   warehouse: {
+    importedBadge: "Imported",
     catalogSync: {
       signInRequired: "Sign in to BOOTH first, then sync.",
       completedHint: "Library sync finished.",

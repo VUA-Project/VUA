@@ -260,7 +260,8 @@
         "availabilityStatus",
         "entityCount",
         "entityTypes",
-        "libraryType"
+        "libraryType",
+        "importedArtifacts"
       ],
       "properties": {
         "productId": {
@@ -322,6 +323,11 @@
             null
           ],
           "description": "BDL v0.3: which account library listed the product; null = unknown/legacy row."
+        },
+        "importedArtifacts": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "N5 D2: local artifacts correlated via artifact_mappings; 0 = cloud-only, >0 = imported."
         }
       }
     },

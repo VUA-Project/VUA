@@ -380,3 +380,63 @@ fn bdl_v03_library_type_persists_and_filters() {
     bad.library_type = None;
     assert!(store.record_product_observation(&bad).is_ok());
 }
+
+#[test]
+fn d2_imported_artifacts_count_rides_the_catalog_entries() {
+    use vua_bdl_store::ProductObservationStatus;
+    let store = BdlStore::open_in_memory().unwrap();
+    let obs = |id: &str| vua_bdl_store::ProductObservation {
+        product_id: format!("booth:{id}"),
+        native_product_id: id.to_owned(),
+        library_type: Some("bought".into()),
+        source_url: format!("https://booth.pm/ja/items/{id}"),
+        final_url: None,
+        status: ProductObservationStatus::Complete,
+        source_locale: None,
+        source_category: None,
+        title: Some(format!("D2 {id}")),
+        description: None,
+        age_restriction: None,
+        adult: false,
+        availability: None,
+        price_amount: None,
+        price_currency: None,
+        shop_name: None,
+        shop_url: None,
+        image_urls: vec![],
+        video_urls: vec![],
+        subproducts: vec![],
+        source_published_at: None,
+        content_hash: format!("sha256:{id:>064}").replace(' ', "0"),
+        observed_at: "2026-10-03T00:00:00.000Z".to_owned(),
+        run_id: None,
+        processor_version: "test".to_owned(),
+        missing_fields: vec![],
+    };
+    store.record_product_observation(&obs("4001")).unwrap();
+    store.record_product_observation(&obs("4002")).unwrap();
+
+    // 未关联:0(仅云端)
+    let list = store.catalog_list(&CatalogListParams::default()).unwrap();
+    let e: Vec<_> = list.entries.iter().map(|x| (x.product_id.as_str(), x.imported_artifacts)).collect();
+    assert!(e.contains(&("booth:4001", 0)));
+
+    // 关联一个工件 → importedArtifacts = 1
+    let item = store.create_warehouse_item("D2 artifact", "imported_material", "2026-10-03T00:00:00.000Z").unwrap();
+    let recording = store
+        .record_untrusted_artifact(&vua_bdl_store::NewLocalArtifact {
+            artifact_sha256: "sha256:d2aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_owned(),
+            size_bytes: 10,
+            suggested_file_name: Some("x.unitypackage".to_owned()),
+            download_id: None,
+            first_seen_at: "2026-10-03T00:00:00.000Z".to_owned(),
+        })
+        .unwrap();
+    let _ = store.record_artifact_copy(&item.warehouse_item_id, &recording.artifact.artifact_sha256, "x.unitypackage", "C:/x", vua_bdl_store::CopyRole::Original, "2026-10-03T00:00:00.000Z");
+    store.record_artifact_mapping(&recording.artifact.artifact_sha256, "booth:4001", None, Some("download_adoption"), "2026-10-03T00:00:00.000Z").unwrap();
+
+    let list2 = store.catalog_list(&CatalogListParams::default()).unwrap();
+    let m: std::collections::HashMap<_, _> = list2.entries.iter().map(|x| (x.product_id.as_str(), x.imported_artifacts)).collect();
+    assert_eq!(m["booth:4001"], 1, "correlated product counts its artifact");
+    assert_eq!(m["booth:4002"], 0, "uncorrelated stays cloud-only");
+}

@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ph-r.com/vua/schemas/bdl-commands/v0.5/command.schema.json",
+  "title": "VUA BDL warehouse command v0.4",
+  "description": "Write commands over the local BDL warehouse (docs/protocols/bdl-commands-v0.4): the artifact-mode trio, the global-default write, the M5 batch import (warehouse.import), and the M6 download adoption (warehouse.importDownloads). setArtifactMode sets or clears the per-entry artifact-mode override (null clears; resolution stays dynamic: override ?? global default). generateVpm and deleteOriginals submit audited maintenance tasks and return a task acceptance; their completion payloads travel the application-contract task surface, not this schema. setGlobalDefaultMode persists the two-level options' global level into BDL (bdl_meta), superseding the provider's environment-injected initial default from the moment of the write; it is synchronous and never touches entry overrides. warehouse.import submits one batch-import task over the given source folders (one task per command, per-folder progress); entry creation, guards and the audit trail stay inside the task. warehouse.importDownloads (new in v0.4) submits one download-adoption task over the given download ids: the task resolves every id against BDL's own download-event facts (staging path, reported size, suggested file name) — the request carries identities only, never paths, sizes or client assertions about the download. Adoption is copy-in: the staging file is copied into a downloaded_material entry and left untouched (staging cleanup is not this command's semantics). generateVpm optionally carries importCorrelationId — the audit-chain link proving the task was orchestrated by an import (proposal 010 commitment 6); a manually initiated generation never carries it. The transport envelope (requestId, commandId, correlationId, taskId semantics) belongs to the application contract — this schema freezes the operation closed set and the params. Guards are server-side facts, never client assertions: generateVpm runs only in the generate_vpm effective mode with original material and no existing artifact; deleteOriginals only in the generate_vpm effective mode with a verified generated artifact; importDownloads only over downloads whose BDL event fold sits at a completed delivery. Host allowlists are runtime policy, never part of this contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "operation",
+    "params"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "0.5" },
+    "operation": {
+      "enum": [
+        "warehouse.setArtifactMode",
+        "warehouse.generateVpm",
+        "warehouse.deleteOriginals",
+        "warehouse.setGlobalDefaultMode",
+        "warehouse.import",
+        "warehouse.importDownloads"
+      ]
+    },
+    "params": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "operation": { "const": "warehouse.setArtifactMode" } },
+        "required": ["operation"]
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["warehouseItemId", "mode"],
+            "properties": {
+              "warehouseItemId": { "type": "string", "minLength": 1 },
+              "mode": {
+                "enum": ["use_original_unitypackage", "generate_vpm", null]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "operation": { "const": "warehouse.generateVpm" } },
+        "required": ["operation"]
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["warehouseItemId"],
+            "properties": {
+              "warehouseItemId": { "type": "string", "minLength": 1 },
+              "importCorrelationId": {
+                "description": "Present only when the generation was orchestrated by a batch import (proposal 010 commitment 6): the correlation id of the import task the entry came from. A manually initiated generation never carries it.",
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "operation": { "const": "warehouse.deleteOriginals" } },
+        "required": ["operation"]
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["warehouseItemId"],
+            "properties": {
+              "warehouseItemId": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "operation": { "const": "warehouse.setGlobalDefaultMode" } },
+        "required": ["operation"]
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["mode"],
+            "properties": {
+              "mode": {
+                "description": "The persisted global default. Unlike the entry-level override there is no null: the global default always has a value (the provider's environment-injected initial default until the first write).",
+                "enum": ["use_original_unitypackage", "generate_vpm"]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "operation": { "const": "warehouse.import" } },
+        "required": ["operation"]
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sourceFolders"],
+            "properties": {
+              "sourceFolders": {
+                "description": "Kernel-resolved absolute paths of the source folders to import, one folder = one material package (one command = one batch-import task with per-folder progress). The warehouse root is provider environment configuration, never a request field.",
+                "type": "array",
+                "minItems": 1,
+                "items": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "operation": { "const": "warehouse.importDownloads" } },
+        "required": ["operation"]
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["downloadIds"],
+            "properties": {
+              "downloadIds": {
+                "description": "Port-assigned download identities to adopt into the warehouse, one id = one completed download = one downloaded_material entry (one command = one adoption task with per-download progress). Identity only: the staging path, size and file name are server-side facts read from BDL's download-event log — never request fields, never client assertions.",
+                "type": "array",
+                "minItems": 1,
+                "items": { "type": "string", "minLength": 1 }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

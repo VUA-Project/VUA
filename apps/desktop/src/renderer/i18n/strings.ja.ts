@@ -195,6 +195,7 @@ demoTaskTitle: "デモタスク",
    *  二つの誠実なセクション——クラウド(埋め込みブラウズ、能力二状態ゲート)
    *  とローカル(W18 提出フローをそのまま移行、語彙追加ゼロ)。 */
   importPage: {
+  vpmImportOption: "インポート時にVPMパッケージへ変換（実験的）",
     title: '素材のインポート',
     subtitle: 'クラウドダウンロードとローカル取り込みを一つの連続パスで',
     chooseAria: 'インポート元の選択',
@@ -961,6 +962,7 @@ rolled_back: "ロールバック済み",
     },
   },
   warehouse: {
+    importedBadge: "インポート済み",
     catalogSync: {
       signInRequired: "先にBOOTHへログインしてから同期してください。",
       completedHint: "ライブラリ同期が完了しました。",

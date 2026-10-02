@@ -1904,7 +1904,8 @@ export function isDesktopGatewayRequestV1(value: unknown): value is DesktopGatew
     // bdl-commands v0.3 导入(W19):非空字符串数组
     case "warehouse.import":
       return hasExactKeys(value, REQUEST_KEYS)
-        && hasExactKeys(value.params, ["sourceFolders", "commandId"])
+        && hasExactKeys(value.params, ["sourceFolders", "autoGenerate", "commandId"])
+        && (value.params.autoGenerate === undefined || typeof value.params.autoGenerate === "boolean")
         && Array.isArray(value.params.sourceFolders)
         && value.params.sourceFolders.length > 0
         && value.params.sourceFolders.every(

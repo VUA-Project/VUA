@@ -29,7 +29,7 @@ use vua_orchestrator::{
 use vua_provider_host::{run_provider_host_with_services, WarehouseConfig};
 
 fn command_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/bdl-commands/v0.4")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/bdl-commands/v0.5")
 }
 
 fn read_json(relative: &str) -> Value {
@@ -2148,7 +2148,7 @@ fn import_downloads_vector_drives_the_adoption_task_over_the_wire() {
         "the acceptance must match the frozen v0.4 result schema: {value}"
     );
     assert_eq!(value["operation"], "warehouse.importDownloads");
-    assert_eq!(value["schemaVersion"], "0.4");
+    assert_eq!(value["schemaVersion"], "0.5");
     assert_eq!(value["correlationId"], "corr-import-downloads");
     let task_id = value["taskId"].as_str().expect("taskId").to_owned();
 

@@ -170,6 +170,9 @@ function WarehouseCard({
           ) : null}
           {/* 徽标只渲染非 unknown 事实:purchase 唯一来源是用户标记 */}
           {purchased ? <Badge tone="success">{copy.card.purchasedBadge}</Badge> : null}
+        {item.importedArtifacts > 0 ? (
+          <Badge tone="neutral">{copy.importedBadge}</Badge>
+        ) : null}
         </div>
       </div>
     </article>

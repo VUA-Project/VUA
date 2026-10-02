@@ -295,6 +295,24 @@ impl<'a> DownloadAdopter<'a> {
             &now,
         )?;
 
+        // N5 D2 opportunistic catalog correlation: the delivery's origin URL
+        // carries the booth item id — when the synced catalog already knows
+        // that product, the mapping links the local artifact to its cloud
+        // row (the entry detail and catalog aggregation consume it). The
+        // correlation is best-effort by design: an unknown product (not yet
+        // synced) or a foreign URL leaves the artifact uncorrelated — never
+        // a failed adoption.
+        if let Some(native_product_id) = booth_item_id_from_url(&completion.source_url) {
+            let product_id = format!("booth:{native_product_id}");
+            let _ = self.store.record_artifact_mapping(
+                &identity,
+                &product_id,
+                None,
+                Some("download_adoption"),
+                &now,
+            );
+        }
+
         // Invariant (BG-12): the entry was created by this same adoption a
         // few lines above — the detail read can only be absent on store
         // corruption, which is a panic-worthy break, never a silent skip.
@@ -576,5 +594,42 @@ mod tests {
         assert_eq!(copies[0].relative_path, "evil.zip");
         std::fs::remove_dir_all(&warehouse_root).ok();
         std::fs::remove_dir_all(&staging_dir).ok();
+    }
+}
+
+
+/// `/items/{digits}` in a booth.pm URL (any locale path) — the only URL
+/// shape eligible for catalog correlation. Non-booth or item-less URLs
+/// return None (uncorrelated, not an error).
+fn booth_item_id_from_url(url: &str) -> Option<&str> {
+    let start = url.find("/items/")? + "/items/".len();
+    let tail = &url[start..];
+    let end = tail
+        .find(|c: char| !c.is_ascii_digit())
+        .unwrap_or(tail.len());
+    if end == 0 {
+        None
+    } else {
+        Some(&tail[..end])
+    }
+}
+
+#[cfg(test)]
+mod correlation_tests {
+    use super::booth_item_id_from_url;
+
+    #[test]
+    fn extracts_item_ids_from_booth_urls() {
+        assert_eq!(
+            booth_item_id_from_url("https://booth.pm/ja/items/3087170"),
+            Some("3087170")
+        );
+        assert_eq!(
+            booth_item_id_from_url("https://accounts.booth.pm/download/123/x?item=/items/99"),
+            Some("99")
+        );
+        assert_eq!(booth_item_id_from_url("https://booth.pm/library"), None);
+        assert_eq!(booth_item_id_from_url("https://example.com/items/abc"), None);
+        assert_eq!(booth_item_id_from_url("not a url"), None);
     }
 }

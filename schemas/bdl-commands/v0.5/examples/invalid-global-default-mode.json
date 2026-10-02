@@ -1,0 +1,7 @@
+{
+  "schemaVersion": "0.5",
+  "operation": "warehouse.setGlobalDefaultMode",
+  "params": {
+    "mode": null
+  }
+}

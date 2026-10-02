@@ -158,12 +158,17 @@ export function createWarehouseCommands(client: GatewayClient): WarehouseCommand
       return response.ok ? narrowGlobalDefault(response.value) : outcomeFromClientError(response.error);
     },
     // W19 批量导入(bdl-commands v0.3):受理即导入任务身份;进度经任务面
-    importFolders: async (sourceFolders) => {
+    importFolders: async (sourceFolders, options) => {
       const response = await client.invoke({
         schemaVersion: 1,
         requestId: crypto.randomUUID(),
         method: "warehouse.import",
-        params: { sourceFolders: [...sourceFolders], commandId: `whcmd-${crypto.randomUUID()}` },
+        params: {
+          sourceFolders: [...sourceFolders],
+          commandId: `whcmd-${crypto.randomUUID()}`,
+          // N5 实验选项(设置-实验性门控):导入后自动制成 VPM 包再入库
+          ...(options?.autoGenerate === true ? { autoGenerate: true } : {}),
+        },
       });
       return response.ok
         ? acceptWithIdentity(response.value, {

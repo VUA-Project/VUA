@@ -47,6 +47,8 @@ Current owners, versions and statuses only. [Governance](meta/documentation-gove
 | docs/protocols/superseded/bdl-commands-v0.2.md | 0.2 | Superseded | Data | 2026-09-08 |
 | docs/protocols/superseded/bdl-commands-v0.3.md | 0.3 | Superseded | Data | 2026-09-08 |
 | docs/protocols/bdl-commands-v0.4.md | 0.4 | Frozen | Data | 2026-09-09 |
+| docs/protocols/bdl-commands-v0.5.md | 0.5 | Frozen | Data | 2026-10-03 |
+| schemas/bdl-commands/v0.5 | 0.5 | Frozen | Data | 2026-10-03 |
 | docs/protocols/bdl-dependency-observations-v0.2.md | 0.2.2 | Frozen | Production | 2026-10-01 |
 | schemas/bdl/v0.2 | 0.2 | Frozen | Production | 2026-09-22 |
 | docs/protocols/production-evidence-v0.1.md | 0.1 | Frozen | Data | 2026-09-08 |
@@ -119,7 +121,7 @@ Current owners, versions and statuses only. [Governance](meta/documentation-gove
 | docs/development/engineering-rules.md | 1.0.0 | Accepted | Integration | 2026-09-29 |
 | docs/architecture/unity-deployment.md | 2.0.0 | Accepted | Environment | 2026-10-01 |
 | docs/development/n5-capability-audit.md | 1.0.0 | Draft | Data | 2026-10-02 |
-| docs/development/n5-rework-plan.md | 1.2.0 | Accepted | Data | 2026-10-02 |
+| docs/development/n5-rework-plan.md | 1.3.0 | Accepted | Data | 2026-10-03 |
 | docs/README.md | 1.0.0 | Accepted | Integration | 2026-10-01 |
 | docs/project-context.md | 3.0.1 | Accepted | Integration | 2026-10-01 |
 | docs/migration/asset-ledger.md | 1.0.0 | Historical reference; no current implementation authority | Integration | 2026-10-02 |
