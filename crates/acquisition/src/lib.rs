@@ -20,8 +20,8 @@ pub use artifact_inspection::{
     InspectionPolicy, StagingRejection,
 };
 pub use library_page::{
-    extract_library_page, library_item_to_observation, page_content_hash, LibraryPage,
-    LibraryPageError, LibraryPageItem, LIBRARY_PAGE_PROCESSOR_VERSION,
+    extract_library_page, is_product_page, library_item_to_observation, page_content_hash,
+    LibraryPage, LibraryPageError, LibraryPageItem, LIBRARY_PAGE_PROCESSOR_VERSION,
 };
 pub use warehouse_download_adopt::{
     submit_warehouse_import_downloads, AdoptedDownload, DownloadAdoptError,

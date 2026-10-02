@@ -5773,6 +5773,44 @@ fn catalog_ingest_library_page(
         }
     };
 
+    // 商品详情页富化(N5 D2 增强,2026-10-03):#items[data-product-id] 是
+    // 商品页的独有根——用既有的 booth_extraction 全量语法(变体/画廊/
+    // 描述/品牌)构建观察,library_type 保留现有行的值(观察是全量覆盖,
+    // 商品页不知道库类型,不带会清空已分类行)。
+    if vua_acquisition::library_page::is_product_page(html) {
+        let observation = match product_page_observation(html, library_type, warehouse.as_ref()) {
+            Ok(observation) => observation,
+            Err(_) => {
+                return FrameOutcome::Response(application_error(
+                    request_id,
+                    correlation_id,
+                    "vua.catalog.not_a_library_page",
+                    "errors.catalog.notALibraryPage",
+                    "validation",
+                ));
+            }
+        };
+        if warehouse.bdl.record_product_observation(&observation).is_err() {
+            return FrameOutcome::Response(application_error(
+                request_id,
+                correlation_id,
+                "vua.catalog.store_failed",
+                "errors.catalog.storeFailed",
+                "internal",
+            ));
+        };
+        return FrameOutcome::Response(application_success(
+            request_id,
+            json!({
+                "schemaVersion": request_schema_version.unwrap_or("0.1"),
+                "sourceUrl": source_url,
+                "parsedCount": 1,
+                "upsertedCount": 1,
+                "rejectedItems": [],
+                "nextPageUrl": null,
+            }),
+        ));
+    }
     let page = match vua_acquisition::library_page::extract_library_page(html) {
         Ok(page) => page,
         Err(_) => {
@@ -5851,6 +5889,91 @@ fn catalog_ingest_library_page(
             "nextPageUrl": page.next_page_url,
         }),
     ))
+}
+
+/// 商品详情页 → 全量 ProductObservation(既有 booth_extraction 语法,
+/// orchestrator 冻结面)。库类型透传参数(缺省时保留现有行的值)。
+fn product_page_observation(
+    html: &str,
+    library_type_override: Option<&str>,
+    warehouse: &WarehouseServices,
+) -> Result<vua_bdl_store::bdl_store::ProductObservation, Box<dyn std::error::Error>> {
+    use vua_orchestrator::booth_extraction::extract_product_page;
+    let extracted = extract_product_page(html)?;
+    let native_product_id = extracted.native_product_id.clone();
+    // 库类型:参数优先;否则读现有行
+    let library_type = match library_type_override {
+        Some(raw) => Some(raw.to_owned()),
+        None => warehouse.bdl.library_type_of(&native_product_id),
+    };
+    let subproducts = extracted
+        .subproducts
+        .iter()
+        .map(|sub| vua_bdl_store::bdl_store::SubproductObservation {
+            variation_id: sub.variation_id.clone(),
+            name: sub.name.clone(),
+            price_amount: sub.price_amount.clone(),
+            price_currency: sub.price_currency.clone(),
+            availability: Some(sub.availability.clone()),
+        })
+        .collect();
+    let page_hash = vua_acquisition::library_page::page_content_hash(html);
+    Ok(vua_bdl_store::bdl_store::ProductObservation {
+        product_id: format!("booth:{native_product_id}"),
+        native_product_id,
+        library_type,
+        source_url: format!("https://booth.pm/en/items/{}", extract_product_page(html)?.native_product_id),
+        final_url: None,
+        status: vua_bdl_store::bdl_store::ProductObservationStatus::Complete,
+        source_locale: None,
+        source_category: extracted.source_category,
+        title: extracted.title,
+        description: extracted.body_text,
+        age_restriction: None,
+        adult: extracted.adult,
+        availability: extracted.availability,
+        price_amount: extracted.price_amount,
+        price_currency: extracted.price_currency,
+        shop_name: extracted.shop_name,
+        shop_url: extracted.shop_url,
+        image_urls: extracted.image_urls,
+        video_urls: extracted.video_urls,
+        subproducts,
+        source_published_at: extracted.published_date_raw,
+        content_hash: page_hash,
+        observed_at: chrono_now_rfc3339(),
+        run_id: None,
+        processor_version: "catalog-sync/0.2-product".to_owned(),
+        missing_fields: extracted.missing_fields.into_iter().map(str::to_owned).collect(),
+    })
+}
+
+fn chrono_now_rfc3339() -> String {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| {
+            let secs = d.as_secs();
+            let millis = d.subsec_millis();
+            // 简易 RFC3339(UTC):观察时间只需可比较的稳定格式
+            let days = secs / 86400;
+            let (y, mo, da) = civil_from_days(days as i64);
+            format!("{y:04}-{mo:02}-{da:02}T{:02}:{:02}:{:02}.{millis:03}Z",
+                (secs % 86400) / 3600, (secs % 3600) / 60, secs % 60)
+        })
+        .unwrap_or_else(|_| "1970-01-01T00:00:00.000Z".to_owned())
+}
+
+fn civil_from_days(z: i64) -> (i64, u32, u32) {
+    let z = z + 719468;
+    let era = if z >= 0 { z } else { z - 146096 } / 146097;
+    let doe = (z - era * 146097) as u64;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let y = yoe as i64 + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
+    (if m <= 2 { y + 1 } else { y }, m, d)
 }
 
 /// 任务事件发布:帧循环内同步变更的任务事件不会自动成为出站事件帧

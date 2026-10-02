@@ -1265,6 +1265,8 @@ export interface CatalogSyncApiV1 {
   /** 请求中止当前运行(无运行时为 no-op);中止如实记为 aborted,已完成
    * 页的目录更新保留。 */
   stop(): Promise<void>;
+  /** 详情富化:抓取该商品页并更新本地目录观察(变体/画廊/描述) */
+  fetchProduct(productId: string): Promise<{ ok: boolean }>;
 }
 
 /** 壳能力自报(桌面壳静态声明;proposal 015 §11 仲裁方案 a):能力拥有者

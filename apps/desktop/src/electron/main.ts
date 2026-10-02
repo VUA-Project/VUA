@@ -519,6 +519,45 @@ function registerIpc(provider: OrchestratorProviderV01): void {
     assertLocalSender(senderFrameUrl(event));
     catalogSyncRun?.stop();
   });
+  // 详情富化(N5 D2,2026-10-03):单商品页抓取 → 同一 ingest 面(provider
+  // 自动识别 #items 商品页语法走全量观察);URL 由商品号派生,不放开任意 URL
+  ipcMain.handle(
+    "vua:catalog-sync:fetch-product",
+    async (event, productId: unknown) => {
+      assertLocalSender(senderFrameUrl(event));
+      if (remoteContent === null) throw new Error("remote content is unavailable");
+      if (typeof productId !== "string" || !/^booth:[0-9]+$/.test(productId)) {
+        throw new Error("invalid product id");
+      }
+      const nativeId = productId.slice("booth:".length);
+      const url = `https://booth.pm/zh-cn/items/${nativeId}`;
+      const providerRef = provider;
+      if (providerRef === null) return { ok: false };
+      try {
+        const outcome = await remoteContent.fetchWithSession(url);
+        if (outcome.status !== 200) return { ok: false };
+        const result = await providerRef
+          .invoke({
+            contractVersion: APPLICATION_CONTRACT_VERSION,
+            requestId: crypto.randomUUID(),
+            correlationId: crypto.randomUUID(),
+            commandId: crypto.randomUUID(),
+            kind: "command",
+            method: "catalog.ingestLibraryPage",
+            params: {
+              schemaVersion: "0.2",
+              sourceUrl: url,
+              html: outcome.body,
+              fetchedAt: new Date().toISOString(),
+            },
+          })
+          .then((r) => (r.ok ? { ok: true as const } : { ok: false as const }));
+        return result;
+      } catch {
+        return { ok: false };
+      }
+    },
+  );
 
   // 导航确认作答(015 §12):只受理本地来源;未知 confirmId/重复作答忽略
   // (渲染层不能伪造未发出的确认);作答后 pending 移除,确认 Promise 落定

@@ -122,6 +122,10 @@ const api: VuaDesktopApiV1 = Object.freeze({
       readonly libraryType?: "bought" | "gifts" | "free_downloads";
     }) => ipcRenderer.invoke("vua:catalog-sync:start", request),
     stop: () => ipcRenderer.invoke("vua:catalog-sync:stop"),
+    // 详情富化:经分区会话抓一个商品页,provider 侧自动识别商品页语法
+    // 并以全量观察(变体/画廊/描述/品牌)更新该行;无网络外泄面
+    fetchProduct: (productId: string) =>
+      ipcRenderer.invoke("vua:catalog-sync:fetch-product", productId),
   }),
   // 壳能力自报(proposal 015 §11 方案 a):能力拥有者静态声明;内嵌浏览
   // 基座(remote-content + U9 导航策略)随本壳交付,呈现两态由渲染层据此

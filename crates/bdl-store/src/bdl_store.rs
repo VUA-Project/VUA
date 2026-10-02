@@ -638,6 +638,7 @@ struct ObservedCard {
     availability: Option<String>,
     library_type: Option<String>,
     imported_artifacts: i64,
+    shop_name: Option<String>,
 }
 
 impl ObservedCard {
@@ -668,6 +669,7 @@ impl ObservedCard {
             title: self.title.clone(),
             library_type: self.library_type.clone(),
             imported_artifacts: self.imported_artifacts.max(0) as u32,
+            shop_name: self.shop_name.clone(),
             price: self.as_price()?,
             image_url: image_urls.first().cloned(),
             availability_raw: self.availability.clone(),
@@ -690,6 +692,8 @@ struct ObservedDetail {
     description: Option<String>,
     shop_name: Option<String>,
     shop_url: Option<String>,
+    library_type: Option<String>,
+    source_published_at: Option<String>,
     age_restriction: Option<String>,
     adult: bool,
     video_urls: Option<String>,
@@ -767,6 +771,8 @@ impl ObservedDetail {
         Ok(CatalogDetailResult {
             product: CatalogProductDetail {
                 product_id: product_id.to_owned(),
+                library_type: self.library_type.clone(),
+                source_published_at: self.source_published_at.clone(),
                 title: self.title.clone(),
                 price,
                 image_url: image_urls.first().cloned(),
@@ -2178,6 +2184,19 @@ impl BdlStore {
     /// the derived stable enum (v0.2 rule table), rows without a
     /// recognizable word stay honest `unknown`. Empty table = the honest
     /// empty set — 空态即终态.
+    /// 只读辅助:单行的库类型(N5 商品页富化透传保留用)。
+    pub fn library_type_of(&self, native_product_id: &str) -> Option<String> {
+        let connection = self.connection.lock().expect("SQLite connection poisoned");
+        connection
+            .query_row(
+                "SELECT library_type FROM products WHERE native_product_id = ?1",
+                [native_product_id],
+                |row| row.get::<_, Option<String>>(0),
+            )
+            .ok()
+            .flatten()
+    }
+
     pub fn catalog_list(
         &self,
         params: &CatalogListParams,
@@ -2187,7 +2206,8 @@ impl BdlStore {
             "SELECT p.product_id, p.title, p.price_amount, p.price_currency,
                     p.image_urls, p.availability, p.library_type,
                     (SELECT COUNT(*) FROM artifact_mappings m
-                     WHERE m.product_id = p.product_id) AS imported_artifacts
+                     WHERE m.product_id = p.product_id) AS imported_artifacts,
+                    p.shop_name
              FROM products p
              WHERE p.status = 'complete'
              ORDER BY p.product_id",
@@ -2203,6 +2223,7 @@ impl BdlStore {
                     availability: row.get(5)?,
                     library_type: row.get(6)?,
                     imported_artifacts: row.get(7)?,
+                    shop_name: row.get(8)?,
                 })
             })?
             .collect::<Result<Vec<_>, _>>()?;
@@ -2264,6 +2285,7 @@ impl BdlStore {
             .query_row(
                 "SELECT title, price_amount, price_currency, image_urls,
                         availability, description, shop_name, shop_url,
+                        library_type, source_published_at,
                         age_restriction, adult, video_urls, source_category,
                         subproducts
                  FROM products
@@ -2279,11 +2301,13 @@ impl BdlStore {
                         description: row.get(5)?,
                         shop_name: row.get(6)?,
                         shop_url: row.get(7)?,
-                        age_restriction: row.get(8)?,
-                        adult: row.get::<_, i64>(9)? != 0,
-                        video_urls: row.get(10)?,
-                        source_category: row.get(11)?,
-                        subproducts: row.get(12)?,
+                        library_type: row.get(8)?,
+                        source_published_at: row.get(9)?,
+                        age_restriction: row.get(10)?,
+                        adult: row.get::<_, i64>(11)? != 0,
+                        video_urls: row.get(12)?,
+                        source_category: row.get(13)?,
+                        subproducts: row.get(14)?,
                     })
                 },
             )

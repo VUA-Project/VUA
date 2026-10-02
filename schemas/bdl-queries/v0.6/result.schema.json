@@ -261,7 +261,8 @@
         "entityCount",
         "entityTypes",
         "libraryType",
-        "importedArtifacts"
+        "importedArtifacts",
+        "shopName"
       ],
       "properties": {
         "productId": {
@@ -328,6 +329,13 @@
           "type": "integer",
           "minimum": 0,
           "description": "N5 D2: local artifacts correlated via artifact_mappings; 0 = cloud-only, >0 = imported."
+        },
+        "shopName": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Shop display name from the library row observation; null = unknown."
         }
       }
     },
@@ -413,7 +421,9 @@
         "adult",
         "videoUrls",
         "sourceCategory",
-        "subproducts"
+        "subproducts",
+        "libraryType",
+        "sourcePublishedAt"
       ],
       "properties": {
         "productId": {
@@ -508,6 +518,22 @@
           "items": {
             "$ref": "#/$defs/subproduct"
           }
+        },
+        "libraryType": {
+          "enum": [
+            "bought",
+            "gifts",
+            "free_downloads",
+            null
+          ],
+          "description": "BDL v0.3: which account library listed the product; null = unknown."
+        },
+        "sourcePublishedAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Raw published-date text from the product page observation; null = not observed."
         }
       }
     },

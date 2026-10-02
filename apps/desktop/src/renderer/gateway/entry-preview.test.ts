@@ -55,6 +55,9 @@ function detailProduct(
   overrides: Partial<CatalogProductDetail> & { productId: string },
 ): CatalogProductDetail {
   return {
+    libraryType: null,
+    sourcePublishedAt: null,
+    variations: [],
     title: null,
     price: null,
     imageUrl: null,

@@ -65,6 +65,8 @@ export interface CatalogProductSummary {
   readonly libraryType: CatalogLibraryType | null;
   /** N5 D2:经 artifact_mappings 关联的本地工件数;0 = 仅云端,>0 = 已入库 */
   readonly importedArtifacts: number;
+  /** 库行观察到的店铺显示名(null = 未知);卡片店铺行 */
+  readonly shopName: string | null;
   /** 字符串金额 + 币种;来源缺价格时为 null,UI 显示"无价格信息"而非猜测 */
   readonly price: CatalogPrice | null;
   readonly imageUrl: string | null;
@@ -122,6 +124,17 @@ export interface CatalogProductDetail {
   readonly productId: string;
   /** v0.3 允许无题观测:未解析出标题时为 null,UI 回落 productId */
   readonly title: string | null;
+  /** BDL v0.3:来自哪个账号库(null = 未知);详情证据展示 */
+  readonly libraryType: CatalogLibraryType | null;
+  /** 商品页观察的上架日期原文(null = 未观察) */
+  readonly sourcePublishedAt: string | null;
+  /** 商品页观察的变体列表(名+价+售罄;空 = 未富化) */
+  readonly variations: readonly {
+    readonly variationId: string | null;
+    readonly name: string | null;
+    readonly price: CatalogPrice | null;
+    readonly soldOut: boolean;
+  }[];
   readonly price: CatalogPrice | null;
   readonly imageUrl: string | null;
   /** deleted 即墓碑:保留最后标题与主图,UI 须明确表达"已下架/墓碑" */

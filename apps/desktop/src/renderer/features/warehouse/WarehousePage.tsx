@@ -156,6 +156,11 @@ function WarehouseCard({
         <p className="vua-warehouse-card__title" title={item.title ?? item.productId}>
           {item.title ?? item.productId}
         </p>
+        {item.shopName !== null ? (
+          <p className="vua-caption vua-text-secondary vua-warehouse-card__shop">
+            {item.shopName}
+          </p>
+        ) : null}
         <div className="vua-warehouse-card__meta">
           <span>{priceText(item)}</span>
           {/* v0.3 实体存储属 BDL v2:恒空时计数自然消失,不留"0 个实体"噪音 */}
@@ -183,7 +188,13 @@ function WarehouseCard({
 
 /* ---- 详情抽屉 ---- */
 
-function DetailContent({ product }: { product: CatalogProductDetail }) {
+function DetailContent({
+  product,
+  onEnriched,
+}: {
+  product: CatalogProductDetail;
+  onEnriched?: () => void;
+}) {
   // 调试模式(设置·版本页开关):显示解析后的完整领域 JSON(含实体 UUID),
   // 供排查"数据问题还是解析问题";仅影响展示,与页面渲染同源
   const debugMode = useDebugMode();
@@ -193,6 +204,31 @@ function DetailContent({ product }: { product: CatalogProductDetail }) {
   const [openVideoFailed, setOpenVideoFailed] = useState(false);
   // 应用内窗口打开失败(S-IX-3):同样显式提示,引导改用系统浏览器
   const [openInAppFailed, setOpenInAppFailed] = useState(false);
+  // 懒加载富化(N5 D2,2026-10-03):库行观察只有标题/缩略/店铺;
+  // 缺描述且缺变体 = 未富化 → 经分区会话抓商品页,provider 全量观察后
+  // 上层重取详情即得画廊/描述/变体/上架日期。失败静默保留现状
+  // (详情仍可用,只是未增强)。
+  const [enriching, setEnriching] = useState(false);
+  useEffect(() => {
+    const unenriched = product.description === null && product.variations.length === 0;
+    if (!unenriched || enriching) return;
+    const face = window.vua?.catalogSync;
+    if (face === undefined || !("fetchProduct" in face)) return;
+    setEnriching(true);
+    let active = true;
+    void face
+      .fetchProduct(product.productId)
+      .then((result) => {
+        if (active && result.ok) onEnriched?.();
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (active) setEnriching(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [product.productId, product.description, product.variations.length, enriching, onEnriched]);
   return (
     <div className="vua-warehouse-detail__content">
       {/* 相册:详情媒体数组;详情缺媒体时回落主图单张(列表兜底场景) */}

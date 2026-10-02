@@ -51,6 +51,12 @@ pub struct LibraryPageItem {
     /// Shop slug from `data-product-brand` (an id, not a display name —
     /// never mapped into `shop_name`).
     pub brand: Option<String>,
+    /// Library rows carry the shop's display name (e.g. "#あいかわらぼ
+    /// /AikawaLabo") next to its subdomain link — real `shop_name`
+    /// evidence, unlike the browse-card brand slug.
+    pub shop_name: Option<String>,
+    /// Shop subdomain URL (e.g. https://aikawa2.booth.pm/).
+    pub shop_url: Option<String>,
     pub category: Option<String>,
     /// Raw amount string from `data-product-price`; no currency is observed
     /// on listings, so observations omit the price pair entirely.
@@ -123,6 +129,10 @@ pub fn extract_library_page(html: &str) -> Result<LibraryPage, LibraryPageError>
 fn extract_library_rows(document: &Html) -> Vec<LibraryPageItem> {
     let anchor = Selector::parse("a[href*='/items/']").expect("static selector");
     let image = Selector::parse("img").expect("static selector");
+    // 店铺锚:booth 子域外链(如 aikawa2.booth.pm),不在 /items/ 路径上;
+    // 行内位于标题链接之后。向上找行容器再向内搜,避免误取相邻行。
+    let shop_anchor =
+        Selector::parse("a[href*='.booth.pm/']:not([href*='/items/'])").expect("static selector");
     let mut items: Vec<LibraryPageItem> = Vec::new();
     let mut index: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
 
@@ -132,6 +142,24 @@ fn extract_library_rows(document: &Html) -> Vec<LibraryPageItem> {
             continue;
         };
         let text = element_text(element);
+        // 行容器:border-b 行 div(flex gap-8);店铺锚在其中,标题锚之外
+        let row = element
+            .ancestors()
+            .find(|node| {
+                node.value()
+                    .as_element()
+                    .is_some_and(|el| el.has_class("border-b", scraper::CaseSensitivity::CaseSensitive))
+            })
+            .and_then(scraper::ElementRef::wrap);
+        let (shop_name, shop_url) = row
+            .map(|row| {
+                let shop = row.select(&shop_anchor).next();
+                (
+                    shop.and_then(|s| s.text().next().map(str::trim).filter(|t| !t.is_empty()).map(str::to_owned)),
+                    shop.and_then(|s| s.value().attr("href")).filter(|h| !h.is_empty()).map(str::to_owned),
+                )
+            })
+            .unwrap_or((None, None));
         match index.get(&native_product_id) {
             Some(&position) => {
                 let item = &mut items[position];
@@ -160,6 +188,8 @@ fn extract_library_rows(document: &Html) -> Vec<LibraryPageItem> {
                     native_product_id,
                     name: if text.is_empty() { None } else { Some(text) },
                     brand: None,
+                    shop_name,
+                    shop_url,
                     category: None,
                     price_amount: None,
                     item_url: non_empty(Some(href)),
@@ -211,6 +241,8 @@ fn extract_browse_cards(document: &Html) -> Vec<LibraryPageItem> {
             native_product_id,
             name: non_empty(value.attr("data-product-name")),
             brand: non_empty(value.attr("data-product-brand")),
+            shop_name: None,
+            shop_url: None,
             category: non_empty(value.attr("data-product-category")),
             price_amount: non_empty(value.attr("data-product-price")),
             item_url,
@@ -299,8 +331,8 @@ pub fn library_item_to_observation(
         availability: None,
         price_amount: None,
         price_currency: None,
-        shop_name: None,
-        shop_url: None,
+        shop_name: item.shop_name.clone(),
+        shop_url: item.shop_url.clone(),
         image_urls: item.thumbnail_url.iter().cloned().collect(),
         video_urls: Vec::new(),
         subproducts: Vec::new(),
@@ -607,4 +639,16 @@ mod library_rows_tests {
         assert_eq!(product_id_from_href("/items/abc"), None);
         assert_eq!(product_id_from_href("https://booth.pm/library"), None);
     }
+}
+
+/// 商品详情页检测:#items[data-product-id] 是商品页独有根(库页/浏览页无此结构)。
+/// provider 用它选择富化语法;本身不解析内容。
+pub fn is_product_page(html: &str) -> bool {
+    let document = Html::parse_document(html);
+    document
+        .select(
+            &Selector::parse("#items[data-product-id]").expect("static selector"),
+        )
+        .next()
+        .is_some()
 }

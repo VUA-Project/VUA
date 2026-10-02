@@ -170,6 +170,8 @@ pub struct CatalogProductSummary {
     /// artifact_mappings (download adoption writes them opportunistically);
     /// 0 = cloud-only, >0 = imported.
     pub imported_artifacts: u32,
+    /// Library-row observed shop display name (null = unknown).
+    pub shop_name: Option<String>,
     pub price: Option<CatalogPrice>,
     pub image_url: Option<String>,
     pub image_urls: Vec<String>,
@@ -212,6 +214,10 @@ pub struct CatalogProductDetail {
     pub video_urls: Vec<String>,
     pub source_category: Option<String>,
     pub subproducts: Vec<CatalogSubproduct>,
+    /// BDL v0.3: which account library listed the product (null = unknown).
+    pub library_type: Option<String>,
+    /// 商品页观察到的上架日期原文(null = 未观察)。
+    pub source_published_at: Option<String>,
 }
 
 /// `catalog.list` result: `total` is computed after filtering, before

@@ -163,6 +163,7 @@ function projectSummary(value: unknown): CatalogProductSummary | null {
       typeof record.importedArtifacts === "number" && record.importedArtifacts >= 0
         ? record.importedArtifacts
         : 0,
+    shopName: asString(record.shopName),
     price: projectPrice(record.price),
     // 协议保证 imageUrl = imageUrls[0] 或 null;缺失时按媒体首图收窄
     imageUrl: asString(record.imageUrl) ?? imageUrls[0] ?? null,
@@ -234,9 +235,22 @@ function projectDetail(value: unknown): CatalogProductDetail | null {
   }
   const shopName = asString(record.shopName);
   const shopUrl = asString(record.shopUrl);
+  const libraryType =
+    record.libraryType === "bought" || record.libraryType === "gifts" || record.libraryType === "free_downloads"
+      ? record.libraryType
+      : null;
+  const variations = subproducts.map((sub) => ({
+    variationId: sub.variationId,
+    name: sub.name,
+    price: sub.price,
+    soldOut: sub.availability !== "available",
+  }));
   return {
     productId,
     title: asString(record.title),
+    libraryType,
+    sourcePublishedAt: asString(record.sourcePublishedAt),
+    variations,
     price: projectPrice(record.price),
     imageUrl: asString(record.imageUrl) ?? imageUrls[0] ?? null,
     availability: availabilityStatus,

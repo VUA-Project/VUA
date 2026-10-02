@@ -7,7 +7,7 @@
 
 mod assembly;
 mod bdl_dependency_queries;
-mod booth_extraction;
+pub mod booth_extraction;
 mod build_record;
 mod dependencies_queries;
 mod inspection_evidence;
