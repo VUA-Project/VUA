@@ -29,6 +29,9 @@ export function visibleNotifications(
 ): readonly TaskItem[] {
   return tasks.filter((task) => {
     if (dismissed.has(task.id)) return false;
+    // notifyOnComplete(用户裁决 2026-10-02):短任务的完成通知保留到手动
+    // 清除——默认"终态不显示"对秒级完成的任务是零反馈
+    if (task.notifyOnComplete === true) return true;
     return showCompleted || !isTerminalStatus(task.status);
   });
 }

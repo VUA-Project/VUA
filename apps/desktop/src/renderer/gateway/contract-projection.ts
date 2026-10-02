@@ -65,6 +65,7 @@ export function projectTaskItem(task: TaskSnapshotV01): TaskItem {
     status: projectTaskState(task.state),
     originPage: identity?.originPage ?? "warehouse",
     cancellable: !task.cancellationRequested && !isTerminalTaskStateV01(task.state),
+    ...(identity?.notifyOnComplete === true ? { notifyOnComplete: true } : {}),
     ...(task.error === undefined ? {} : { errorText: task.error.code }),
     // 重启恢复(M2):遗留非终态任务如实标注,前端不得当作仍在执行。
     // 处置只对非终态有意义——终态(含被重同步取代的 cancelled)按其终态

@@ -34,6 +34,7 @@ import {
 } from "./asset-lifecycle.ts";
 import { useDebugMode } from "../../app/debug-mode.ts";
 import { useCardSpotlight } from "./use-card-spotlight.ts";
+import { registerTaskIdentity } from "../../gateway/task-identity.ts";
 import { CardAlbumMedia, DetailAlbum } from "./WarehouseAlbum.tsx";
 import { WarehouseAcquire } from "./WarehouseAcquire.tsx";
 import { ContentDialog } from "../../components/primitives/ContentDialog.tsx";
@@ -464,6 +465,14 @@ export function WarehousePage({
       return;
     }
     if (outcome.status === "started") {
+      // 任务身份登记:标题 + 来源页 + 完成通知保留(用户裁决 2026-10-02,
+      // 秒级任务的完成也应有通知;运行窗口太短,默认纪律下用户打开通知
+      // 中心时终态通知已消失)
+      registerTaskIdentity(outcome.runId, {
+        title: copy.catalogSync.taskTitle,
+        originPage: "warehouse",
+        notifyOnComplete: true,
+      });
       setSyncRunId(outcome.runId);
       setSyncNotice("started");
     } else {

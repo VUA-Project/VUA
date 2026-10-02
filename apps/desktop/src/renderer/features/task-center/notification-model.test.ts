@@ -107,3 +107,14 @@ test("滚动关闭判定(W25 真机第四批回归钉):面板内滚动保持打�
   // 面板外滚动/目标不可判定(照 §8.9 原纪律)照常关闭
   assert.equal(scrollClosesPanel(false), true);
 });
+
+test("notifyOnComplete: 终态通知保留到手动清除(用户裁决 2026-10-02)", () => {
+  const done = { id: "catalog-sync-1", status: "completed" as const, title: "库同步", originPage: "warehouse" as const, cancellable: false, notifyOnComplete: true };
+  // 默认(不显示已完成)下依然可见
+  assert.equal(visibleNotifications([done], new Set(), false).length, 1);
+  // 手动清除后消失
+  assert.equal(visibleNotifications([done], new Set(["catalog-sync-1"]), false).length, 0);
+  // 未声明标志的终态任务维持默认纪律
+  const plain = { id: "other-1", status: "completed" as const, title: "x", originPage: "warehouse" as const, cancellable: false };
+  assert.equal(visibleNotifications([plain], new Set(), false).length, 0);
+});
