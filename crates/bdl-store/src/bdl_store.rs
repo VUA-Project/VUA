@@ -44,10 +44,11 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 pub const BDL_FORMAT_VERSION: &str = "0.3";
-const BDL_MIGRATION_VERSION: i64 = 3;
+const BDL_MIGRATION_VERSION: i64 = 4;
 const MIGRATION_001: &str = include_str!("../../../schemas/bdl/v0.1/001_initial.sql");
 const MIGRATION_002: &str = include_str!("../../../schemas/bdl/v0.2/002_dependency_observations.sql");
 const MIGRATION_003: &str = include_str!("../../../schemas/bdl/v0.3/003_library_type.sql");
+const MIGRATION_004: &str = include_str!("../../../schemas/bdl/v0.3/004_variant_name.sql");
 
 #[derive(Debug)]
 pub enum BdlStoreError {
@@ -356,6 +357,7 @@ pub struct ProductObservation {
     /// Which account library listed the product (BDL v0.3):
     /// bought | gifts | free_downloads; None = not library-derived.
     pub library_type: Option<String>,
+    pub variant_name: Option<String>,
     pub source_url: String,
     pub final_url: Option<String>,
     pub status: ProductObservationStatus,
@@ -639,6 +641,7 @@ struct ObservedCard {
     library_type: Option<String>,
     imported_artifacts: i64,
     shop_name: Option<String>,
+    variant_name: Option<String>,
     subproducts: Option<String>,
 }
 
@@ -698,6 +701,7 @@ fn as_price(&self) -> Result<Option<CatalogPrice>, BdlStoreError> {
             })?;
         Ok(CatalogProductSummary {
             product_id: self.product_id.clone(),
+            variant_name: self.variant_name.clone(),
             title: self.title.clone(),
             library_type: self.library_type.clone(),
             imported_artifacts: self.imported_artifacts.max(0) as u32,
@@ -725,6 +729,7 @@ struct ObservedDetail {
     shop_name: Option<String>,
     shop_url: Option<String>,
     library_type: Option<String>,
+    variant_name: Option<String>,
     source_published_at: Option<String>,
     age_restriction: Option<String>,
     adult: bool,
@@ -806,6 +811,7 @@ impl ObservedDetail {
             product: CatalogProductDetail {
                 product_id: product_id.to_owned(),
                 library_type: self.library_type.clone(),
+                variant_name: self.variant_name.clone(),
                 source_published_at: self.source_published_at.clone(),
                 title: self.title.clone(),
                 price,
@@ -1012,6 +1018,14 @@ impl BdlStore {
             transaction.execute_batch(MIGRATION_001)?;
             transaction.execute_batch(MIGRATION_002)?;
             transaction.execute_batch(MIGRATION_003)?;
+            transaction.execute_batch(MIGRATION_004)?;
+            transaction.pragma_update(None, "user_version", BDL_MIGRATION_VERSION)?;
+            transaction.commit()?;
+        }
+        if migration == 3 {
+            let transaction =
+                connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+            transaction.execute_batch(MIGRATION_004)?;
             transaction.pragma_update(None, "user_version", BDL_MIGRATION_VERSION)?;
             transaction.commit()?;
         }
@@ -1021,6 +1035,7 @@ impl BdlStore {
             let transaction =
                 connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
             transaction.execute_batch(MIGRATION_003)?;
+            transaction.execute_batch(MIGRATION_004)?;
             transaction.pragma_update(None, "user_version", BDL_MIGRATION_VERSION)?;
             transaction.commit()?;
         }
@@ -1034,6 +1049,7 @@ impl BdlStore {
                 connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
             transaction.execute_batch(MIGRATION_002)?;
             transaction.execute_batch(MIGRATION_003)?;
+            transaction.execute_batch(MIGRATION_004)?;
             transaction.pragma_update(None, "user_version", BDL_MIGRATION_VERSION)?;
             transaction.commit()?;
         }
@@ -1945,7 +1961,8 @@ impl BdlStore {
             connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
         transaction.execute(
             "INSERT INTO products(
-                product_id, native_product_id, library_type, source_url, final_url, status,
+                product_id, native_product_id, library_type, variant_name,
+                source_url, final_url, status,
                 source_locale, source_category, title, description,
                 age_restriction, adult, availability, price_amount,
                 price_currency, shop_name, shop_url, image_urls, video_urls,
@@ -1953,12 +1970,14 @@ impl BdlStore {
                 content_hash, observed_at, run_id, processor_version,
                 missing_fields
              ) VALUES (
-                ?1, ?2, ?27, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13,
-                ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26
+                ?1, ?2, ?27, ?28, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12,
+                ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24,
+                ?25, ?26
              )
              ON CONFLICT(product_id) DO UPDATE SET
                 native_product_id = excluded.native_product_id,
                 library_type = COALESCE(excluded.library_type, products.library_type),
+                variant_name = COALESCE(excluded.variant_name, products.variant_name),
                 source_url = excluded.source_url,
                 final_url = COALESCE(excluded.final_url, products.final_url),
                 status = excluded.status,
@@ -2011,6 +2030,7 @@ impl BdlStore {
                 observation.processor_version,
                 missing_fields,
                 observation.library_type,
+                observation.variant_name,
             ],
         )?;
         transaction.execute(
@@ -2241,7 +2261,7 @@ impl BdlStore {
                     p.image_urls, p.availability, p.library_type,
                     (SELECT COUNT(*) FROM artifact_mappings m
                      WHERE m.product_id = p.product_id) AS imported_artifacts,
-                    p.shop_name, p.subproducts
+                    p.shop_name, p.variant_name, p.subproducts
              FROM products p
              WHERE p.status = 'complete'
              ORDER BY p.product_id",
@@ -2258,7 +2278,8 @@ impl BdlStore {
                     library_type: row.get(6)?,
                     imported_artifacts: row.get(7)?,
                     shop_name: row.get(8)?,
-                    subproducts: row.get(9)?,
+                    variant_name: row.get(9)?,
+                    subproducts: row.get(10)?,
                 })
             })?
             .collect::<Result<Vec<_>, _>>()?;
@@ -2320,8 +2341,8 @@ impl BdlStore {
             .query_row(
                 "SELECT title, price_amount, price_currency, image_urls,
                         availability, description, shop_name, shop_url,
-                        library_type, source_published_at,
-                        age_restriction, adult, video_urls, source_category,
+                        library_type, variant_name, source_published_at,
+                        age_restriction, COALESCE(adult, 0) AS adult, video_urls, source_category,
                         subproducts
                  FROM products
                  WHERE product_id = ?1 AND status = 'complete'",
@@ -2337,12 +2358,13 @@ impl BdlStore {
                         shop_name: row.get(6)?,
                         shop_url: row.get(7)?,
                         library_type: row.get(8)?,
-                        source_published_at: row.get(9)?,
-                        age_restriction: row.get(10)?,
-                        adult: row.get::<_, i64>(11)? != 0,
-                        video_urls: row.get(12)?,
-                        source_category: row.get(13)?,
-                        subproducts: row.get(14)?,
+                        variant_name: row.get(9)?,
+                        source_published_at: row.get(10)?,
+                        age_restriction: row.get(11)?,
+                        adult: row.get::<_, i64>(12)? != 0,
+                        video_urls: row.get(13)?,
+                        source_category: row.get(14)?,
+                        subproducts: row.get(15)?,
                     })
                 },
             )
@@ -2828,7 +2850,7 @@ mod tests {
         let migration: i64 = connection
             .pragma_query_value(None, "user_version", |row| row.get(0))
             .unwrap();
-        assert_eq!(migration, 3, "fresh databases are born v0.3 (001 + 002 + 003)");
+        assert_eq!(migration, 4, "fresh databases are born v0.3 chain complete (001-004)");
         let dep_table: i64 = connection
             .query_row("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'dependency_observations'", [], |row| row.get(0))
             .unwrap();

@@ -962,6 +962,9 @@ rolled_back: "롤백됨",
   },
   warehouse: {
     importedBadge: "가져옴",
+    viewCards: "카드",
+    viewList: "목록",
+    viewToggleAria: "카드/목록 전환",
     catalogSync: {
       signInRequired: "먼저 BOOTH에 로그인한 뒤 동기화하세요.",
       completedHint: "라이브러리 동기화가 완료되었습니다.",
@@ -1036,6 +1039,7 @@ rolled_back: "롤백됨",
       closeZoom: "확대 보기 닫기",
     },
     card: {
+      unknownShop: "알 수 없음",
       detailsCta: "자세히 보기",
       markPurchased: "구매함으로 표시",
       unmarkPurchased: "구매함 표시 해제",

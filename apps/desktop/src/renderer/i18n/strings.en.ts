@@ -1016,6 +1016,9 @@ demoTaskTitle: "Demo task",
   },
   warehouse: {
     importedBadge: "Imported",
+    viewCards: "Cards",
+    viewList: "List",
+    viewToggleAria: "Toggle card/list view",
     catalogSync: {
       signInRequired: "Sign in to BOOTH first, then sync.",
       completedHint: "Library sync finished.",
@@ -1091,6 +1094,7 @@ demoTaskTitle: "Demo task",
       closeZoom: "Close zoom view",
     },
     card: {
+      unknownShop: "Unknown shop",
       detailsCta: "View details",
       markPurchased: "Mark as purchased",
       unmarkPurchased: "Remove purchased mark",

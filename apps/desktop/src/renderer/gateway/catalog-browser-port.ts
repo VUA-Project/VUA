@@ -67,6 +67,8 @@ export interface CatalogProductSummary {
   readonly importedArtifacts: number;
   /** 库行观察到的店铺显示名(null = 未知);卡片店铺行 */
   readonly shopName: string | null;
+  /** 购买变体标记(库行尾缀拆出;null = 未区分) */
+  readonly variantName: string | null;
   /** 字符串金额 + 币种;来源缺价格时为 null,UI 显示"无价格信息"而非猜测 */
   readonly price: CatalogPrice | null;
   readonly imageUrl: string | null;
@@ -128,6 +130,8 @@ export interface CatalogProductDetail {
   readonly libraryType: CatalogLibraryType | null;
   /** 商品页观察的上架日期原文(null = 未观察) */
   readonly sourcePublishedAt: string | null;
+  /** 购买变体标记(库行尾缀;null = 未区分) */
+  readonly variantName: string | null;
   /** 商品页观察的变体列表(名+价+售罄;空 = 未富化) */
   readonly variations: readonly {
     readonly variationId: string | null;

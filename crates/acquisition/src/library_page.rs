@@ -57,6 +57,10 @@ pub struct LibraryPageItem {
     pub shop_name: Option<String>,
     /// Shop subdomain URL (e.g. https://aikawa2.booth.pm/).
     pub shop_url: Option<String>,
+    /// Trailing parenthetical variant marker from the library row title
+    /// (e.g. "(めいゆん)" — which variant was purchased). The canonical
+    /// title has it stripped; the variant rides separately.
+    pub variant_name: Option<String>,
     pub category: Option<String>,
     /// Raw amount string from `data-product-price`; no currency is observed
     /// on listings, so observations omit the price pair entirely.
@@ -160,14 +164,23 @@ fn extract_library_rows(document: &Html) -> Vec<LibraryPageItem> {
                 )
             })
             .unwrap_or((None, None));
+        // 标题拆尾缀:最后一个 "(xxx)" 段视为变体标记,前面的是规范标题。
+        // 仅当括号在末尾且内有非空内容时拆;开头括号(如 "(無料)タイトル")不动
+        let (canonical_name, variant_name) = match &text {
+            t if !t.is_empty() => split_trailing_variant(t),
+            _ => (None, None),
+        };
         match index.get(&native_product_id) {
             Some(&position) => {
                 let item = &mut items[position];
                 if item.item_url.is_none() {
                     item.item_url = non_empty(Some(href));
                 }
-                if item.name.is_none() && !text.is_empty() {
-                    item.name = Some(text);
+                if item.name.is_none() && canonical_name.is_some() {
+                    item.name = canonical_name;
+                }
+                if item.variant_name.is_none() && variant_name.is_some() {
+                    item.variant_name = variant_name;
                 }
                 if item.thumbnail_url.is_none() {
                     item.thumbnail_url = element
@@ -186,7 +199,8 @@ fn extract_library_rows(document: &Html) -> Vec<LibraryPageItem> {
                 index.insert(native_product_id.clone(), items.len());
                 items.push(LibraryPageItem {
                     native_product_id,
-                    name: if text.is_empty() { None } else { Some(text) },
+                    name: canonical_name,
+                    variant_name,
                     brand: None,
                     shop_name,
                     shop_url,
@@ -240,6 +254,7 @@ fn extract_browse_cards(document: &Html) -> Vec<LibraryPageItem> {
         items.push(LibraryPageItem {
             native_product_id,
             name: non_empty(value.attr("data-product-name")),
+            variant_name: None,
             brand: non_empty(value.attr("data-product-brand")),
             shop_name: None,
             shop_url: None,
@@ -319,6 +334,7 @@ pub fn library_item_to_observation(
         product_id: format!("booth:{}", item.native_product_id),
         native_product_id: item.native_product_id.clone(),
         library_type: library_type.map(str::to_owned),
+        variant_name: item.variant_name.clone(),
         source_locale: locale_of(&source_url),
         source_category: item.category.clone(),
         title: item.name.clone(),
@@ -591,7 +607,8 @@ mod library_rows_tests {
         assert_eq!(page.next_page_url.as_deref(), Some("/library?page=2"));
         let first = &page.items[0];
         assert_eq!(first.native_product_id, "7463144");
-        assert_eq!(first.name.as_deref(), Some("Sample outfit A (shop-one)"));
+        assert_eq!(first.name.as_deref(), Some("Sample outfit A"));
+        assert_eq!(first.variant_name.as_deref(), Some("shop-one"));
         assert_eq!(first.thumbnail_url.as_deref(), Some("https://booth.pximg.net/first.jpg"));
         // 库行无品牌/价格事实:留空而不是猜
         assert_eq!(first.brand, None);
@@ -620,7 +637,8 @@ mod library_rows_tests {
         let page = extract_library_page(&html).expect("rows parse");
         assert_eq!(page.items.len(), 2);
         // 标题来自首个非空锚点,重复锚点不覆盖
-        assert_eq!(page.items[1].name.as_deref(), Some("Sample gift B (shop-two)"));
+        assert_eq!(page.items[1].name.as_deref(), Some("Sample gift B"));
+        assert_eq!(page.items[1].variant_name.as_deref(), Some("shop-two"));
     }
 
     #[test]
@@ -651,4 +669,77 @@ pub fn is_product_page(html: &str) -> bool {
         )
         .next()
         .is_some()
+}
+
+
+/// Trailing "(xxx)" variant marker split: "Title (めいゆん)" → ("Title",
+/// "めいゆん"). Only strips the LAST parenthetical group at the very end
+/// of the string; leading/embedded parens stay. Non-ASCII-aware.
+fn split_trailing_variant(title: &str) -> (Option<String>, Option<String>) {
+    let trimmed = title.trim_end();
+    if !trimmed.ends_with(')') {
+        return (Some(title.to_owned()), None);
+    }
+    // 从末尾找配对的 '('
+    let bytes = trimmed.as_bytes();
+    let mut depth = 0i32;
+    let mut open = None;
+    for (i, &b) in bytes.iter().enumerate().rev() {
+        match b {
+            b')' => depth += 1,
+            b'(' => {
+                depth -= 1;
+                if depth == 0 {
+                    open = Some(i);
+                    break;
+                }
+            }
+            _ => {}
+        }
+    }
+    let Some(open) = open else {
+        return (Some(title.to_owned()), None);
+    };
+    let inner = &trimmed[open + 1..trimmed.len() - 1];
+    let head = &trimmed[..open];
+    if inner.trim().is_empty() || head.trim().is_empty() {
+        return (Some(title.to_owned()), None);
+    }
+    (Some(head.trim_end().to_owned()), Some(inner.trim().to_owned()))
+}
+
+#[cfg(test)]
+mod variant_split_tests {
+    use super::split_trailing_variant;
+
+    #[test]
+    fn splits_trailing_variant_marker() {
+        let (title, variant) =
+            split_trailing_variant("【40複数アバター対応】ComfyHabit-コンフィハビット-【 #VRChat】 (めいゆん)");
+        assert_eq!(variant.as_deref(), Some("めいゆん"));
+        let t = title.unwrap();
+        assert!(t.starts_with("【40"));
+        assert!(!t.contains("めいゆん"));
+    }
+
+    #[test]
+    fn no_marker_returns_untouched() {
+        let (title, variant) = split_trailing_variant("Plain product title");
+        assert_eq!(variant, None);
+        assert_eq!(title.as_deref(), Some("Plain product title"));
+    }
+
+    #[test]
+    fn leading_parens_not_stripped() {
+        let (title, variant) = split_trailing_variant("(無料)配布タイトル");
+        assert_eq!(variant, None);
+        assert_eq!(title.as_deref(), Some("(無料)配布タイトル"));
+    }
+
+    #[test]
+    fn empty_or_whitespace_inner_not_split() {
+        let (title, variant) = split_trailing_variant("Title ()");
+        assert_eq!(variant, None);
+        assert!(title.is_some());
+    }
 }

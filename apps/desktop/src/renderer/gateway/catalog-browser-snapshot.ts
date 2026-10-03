@@ -281,6 +281,7 @@ export function createSnapshotCatalogBrowser(data: CatalogSnapshotData): Catalog
         title: asString(detail.title) ?? productId,
         libraryType: null,
         importedArtifacts: 0,
+        variantName: null,
         shopName: null,
         price: parsePrice(detail.price),
         imageUrl: primary,
@@ -329,6 +330,7 @@ export function createSnapshotCatalogBrowser(data: CatalogSnapshotData): Catalog
               title: asString(item.title) ?? productId,
               libraryType: null,
         importedArtifacts: 0,
+        variantName: null,
         shopName: null,
               price: parsePrice(item.price),
               imageUrl: fallbackImage,
@@ -434,6 +436,7 @@ export function createSnapshotCatalogBrowser(data: CatalogSnapshotData): Catalog
     const detail: CatalogProductDetail = {
       productId: record.summary.productId,
       libraryType: null,
+      variantName: null,
       sourcePublishedAt: null,
       variations: [],
       title: record.summary.title,

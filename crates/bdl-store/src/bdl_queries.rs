@@ -175,6 +175,8 @@ pub struct CatalogProductSummary {
     pub imported_artifacts: u32,
     /// Library-row observed shop display name (null = unknown).
     pub shop_name: Option<String>,
+    /// Purchased variant marker from the library title suffix (null = none).
+    pub variant_name: Option<String>,
     pub price: Option<CatalogPrice>,
     pub image_url: Option<String>,
     pub image_urls: Vec<String>,
@@ -221,6 +223,8 @@ pub struct CatalogProductDetail {
     pub library_type: Option<String>,
     /// 商品页观察到的上架日期原文(null = 未观察)。
     pub source_published_at: Option<String>,
+    /// Purchased variant marker (library title suffix; null = none).
+    pub variant_name: Option<String>,
 }
 
 /// `catalog.list` result: `total` is computed after filtering, before

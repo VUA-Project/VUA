@@ -122,6 +122,41 @@ function priceText(product: {
 
 /* ---- 商品卡片 ---- */
 
+function WarehouseListRow({
+  item,
+  selected,
+  onOpen,
+}: {
+  item: CatalogProductSummary;
+  selected: boolean;
+  onOpen: () => void;
+}) {
+  return (
+    <div
+      className="vua-warehouse-list-row"
+      data-selected={selected || undefined}
+      role="listitem"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+    >
+      <span className="vua-warehouse-list-row__title">{item.title ?? item.productId}</span>
+      {item.variantName !== null ? (
+        <span className="vua-warehouse-list-row__variant">{item.variantName}</span>
+      ) : null}
+      <span className="vua-warehouse-list-row__shop">{item.shopName ?? copy.card.unknownShop}</span>
+      {item.importedArtifacts > 0 ? (
+        <span className="vua-caption">{copy.importedBadge}</span>
+      ) : null}
+    </div>
+  );
+}
+
 function WarehouseCard({
   item,
   purchased,
@@ -168,20 +203,16 @@ function WarehouseCard({
         <p className="vua-warehouse-card__title" title={item.title ?? item.productId}>
           {item.title ?? item.productId}
         </p>
+        {item.variantName !== null ? (
+          <p className="vua-warehouse-card__variant" title={item.variantName}>
+            {item.variantName}
+          </p>
+        ) : null}
         {item.shopName !== null ? (
           <p className="vua-caption vua-text-secondary vua-warehouse-card__shop">
             {item.shopName}
           </p>
         ) : null}
-        <div className="vua-warehouse-card__meta">
-          <span>{priceText({ price: item.price, priceHigh: item.price?.high })}</span>
-          {/* v0.3 实体存储属 BDL v2:恒空时计数自然消失,不留"0 个实体"噪音 */}
-          {item.entityCount > 0 ? (
-            <span className="vua-caption vua-text-secondary">
-              {format(copy.card.entityCount, { count: item.entityCount })}
-            </span>
-          ) : null}
-        </div>
         <div className="vua-warehouse-card__badges">
           {/* 在售是默认态不贴标;停售/未知/墓碑以中性灰文字徽标表达(§6.1) */}
           {item.availability !== "available" ? (
@@ -473,6 +504,8 @@ export function WarehousePage({
   const dataSource = useDataSource();
   const connected = dataSource !== "none";
   // 单库页(用户方向 2026-10-02):云端三来源 + 本地,来源只作筛选
+  // 视图模式(用户裁决 2026-10-03):卡片墙(带图)↔ 纯文字标题列表
+  const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
   const [source, setSource] = useState<
     "all" | "bought" | "gifts" | "free" | "local"
   >("all");
@@ -670,6 +703,16 @@ export function WarehousePage({
     <div className="vua-page vua-warehouse">
       <section className="vua-page__hero">
         <h1 className="vua-title">{termLabel("warehouse")}</h1>
+        {/* 视图切换:卡片墙 / 纯文字列表;两态都保留商店名(用户裁决 2026-10-03) */}
+        <button
+          type="button"
+          className="vua-warehouse__filter"
+          aria-label={copy.viewToggleAria}
+          title={viewMode === "cards" ? copy.viewList : copy.viewCards}
+          onClick={() => setViewMode((mode) => (mode === "cards" ? "list" : "cards"))}
+        >
+          {viewMode === "cards" ? copy.viewList : copy.viewCards}
+        </button>
         {/* 来源筛选(用户方向 2026-10-02):云端/本地合并为单库页,来源只作筛选 */}
         <select
           className="vua-warehouse__filter"
@@ -874,21 +917,40 @@ export function WarehousePage({
                   />
                 )
               ) : resultsView !== null || localCards.length > 0 ? (
-                <div className="vua-warehouse__wall" role="list">
+                <div
+                  className={
+                    viewMode === "cards"
+                      ? "vua-warehouse__wall"
+                      : "vua-warehouse__list"
+                  }
+                  role="list"
+                >
                   {source !== "local"
-                    ? resultsView?.items.map((item) => (
-                        <WarehouseCard
-                          key={item.productId}
-                          item={item}
-                          purchased={lifecycleOf(lifecycle, item.productId).purchase === "user_confirmed"}
-                          selected={selectedId === item.productId}
-                          onOpen={() => {
-                            setSelectedLocalId(null);
-                            setSelectedId(item.productId);
-                          }}
-                          onMenu={(event) => openCardMenu(event, item)}
-                        />
-                      ))
+                    ? resultsView?.items.map((item) =>
+                        viewMode === "cards" ? (
+                          <WarehouseCard
+                            key={item.productId}
+                            item={item}
+                            purchased={lifecycleOf(lifecycle, item.productId).purchase === "user_confirmed"}
+                            selected={selectedId === item.productId}
+                            onOpen={() => {
+                              setSelectedLocalId(null);
+                              setSelectedId(item.productId);
+                            }}
+                            onMenu={(event) => openCardMenu(event, item)}
+                          />
+                        ) : (
+                          <WarehouseListRow
+                            key={item.productId}
+                            item={item}
+                            selected={selectedId === item.productId}
+                            onOpen={() => {
+                              setSelectedLocalId(null);
+                              setSelectedId(item.productId);
+                            }}
+                          />
+                        )
+                    )
                     : null}
                   {source !== "gifts" && source !== "bought" && source !== "free"
                     ? localCards.map((card) => (

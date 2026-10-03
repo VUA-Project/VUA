@@ -56,6 +56,7 @@ function detailProduct(
 ): CatalogProductDetail {
   return {
     libraryType: null,
+    variantName: null,
     sourcePublishedAt: null,
     variations: [],
     title: null,

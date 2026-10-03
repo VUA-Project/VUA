@@ -624,6 +624,7 @@ fn product_observation(
             .expect("booth:<digits>")
             .to_owned(),
         library_type: None,
+        variant_name: None,
         source_url: format!("https://booth.pm/ja/items/{}", &product_id["booth:".len()..]),
         final_url: None,
         status,

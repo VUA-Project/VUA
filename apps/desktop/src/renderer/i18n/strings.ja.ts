@@ -963,6 +963,9 @@ rolled_back: "ロールバック済み",
   },
   warehouse: {
     importedBadge: "インポート済み",
+    viewCards: "カード",
+    viewList: "リスト",
+    viewToggleAria: "カード/リスト切替",
     catalogSync: {
       signInRequired: "先にBOOTHへログインしてから同期してください。",
       completedHint: "ライブラリ同期が完了しました。",
@@ -1037,6 +1040,7 @@ rolled_back: "ロールバック済み",
       closeZoom: "拡大表示を閉じる",
     },
     card: {
+      unknownShop: "不明なショップ",
       detailsCta: "詳細を見る",
       markPurchased: "購入済みにする",
       unmarkPurchased: "購入済みを解除",

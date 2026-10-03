@@ -153,6 +153,7 @@ function projectSummary(value: unknown): CatalogProductSummary | null {
   const availabilityStatus = projectAvailabilityStatus(record.availabilityStatus);
   if (availabilityStatus === null) return null;
   const imageUrls = projectStringArray(record.imageUrls);
+  const variantName = asString(record.variantName);
   const libraryType =
     record.libraryType === "bought" || record.libraryType === "gifts" || record.libraryType === "free_downloads"
       ? record.libraryType
@@ -166,6 +167,7 @@ function projectSummary(value: unknown): CatalogProductSummary | null {
         ? record.importedArtifacts
         : 0,
     shopName: asString(record.shopName),
+    variantName: asString(record.variantName),
     price: projectPrice(record.price),
     // 协议保证 imageUrl = imageUrls[0] 或 null;缺失时按媒体首图收窄
     imageUrl: catalogImageUrl(asString(record.imageUrl) ?? imageUrls[0] ?? '') || null,
@@ -237,6 +239,7 @@ function projectDetail(value: unknown): CatalogProductDetail | null {
   }
   const shopName = asString(record.shopName);
   const shopUrl = asString(record.shopUrl);
+  const variantName = asString(record.variantName);
   const libraryType =
     record.libraryType === "bought" || record.libraryType === "gifts" || record.libraryType === "free_downloads"
       ? record.libraryType
@@ -251,6 +254,7 @@ function projectDetail(value: unknown): CatalogProductDetail | null {
     productId,
     title: asString(record.title),
     libraryType,
+    variantName,
     sourcePublishedAt: asString(record.sourcePublishedAt),
     variations,
     price: projectPrice(record.price),

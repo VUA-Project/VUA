@@ -926,3 +926,54 @@
      (真机 2026-10-03:页面只有 769px 而容器有 1160px)。显式占满。 */
   width: 100%;
 }
+
+/* 卡片变体标记行(购买变体名;用户裁决 2026-10-03) */
+.vua-warehouse-card__variant {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--vua-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 纯文字列表模式(视图切换;商店名两态都在) */
+.vua-warehouse__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vua-warehouse-list-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--vua-space-3);
+  padding: var(--vua-space-2) var(--vua-space-3);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.vua-warehouse-list-row:hover,
+.vua-warehouse-list-row[data-selected] {
+  background: var(--vua-bg-hover, rgba(255, 255, 255, 0.06));
+}
+
+.vua-warehouse-list-row__title {
+  flex: 1;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vua-warehouse-list-row__variant {
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.vua-warehouse-list-row__shop {
+  font-size: 0.8125rem;
+  color: var(--vua-text-secondary);
+  white-space: nowrap;
+}

@@ -267,7 +267,8 @@
         "entityTypes",
         "libraryType",
         "importedArtifacts",
-        "shopName"
+        "shopName",
+        "variantName"
       ],
       "properties": {
         "productId": {
@@ -341,6 +342,13 @@
             "null"
           ],
           "description": "Shop display name from the library row observation; null = unknown."
+        },
+        "variantName": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Purchased variant marker from the library row title suffix; null = not variant-differentiated."
         }
       }
     },
@@ -428,7 +436,8 @@
         "sourceCategory",
         "subproducts",
         "libraryType",
-        "sourcePublishedAt"
+        "sourcePublishedAt",
+        "variantName"
       ],
       "properties": {
         "productId": {
@@ -539,6 +548,13 @@
             "null"
           ],
           "description": "Raw published-date text from the product page observation; null = not observed."
+        },
+        "variantName": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Purchased variant marker from the library row title suffix; null = none."
         }
       }
     },

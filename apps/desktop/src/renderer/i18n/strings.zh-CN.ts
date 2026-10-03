@@ -1003,6 +1003,9 @@ rolled_back: "已回滚",
   /** Warehouse 目录浏览(G8):卡片墙、搜索筛选、详情抽屉与三态文案 */
   warehouse: {
     importedBadge: "已入库",
+    viewCards: "卡片",
+    viewList: "列表",
+    viewToggleAria: "切换卡片/列表视图",
     catalogSync: {
       signInRequired: "请先登录 BOOTH 再同步。",
       completedHint: "库同步完成。",
@@ -1080,6 +1083,7 @@ rolled_back: "已回滚",
       closeZoom: "关闭放大视图",
     },
     card: {
+      unknownShop: "未知商店",
       detailsCta: "查看详情",
       markPurchased: "标记已购买",
       unmarkPurchased: "取消已购买标记",

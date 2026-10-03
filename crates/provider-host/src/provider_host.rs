@@ -5922,6 +5922,7 @@ fn product_page_observation(
         product_id: format!("booth:{native_product_id}"),
         native_product_id,
         library_type,
+        variant_name: None,
         source_url: format!("https://booth.pm/en/items/{}", extract_product_page(html)?.native_product_id),
         final_url: None,
         status: vua_bdl_store::bdl_store::ProductObservationStatus::Complete,
