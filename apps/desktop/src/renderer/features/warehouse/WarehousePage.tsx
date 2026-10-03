@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { catalogBrowser } from "../../app/catalog-browser-instance.ts";
 import { browseWindowSupported, openBrowseWindow } from "../../app/browse-window.ts";
 import { openExternalUrl } from "../../app/open-external.ts";
@@ -209,26 +209,26 @@ function DetailContent({
   // 上层重取详情即得画廊/描述/变体/上架日期。失败静默保留现状
   // (详情仍可用,只是未增强)。
   const [enriching, setEnriching] = useState(false);
+  // onEnriched 固定到 ref:内联箭头每次渲染产生新引用,旧实现的 effect
+  // 依赖数组含它 → 父组件渲染即重跑 effect → 清理函数置 active=false →
+  // 在途 fetch 的回调被丢弃 → 首开抽屉收不到重取通知(真机 2026-10-03
+  // 确诊的"要点走再点回来"根因)
+  const onEnrichedRef = useRef(onEnriched);
+  onEnrichedRef.current = onEnriched;
   useEffect(() => {
     const unenriched = product.description === null && product.variations.length === 0;
     if (!unenriched || enriching) return;
     const face = window.vua?.catalogSync;
     if (face === undefined || !("fetchProduct" in face)) return;
     setEnriching(true);
-    let active = true;
     void face
       .fetchProduct(product.productId)
       .then((result) => {
-        if (active && result.ok) onEnriched?.();
+        if (result.ok) onEnrichedRef.current?.();
       })
       .catch(() => {})
-      .finally(() => {
-        if (active) setEnriching(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [product.productId, product.description, product.variations.length, enriching, onEnriched]);
+      .finally(() => setEnriching(false));
+  }, [product.productId, product.description, product.variations.length, enriching]);
   return (
     <div className="vua-warehouse-detail__content">
       {/* 相册:详情媒体数组;详情缺媒体时回落主图单张(列表兜底场景) */}

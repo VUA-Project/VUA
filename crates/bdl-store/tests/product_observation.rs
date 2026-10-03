@@ -215,7 +215,10 @@ fn pagination_slices_after_filtering_with_the_honest_total() {
 }
 
 #[test]
-fn reobservation_overwrites_the_facts_and_bumps_the_counter() {
+fn reobservation_merges_by_informativeness_and_bumps_the_counter() {
+    // 2026-10-03 语义修订:观察合并从"全列覆盖"改为"信息量优先"——
+    // NULL(未观察)不抹除已知事实(库行再同步不再清掉商品页富化的
+    // 价格/描述/画廊);非 NULL 事实照常覆盖(改名/在售态更新生效)。
     let store = BdlStore::open_in_memory().unwrap();
     store.record_product_observation(&observation("701")).unwrap();
     let mut fresh = observation("701");
@@ -224,6 +227,8 @@ fn reobservation_overwrites_the_facts_and_bumps_the_counter() {
     fresh.availability = Some("https://schema.org/OutOfStock".into());
     fresh.price_amount = None;
     fresh.price_currency = None;
+    fresh.description = None;
+    fresh.subproducts = vec![];
     let seq = store.record_product_observation(&fresh).unwrap();
     assert_eq!(seq, 2);
 
@@ -231,12 +236,14 @@ fn reobservation_overwrites_the_facts_and_bumps_the_counter() {
         .catalog_list(&CatalogListParams::default())
         .unwrap()
         .entries[0];
+    // 非空事实覆盖
     assert_eq!(card.title.as_deref(), Some("Renamed 701"));
-    assert!(card.price.is_none());
     assert_eq!(
         card.availability_status,
         vua_bdl_store::AvailabilityStatus::Unavailable
     );
+    // NULL 不抹除:首观察带价格,再观察置空 → 保留
+    assert!(card.price.is_some(), "null observation must not erase a known price");
     // Only one row exists — the upsert never duplicates.
     assert_eq!(
         store.catalog_list(&CatalogListParams::default()).unwrap().total,
