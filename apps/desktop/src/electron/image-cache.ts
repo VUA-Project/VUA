@@ -28,11 +28,15 @@ export function toCachedImageUrl(original: string): string {
   return `vua-img://${encodeURIComponent(original)}`;
 }
 
-export async function registerImageCacheProtocol(): Promise<void> {
+/** 必须在 app ready 之前调用(Electron 时机要求):注册 scheme 特权 */
+export function registerImageCacheScheme(): void {
   protocol.registerSchemesAsPrivileged([
     { scheme: "vua-img", privileges: { stream: true, bypassCSP: false } },
   ]);
-  await app.whenReady();
+}
+
+/** ready 之后调用:建缓存目录并挂协议 handler */
+export async function registerImageCacheProtocol(): Promise<void> {
   await mkdir(cacheDir(), { recursive: true });
   protocol.handle("vua-img", async (request) => {
     const raw = decodeURIComponent(new URL(request.url).hostname + new URL(request.url).pathname.slice(1));

@@ -16,7 +16,7 @@ import { routeDesktopGatewayInvoke } from "./gateway-router.js";
 import { DownloadPort } from "./download-port.js";
 import { createDownloadEventSink } from "./download-ingest.js";
 import { startCatalogSync, type CatalogSyncInvoke, type CatalogSyncRun } from "./catalog-sync.js";
-import { registerImageCacheProtocol } from "./image-cache.js";
+import { registerImageCacheProtocol, registerImageCacheScheme } from "./image-cache.js";
 import { RemoteContentManager } from "./remote-content.js";
 import { createDesktopOrchestratorProvider } from "./provider-bootstrap.js";
 import {
@@ -46,6 +46,8 @@ import {
 import { checkLatestRelease } from "./update-check.js";
 import { SystemUsageCollector } from "./system-usage.js";
 import { createFsDirectory, listFsDirectory } from "./fs-directory.js";
+
+registerImageCacheScheme();
 
 const rendererUrl = process.env.VUA_RENDERER_URL;
 let mainWindow: BrowserWindow | null = null;
@@ -813,7 +815,7 @@ async function createWindow(): Promise<void> {
 }
 
 app.whenReady().then(async () => {
-  // 目录图片本地缓存(N5):vua-img 协议命中磁盘直回
+  // 目录图片本地缓存(N5):vua-img 协议命中磁盘直回(scheme 已在启动前注册)
   await registerImageCacheProtocol();
   // 素材登记持久化(W25 易失缺陷修复):先载入落盘事实再开放 IPC 面,
   // 保证首个渲染层请求可见的登记与上一次会话一致

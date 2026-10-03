@@ -1,8 +1,4 @@
-function cachedImageUrl(url: string): string {
-  return url.startsWith("https://booth.pximg.net/")
-    ? `vua-img://${encodeURIComponent(url)}`
-    : url;
-}
+import { catalogImageUrl } from "../app/catalog-image.ts";
 import type { DesktopGatewayRequestV1 } from "@vua/contracts";
 import type { CatalogStatus } from "./catalog.ts";
 import type {
@@ -172,9 +168,7 @@ function projectSummary(value: unknown): CatalogProductSummary | null {
     shopName: asString(record.shopName),
     price: projectPrice(record.price),
     // 协议保证 imageUrl = imageUrls[0] 或 null;缺失时按媒体首图收窄
-    imageUrl: (asString(record.imageUrl) ?? imageUrls[0] ?? null) !== null
-      ? cachedImageUrl(asString(record.imageUrl) ?? imageUrls[0] ?? "")
-      : null,
+    imageUrl: catalogImageUrl(asString(record.imageUrl) ?? imageUrls[0] ?? '') || null,
     imageUrls,
     // 徽标词表以派生枚举填充(三值 ⊂ 四值);墓碑不来自 live
     availability: availabilityStatus,
@@ -232,7 +226,7 @@ function projectDetail(value: unknown): CatalogProductDetail | null {
   if (productId === null || !BOOTH_PRODUCT_ID_PATTERN.test(productId)) return null;
   const availabilityStatus = projectAvailabilityStatus(record.availabilityStatus);
   if (availabilityStatus === null) return null;
-  const imageUrls = projectStringArray(record.imageUrls).map(cachedImageUrl);
+  const imageUrls = projectStringArray(record.imageUrls);
   const videoUrls = projectStringArray(record.videoUrls);
   const subproducts: CatalogSubproduct[] = [];
   for (const raw of asArray(record.subproducts)) {
@@ -260,7 +254,7 @@ function projectDetail(value: unknown): CatalogProductDetail | null {
     sourcePublishedAt: asString(record.sourcePublishedAt),
     variations,
     price: projectPrice(record.price),
-    imageUrl: asString(record.imageUrl) ?? imageUrls[0] ?? null,
+    imageUrl: catalogImageUrl(asString(record.imageUrl) ?? imageUrls[0] ?? '') || null,
     availability: availabilityStatus,
     availabilityRaw: asString(record.availabilityRaw),
     // v0.3 无来源页与实体存储:诚实空槽(来源区/实体区/关系区随升版回归)
