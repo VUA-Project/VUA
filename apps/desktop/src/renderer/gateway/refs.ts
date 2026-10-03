@@ -139,4 +139,6 @@ export interface CatalogPrice {
   /** 汇率估算标注:存在即表示该金额为本地估算值而非牌价;
    *  cachedAt 为估算所用汇率的缓存时间(ISO 8601),UI 必须标注估算性质 */
   readonly estimate?: { readonly cachedAt: string };
+  /** 多变体价区间上限(1400~2400 的 2400);缺省 = 单值 */
+  readonly high?: string | null;
 }

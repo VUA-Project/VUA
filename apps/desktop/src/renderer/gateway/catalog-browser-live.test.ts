@@ -21,7 +21,7 @@ function wireSummary(overrides: Record<string, unknown> = {}) {
   return {
     productId: "booth:3681787",
     title: "Sample Outfit",
-    price: { amount: "1980", currency: "JPY" },
+    price: { amount: "1980", currency: "JPY", high: null },
     imageUrl: "https://booth.pm/img/3681787/main.jpg",
     imageUrls: ["https://booth.pm/img/3681787/main.jpg"],
     availabilityRaw: "compliant",
@@ -36,7 +36,7 @@ function wireSubproduct(overrides: Record<string, unknown> = {}) {
   return {
     variationId: "v1",
     name: "Miku color",
-    price: { amount: "1980", currency: "JPY" },
+    price: { amount: "1980", currency: "JPY", high: null },
     availabilityRaw: null,
     availabilityStatus: "available",
     ...overrides,
@@ -140,7 +140,7 @@ describe("live catalog browser port (F4-5)", () => {
     expect(view.vocabulary.relationKinds).toEqual([]);
     const item = view.items[0];
     expect(item?.title).toBe("Sample Outfit");
-    expect(item?.price).toEqual({ amount: "1980", currency: "JPY" });
+    expect(item?.price).toEqual({ amount: "1980", currency: "JPY", high: null });
     // 双字段:徽标消费派生枚举,原词证据原样保留
     expect(item?.availability).toBe("available");
     expect(item?.availabilityRaw).toBe("compliant");
@@ -276,7 +276,7 @@ describe("live catalog browser port (F4-5)", () => {
       {
         variationId: "v1",
         name: "Miku color",
-        price: { amount: "1980", currency: "JPY" },
+        price: { amount: "1980", currency: "JPY", high: null },
         availabilityRaw: null,
         availability: "available",
       },

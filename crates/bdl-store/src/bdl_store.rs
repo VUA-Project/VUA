@@ -639,15 +639,47 @@ struct ObservedCard {
     library_type: Option<String>,
     imported_artifacts: i64,
     shop_name: Option<String>,
+    subproducts: Option<String>,
 }
 
 impl ObservedCard {
     /// The price is admitted only as a pair; a stored row with exactly one
     /// half is a corrupt value (the write face rejects it upstream).
-    fn as_price(&self) -> Result<Option<CatalogPrice>, BdlStoreError> {
+        /// Q2(2026-10-03):多变体商品显示价区间——主价(最低)之外,若子品
+    /// 序列化 JSON 里有更高的不同金额,以最大值作区间上限(high)。
+    fn price_with_range(&self) -> Result<Option<CatalogPrice>, BdlStoreError> {
+        let mut price = self.as_price()?;
+        if price.is_none() {
+            return Ok(price);
+        }
+        let parsed: Option<Value> = self
+            .subproducts
+            .as_deref()
+            .and_then(|raw| serde_json::from_str(raw).ok());
+        if let Some(Value::Array(items)) = parsed {
+            let mut max: Option<&str> = None;
+            for item in &items {
+                let amount = item.get("price_amount").and_then(Value::as_str);
+                if let Some(amount) = amount {
+                    if max.is_none_or(|current| amount_as_f64(amount) > amount_as_f64(current)) {
+                        max = Some(amount);
+                    }
+                }
+            }
+            if let (Some(max), Some(price)) = (max, price.as_mut()) {
+                if max != price.amount {
+                    price.high = Some(max.to_owned());
+                }
+            }
+        }
+        Ok(price)
+    }
+
+    #[allow(clippy::needless_return)]
+fn as_price(&self) -> Result<Option<CatalogPrice>, BdlStoreError> {
         match (&self.price_amount, &self.price_currency) {
             (Some(amount), Some(currency)) => {
-                Ok(Some(CatalogPrice { amount: amount.clone(), currency: currency.clone() }))
+                Ok(Some(CatalogPrice { amount: amount.clone(), currency: currency.clone(), high: None }))
             }
             (None, None) => Ok(None),
             _ => Err(BdlStoreError::CorruptValue {
@@ -670,7 +702,7 @@ impl ObservedCard {
             library_type: self.library_type.clone(),
             imported_artifacts: self.imported_artifacts.max(0) as u32,
             shop_name: self.shop_name.clone(),
-            price: self.as_price()?,
+            price: self.price_with_range()?,
             image_url: image_urls.first().cloned(),
             availability_raw: self.availability.clone(),
             availability_status: availability_status(self.availability.as_deref()),
@@ -732,6 +764,7 @@ impl ObservedDetail {
                     (Some(amount), Some(currency)) => Some(CatalogPrice {
                         amount: amount.to_owned(),
                         currency: currency.to_owned(),
+                        high: None,
                     }),
                     (None, None) => None,
                     _ => {
@@ -759,6 +792,7 @@ impl ObservedDetail {
             (Some(amount), Some(currency)) => Some(CatalogPrice {
                 amount: amount.clone(),
                 currency: currency.clone(),
+                high: None,
             }),
             (None, None) => None,
             _ => {
@@ -2207,7 +2241,7 @@ impl BdlStore {
                     p.image_urls, p.availability, p.library_type,
                     (SELECT COUNT(*) FROM artifact_mappings m
                      WHERE m.product_id = p.product_id) AS imported_artifacts,
-                    p.shop_name
+                    p.shop_name, p.subproducts
              FROM products p
              WHERE p.status = 'complete'
              ORDER BY p.product_id",
@@ -2224,6 +2258,7 @@ impl BdlStore {
                     library_type: row.get(6)?,
                     imported_artifacts: row.get(7)?,
                     shop_name: row.get(8)?,
+                    subproducts: row.get(9)?,
                 })
             })?
             .collect::<Result<Vec<_>, _>>()?;
@@ -2736,6 +2771,17 @@ fn to_u64(value: i64, field: &'static str) -> Result<u64, BdlStoreError> {
     })
 }
 
+
+/// 金额字符串的数值比较辅助("1,400" → 1400.0);解析失败按 0(不参与
+/// 区间比较)。展示仍用原字符串,不经数值转换。
+fn amount_as_f64(amount: &str) -> f64 {
+    amount
+        .replace([',', '￥'], "")
+        .trim()
+        .parse::<f64>()
+        .unwrap_or(0.0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3231,3 +3277,4 @@ mod tests {
         std::fs::remove_file(&path).ok();
     }
 }
+

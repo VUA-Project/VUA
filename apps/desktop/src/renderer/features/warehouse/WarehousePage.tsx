@@ -93,18 +93,30 @@ type DetailState =
   | { kind: "failed" }
   | { kind: "loaded"; view: CatalogDetailView };
 
-function priceText(product: { price: CatalogProductSummary["price"] }): string {
+function priceText(product: {
+  price: CatalogProductSummary["price"];
+  priceHigh?: string | null | undefined;
+}): string | null {
   switch (priceKind(product.price)) {
     case "free":
       return copy.card.free;
     case "none":
-      return copy.card.noPrice;
+      // 未知价格不渲染价格行(2026-10-03 用户裁决):库行未富化前
+      // "无价格信息"占位是噪音;富化后价格自然出现
+      return null;
     case "priced":
-      // 价格纪律:字符串金额原样展示,绝不经 JS number 转换
-      return format(copy.card.price, {
-        currency: product.price?.currency ?? "",
-        amount: product.price?.amount ?? "",
-      });
+      // 价格纪律:字符串金额原样展示,绝不经 JS number 转换;
+      // 多变体价区间(1400~2400)在 high 存在且不同时以区间展示
+      return format(
+        product.priceHigh !== null && product.priceHigh !== undefined && product.priceHigh !== product.price?.amount
+          ? copy.card.priceRange
+          : copy.card.price,
+        {
+          currency: product.price?.currency ?? "",
+          amount: product.price?.amount ?? "",
+          high: product.priceHigh ?? "",
+        },
+      );
   }
 }
 
@@ -162,7 +174,7 @@ function WarehouseCard({
           </p>
         ) : null}
         <div className="vua-warehouse-card__meta">
-          <span>{priceText(item)}</span>
+          <span>{priceText({ price: item.price, priceHigh: item.price?.high })}</span>
           {/* v0.3 实体存储属 BDL v2:恒空时计数自然消失,不留"0 个实体"噪音 */}
           {item.entityCount > 0 ? (
             <span className="vua-caption vua-text-secondary">
@@ -278,7 +290,7 @@ function DetailContent({
           {format(copy.detail.ageRestrictionNote, { value: product.ageRestriction })}
         </p>
       ) : null}
-      <p className="vua-warehouse-detail__price">{priceText(product)}</p>
+      <p className="vua-warehouse-detail__price">{priceText({ price: product.price, priceHigh: product.price?.high })}</p>
 
       <section>
         <h3 className="vua-warehouse-detail__section-title">{copy.detail.entitiesTitle}</h3>

@@ -1,3 +1,8 @@
+function cachedImageUrl(url: string): string {
+  return url.startsWith("https://booth.pximg.net/")
+    ? `vua-img://${encodeURIComponent(url)}`
+    : url;
+}
 import type { DesktopGatewayRequestV1 } from "@vua/contracts";
 import type { CatalogStatus } from "./catalog.ts";
 import type {
@@ -129,7 +134,8 @@ function projectPrice(value: unknown): CatalogPrice | null {
   if (record === null) return null;
   const amount = asString(record.amount);
   const currency = asString(record.currency);
-  return amount !== null && currency !== null ? { amount, currency } : null;
+  const high = asString(record.high);
+  return amount !== null && currency !== null ? { amount, currency, high } : null;
 }
 
 function projectStringArray(value: unknown): string[] {
@@ -166,7 +172,9 @@ function projectSummary(value: unknown): CatalogProductSummary | null {
     shopName: asString(record.shopName),
     price: projectPrice(record.price),
     // 协议保证 imageUrl = imageUrls[0] 或 null;缺失时按媒体首图收窄
-    imageUrl: asString(record.imageUrl) ?? imageUrls[0] ?? null,
+    imageUrl: (asString(record.imageUrl) ?? imageUrls[0] ?? null) !== null
+      ? cachedImageUrl(asString(record.imageUrl) ?? imageUrls[0] ?? "")
+      : null,
     imageUrls,
     // 徽标词表以派生枚举填充(三值 ⊂ 四值);墓碑不来自 live
     availability: availabilityStatus,
@@ -224,7 +232,7 @@ function projectDetail(value: unknown): CatalogProductDetail | null {
   if (productId === null || !BOOTH_PRODUCT_ID_PATTERN.test(productId)) return null;
   const availabilityStatus = projectAvailabilityStatus(record.availabilityStatus);
   if (availabilityStatus === null) return null;
-  const imageUrls = projectStringArray(record.imageUrls);
+  const imageUrls = projectStringArray(record.imageUrls).map(cachedImageUrl);
   const videoUrls = projectStringArray(record.videoUrls);
   const subproducts: CatalogSubproduct[] = [];
   for (const raw of asArray(record.subproducts)) {

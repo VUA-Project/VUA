@@ -220,6 +220,11 @@
         "currency": {
           "type": "string",
           "minLength": 1
+        },
+        "high": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Multi-variation price range upper bound (1400~2400's 2400); omitted for single-price products. Display uses the raw string, never numeric conversion."
         }
       }
     },

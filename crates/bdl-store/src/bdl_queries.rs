@@ -154,6 +154,9 @@ pub struct CompletedDownloadRow {
 pub struct CatalogPrice {
     pub amount: String,
     pub currency: String,
+    /// 多变体价区间上限;None = 单值商品。来自子品价格的最大值。
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub high: Option<String>,
 }
 
 /// `catalog.list` entry (`productSummary`): `entityCount` is the honest
