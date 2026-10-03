@@ -1004,6 +1004,18 @@ rolled_back: "已回滚",
   warehouse: {
     importedBadge: "已入库",
     viewCards: "卡片",
+    selectBar: {
+      enter: "选择",
+      cancel: "取消（{count}）",
+      addToRecipe: "加入配方（{count}）",
+    },
+    recipeDialog: {
+      title: "加入配方",
+      selectionLabel: "已选",
+      noRecipes: "还没有配方 — 在下方新建",
+      newRecipePlaceholder: "新配方名称",
+      newRecipeCta: "创建并加入",
+    },
     viewList: "列表",
     viewToggleAria: "切换卡片/列表视图",
     catalogSync: {

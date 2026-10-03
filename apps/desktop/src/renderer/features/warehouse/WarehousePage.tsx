@@ -504,8 +504,24 @@ export function WarehousePage({
   const dataSource = useDataSource();
   const connected = dataSource !== "none";
   // 单库页(用户方向 2026-10-02):云端三来源 + 本地,来源只作筛选
-  // 视图模式(用户裁决 2026-10-03):卡片墙(带图)↔ 纯文字标题列表
+  // 视图模式(用户裁决 2026-03):卡片墙(带图)↔ 纯文字标题列表
   const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
+  // 多选模式(用户裁决 2026-10-04):卡片墙选材 → 加入 Recipe
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
+  const [recipeDialogOpen, setRecipeDialogOpen] = useState(false);
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+    setSelectMode(false);
+  };
   const [source, setSource] = useState<
     "all" | "bought" | "gifts" | "free" | "local"
   >("all");
@@ -616,6 +632,16 @@ export function WarehousePage({
     };
   }, [syncNotice, syncRunId, gateway]);
 
+  // Esc 清空多选(用户裁决 ①:加入后选区保留,Esc 清空)
+  useEffect(() => {
+    if (!selectMode) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") clearSelection();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectMode]);
+
   // 指针聚光 + 微倾斜:回调 ref 追踪 wall-scroll 元素(视图切换会重建它),
   // hook 内部按场景模式决定是否挂载监听(非 animated 模式零开销)
   const [wallEl, setWallEl] = useState<HTMLDivElement | null>(null);
@@ -703,6 +729,29 @@ export function WarehousePage({
     <div className="vua-page vua-warehouse">
       <section className="vua-page__hero">
         <h1 className="vua-title">{termLabel("warehouse")}</h1>
+        {/* 多选模式入口(用户裁决 2026-10-04):启用后卡片可多选加入 Recipe */}
+        <button
+          type="button"
+          className="vua-warehouse__filter"
+          aria-pressed={selectMode}
+          onClick={() => {
+            if (selectMode) clearSelection();
+            else setSelectMode(true);
+          }}
+        >
+          {selectMode
+            ? format(copy.selectBar.cancel, { count: selectedIds.size })
+            : copy.selectBar.enter}
+        </button>
+        {selectMode && selectedIds.size > 0 ? (
+          <button
+            type="button"
+            className="vua-warehouse__filter"
+            onClick={() => setRecipeDialogOpen(true)}
+          >
+            {format(copy.selectBar.addToRecipe, { count: selectedIds.size })}
+          </button>
+        ) : null}
         {/* 视图切换:卡片墙 / 纯文字列表;两态都保留商店名(用户裁决 2026-10-03) */}
         <button
           type="button"
@@ -932,8 +981,12 @@ export function WarehousePage({
                             key={item.productId}
                             item={item}
                             purchased={lifecycleOf(lifecycle, item.productId).purchase === "user_confirmed"}
-                            selected={selectedId === item.productId}
+                            selected={selectMode ? selectedIds.has(item.productId) : selectedId === item.productId}
                             onOpen={() => {
+                              if (selectMode) {
+                                toggleSelect(item.productId);
+                                return;
+                              }
                               setSelectedLocalId(null);
                               setSelectedId(item.productId);
                             }}

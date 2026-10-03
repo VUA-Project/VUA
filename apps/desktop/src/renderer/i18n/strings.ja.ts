@@ -964,6 +964,18 @@ rolled_back: "ロールバック済み",
   warehouse: {
     importedBadge: "インポート済み",
     viewCards: "カード",
+    selectBar: {
+      enter: "選択",
+      cancel: "キャンセル（{count}）",
+      addToRecipe: "レシピに追加（{count}）",
+    },
+    recipeDialog: {
+      title: "レシピに追加",
+      selectionLabel: "選択中",
+      noRecipes: "レシピがありません — 下で新規作成",
+      newRecipePlaceholder: "新規レシピ名",
+      newRecipeCta: "作成して追加",
+    },
     viewList: "リスト",
     viewToggleAria: "カード/リスト切替",
     catalogSync: {

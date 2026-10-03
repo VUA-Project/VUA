@@ -977,3 +977,56 @@
   color: var(--vua-text-secondary);
   white-space: nowrap;
 }
+
+/* 多选模式卡片选中态(用户裁决 2026-10-04):橙色描边 + 角标计数 */
+.vua-warehouse-card[data-selected] {
+  outline: 2px solid var(--vua-accent, #ff8c42);
+  outline-offset: -2px;
+}
+
+/* 加入 Recipe 小窗 */
+.vua-add-to-recipe {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-3);
+  min-width: 320px;
+}
+
+.vua-add-to-recipe__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.vua-add-to-recipe__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--vua-space-2);
+  width: 100%;
+  padding: var(--vua-space-2) var(--vua-space-3);
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.vua-add-to-recipe__row:hover {
+  background: var(--vua-bg-hover, rgba(255, 255, 255, 0.06));
+}
+
+.vua-add-to-recipe__name {
+  font-weight: 500;
+  flex: 1;
+}
+
+.vua-add-to-recipe__new {
+  display: flex;
+  gap: var(--vua-space-2);
+  align-items: center;
+  padding-top: var(--vua-space-2);
+  border-top: 1px solid var(--vua-border, rgba(255, 255, 255, 0.1));
+}

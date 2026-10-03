@@ -963,6 +963,18 @@ rolled_back: "롤백됨",
   warehouse: {
     importedBadge: "가져옴",
     viewCards: "카드",
+    selectBar: {
+      enter: "선택",
+      cancel: "취소({count})",
+      addToRecipe: "레시피에 추가({count})",
+    },
+    recipeDialog: {
+      title: "레시피에 추가",
+      selectionLabel: "선택됨",
+      noRecipes: "레시피가 없습니다 — 아래에서 생성",
+      newRecipePlaceholder: "새 레시피 이름",
+      newRecipeCta: "생성 및 추가",
+    },
     viewList: "목록",
     viewToggleAria: "카드/목록 전환",
     catalogSync: {

@@ -239,6 +239,11 @@ export function emptyGateway(initialGoals: StoredGoalsV1 | null = null): VuaGate
     productionChain: createUnavailableProductionChainPort(),
     // 029 B 面环 4:配方导出 not-run 诚实缺席(不伪造草稿)
     recipeExport: createUnavailableRecipeExportPort(),
+  recipe: {
+    list: () => Promise.resolve([]),
+    get: () => Promise.resolve(null),
+    save: () => Promise.reject(new Error("not connected")),
+  },
     // bdl-queries v0.5 消费准备切片:依赖反查/观察列 not-run 诚实缺席
     // (不伪造线索/建议;缺席臂 = 能力缺席控制不渲染先例)
     dependencies: createUnavailableDependenciesPort(),

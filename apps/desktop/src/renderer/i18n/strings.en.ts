@@ -1017,6 +1017,18 @@ demoTaskTitle: "Demo task",
   warehouse: {
     importedBadge: "Imported",
     viewCards: "Cards",
+    selectBar: {
+      enter: "Select",
+      cancel: "Cancel ({count})",
+      addToRecipe: "Add {count}",
+    },
+    recipeDialog: {
+      title: "Add selection",
+      selectionLabel: "Selected",
+      noRecipes: "Nothing here yet — create one below",
+      newRecipePlaceholder: "New name",
+      newRecipeCta: "Create & Add",
+    },
     viewList: "List",
     viewToggleAria: "Toggle card/list view",
     catalogSync: {

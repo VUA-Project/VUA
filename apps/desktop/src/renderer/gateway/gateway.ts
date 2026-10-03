@@ -38,6 +38,7 @@ export interface VuaGateway {
   /** 029 B 面环 4:配方导出端口(recipe.exportProjectDraft 同步只读;草稿
    *  转正唯一通道 = 用户显式确认后的既有 recipe.save 保存链) */
   readonly recipeExport: RecipeExportPort;
+  readonly recipe: import("./recipe-port.js").RecipePort;
   /** bdl-queries v0.5 消费准备切片:依赖反查/观察列只读端口
    *  (dependencies.lookup 建议面 / dependencies.listByProduct 线索面;
    *  消费页面候 U18 终裁后切片,缺席臂 = 控制不渲染先例) */
