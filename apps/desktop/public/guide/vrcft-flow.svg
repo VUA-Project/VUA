@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img">
+  <!-- 自制示意图:眼追数据流(PICO 头显 → PC 追踪软件 → VRChat 模型眼睛;
+       无文字,标签由 HTML/i18n 提供)。配色取双主题均可读的中性色。 -->
+  <!-- PICO 头显 -->
+  <g fill="none" stroke="#8f8aa8" stroke-width="4">
+    <path d="M 40 76 Q 64 62 88 76"/>
+    <rect x="24" y="76" width="72" height="40" rx="14"/>
+  </g>
+  <g fill="#6557d2">
+    <circle cx="46" cy="96" r="7"/>
+    <circle cx="72" cy="96" r="7"/>
+  </g>
+  <!-- PC(追踪软件运行处) -->
+  <g fill="none" stroke="#8f8aa8" stroke-width="4">
+    <rect x="132" y="64" width="56" height="64" rx="8"/>
+  </g>
+  <circle cx="160" cy="88" r="10" fill="none" stroke="#6557d2" stroke-width="4"/>
+  <circle cx="160" cy="88" r="4" fill="#6557d2"/>
+  <rect x="142" y="106" width="36" height="12" rx="4" fill="#8f8aa8" opacity="0.35"/>
+  <!-- VRChat 侧:模型面孔,视线跟随 -->
+  <circle cx="262" cy="96" r="34" fill="none" stroke="#8f8aa8" stroke-width="4"/>
+  <g fill="none" stroke="#8f8aa8" stroke-width="3">
+    <circle cx="250" cy="90" r="7"/>
+    <circle cx="274" cy="90" r="7"/>
+  </g>
+  <g fill="#6557d2">
+    <circle cx="252" cy="91" r="3"/>
+    <circle cx="276" cy="91" r="3"/>
+  </g>
+  <path d="M 252 110 Q 262 116 272 110" fill="none" stroke="#8f8aa8" stroke-width="3" stroke-linecap="round"/>
+  <!-- 数据流箭头 -->
+  <g fill="none" stroke="#6557d2" stroke-width="3" stroke-linecap="round">
+    <path d="M 100 96 H 126"/>
+    <path d="M 118 90 L 126 96 L 118 102"/>
+    <path d="M 194 96 H 222"/>
+    <path d="M 214 90 L 222 96 L 214 102"/>
+  </g>
+</svg>

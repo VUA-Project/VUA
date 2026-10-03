@@ -59,7 +59,13 @@ export const GUIDE_TUTORIAL_TOPIC_IDS: readonly GuideTutorialTopicId[] = [
   "guide-tutorials",
 ];
 
-export type GuideMediaId = "pc-keys" | "vr-controller";
+export type GuideMediaId =
+  | "pc-keys"
+  | "vr-controller"
+  | "pico-usb"
+  | "pico-wifi"
+  | "steamvr-desktop"
+  | "vrcft-flow";
 
 /** 媒体 id → 资产与替代文本;strings 中引用的媒体 id 必须在此登记。
  * SVG 置 public/(Vite 原样拷贝进 dist):node --test 无法 import .svg,
@@ -67,6 +73,13 @@ export type GuideMediaId = "pc-keys" | "vr-controller";
 export const GUIDE_MEDIA: Record<GuideMediaId, { src: string; alt: string }> = {
   "pc-keys": { src: "/guide/pc-keys.svg", alt: strings.guide.mediaAlt.pcKeys },
   "vr-controller": { src: "/guide/vr-controller.svg", alt: strings.guide.mediaAlt.vrController },
+  "pico-usb": { src: "/guide/pico-usb.svg", alt: strings.guide.mediaAlt.picoUsb },
+  "pico-wifi": { src: "/guide/pico-wifi.svg", alt: strings.guide.mediaAlt.picoWifi },
+  "steamvr-desktop": {
+    src: "/guide/steamvr-desktop.svg",
+    alt: strings.guide.mediaAlt.steamvrDesktop,
+  },
+  "vrcft-flow": { src: "/guide/vrcft-flow.svg", alt: strings.guide.mediaAlt.vrcftFlow },
 };
 
 /** 未登记的媒体 id 解析为 null——诚实缺省(不渲染破图),由测试保证不发生 */

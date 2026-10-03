@@ -868,51 +868,109 @@ demoTaskTitle: "Demo task",
     mediaAlt: {
       pcKeys: "PC keyboard diagram highlighting the talk, chat, emoji wheel keys and spacebar",
       vrController: "VR controller diagram highlighting the trigger and grip areas",
+      picoUsb: "Diagram of a PICO 4 Pro headset linked to a PC by a highlighted USB cable",
+      picoWifi: "Diagram of a PC and a PICO 4 Pro headset both connected wirelessly to the same router",
+      steamvrDesktop:
+        "Diagram of the SteamVR desktop view inside the headset, with a desktop window floating in view and a controller ray pointing at it",
+      vrcftFlow:
+        "Diagram of eye-tracking data flowing from a PICO headset through tracking software on the PC to an avatar's eyes",
     },
     pages: {
       start: {
         title: "Getting Started",
-        intro: "The shortest path from install to your first world.",
+        intro: "From a Steam account to your first world — the full first-play path.",
         sections: [
           {
             id: "prepare",
             title: "Before you start",
             paragraphs: [
-              "Sign in to Steam and check your internet connection. If you cannot connect, follow the network troubleshooting guide. VRChat is free to play.",
+              "Where: VUA's environment pages. Run the environment and network checks there first; if Steam or VRChat is missing, they show the official install route.",
+              "Desktop play needs only Steam and VRChat, and VRChat is free. PICO streaming adds SteamVR and PICO Connect on top.",
+              "If a check fails: the network check reports each service separately — apply its suggested remedy and re-check before continuing.",
+            ],
+          },
+          {
+            id: "steam-account",
+            title: "A Steam account (register or sign in)",
+            paragraphs: [
+              "Where: the \"Join Steam\" page on the Steam website, or the Steam client's sign-in window. New players register with an email address and complete the email and human verification themselves; existing players simply sign in.",
+              "You should see: your Steam display name inside the client once signed in.",
+              "If it fails: verification mail can land in spam, and the sign-up page may not load over a bad route — check spam first, then return to VUA's network check and follow its remedy.",
+            ],
+          },
+          {
+            id: "install-vrchat",
+            title: "Install VRChat through Steam",
+            paragraphs: [
+              "Where: the VRChat page in the Steam store. Press \"Play Game\" — VRChat is free — and Steam adds it to your library and downloads it.",
+              "You should see: VRChat in your Steam library with a green \"Play\" button once the download finishes.",
+              "If it fails: slow or stuck downloads usually clear by changing the download region in Steam's settings or freeing disk space; a library-folder error means picking another install location.",
+            ],
+          },
+          {
+            id: "first-launch",
+            title: "First launch and login",
+            paragraphs: [
+              "Where: press \"Play\" on VRChat in your Steam library. On the login screen, choose to sign in with your Steam account — no separate registration is needed to start playing.",
+              "You should see: the game load into the default Home world, with a mirror and other players around you.",
+              "If it fails: a stuck loading or login screen usually means an unhealthy route to VRChat's servers — re-run VUA's network check; a crash at launch calls for a GPU driver update and a retry.",
+              "Optional: to keep friends and favorites long-term, upgrade the Steam sign-in to a full VRChat account later — in-game Main Menu, Settings, \"Link Account\", then finish the official merge on vrchat.com. Accounts with Creator Economy purchases cannot be linked per the official article; those create a new account instead.",
             ],
           },
           {
             id: "first-steps",
-            title: "What to do first",
+            title: "Your first minutes in a world",
             paragraphs: [
-              "Follow this page's tutorial through three things: enter the default world, pick a free avatar at a mirror, and learn how to go home.",
+              "Learn three things first: pick a public avatar at a mirror to change how you look; open the Quick Menu with Esc and find the way back to your Home world; then follow a friend through a portal or pick another world from the menu.",
             ],
           },
         ],
       },
       basics: {
         title: "Basic Controls",
-        intro: "A quick reference for menus, keys and status indicators.",
+        intro: "Desktop-mode movement, menus, sound and microphone, plus a VR controller reference for streaming.",
         sections: [
+          {
+            id: "movement",
+            title: "Move and look (desktop)",
+            paragraphs: [
+              "W/A/S/D moves, the mouse turns your view, Shift sprints, Space jumps where the world allows it, C crouches and Z goes prone. Left click interacts or picks things up; hold right click to show the interaction cursor.",
+            ],
+          },
           {
             id: "menu",
             title: "Where the menus are",
             paragraphs: [
-              "The Esc quick menu covers most daily actions; settings live in the main menu.",
+              "Esc opens the Quick Menu — respawn, settings and the player list live here, and it expands into the Main Menu for worlds, avatars and social features. R opens the Action Menu, home of expressions and the OSC toggle that eye tracking uses.",
             ],
           },
           {
             id: "keys-pc",
             title: "PC key reference",
             media: "pc-keys",
-            paragraphs: ["Remember talk, emote and jump keys first; look up the rest when needed."],
+            caption:
+              "Illustration, not a game screenshot: the everyday PC keys — talk, chat, menus and jump.",
+            paragraphs: [
+              "Learn these first: hold V to talk (push-to-talk by default), Y for the chatbox, Esc for the Quick Menu and Space to jump. The full list lives in VRChat's official controls documentation.",
+            ],
+          },
+          {
+            id: "sound-mic",
+            title: "Sound and microphone",
+            paragraphs: [
+              "The microphone is push-to-talk by default: hold V to speak. Watch the mic icon on your HUD — crossed out means muted.",
+              "Where: the audio section of the Settings picks the microphone device and adjusts volumes.",
+              "If others cannot hear you: check Windows' default recording device, the device selected inside VRChat, and that you are not muted — in that order.",
+            ],
           },
           {
             id: "keys-vr",
             title: "VR controller reference",
             media: "vr-controller",
+            caption:
+              "Illustration, not a game screenshot: a VR controller's trigger and grip areas.",
             paragraphs: [
-              "Mic and jump are most used; grabbing comes in front-trigger and side-grip variants.",
+              "In VR, the trigger interacts and the side grip grabs; thumbsticks move and turn, and the menu button opens the in-game menu. VRChat publishes no PICO button chart — PICO bindings come from SteamVR's controller settings.",
             ],
           },
         ],
@@ -925,28 +983,37 @@ demoTaskTitle: "Demo task",
             id: "open-urls",
             title: "Allow untrusted URLs",
             paragraphs: [
-              "Without this toggle, many worlds' videos, images and music will fail to load.",
+              "Where: the Settings, under Comfort & Safety. \"Allow Untrusted URLs\" is off by default; without it, many worlds' videos, images and music will not load.",
+              "Turn it on when you want world media to play, and stick to links from worlds and people you trust.",
             ],
           },
           {
             id: "personal-space",
-            title: "Personal space & portal confirmation",
+            title: "Personal space and portal confirmation",
             paragraphs: [
-              "Strangers who get too close are hidden automatically; entering someone else's portal asks for confirmation first.",
+              "Personal Space lives on the same settings page and is on by default: avatars that press too close are hidden automatically, and entering someone else's portal always asks for your confirmation first.",
             ],
           },
           {
             id: "trust",
-            title: "Trust ranks & avatar shield",
+            title: "Trust ranks and the safety shield",
             paragraphs: [
-              "Shield levels decide whose avatars and effects you see; you can hide anyone with one click if uncomfortable.",
+              "Nameplates show trust ranks, from Visitor up to Trusted User, while the Quick Menu is open. The Safety page's shield levels decide whose avatars and effects you see per rank — the default Normal level is a good starting point.",
+            ],
+          },
+          {
+            id: "mute-block",
+            title: "If someone bothers you: mute, hide, block",
+            paragraphs: [
+              "Where: open the Quick Menu and select the player. You can mute their voice, hide just their avatar, or block the user entirely.",
+              "If a situation feels wrong, leaving is always fine — respawn or return to your Home world from the Quick Menu.",
             ],
           },
         ],
       },
       devices: {
         title: "Device Tips",
-        intro: "Differences between PC, VR and mobile, plus settings for a smoother picture.",
+        intro: "PICO 4 Pro streaming over USB or Wi-Fi, reading this guide inside the headset, and optional eye tracking.",
         sections: [
           {
             id: "platforms",
@@ -956,17 +1023,77 @@ demoTaskTitle: "Demo task",
             ],
           },
           {
-            id: "tracking",
-            title: "Tracking & IK",
+            id: "pico-prepare",
+            title: "Before streaming: what to install",
             paragraphs: [
-              "Without trackers the game estimates poses with IK; occasional clipping while sitting is normal.",
+              "Where: your PC and the headset. On the PC, install SteamVR and PICO Connect from the official PICO site. PICO's current requirements are Windows 10 22H2 or later, 8 GB of RAM, and a GTX 1060 6GB / RX 480 class GPU or better.",
+              "On the headset, update PICO OS to the latest version — current PICO Connect needs PICO OS 5.11.2 or later, and eye tracking needs 5.9.0 or later — and install the PICO Connect app from the PICO Store. Headset activation itself follows PICO's official flow.",
+              "If the installer refuses: check the Windows version and free disk space first, then reinstall from the official page.",
             ],
           },
           {
-            id: "performance",
-            title: "Graphics & performance",
+            id: "pico-usb",
+            title: "USB streaming: connect and play",
+            media: "pico-usb",
+            caption:
+              "Illustration, not a software screenshot: the PICO 4 Pro linked to the PC over a USB cable.",
             paragraphs: [
-              "For stutter, first lower avatar display count and shadows; VRAM-heavy avatars can be limited.",
+              "Where: between the PC and the headset. Use a USB-C cable that carries data — USB 3 recommended; a charge-only cable will not work.",
+              "Do: open PICO Connect in the headset, choose the USB connection, and follow the pairing prompt. Once connected, SteamVR starts; launch VRChat from your library as usual.",
+              "You should see: the SteamVR status window report the headset and controllers ready, and the SteamVR environment appear inside the headset.",
+              "If it fails: an undetected headset usually means the cable or the port — try another cable and a USB port directly on the PC, then restart PICO Connect and SteamVR.",
+            ],
+          },
+          {
+            id: "pico-wifi",
+            title: "Wi-Fi streaming: connect and play",
+            media: "pico-wifi",
+            caption:
+              "Illustration, not a software screenshot: the PC and the headset on the same router over Wi-Fi.",
+            paragraphs: [
+              "Before connecting: plug the PC into the router with Ethernet if you can, put the headset on the router's 5 GHz Wi-Fi, and stay near the router — both devices must be on the same local network.",
+              "Do: open PICO Connect in the headset and pick your PC — current versions discover PCs on the network automatically — then connect and start VRChat as with USB.",
+              "You should see: the same ready states as USB streaming.",
+              "If it fails: a PC that never appears usually means two different networks or a firewall blocking PICO Connect — confirm both, then let the app through the firewall. Blurry or stuttering video means a weak wireless path: move closer to the router, switch to the 5 GHz band, or wire the PC.",
+            ],
+          },
+          {
+            id: "headset-guide",
+            title: "Read this guide inside the headset",
+            media: "steamvr-desktop",
+            caption:
+              "Illustration, not a software screenshot: reading this guide through SteamVR's desktop view.",
+            paragraphs: [
+              "Where: the SteamVR dashboard while streaming. Press the controller's menu button to raise the dashboard — PICO bindings come from SteamVR's controller settings — and choose the Desktop view.",
+              "Do: find the VUA guide overlay on the desktop, point at it with the controller ray, and click with the trigger to scroll and switch topics. Press the menu button again to close the dashboard and return to the game.",
+              "You should see: your PC desktop floating in front of you, with this guide readable and scrollable.",
+              "Note: this is SteamVR's desktop view, not a native VUA VR overlay.",
+              "If it fails: no dashboard means SteamVR is not running or the binding differs — check the SteamVR status window and controller bindings; if you cannot find the guide window, confirm the overlay is open on the PC.",
+            ],
+          },
+          {
+            id: "eye-tracking",
+            title: "Optional: PICO 4 Pro eye tracking",
+            media: "vrcft-flow",
+            caption:
+              "Illustration, not a software screenshot: eye data flowing from the headset through the tracking software to your avatar.",
+            paragraphs: [
+              "This is optional — skipping it changes nothing about normal play. The PICO 4 Pro carries eye and face tracking cameras, and the free VRCFaceTracking (VRCFT) app relays them to VRChat.",
+              "Headset: update PICO OS to 5.9.0 or later, enable Eye Tracking and Lip Tracking under the LAB tab in Settings, and run the headset's eye-tracking calibration.",
+              "PC: install VRCFT from Steam, open its Module Registry tab, and install the \"Pico4SAFTExtTrackingModule\".",
+              "Upstream's current PICO note: VRCFT's PICO 4 Pro guide asks you to set faceTrackingTransferProtocol to 2 and faceTrackingMode to 1 in PICO Connect's setting.json — a temporary fix that also keeps tracking alive while the microphone is in use. Follow VRCFT's current documentation for this step.",
+              "Order matters: connect PCVR over PICO Connect and reach SteamVR first, then start VRCFT and confirm the module initializes.",
+              "In VRChat: open the Action Menu with R, go to Options, OSC, and turn OSC on.",
+              "You should see: a suitable avatar's eyes follow your gaze and mirror your blinks. Most Av3.0 avatars already support basic eye movement; full face expressions need a VRCFT-compatible avatar. After 10 seconds without data, VRChat falls back to automatic blinking.",
+              "If it fails: eyes not moving means checking, in order, the OSC toggle, the module's initialization and the startup order; tracking that dies when the microphone runs points back to the setting.json fix above; and if VRCFT will not close, that is a known upstream issue — end its process.",
+            ],
+          },
+          {
+            id: "play-comfort",
+            title: "Tracking, IK and performance",
+            paragraphs: [
+              "Without extra trackers the game estimates poses with IK, so occasional clipping while sitting is normal.",
+              "For stutter, first lower the avatar display count and shadows; VRAM-heavy avatars can be hidden for you alone.",
             ],
           },
         ],
