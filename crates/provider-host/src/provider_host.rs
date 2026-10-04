@@ -5892,7 +5892,35 @@ fn catalog_ingest_library_page(
             library_type,
         );
         match warehouse.bdl.record_product_observation(&observation) {
-            Ok(_) => upserted += 1,
+            Ok(_) => {
+                upserted += 1;
+                // N5 静默下载捕获(BDL v0.4):同页逐文件直链观察,行内锚点由
+                // 库页解析器提取。商品观察刚落库,FK 天然满足;捕获失败如实
+                // 计入 rejected —— 缺位由下载期的补抓兜底,不阻塞目录同步
+                if !item.downloadables.is_empty() {
+                    let product_id = format!("booth:{}", item.native_product_id);
+                    let rows: Vec<(i64, String)> = item
+                        .downloadables
+                        .iter()
+                        .filter_map(|(id, label)| {
+                            id.parse::<i64>().ok().map(|parsed| (parsed, label.clone()))
+                        })
+                        .collect();
+                    if let Err(error) = warehouse.bdl.upsert_product_downloadables(
+                        &product_id,
+                        &rows,
+                        fetched_at,
+                        run_id,
+                        library_type,
+                    ) {
+                        rejected.push(json!({
+                            "index": index,
+                            "code": "vua.catalog.downloadables_capture_failed",
+                            "reason": error.to_string(),
+                        }));
+                    }
+                }
+            }
             Err(error) => rejected.push(json!({
                 "index": index,
                 "code": "vua.catalog.invalid_observation",

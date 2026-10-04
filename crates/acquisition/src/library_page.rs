@@ -67,6 +67,12 @@ pub struct LibraryPageItem {
     pub price_amount: Option<String>,
     pub item_url: Option<String>,
     pub thumbnail_url: Option<String>,
+    /// Per-file download anchors from the library row (N5 silent download,
+    /// 2026-10-05): `(stable downloadable id, verbatim anchor text)` in page
+    /// order, deduped by id. The href is a stable
+    /// `https://booth.pm/downloadables/{id}` — the signed CDN target lives
+    /// only behind a redirect at download time and is never captured here.
+    pub downloadables: Vec<(String, String)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -137,6 +143,10 @@ fn extract_library_rows(document: &Html) -> Vec<LibraryPageItem> {
     // 行内位于标题链接之后。向上找行容器再向内搜,避免误取相邻行。
     let shop_anchor =
         Selector::parse("a[href*='.booth.pm/']:not([href*='/items/'])").expect("static selector");
+    // 逐文件下载锚:稳定直链 /downloadables/{digits}(N5 静默下载捕获)。
+    // 同样以行容器为界,避免误取相邻行的文件链接
+    let download_anchor =
+        Selector::parse("a[href*='/downloadables/']").expect("static selector");
     let mut items: Vec<LibraryPageItem> = Vec::new();
     let mut index: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
 
@@ -164,6 +174,17 @@ fn extract_library_rows(document: &Html) -> Vec<LibraryPageItem> {
                 )
             })
             .unwrap_or((None, None));
+        let row_downloadables = row
+            .map(|row| {
+                row.select(&download_anchor)
+                    .filter_map(|link| {
+                        let id = downloadable_id_from_href(link.value().attr("href")?)?;
+                        let label = element_text(link);
+                        Some((id, label))
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
         // 标题拆尾缀:最后一个 "(xxx)" 段视为变体标记,前面的是规范标题。
         // 仅当括号在末尾且内有非空内容时拆;开头括号(如 "(無料)タイトル")不动
         let (canonical_name, variant_name) = match &text {
@@ -189,6 +210,11 @@ fn extract_library_rows(document: &Html) -> Vec<LibraryPageItem> {
                         .and_then(|img| img.value().attr("src"))
                         .and_then(|src| non_empty(Some(src)));
                 }
+                for (id, label) in row_downloadables {
+                    if !item.downloadables.iter().any(|(known, _)| known == &id) {
+                        item.downloadables.push((id, label));
+                    }
+                }
             }
             None => {
                 let thumbnail_url = element
@@ -196,6 +222,12 @@ fn extract_library_rows(document: &Html) -> Vec<LibraryPageItem> {
                     .next()
                     .and_then(|img| img.value().attr("src"))
                     .and_then(|src| non_empty(Some(src)));
+                let mut downloadables = Vec::new();
+                for (id, label) in row_downloadables {
+                    if !downloadables.iter().any(|(known, _)| known == &id) {
+                        downloadables.push((id, label));
+                    }
+                }
                 index.insert(native_product_id.clone(), items.len());
                 items.push(LibraryPageItem {
                     native_product_id,
@@ -208,6 +240,7 @@ fn extract_library_rows(document: &Html) -> Vec<LibraryPageItem> {
                     price_amount: None,
                     item_url: non_empty(Some(href)),
                     thumbnail_url,
+                    downloadables,
                 });
             }
         }
@@ -262,6 +295,8 @@ fn extract_browse_cards(document: &Html) -> Vec<LibraryPageItem> {
             price_amount: non_empty(value.attr("data-product-price")),
             item_url,
             thumbnail_url,
+            // 公开浏览卡无已购文件事实:恒空,不猜
+            downloadables: Vec::new(),
         });
     }
     items
@@ -270,6 +305,22 @@ fn extract_browse_cards(document: &Html) -> Vec<LibraryPageItem> {
 /// `/items/{digits}` → the digits; works for absolute and relative hrefs.
 fn product_id_from_href(href: &str) -> Option<String> {
     let start = href.find("/items/")? + "/items/".len();
+    let tail = &href[start..];
+    let end = tail
+        .find(|c: char| !c.is_ascii_digit())
+        .unwrap_or(tail.len());
+    if end == 0 {
+        None
+    } else {
+        Some(tail[..end].to_owned())
+    }
+}
+
+/// `/downloadables/{digits}` → the digits; absolute `https://booth.pm/...`
+/// and relative `/downloadables/...` both resolve. Non-digit tails or a
+/// missing marker yield None (the anchor is skipped, never guessed).
+fn downloadable_id_from_href(href: &str) -> Option<String> {
+    let start = href.find("/downloadables/")? + "/downloadables/".len();
     let tail = &href[start..];
     let end = tail
         .find(|c: char| !c.is_ascii_digit())
@@ -578,7 +629,11 @@ mod library_rows_tests {
 
     /// Real account-library row grammar (verified signed-in 2026-10-02;
     /// ids/titles anonymized): thumbnail anchor + title anchor per item,
-    /// shop links are not item links, `a[rel="next"]` pagination.
+    /// shop links are not item links, `a[rel="next"]` pagination. The
+    /// per-file download anchors (`/downloadables/{id}`) follow the
+    /// stable-link shape verified against third-party downloader tooling
+    /// 2026-10-05; real-run confirmation rides the N5 silent-download
+    /// slice.
     const ROWS: &str = r#"<!DOCTYPE html><html><body>
 <div id="js-library-search-header"></div>
 <div class="bg-white">
@@ -587,11 +642,15 @@ mod library_rows_tests {
     <div>
       <a class="no-underline" href="https://booth.pm/zh-cn/items/7463144"><div class="font-bold">Sample outfit A (shop-one)</div></a>
       <a href="https://shop-one.booth.pm/">shop-one</a>
+      <a href="https://booth.pm/downloadables/880001">Download</a>
+      <a href="/downloadables/880002">Download</a>
+      <a href="https://booth.pm/downloadables/880001">Download</a>
     </div>
   </div>
   <div class="flex gap-8 border-b">
     <a href="/zh-cn/items/5511003"><img src="https://booth.pximg.net/second.jpg"></a>
     <a class="no-underline" href="/zh-cn/items/5511003"><div class="font-bold">Sample gift B (shop-two)</div></a>
+    <div><a href="/downloadables/880003">Download</a></div>
   </div>
 </div>
 <nav><ul>
@@ -613,9 +672,22 @@ mod library_rows_tests {
         // 库行无品牌/价格事实:留空而不是猜
         assert_eq!(first.brand, None);
         assert_eq!(first.price_amount, None);
+        // 逐文件下载锚:行内提取、按 id 去重、绝对与相对 href 都收
+        assert_eq!(
+            first.downloadables,
+            vec![
+                ("880001".to_owned(), "Download".to_owned()),
+                ("880002".to_owned(), "Download".to_owned()),
+            ]
+        );
         let second = &page.items[1];
         assert_eq!(second.native_product_id, "5511003");
         assert_eq!(second.thumbnail_url.as_deref(), Some("https://booth.pximg.net/second.jpg"));
+        // 行容器为界:第二行的文件不串到第一行(880003 只属于 5511003)
+        assert_eq!(
+            second.downloadables,
+            vec![("880003".to_owned(), "Download".to_owned())]
+        );
     }
 
     #[test]
@@ -656,6 +728,17 @@ mod library_rows_tests {
         assert_eq!(product_id_from_href("/items/123/foo").as_deref(), Some("123"));
         assert_eq!(product_id_from_href("/items/abc"), None);
         assert_eq!(product_id_from_href("https://booth.pm/library"), None);
+    }
+
+    #[test]
+    fn downloadable_id_from_href_shapes() {
+        assert_eq!(
+            downloadable_id_from_href("https://booth.pm/downloadables/880001").as_deref(),
+            Some("880001")
+        );
+        assert_eq!(downloadable_id_from_href("/downloadables/42?x=1").as_deref(), Some("42"));
+        assert_eq!(downloadable_id_from_href("https://booth.pm/downloadables/abc").as_deref(), None);
+        assert_eq!(downloadable_id_from_href("https://booth.pm/items/123").as_deref(), None);
     }
 }
 

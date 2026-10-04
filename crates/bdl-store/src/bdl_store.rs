@@ -43,12 +43,13 @@ use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-pub const BDL_FORMAT_VERSION: &str = "0.3";
-const BDL_MIGRATION_VERSION: i64 = 4;
+pub const BDL_FORMAT_VERSION: &str = "0.4";
+const BDL_MIGRATION_VERSION: i64 = 5;
 const MIGRATION_001: &str = include_str!("../../../schemas/bdl/v0.1/001_initial.sql");
 const MIGRATION_002: &str = include_str!("../../../schemas/bdl/v0.2/002_dependency_observations.sql");
 const MIGRATION_003: &str = include_str!("../../../schemas/bdl/v0.3/003_library_type.sql");
 const MIGRATION_004: &str = include_str!("../../../schemas/bdl/v0.3/004_variant_name.sql");
+const MIGRATION_005: &str = include_str!("../../../schemas/bdl/v0.4/005_product_downloadables.sql");
 
 #[derive(Debug)]
 pub enum BdlStoreError {
@@ -1019,6 +1020,16 @@ impl BdlStore {
             transaction.execute_batch(MIGRATION_002)?;
             transaction.execute_batch(MIGRATION_003)?;
             transaction.execute_batch(MIGRATION_004)?;
+            transaction.execute_batch(MIGRATION_005)?;
+            transaction.pragma_update(None, "user_version", BDL_MIGRATION_VERSION)?;
+            transaction.commit()?;
+        }
+        if migration == 4 {
+            // Existing v0.3 database: 005 adds the product_downloadables
+            // table (additive CREATE, no rebuild) and bumps the stamp.
+            let transaction =
+                connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+            transaction.execute_batch(MIGRATION_005)?;
             transaction.pragma_update(None, "user_version", BDL_MIGRATION_VERSION)?;
             transaction.commit()?;
         }
@@ -1026,6 +1037,7 @@ impl BdlStore {
             let transaction =
                 connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
             transaction.execute_batch(MIGRATION_004)?;
+            transaction.execute_batch(MIGRATION_005)?;
             transaction.pragma_update(None, "user_version", BDL_MIGRATION_VERSION)?;
             transaction.commit()?;
         }
@@ -1036,6 +1048,7 @@ impl BdlStore {
                 connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
             transaction.execute_batch(MIGRATION_003)?;
             transaction.execute_batch(MIGRATION_004)?;
+            transaction.execute_batch(MIGRATION_005)?;
             transaction.pragma_update(None, "user_version", BDL_MIGRATION_VERSION)?;
             transaction.commit()?;
         }
@@ -1050,6 +1063,7 @@ impl BdlStore {
             transaction.execute_batch(MIGRATION_002)?;
             transaction.execute_batch(MIGRATION_003)?;
             transaction.execute_batch(MIGRATION_004)?;
+            transaction.execute_batch(MIGRATION_005)?;
             transaction.pragma_update(None, "user_version", BDL_MIGRATION_VERSION)?;
             transaction.commit()?;
         }
@@ -2271,6 +2285,69 @@ impl BdlStore {
         Ok(rows)
     }
 
+    /// 库页逐文件下载链接观察(v0.4,N5 静默下载切片):一次库页同步落一批。
+    /// 幂等:同 downloadable_id 重见只推进 last_seen_* 与 anchor_text(页面
+    /// 词面可能随语言变),first_seen_at 永不重写;文件从后续库页消失不删行
+    /// ——「最后一次被观察到在场」本身是事实。商品行必须已存在(FK),由
+    /// ingest 侧先落商品观察再落本表(同一同步页内天然满足)。
+    pub fn upsert_product_downloadables(
+        &self,
+        product_id: &str,
+        downloadables: &[(i64, String)],
+        observed_at: &str,
+        run_id: Option<&str>,
+        library_type: Option<&str>,
+    ) -> Result<(), BdlStoreError> {
+        let mut connection = self.connection.lock().expect("SQLite connection poisoned");
+        let transaction = connection.transaction()?;
+        {
+            let mut statement = transaction.prepare(
+                "INSERT INTO product_downloadables
+                   (downloadable_id, product_id, anchor_text,
+                    first_seen_at, last_seen_at, last_seen_run_id, library_type)
+                 VALUES (?1, ?2, ?3, ?4, ?4, ?5, ?6)
+                 ON CONFLICT(downloadable_id) DO UPDATE SET
+                   anchor_text = excluded.anchor_text,
+                   last_seen_at = excluded.last_seen_at,
+                   last_seen_run_id = excluded.last_seen_run_id,
+                   library_type = COALESCE(excluded.library_type, product_downloadables.library_type)",
+            )?;
+            for (downloadable_id, anchor_text) in downloadables {
+                statement.execute(rusqlite::params![
+                    downloadable_id,
+                    product_id,
+                    anchor_text,
+                    observed_at,
+                    run_id,
+                    library_type,
+                ])?;
+            }
+        }
+        transaction.commit()?;
+        Ok(())
+    }
+
+    /// 商品的已记录下载文件(N5 静默下载的读取面):按首次见到顺序原样出线,
+    /// 调用方决定全量或勾选;签名 CDN 地址永不在库,下载时现解析。
+    pub fn downloadables_for_product(
+        &self,
+        product_id: &str,
+    ) -> Result<Vec<(i64, String)>, BdlStoreError> {
+        let connection = self.connection.lock().expect("SQLite connection poisoned");
+        let mut statement = connection.prepare(
+            "SELECT downloadable_id, anchor_text
+             FROM product_downloadables
+             WHERE product_id = ?1
+             ORDER BY first_seen_at, downloadable_id",
+        )?;
+        let rows = statement
+            .query_map([product_id], |row| {
+                Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
     pub fn catalog_list(
         &self,
         params: &CatalogListParams,
@@ -2870,11 +2947,15 @@ mod tests {
         let migration: i64 = connection
             .pragma_query_value(None, "user_version", |row| row.get(0))
             .unwrap();
-        assert_eq!(migration, 4, "fresh databases are born v0.3 chain complete (001-004)");
+        assert_eq!(migration, 5, "fresh databases are born v0.4 chain complete (001-005)");
         let dep_table: i64 = connection
             .query_row("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'dependency_observations'", [], |row| row.get(0))
             .unwrap();
         assert_eq!(dep_table, 1, "the v0.2 table exists on a fresh store");
+        let dl_table: i64 = connection
+            .query_row("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'product_downloadables'", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(dl_table, 1, "the v0.4 table exists on a fresh store");
     }
 
     #[test]
