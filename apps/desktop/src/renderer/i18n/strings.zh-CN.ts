@@ -2666,12 +2666,6 @@ rolled_back: "已回滚",
     pendingCount: '还有 {count} 条确认等待处理',
   },
 
-  /** 模型生产首次进入覆盖层(假加载页;槽位为最终交付预留,见 ProductionIntroOverlay) */
-  productionIntro: {
-    title: "模型生产",
-    subtitle: "正在准备工作台…",
-    skip: "跳过",
-  },
   settings: {
     /** 实验性功能页(W15 重做形态,用户走查示意图 A/B):单卡=标题+副题+警示条
      *  +两行开关。行1「生成 VPM 包替代」=全局默认模式写面(bdl-commands v0.2 全局层

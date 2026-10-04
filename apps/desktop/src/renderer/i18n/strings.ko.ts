@@ -2641,11 +2641,6 @@ rolled_back: "롤백됨",
     pendingCount: "대기 중인 추가 확인: {count}개",
   },
 
-  productionIntro: {
-    title: "아바타 제작",
-    subtitle: "작업대를 준비하는 중…",
-    skip: "건너뛰기",
-  },
   settings: {
         /** 실험적 기능 페이지(W15 리워크, 사용자 워크스루 도식 A/B): 단일 카드=
      *  제목+부제+경고 띠+2줄 토글. 1행「VPM 생성 대체」= 전역 기본 모드 쓰기면

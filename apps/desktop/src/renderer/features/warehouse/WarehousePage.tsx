@@ -582,6 +582,18 @@ export function WarehousePage({
       active = false;
     };
   }, [remoteBrowser]);
+  // 登录在导入弹窗内嵌面板完成(修 2026-10-05):弹窗关闭即重探登录线索,
+  // 空态卡从登录引导翻为同步引导,无需切页重进
+  useEffect(() => {
+    if (importDialogOpen || !remoteBrowser) return;
+    let active = true;
+    void window.vua?.remoteContent?.signInHint().then((hint) => {
+      if (active) setSignInHint(hint);
+    });
+    return () => {
+      active = false;
+    };
+  }, [importDialogOpen, remoteBrowser]);
   const startCatalogSync = async (): Promise<void> => {
     const catalogSync = window.vua?.catalogSync;
     if (catalogSync === undefined) return;
@@ -1191,9 +1203,14 @@ export function WarehousePage({
                     action={
                       <Button
                         variant="default"
-                        onClick={() =>
-                          void window.vua?.remoteContent?.open({ url: BOOTH_SIGN_IN_URL })
-                        }
+                        onClick={() => {
+                          // 登录走素材导入弹窗的内嵌浏览面板(2026-10-05 修,
+                          // 孤儿视图第三例):面板是远程视图唯一控制面(导航条
+                          // /关闭);直连 remoteContent.open 会留下无导航条的
+                          // 全屏视图,用户被锁在登录页外
+                          setImportInitialUrl(BOOTH_SIGN_IN_URL);
+                          setImportDialogOpen(true);
+                        }}
                       >
                         {copy.catalogSync.signInAction}
                       </Button>

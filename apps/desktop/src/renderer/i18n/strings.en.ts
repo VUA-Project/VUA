@@ -2715,11 +2715,6 @@ demoTaskTitle: "Demo task",
     pendingCount: "More confirmations waiting: {count}",
   },
 
-  productionIntro: {
-    title: "Avatar Production",
-    subtitle: "Preparing the workbench…",
-    skip: "Skip",
-  },
   settings: {
     /** Experimental page (W15 rework, user walkthrough mockups A/B): one card
      *  = title + subtitle + warning strip + two toggle rows. Row 1 “Generate

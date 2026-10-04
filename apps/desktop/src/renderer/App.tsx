@@ -66,14 +66,9 @@ import { OnboardingPage, type OnboardingResult } from "./features/onboarding/Onb
 import { NavigationConfirmOverlay } from "./app/NavigationConfirmOverlay.tsx";
 import { AppTour } from "./features/tour/AppTour.tsx";
 import { PackagesPage } from "./features/packages/PackagesPage.tsx";
-import { ProductionIntroOverlay } from "./features/production/ProductionIntroOverlay.tsx";
 import { RecipePage } from "./features/recipe/RecipePage.tsx";
 import { ReleasePage } from "./features/release/ReleasePage.tsx";
 import { InspectionPage } from "./features/inspection/InspectionPage.tsx";
-import {
-  nextIntroPhase,
-  type ProductionIntroPhase,
-} from "./features/production/production-intro-state.ts";
 import { Taskbar } from "./features/task-center/Taskbar.tsx";
 import { NotificationPopover } from "./features/task-center/NotificationPopover.tsx";
 import { ResourceMonitor } from "./features/resource-monitor/ResourceMonitor.tsx";
@@ -911,13 +906,6 @@ function AppShell({
     // navigate 由 App 每次渲染新建;命令表重建成本低,无需缓存
   }, [navigate, resolvedTheme, themeOverride]);
 
-  // 模型生产假加载页(需求 2026-08):本次启动首次进入 production 模块时覆盖,
-  // 固定时长/点击/Escape 退出;真实初始化任务接入后由任务状态驱动(G10)
-  const [introPhase, setIntroPhase] = useState<ProductionIntroPhase>("idle");
-  useEffect(() => {
-    setIntroPhase((phase) => nextIntroPhase(phase, activeModule === "production"));
-  }, [activeModule]);
-
   // 沉浸式自定义标题栏:仅在 Electron 壳内渲染窗口控制(浏览器预览无 preload,不渲染)
   const inShell = window.vua !== undefined;
 
@@ -1266,9 +1254,6 @@ function AppShell({
               steamVRRunning,
             }, uiRoot, onUiRootChange)}
           </div>
-          {introPhase === "showing" ? (
-            <ProductionIntroOverlay onDone={() => setIntroPhase("done")} />
-          ) : null}
         </main>
       </div>
       {/* 任务中心(ui-ux §4.2 底部入口):capability 非 ready 时组件自身不渲染 */}
