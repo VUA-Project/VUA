@@ -454,10 +454,25 @@ function toApplicationRequest(
       return { ...base, kind: "command", method: "warehouse.generateVpm", commandId: request.params.commandId, params: { warehouseItemId: request.params.warehouseItemId } };
     case "warehouse.deleteOriginals":
       return { ...base, kind: "command", method: "warehouse.deleteOriginals", commandId: request.params.commandId, params: { warehouseItemId: request.params.warehouseItemId } };
+    // N5 收口:按商品删除本地原件(卡片右键),params 闭集 {productId}
+    case "warehouse.deleteOriginalsByProduct":
+      return { ...base, kind: "command", method: "warehouse.deleteOriginalsByProduct", commandId: request.params.commandId, params: { productId: request.params.productId } };
     case "warehouse.setGlobalDefaultMode":
       return { ...base, kind: "command", method: "warehouse.setGlobalDefaultMode", commandId: request.params.commandId, params: { mode: request.params.mode } };
     case "warehouse.import":
-      return { ...base, kind: "command", method: "warehouse.import", commandId: request.params.commandId, params: { sourceFolders: [...request.params.sourceFolders] } };
+      // v0.5 实验选项原样转发:缺席即不发送(可选键闭集纪律)
+      return {
+        ...base,
+        kind: "command",
+        method: "warehouse.import",
+        commandId: request.params.commandId,
+        params: {
+          sourceFolders: [...request.params.sourceFolders],
+          ...(request.params.autoGenerate === undefined
+            ? {}
+            : { autoGenerate: request.params.autoGenerate }),
+        },
+      };
     // bdl-commands v0.4 下载采纳(IMP-3):仅身份请求原样映射
     case "warehouse.importDownloads":
       return { ...base, kind: "command", method: "warehouse.importDownloads", commandId: request.params.commandId, params: { downloadIds: [...request.params.downloadIds] } };

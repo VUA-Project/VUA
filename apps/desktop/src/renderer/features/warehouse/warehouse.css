@@ -1030,3 +1030,60 @@
   padding-top: var(--vua-space-2);
   border-top: 1px solid var(--vua-border, rgba(255, 255, 255, 0.1));
 }
+
+/* 适配依赖小窗(N5):观察行 = 名义 + 版本 + 类别章 + 逐字证据引文 */
+.vua-compatible-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-3);
+  min-width: 340px;
+  max-width: 480px;
+}
+
+.vua-compatible-items__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-2);
+}
+
+.vua-compatible-items__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-1);
+  padding: var(--vua-space-2) var(--vua-space-3);
+  border: 1px solid var(--vua-border, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+}
+
+.vua-compatible-items__main {
+  display: flex;
+  align-items: baseline;
+  gap: var(--vua-space-2);
+  flex-wrap: wrap;
+}
+
+.vua-compatible-items__name {
+  font-weight: 500;
+}
+
+.vua-compatible-items__kind {
+  font-size: 0.75rem;
+  padding: 0 var(--vua-space-2);
+  border: 1px solid var(--vua-border, rgba(255, 255, 255, 0.1));
+  border-radius: 999px;
+  color: var(--vua-text-secondary);
+  white-space: nowrap;
+}
+
+.vua-compatible-items__row .vua-caption {
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}

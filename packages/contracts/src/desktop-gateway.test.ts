@@ -553,6 +553,7 @@ describe("gateway guard covers every declared method (regression: silent guard g
     "warehouse.setArtifactMode": { warehouseItemId: "wh-entry-1", mode: null, commandId: "cmd-6" },
     "warehouse.generateVpm": { warehouseItemId: "wh-entry-1", commandId: "cmd-7" },
     "warehouse.deleteOriginals": { warehouseItemId: "wh-entry-1", commandId: "cmd-8" },
+    "warehouse.deleteOriginalsByProduct": { productId: "booth:6584744", commandId: "cmd-8b" },
     "warehouse.setGlobalDefaultMode": { mode: "generate_vpm", commandId: "cmd-9" },
     "warehouse.import": { sourceFolders: ["C:/material"], commandId: "cmd-10" },
     "warehouse.importDownloads": { downloadIds: ["dl-1"], commandId: "cmd-11" },

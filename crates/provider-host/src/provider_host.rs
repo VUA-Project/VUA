@@ -2063,7 +2063,60 @@ fn warehouse_request(
         "warehouse.setGlobalDefaultMode" => {
             warehouse_set_global_default_mode(warehouse, request, request_id, correlation_id)
         }
-        "warehouse.generateVpm" | "warehouse.deleteOriginals" => {
+        "warehouse.generateVpm" => {
+            warehouse_submit_task(warehouse, method, request, request_id, correlation_id)
+        }
+        // N5 收口(卡片右键「删除本地文件」):按商品反查全部仓储条目,逐条
+        // 提交条目级 delete_originals(独立审计任务,服务端守卫照常);回执是
+        // 受理计数事实,非任务受理信封——各任务进度经任务面呈现
+        "warehouse.deleteOriginalsByProduct" => {
+            let product_id = match request.pointer("/params/productId").and_then(Value::as_str) {
+                Some(id) if !id.is_empty() => id.to_owned(),
+                _ => return warehouse_invalid_params(request_id, correlation_id),
+            };
+            let item_ids = match warehouse.bdl.warehouse_item_ids_for_product(&product_id) {
+                Ok(ids) => ids,
+                Err(_) => return warehouse_store_failed(request_id, correlation_id),
+            };
+            if item_ids.is_empty() {
+                return FrameOutcome::Response(application_error(
+                    request_id,
+                    correlation_id,
+                    "vua.warehouse.entry_not_found",
+                    "errors.warehouse.entryNotFound",
+                    "validation",
+                ));
+            }
+            let mut submitted = 0u64;
+            for item_id in &item_ids {
+                let spec = vua_acquisition::warehouse_maintenance::DeleteOriginalsTaskSpec {
+                    correlation_id: correlation_id.to_owned(),
+                    warehouse_item_id: item_id.clone(),
+                    global_default: warehouse.global_default,
+                };
+                match vua_acquisition::warehouse_maintenance::submit_delete_originals(
+                    &warehouse.runtime,
+                    warehouse.bdl.clone(),
+                    spec,
+                    None,
+                ) {
+                    Ok(_) => submitted += 1,
+                    Err(_) => continue,
+                }
+            }
+            FrameOutcome::Response(application_success(
+                request_id,
+                json!({
+                    "schemaVersion": BDL_COMMANDS_SCHEMA_VERSION,
+                    "operation": "warehouse.deleteOriginalsByProduct",
+                    "result": {
+                        "productId": product_id,
+                        "deletedItemCount": submitted,
+                    },
+                }),
+            ))
+        }
+        "warehouse.deleteOriginals" => {
             warehouse_submit_task(warehouse, method, request, request_id, correlation_id)
         }
         "warehouse.import" => {

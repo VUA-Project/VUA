@@ -36,6 +36,8 @@ import {
 import { useDebugMode } from "../../app/debug-mode.ts";
 import { useCardSpotlight } from "./use-card-spotlight.ts";
 import type { RecipeAssetRef } from "../../gateway/recipe-port.ts";
+import { AddToRecipeDialog } from "./AddToRecipeDialog.tsx";
+import { CompatibleItemsDialog } from "./CompatibleItemsDialog.tsx";
 import { registerTaskIdentity } from "../../gateway/task-identity.ts";
 import { CardAlbumMedia, DetailAlbum } from "./WarehouseAlbum.tsx";
 import { ArtifactCard, EntryDetail } from "./WarehouseAcquire.tsx";
@@ -512,6 +514,13 @@ export function WarehousePage({
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
   const [recipeDialogOpen, setRecipeDialogOpen] = useState(false);
   const [contextSelection, setContextSelection] = useState<readonly RecipeAssetRef[]>([]);
+  // 适配依赖小窗(N5):query 即打开意图,null = 关闭
+  const [compatibleQuery, setCompatibleQuery] = useState<{
+    productId: string;
+    title: string;
+  } | null>(null);
+  // 按商品删除受理回执(诚实短提示;各条目任务进度在通知中心呈现)
+  const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -708,11 +717,8 @@ export function WarehousePage({
   const openCardMenu = (event: ReactMouseEvent<HTMLElement>, item: CatalogProductSummary) => {
     event.preventDefault();
     const marked = lifecycleOf(lifecycle, item.productId).purchase === "user_confirmed";
-    setCardMenu({
-      x: event.clientX,
-      y: event.clientY,
-      items: [
-        { id: "open", label: copy.card.detailsCta, onSelect: () => setSelectedId(item.productId) },
+    const menuItems: ContextMenuState["items"] = [
+      { id: "open", label: copy.card.detailsCta, onSelect: () => setSelectedId(item.productId) },
         {
           id: "download",
           label: copy.cardMenu.download,
@@ -735,18 +741,44 @@ export function WarehousePage({
             setRecipeDialogOpen(true);
           },
         },
+        ...(item.importedArtifacts > 0
+          ? [{
+              id: "deleteLocal",
+              label: copy.cardMenu.deleteLocal,
+              onSelect: () => {
+                if (!window.confirm(copy.cardMenu.deleteConfirm)) return;
+                void gateway.warehouseCommands
+                  .deleteOriginalsByProduct(item.productId)
+                  .then((outcome) => {
+                    setDeleteNotice(
+                      outcome.ok && "deleted" in outcome
+                        ? format(copy.cardMenu.deleteSubmittedHint, { count: outcome.deleted.deletedItemCount })
+                        : copy.cardMenu.deleteFailedHint,
+                    );
+                  })
+                  .catch(() => setDeleteNotice(copy.cardMenu.deleteFailedHint));
+              },
+            }]
+          : []),
         {
-          id: "togglePurchased",
-          label: marked ? copy.card.unmarkPurchased : copy.card.markPurchased,
-          onSelect: () =>
-            setLifecycle((prev) => {
-              const next = setPurchaseMark(prev, item.productId, !marked);
-              saveLifecycle(next);
-              return next;
-            }),
+          id: "showCompatible",
+          label: copy.cardMenu.showCompatible,
+          onSelect: () => {
+            setCompatibleQuery({ productId: item.productId, title: item.title ?? item.productId });
+          },
         },
-      ],
-    });
+      {
+        id: "togglePurchased",
+        label: marked ? copy.card.unmarkPurchased : copy.card.markPurchased,
+        onSelect: () =>
+          setLifecycle((prev) => {
+            const next = setPurchaseMark(prev, item.productId, !marked);
+            saveLifecycle(next);
+            return next;
+          }),
+      },
+    ];
+    setCardMenu({ x: event.clientX, y: event.clientY, items: menuItems });
   };
 
   return (
@@ -824,6 +856,9 @@ export function WarehousePage({
                       ? copy.catalogSync.completedHint
                       : copy.catalogSync.failedHint}
             </span>
+          ) : null}
+          {deleteNotice !== null ? (
+            <span className="vua-caption vua-text-secondary" role="status">{deleteNotice}</span>
           ) : null}
         </div>
         {dataSource === "fixture" ? (
@@ -1188,6 +1223,19 @@ export function WarehousePage({
             进度归任务中心;模态滞留被用户视作整屏卡死的行为终止。 */}
         <ImportPage onRequestClose={() => setImportDialogOpen(false)} />
       </ContentDialog>
+      <AddToRecipeDialog
+        open={recipeDialogOpen}
+        onClose={() => setRecipeDialogOpen(false)}
+        selections={contextSelection}
+      />
+      <CompatibleItemsDialog
+        query={compatibleQuery}
+        onClose={() => setCompatibleQuery(null)}
+        onSelectProduct={(productId) => {
+          setCompatibleQuery(null);
+          setSelectedId(productId);
+        }}
+      />
     </div>
   );
 }

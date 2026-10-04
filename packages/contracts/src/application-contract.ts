@@ -2024,6 +2024,13 @@ export interface WarehouseDeleteOriginalsCommandV01 extends ApplicationRequestBa
   readonly commandId: string;
   readonly params: { readonly warehouseItemId: string };
 }
+
+export interface WarehouseDeleteByProductCommandV05 extends ApplicationRequestBaseV01 {
+  readonly kind: "command";
+  readonly method: "warehouse.deleteOriginalsByProduct";
+  readonly commandId: string;
+  readonly params: { readonly productId: string };
+}
 /** 全局默认产物模式写命令(bdl-commands v0.2 全局层,W14/W15):同步写 BDL
  *  bdl_meta;无 null——全局默认恒有值,缺/null/词表外 = 参数违反 */
 export interface WarehouseSetGlobalDefaultModeCommandV02 extends ApplicationRequestBaseV01 {
@@ -2799,6 +2806,7 @@ export type ApplicationRequestV01 =
   | JobExecuteCommandV02
   | WarehouseGenerateVpmCommandV01
   | WarehouseDeleteOriginalsCommandV01
+  | WarehouseDeleteByProductCommandV05
   | ReleaseOpenForHandoffCommandV02
   | ReleaseOpenForInspectionCommandV02
   | RecipeExportProjectDraftQueryV01
@@ -3559,6 +3567,12 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
         || value.params.mode === "use_original_unitypackage"
         || value.params.mode === "generate_vpm");
   }
+  if (value.kind === "command" && value.method === "warehouse.deleteOriginalsByProduct") {
+    return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "commandId", "params"])
+      && isIdentifier(value.commandId)
+      && hasExactKeys(value.params, ["productId"])
+      && isIdentifier(value.params.productId);
+  }
   if (value.kind === "command" && value.method === "warehouse.deleteOriginals") {
     return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "commandId", "params"])
       && isIdentifier(value.commandId)
@@ -3586,11 +3600,15 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
       && (value.params.mode === "use_original_unitypackage"
         || value.params.mode === "generate_vpm");
   }
-  // bdl-commands v0.3 导入(W19):params 闭集 = sourceFolders,非空字符串数组
+  // bdl-commands v0.3 导入(W19)+ v0.5 可选 autoGenerate(N5 实验选项):
+  // params 闭集 = sourceFolders ± autoGenerate(boolean),非空字符串数组
   if (value.kind === "command" && value.method === "warehouse.import") {
-    return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "commandId", "params"])
-      && isIdentifier(value.commandId)
-      && hasExactKeys(value.params, ["sourceFolders", "autoGenerate"])
+    if (!hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "commandId", "params"])
+      || !isIdentifier(value.commandId)) return false;
+    const keys = Object.keys(value.params).sort();
+    return (keys.length === 1 || (keys.length === 2 && keys.includes("autoGenerate")))
+      && keys.includes("sourceFolders")
+      && (value.params.autoGenerate === undefined || typeof value.params.autoGenerate === "boolean")
       && Array.isArray(value.params.sourceFolders)
       && value.params.sourceFolders.length > 0
       && value.params.sourceFolders.every(

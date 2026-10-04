@@ -2251,6 +2251,26 @@ impl BdlStore {
             .flatten()
     }
 
+    /// 按商品 ID 反查关联的仓库条目 ID(经 artifact_mappings → artifact_copies)。
+    /// N5 删除本地文件用:catalog 卡右键 → 找到本地条目 → 删原件。
+    pub fn warehouse_item_ids_for_product(
+        &self,
+        product_id: &str,
+    ) -> Result<Vec<String>, BdlStoreError> {
+        let connection = self.connection.lock().expect("SQLite connection poisoned");
+        let mut statement = connection.prepare(
+            "SELECT DISTINCT ac.warehouse_item_id
+             FROM artifact_copies ac
+             JOIN artifact_mappings am ON ac.artifact_sha256 = am.artifact_sha256
+             WHERE am.product_id = ?1
+             ORDER BY ac.warehouse_item_id",
+        )?;
+        let rows = statement
+            .query_map([product_id], |row| row.get::<_, String>(0))?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
     pub fn catalog_list(
         &self,
         params: &CatalogListParams,

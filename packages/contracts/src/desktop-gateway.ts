@@ -311,6 +311,13 @@ export interface WarehouseDeleteOriginalsRequestV1 {
   readonly method: "warehouse.deleteOriginals";
   readonly params: { readonly warehouseItemId: string; readonly commandId: string };
 }
+
+export interface WarehouseDeleteByProductRequestV1 {
+  readonly schemaVersion: 1;
+  readonly requestId: string;
+  readonly method: "warehouse.deleteOriginalsByProduct";
+  readonly params: { readonly productId: string; readonly commandId: string };
+}
 /** 全局默认产物模式写入口(bdl-commands v0.2 全局层,W14/W15) */
 export interface WarehouseSetGlobalDefaultModeRequestV1 {
   readonly schemaVersion: 1;
@@ -438,7 +445,12 @@ export interface WarehouseImportRequestV1 {
   readonly schemaVersion: 1;
   readonly requestId: string;
   readonly method: "warehouse.import";
-  readonly params: { readonly sourceFolders: readonly string[]; readonly commandId: string };
+  /** v0.5 实验选项:缺席 = 仅导入;true = 导入完成逐条目制成 VPM 包 */
+  readonly params: {
+    readonly sourceFolders: readonly string[];
+    readonly autoGenerate?: boolean;
+    readonly commandId: string;
+  };
 }
 
 /** warehouse.importDownloads 下载采纳入口(bdl-commands v0.4,IMP-3):仅身份 */
@@ -932,6 +944,7 @@ export type DesktopGatewayRequestV1 =
   | WarehouseSetArtifactModeRequestV1
   | WarehouseGenerateVpmRequestV1
   | WarehouseDeleteOriginalsRequestV1
+  | WarehouseDeleteByProductRequestV1
   | WarehouseSetGlobalDefaultModeRequestV1
   | WarehouseImportRequestV1
   | WarehouseImportDownloadsRequestV1
@@ -1011,6 +1024,7 @@ export const DESKTOP_GATEWAY_METHOD_KINDS = {
   "warehouse.setArtifactMode": "command",
   "warehouse.generateVpm": "command",
   "warehouse.deleteOriginals": "command",
+  "warehouse.deleteOriginalsByProduct": "command",
   "warehouse.setGlobalDefaultMode": "command",
   "warehouse.import": "command",
   "warehouse.importDownloads": "command",
@@ -1893,6 +1907,16 @@ export function isDesktopGatewayRequestV1(value: unknown): value is DesktopGatew
           || value.params.mode === "generate_vpm")
         && isIdentifier(value.params.commandId);
     case "warehouse.generateVpm":
+      return hasExactKeys(value, REQUEST_KEYS)
+        && hasExactKeys(value.params, ["warehouseItemId", "commandId"])
+        && isIdentifier(value.params.warehouseItemId)
+        && isIdentifier(value.params.commandId);
+    // N5 收口:按商品删除本地原件(右键动作),params 闭集 {productId, commandId}
+    case "warehouse.deleteOriginalsByProduct":
+      return hasExactKeys(value, REQUEST_KEYS)
+        && hasExactKeys(value.params, ["productId", "commandId"])
+        && isIdentifier(value.params.productId)
+        && isIdentifier(value.params.commandId);
     case "warehouse.deleteOriginals":
       return hasExactKeys(value, REQUEST_KEYS)
         && hasExactKeys(value.params, ["warehouseItemId", "commandId"])
@@ -1906,15 +1930,22 @@ export function isDesktopGatewayRequestV1(value: unknown): value is DesktopGatew
           || value.params.mode === "generate_vpm")
         && isIdentifier(value.params.commandId);
     // bdl-commands v0.3 导入(W19):非空字符串数组
-    case "warehouse.import":
+    // bdl-commands v0.5(N5 实验选项):autoGenerate 可选键,在场必须 boolean;
+    // 闭集 = sourceFolders + commandId ± autoGenerate(镜像 generateVpm ±
+    // importCorrelationId 先例:可选键缺席即不发送)
+    case "warehouse.import": {
+      const keys = Object.keys(value.params).sort();
       return hasExactKeys(value, REQUEST_KEYS)
-        && hasExactKeys(value.params, ["sourceFolders", "autoGenerate", "commandId"])
+        && (keys.length === 2 || (keys.length === 3 && keys.includes("autoGenerate")))
+        && keys.includes("sourceFolders")
+        && keys.includes("commandId")
         && (value.params.autoGenerate === undefined || typeof value.params.autoGenerate === "boolean")
         && Array.isArray(value.params.sourceFolders)
         && value.params.sourceFolders.length > 0
         && value.params.sourceFolders.every(
           (folder: unknown) => typeof folder === "string" && folder.length > 0)
         && isIdentifier(value.params.commandId);
+    }
     // bdl-commands v0.4 下载采纳(IMP-3):仅身份,非空字符串数组
     case "warehouse.importDownloads":
       return hasExactKeys(value, REQUEST_KEYS)

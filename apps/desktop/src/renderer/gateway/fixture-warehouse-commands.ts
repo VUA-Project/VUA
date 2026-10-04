@@ -144,6 +144,15 @@ export function createFixtureWarehouseCommands(
       return Promise.resolve({ ok: true, accepted: { taskId, correlationId } });
     },
 
+    // N5 收口:fixture 仓储无 BOOTH 商品映射,按商品删除恒答事实性未命中
+    // (演示卡片墙 importedArtifacts 恒 0,菜单不出现,此臂只保类型完整)
+    deleteOriginalsByProduct: () => {
+      return Promise.resolve(applicationError(
+        "vua.warehouse.entry_not_found",
+        "errors.warehouse.entryNotFound",
+      ));
+    },
+
     // W14 v0.2 全局层(演示语义):同步写入演示状态并回读持久事实(非回显)
     setGlobalDefaultMode: (mode) => {
       fixtureGlobalDefault = mode;
