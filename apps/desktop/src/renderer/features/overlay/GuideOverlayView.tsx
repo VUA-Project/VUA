@@ -18,13 +18,19 @@
  *
  * 首玩 B 切片(定位与阅读恢复):
  * - 初始落点:加载查询的明确定位 > 上次阅读位置 > 开始页;
+ * - 明确定位单次消费:查询段落位后从地址栏剥离,IPC 定位请求应用后
+ *   按 nonce 回执清除——状态页往返/重挂载一律恢复最新阅读位置,
+ *   旧定位不得重放(评审 P2);
  * - 定位请求(guideRequest 属性,经 Main 的 guide-target 事件转发):
  *   明确步骤以步骤为准;null = 普通打开,恢复上次阅读位置;未知词表值
  *   经 normalizeGuideTarget 安全回退;
  * - 手动切主题 = 从主题开头阅读;当前主题 chip 在切换条内保持可见
  *   (只横向滚动切换条,不动正文滚动);
  * - 阅读位置随切主题/定位/滚动(去抖)持久化:只存 {topic, section?},
- *   切到状态页再返回、收起再打开、窗口重建均不丢失。
+ *   切到状态页再返回、收起再打开、窗口重建均不丢失;
+ * - 待滚动标记活到动画帧执行时刻,滚动未到位有界重试
+ *   (schedulePendingGuideScroll):StrictMode 双调用与首帧布局未长开的
+ *   dev 形态下首次定位照常滚动(评审 P2 回归)。
  */
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { GuideTargetV1 } from "@vua/contracts";
@@ -41,8 +47,10 @@ import {
   normalizeGuideTarget,
   parseGuideTargetFromSearch,
   saveGuideReading,
+  stripGuideTargetFromLocation,
   type GuideTarget,
 } from "../guide/guide-target.ts";
+import { schedulePendingGuideScroll } from "./pending-guide-scroll.ts";
 
 const GUIDE_PANEL_ID = "guide-overlay-panel";
 const guideTabId = (topic: GuideTopicId) => `guide-overlay-tab-${topic}`;
@@ -59,7 +67,23 @@ export function initialGuideTarget(search: string, stored: GuideTarget | null): 
   return parseGuideTargetFromSearch(search) ?? stored ?? { topic: "guide-start" };
 }
 
-export function GuideOverlayView({ guideRequest }: { guideRequest?: GuideRequest | null }) {
+/** 定位请求回执清除判定(纯函数,可测):只清除已被应用的那一条,
+ *  之后到达的新请求不受影响(评审 P2:旧请求不得在重挂载时重复消费) */
+export function shouldClearGuideRequest(
+  current: { readonly nonce: number } | null,
+  ackedNonce: number,
+): boolean {
+  return current !== null && current.nonce === ackedNonce;
+}
+
+export function GuideOverlayView({
+  guideRequest,
+  onGuideRequestApplied,
+}: {
+  guideRequest?: GuideRequest | null;
+  /** 定位请求已应用的回执(按 nonce 清除,防重挂载重放) */
+  onGuideRequestApplied?: (nonce: number) => void;
+}) {
   const copy = strings.guide;
   const [initialTarget] = useState(() =>
     initialGuideTarget(window.location.search, loadGuideReading()),
@@ -78,20 +102,26 @@ export function GuideOverlayView({ guideRequest }: { guideRequest?: GuideRequest
 
   const scroller = () => panelRef.current?.closest(".vua-overlay__body");
 
-  const scrollBodyTo = (top: number) => {
+  const scrollBodyTo = (top: number): boolean => {
     const body = scroller();
-    if (body) body.scrollTop = top;
+    if (!body) return false;
+    body.scrollTop = top;
+    return Math.abs(body.scrollTop - top) <= 2;
   };
 
-  const scrollToSection = (section: string) => {
+  const scrollToSection = (section: string): boolean => {
     const body = scroller();
     const anchor = panelRef.current?.querySelector(`#${guideSectionId(section)}`);
-    if (!body || !anchor) return;
-    body.scrollTop =
+    if (!body || !anchor) return false;
+    const desired = Math.max(
+      0,
       anchor.getBoundingClientRect().top -
-      body.getBoundingClientRect().top +
-      body.scrollTop -
-      8;
+        body.getBoundingClientRect().top +
+        body.scrollTop -
+        8,
+    );
+    body.scrollTop = desired;
+    return Math.abs(body.scrollTop - desired) <= 2;
   };
 
   /** 应用定位(显式步骤或恢复值):切主题、渲染后滚动、记为当前阅读位置 */
@@ -123,23 +153,31 @@ export function GuideOverlayView({ guideRequest }: { guideRequest?: GuideRequest
     selectTopic(next, true);
   };
 
-  // 初始落点记为当前阅读位置(首帧一次的显式定位覆盖旧值)
+  // 首帧一次:初始落点记为当前阅读位置;明确定位查询段单次消费——
+  // 落位后从地址栏剥离,之后的状态页往返/重挂载按最新阅读位置恢复
   useEffect(() => {
     saveGuideReading(initialTarget);
+    stripGuideTargetFromLocation();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅首帧一次
   }, []);
 
   // 渲染提交后执行待滚动(初始分节 / 定位 / 手动切主题开头);
-  // 依赖 scrollNonce:同主题内换分节(setTopic 同值不重渲染)也必然触发
+  // 依赖 scrollNonce:同主题内换分节(setTopic 同值不重渲染)也必然触发;
+  // 标记活到动画帧执行时刻(schedulePendingGuideScroll 的 StrictMode 纪律)
   useEffect(() => {
     if (pendingScroll.current === null) return;
-    const target = pendingScroll.current;
-    pendingScroll.current = null;
-    const frame = requestAnimationFrame(() => {
-      if (target === "top") scrollBodyTo(0);
-      else scrollToSection(target);
-    });
-    return () => cancelAnimationFrame(frame);
+    return schedulePendingGuideScroll(
+      {
+        read: () => pendingScroll.current,
+        clear: () => {
+          pendingScroll.current = null;
+        },
+        scrollBodyTo,
+        scrollToSection,
+      },
+      (callback) => requestAnimationFrame(callback),
+      (id) => cancelAnimationFrame(id),
+    );
   }, [topic, scrollNonce]);
 
   // 当前主题 chip 在切换条内保持可见:只横向滚动切换条,不动正文滚动
@@ -152,7 +190,8 @@ export function GuideOverlayView({ guideRequest }: { guideRequest?: GuideRequest
   }, [topic]);
 
   // 定位请求(Main 的 guide-target 事件):明确步骤以步骤为准;
-  // null = 普通打开,恢复上次阅读位置;未知词表值安全回退
+  // null = 普通打开,恢复上次阅读位置;未知词表值安全回退。
+  // 应用后按 nonce 回执清除——旧请求不得在重挂载时重复消费(评审 P2)
   useEffect(() => {
     if (guideRequest == null || guideRequest.nonce === appliedNonce.current) return;
     appliedNonce.current = guideRequest.nonce;
@@ -161,7 +200,8 @@ export function GuideOverlayView({ guideRequest }: { guideRequest?: GuideRequest
         ? (loadGuideReading() ?? { topic: "guide-start" })
         : normalizeGuideTarget(guideRequest.target),
     );
-  }, [guideRequest]);
+    onGuideRequestApplied?.(guideRequest.nonce);
+  }, [guideRequest, onGuideRequestApplied]);
 
   // 滚动跟踪(去抖 150ms):正文当前分节记为阅读位置;只存 {topic, section?}
   useEffect(() => {

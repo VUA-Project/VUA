@@ -31,7 +31,7 @@ import { formatDateTime } from "../../i18n/index.ts";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { Icon } from "@vua/design-system";
 import { overlayPort } from "./overlay-port-instance.ts";
-import { GuideOverlayView, type GuideRequest } from "./GuideOverlayView.tsx";
+import { GuideOverlayView, shouldClearGuideRequest, type GuideRequest } from "./GuideOverlayView.tsx";
 import {
   isOverlayView,
   parseOverlayView,
@@ -120,6 +120,13 @@ export function DesktopOverlaySurface() {
       guideRequestNonce.current += 1;
       setGuideRequest({ target, nonce: guideRequestNonce.current });
     });
+  }, []);
+
+  // 定位请求应用回执:只清除已被应用的那一条(之后到达的新请求保留)
+  const ackGuideRequest = useCallback((nonce: number) => {
+    setGuideRequest((current) =>
+      shouldClearGuideRequest(current, nonce) ? null : current,
+    );
   }, []);
 
   const loadSnapshot = useCallback((onFailure: () => void) => {
@@ -296,7 +303,7 @@ export function DesktopOverlaySurface() {
 
       <main className="vua-overlay__body">
         {view === "guide" ? (
-          <GuideOverlayView guideRequest={guideRequest} />
+          <GuideOverlayView guideRequest={guideRequest} onGuideRequestApplied={ackGuideRequest} />
         ) : loadFailed ? (
           <>
             <EmptyState title={copy.loadErrorTitle} description={copy.loadErrorBody} />

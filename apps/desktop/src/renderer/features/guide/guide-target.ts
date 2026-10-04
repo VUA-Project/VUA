@@ -70,6 +70,25 @@ export function parseGuideTargetFromSearch(search: string): GuideTarget | null {
   return normalizeGuideTarget({ topic, ...(section === null ? {} : { section }) });
 }
 
+/** 从查询段剥离定位参数(纯函数,可测):保留 surface/view 等其余参数 */
+export function stripGuideTargetFromSearch(search: string): string {
+  const params = new URLSearchParams(search);
+  if (!params.has("guideTopic")) return search.startsWith("?") ? search : "";
+  params.delete("guideTopic");
+  params.delete("guideSection");
+  const text = params.toString();
+  return text === "" ? "" : `?${text}`;
+}
+
+/** 明确定位查询段的单次消费:首帧落位后从地址栏剥离(不重载页面)。
+ *  定位是一次性指令——之后的状态页往返/重挂载一律按最新阅读位置恢复 */
+export function stripGuideTargetFromLocation(): boolean {
+  const stripped = stripGuideTargetFromSearch(window.location.search);
+  if (stripped === window.location.search) return false;
+  window.history.replaceState(null, "", `${window.location.pathname}${stripped}${window.location.hash}`);
+  return true;
+}
+
 /* ---- 命名定位注册表(部署页与后续切片的统一入口)---- */
 
 /** 覆盖首玩验收的业务步骤:Steam 注册、VRChat 安装与首次登录、PICO 串流

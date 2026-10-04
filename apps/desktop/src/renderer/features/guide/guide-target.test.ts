@@ -18,9 +18,10 @@ import {
   normalizeGuideTarget,
   parseGuideTargetFromSearch,
   saveGuideReading,
+  stripGuideTargetFromSearch,
   type GuideTarget,
 } from "./guide-target.ts";
-import { initialGuideTarget } from "../overlay/GuideOverlayView.tsx";
+import { initialGuideTarget, shouldClearGuideRequest } from "../overlay/GuideOverlayView.tsx";
 
 test("normalizeGuideTarget:合法主题+合法分节原样落位", () => {
   assert.deepEqual(normalizeGuideTarget({ topic: "guide-devices", section: "pico-usb" }), {
@@ -79,6 +80,25 @@ test("初始落点:明确定位(查询)> 上次阅读位置 > 开始页", () => 
   );
   assert.deepEqual(initialGuideTarget("?view=guide", stored), stored);
   assert.deepEqual(initialGuideTarget("?view=guide", null), { topic: "guide-start" });
+});
+
+test("查询段剥离(评审 P2):定位参数单次消费,剥离后初始落点回到最新阅读位置", () => {
+  const search = "?surface=overlay-desktop&view=guide&guideTopic=guide-start&guideSection=install-vrchat";
+  const stripped = stripGuideTargetFromSearch(search);
+  assert.equal(stripped, "?surface=overlay-desktop&view=guide");
+  // 剥离后重挂载:不再消费旧定位,恢复最新阅读位置
+  const stored: GuideTarget = { topic: "guide-devices", section: "pico-wifi" };
+  assert.deepEqual(initialGuideTarget(stripped, stored), stored);
+  // 无定位参数时原样返回
+  assert.equal(stripGuideTargetFromSearch("?view=guide"), "?view=guide");
+  // 仅剩定位参数时剥成空串
+  assert.equal(stripGuideTargetFromSearch("?guideTopic=guide-start"), "");
+});
+
+test("定位请求回执清除判定(评审 P2):只清除已应用的那一条", () => {
+  assert.equal(shouldClearGuideRequest({ nonce: 3 }, 3), true);
+  assert.equal(shouldClearGuideRequest({ nonce: 4 }, 3), false);
+  assert.equal(shouldClearGuideRequest(null, 3), false);
 });
 
 test("阅读位置持久化:存储往返一致;损坏值/词表漂移安全回退", () => {
