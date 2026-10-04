@@ -1281,8 +1281,6 @@ export interface CatalogSyncApiV1 {
   stop(): Promise<void>;
   /** 详情富化:抓取该商品页并更新本地目录观察(变体/画廊/描述) */
   fetchProduct(productId: string): Promise<{ ok: boolean }>;
-  /** 选择性下载:在内嵌浏览器中打开该商品页 */
-  downloadProduct(productId: string): Promise<{ ok: boolean }>;
 }
 
 /** 壳能力自报(桌面壳静态声明;proposal 015 §11 仲裁方案 a):能力拥有者

@@ -549,6 +549,8 @@ export function WarehousePage({
   // 素材导入弹窗(2026-09-20 导航重构):原独立页收敛为仓储页内弹窗,
   // 弹窗关闭即卸载 ImportPage——其「卸载即在途关闭内嵌视图」生命周期语义原样生效
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  // 定向首开地址(右键「下载到本地」):null = 常规入口(本地/云端选择步)
+  const [importInitialUrl, setImportInitialUrl] = useState<string | null>(null);
 
   /** 账号库同步(N5 S1):登录线索只读探测 + 触发反馈;进度与终态走九态
    * 任务面(通知中心),本页只回触发结果,不伪造运行过程 */
@@ -723,7 +725,13 @@ export function WarehousePage({
           id: "download",
           label: copy.cardMenu.download,
           onSelect: () => {
-            void window.vua?.catalogSync?.downloadProduct(item.productId);
+            // 经素材导入弹窗的内嵌浏览面板定向首开商品页(N5 排障 2026-10-04
+            // 修复):该面板是远程视图唯一控制面——固定导航条 + will-download
+            // 下载管道 + 完成下载采纳都在这条线上;直连 remoteContent.open 会
+            // 留下无导航条的全屏孤儿视图(用户实测缺口)
+            const nativeId = item.productId.slice("booth:".length);
+            setImportInitialUrl(`https://booth.pm/zh-cn/items/${nativeId}`);
+            setImportDialogOpen(true);
           },
         },
         {
@@ -836,7 +844,13 @@ export function WarehousePage({
             本页内弹窗——连续素材获取路径(云端内嵌浏览/已完成下载采纳/本地
             文件夹导入)仍在,只是不再占一个侧栏页位 */}
         <div className="vua-page__actions">
-          <Button variant="primary" onClick={() => setImportDialogOpen(true)}>
+          <Button
+            variant="primary"
+            onClick={() => {
+              setImportInitialUrl(null);
+              setImportDialogOpen(true);
+            }}
+          >
             {strings.importPage.title}
           </Button>
           {source !== "local" && remoteBrowser ? (
@@ -1216,12 +1230,21 @@ export function WarehousePage({
         open={importDialogOpen}
         title={strings.importPage.title}
         closeLabel={strings.common.dialogClose}
-        onClose={() => setImportDialogOpen(false)}
+        onClose={() => {
+          setImportDialogOpen(false);
+          setImportInitialUrl(null);
+        }}
       >
         {/* onRequestClose(W25 走查缺陷③根因修复):受理态自动关闭与失败态
             醒目「关闭」按钮的关闭请求线——受理后 ~1.5s 弹窗自动收口,任务
             进度归任务中心;模态滞留被用户视作整屏卡死的行为终止。 */}
-        <ImportPage onRequestClose={() => setImportDialogOpen(false)} />
+        <ImportPage
+          onRequestClose={() => {
+            setImportDialogOpen(false);
+            setImportInitialUrl(null);
+          }}
+          initialUrl={importInitialUrl ?? undefined}
+        />
       </ContentDialog>
       <AddToRecipeDialog
         open={recipeDialogOpen}
