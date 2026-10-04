@@ -45,3 +45,28 @@ export function schedulePendingGuideScroll(
     if (frameId !== null) cancelRaf(frameId);
   };
 }
+
+/* ---- 评审 P2(页底定位/用户滚动)纯判定 ---- */
+
+/** 分节是否已进入视口(到达判定):页底目标会被钳到最大滚动,锚点不可能
+ *  贴到期望偏移——以"锚点在视口内"为准,天然区分"布局未就绪"(锚点还在
+ *  视口外,继续重试)与"已滚到底"(锚点可见,到位) */
+export function guideAnchorVisible(
+  anchorTop: number,
+  bodyTop: number,
+  bodyHeight: number,
+): boolean {
+  return anchorTop >= bodyTop - 2 && anchorTop <= bodyTop + bodyHeight - 24;
+}
+
+/** 滚动来源分类:与上次程序滚动值一致(±2px)= 程序自身;否则用户主动滚动。
+ *  lastProgrammatic 为 null(无程序滚动在途)时一律视为用户滚动 */
+export type GuideScrollOrigin = "programmatic" | "user";
+
+export function classifyGuideScroll(
+  scrollTop: number,
+  lastProgrammatic: number | null,
+): GuideScrollOrigin {
+  if (lastProgrammatic === null) return "user";
+  return Math.abs(scrollTop - lastProgrammatic) <= 2 ? "programmatic" : "user";
+}

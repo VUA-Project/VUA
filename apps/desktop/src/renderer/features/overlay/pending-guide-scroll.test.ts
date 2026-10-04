@@ -8,6 +8,8 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
+  classifyGuideScroll,
+  guideAnchorVisible,
   schedulePendingGuideScroll,
   type PendingGuideScrollDriver,
 } from "./pending-guide-scroll.ts";
@@ -128,4 +130,24 @@ test("空标记:执行后无滚动", () => {
   schedulePendingGuideScroll(driver, raf, cancel);
   flush();
   assert.deepEqual(driver.calls, []);
+});
+
+/* ---- 评审 P2 第二轮:页底定位与用户滚动 ---- */
+
+test("到达判定(分节进入视口):页底钳制后锚点可见 = 到位;锚点还在视口外 = 继续重试", () => {
+  // 460×640 窗口(body 高 487):锚点落在视口内(顶下 87px)→ 到位
+  assert.equal(guideAnchorVisible(87, 0, 487), true);
+  // 布局未长开:锚点还在视口下方(669 > 487)→ 未到位
+  assert.equal(guideAnchorVisible(669, 0, 487), false);
+  // 容差与边界:恰好贴顶/贴底各留余量
+  assert.equal(guideAnchorVisible(-1, 0, 487), true);
+  assert.equal(guideAnchorVisible(487 - 24, 0, 487), true);
+  assert.equal(guideAnchorVisible(487 - 20, 0, 487), false);
+});
+
+test("滚动来源分类:程序滚动值一致 = 程序;不同/无在途 = 用户", () => {
+  assert.equal(classifyGuideScroll(582, 582), "programmatic");
+  assert.equal(classifyGuideScroll(583.5, 582), "programmatic");
+  assert.equal(classifyGuideScroll(462, 582), "user");
+  assert.equal(classifyGuideScroll(462, null), "user");
 });

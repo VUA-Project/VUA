@@ -30,7 +30,9 @@
  *   切到状态页再返回、收起再打开、窗口重建均不丢失;
  * - 待滚动标记活到动画帧执行时刻,滚动未到位有界重试
  *   (schedulePendingGuideScroll):StrictMode 双调用与首帧布局未长开的
- *   dev 形态下首次定位照常滚动(评审 P2 回归)。
+ *   dev 形态下首次定位照常滚动(评审 P2 回归);
+ * - 页底定位以「分节进入视口」为到达判定(钳到最大滚动后实测),
+ *   用户主动滚动即时停止重试,不抢回滚动位置(评审 P2 第二轮)。
  */
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { GuideTargetV1 } from "@vua/contracts";
@@ -50,7 +52,11 @@ import {
   stripGuideTargetFromLocation,
   type GuideTarget,
 } from "../guide/guide-target.ts";
-import { schedulePendingGuideScroll } from "./pending-guide-scroll.ts";
+import {
+  classifyGuideScroll,
+  guideAnchorVisible,
+  schedulePendingGuideScroll,
+} from "./pending-guide-scroll.ts";
 
 const GUIDE_PANEL_ID = "guide-overlay-panel";
 const guideTabId = (topic: GuideTopicId) => `guide-overlay-tab-${topic}`;
@@ -102,10 +108,14 @@ export function GuideOverlayView({
 
   const scroller = () => panelRef.current?.closest(".vua-overlay__body");
 
+  /** 最近一次程序滚动的实际落点(滚动事件据此区分程序/用户来源) */
+  const lastProgrammaticScroll = useRef<number | null>(null);
+
   const scrollBodyTo = (top: number): boolean => {
     const body = scroller();
     if (!body) return false;
     body.scrollTop = top;
+    lastProgrammaticScroll.current = body.scrollTop;
     return Math.abs(body.scrollTop - top) <= 2;
   };
 
@@ -113,15 +123,23 @@ export function GuideOverlayView({
     const body = scroller();
     const anchor = panelRef.current?.querySelector(`#${guideSectionId(section)}`);
     if (!body || !anchor) return false;
-    const desired = Math.max(
-      0,
-      anchor.getBoundingClientRect().top -
-        body.getBoundingClientRect().top +
-        body.scrollTop -
-        8,
+    // 页底钳制:期望偏移不得超过最大滚动;到达判定用「分节进入视口」
+    // (guideAnchorVisible),不是贴齐期望偏移——区分布局未就绪与已滚到底
+    const maxScroll = Math.max(0, body.scrollHeight - body.clientHeight);
+    const desired = Math.min(
+      Math.max(
+        0,
+        anchor.getBoundingClientRect().top -
+          body.getBoundingClientRect().top +
+          body.scrollTop -
+          8,
+      ),
+      maxScroll,
     );
     body.scrollTop = desired;
-    return Math.abs(body.scrollTop - desired) <= 2;
+    lastProgrammaticScroll.current = body.scrollTop;
+    const anchorTop = anchor.getBoundingClientRect().top;
+    return guideAnchorVisible(anchorTop, body.getBoundingClientRect().top, body.clientHeight);
   };
 
   /** 应用定位(显式步骤或恢复值):切主题、渲染后滚动、记为当前阅读位置 */
@@ -204,12 +222,20 @@ export function GuideOverlayView({
   }, [guideRequest, onGuideRequestApplied]);
 
   // 滚动跟踪(去抖 150ms):正文当前分节记为阅读位置;只存 {topic, section?}
+  // 用户主动滚动即时判定(不去抖):与上次程序滚动落点不同 = 用户接管,
+  // 停止定位重试,不再抢回滚动位置(评审 P2)
   useEffect(() => {
     const panel = panelRef.current;
     const body = scroller();
     if (!panel || !body) return;
     let timer: number | undefined;
     const onScroll = () => {
+      if (lastProgrammaticScroll.current !== null) {
+        if (classifyGuideScroll(body.scrollTop, lastProgrammaticScroll.current) === "user") {
+          pendingScroll.current = null;
+        }
+        lastProgrammaticScroll.current = null;
+      }
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
         const bodyTop = body.getBoundingClientRect().top;
