@@ -49,6 +49,7 @@ import { SystemUsageCollector } from "./system-usage.js";
 import { createFsDirectory, listFsDirectory } from "./fs-directory.js";
 import { resolveDesktopRuntime } from "./runtime-paths.js";
 import { preparePackagedSmoke } from "./packaged-smoke.js";
+import { configureDesktopProfile, resolveDesktopProfile, tagDevelopmentWindow } from "./runtime-profile.js";
 
 const desktopRuntime = resolveDesktopRuntime({
   isPackaged: app.isPackaged,
@@ -58,9 +59,22 @@ const desktopRuntime = resolveDesktopRuntime({
   env: process.env,
 });
 const rendererUrl = desktopRuntime.rendererUrl;
-// Keep distributed app data stable when the ZIP moves or a later installer replaces it.
-// The development profile stays separate; the smoke harness selects its own temporary profile.
-if (app.isPackaged) app.setPath("userData", path.join(app.getPath("appData"), "VUA"));
+// Resolve all persistence before app.ready/Session/Provider initialization. Resolve
+// symlinks in development so a second spelling of one checkout retains its identity.
+const desktopProfile = resolveDesktopProfile({
+  isPackaged: app.isPackaged,
+  appData: app.getPath("appData"),
+  localAppData: process.env.LOCALAPPDATA,
+  mainDirectory: app.isPackaged ? __dirname : fs.realpathSync(__dirname),
+  platform: process.platform,
+  developmentOverride: process.env.VUA_DEV_USER_DATA,
+  packagedSmokeDirectory: app.isPackaged && app.commandLine.hasSwitch("vua-smoke-test")
+    ? app.commandLine.getSwitchValue("vua-smoke-test") : undefined,
+});
+configureDesktopProfile(app, desktopProfile);
+if (desktopProfile.kind !== "release") {
+  process.stderr.write(`${JSON.stringify({ channel: "desktop-profile", ...desktopProfile })}\n`);
+}
 const packagedSmoke = preparePackagedSmoke();
 let mainWindow: BrowserWindow | null = null;
 let overlayWindow: BrowserWindow | null = null;
@@ -555,6 +569,7 @@ function createOverlayWindow(
     hasShadow: false,
     webPreferences: localWindowWebPreferences(preload),
   });
+  tagDevelopmentWindow(win, desktopProfile);
   win.setAlwaysOnTop(true, OVERLAY_WINDOW_LEVEL);
   overlayWindow = win;
   win.once("ready-to-show", () => {
@@ -655,6 +670,8 @@ async function createWindow(): Promise<void> {
       backgroundThrottling: false,
     },
   });
+
+  tagDevelopmentWindow(mainWindow, desktopProfile);
 
   // U9 四分法(本地壳窗口):http/https 弹窗不再交系统浏览器——清单内直行/
   // 清单外确认后转当前内嵌视图(RemoteContentManager);外部协议手势+确认后

@@ -11,8 +11,11 @@ export function preparePackagedSmoke(): PackagedSmoke | undefined {
   if (!app.isPackaged || !app.commandLine.hasSwitch("vua-smoke-test")) return undefined;
   const directory = app.commandLine.getSwitchValue("vua-smoke-test");
   if (!path.isAbsolute(directory)) throw new Error("Packaged smoke requires an absolute isolated profile directory");
-  fs.mkdirSync(directory, { recursive: true });
-  app.setPath("userData", directory);
+  // Main configures both userData and sessionData before any Session is created.
+  if (path.resolve(app.getPath("userData")) !== path.resolve(directory)
+    || path.resolve(app.getPath("sessionData")) !== path.resolve(directory)) {
+    throw new Error("Packaged smoke profile was not initialized");
+  }
   return new PackagedSmoke(directory);
 }
 

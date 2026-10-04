@@ -20,7 +20,7 @@ $moved = Join-Path $fixtureRoot "$unicode moved app"
 $smokeProfile = Join-Path $fixtureRoot 'isolated profile'
 $failureProfile = Join-Path $fixtureRoot 'missing provider profile'
 $summaryPath = Join-Path $desktopRoot 'out/packaged-smoke.json'
-$environmentNames = @('PATH', 'VUA_RENDERER_URL', 'VUA_PROVIDER_EXECUTABLE', 'ELECTRON_RUN_AS_NODE')
+$environmentNames = @('PATH', 'VUA_RENDERER_URL', 'VUA_PROVIDER_EXECUTABLE', 'VUA_DEV_USER_DATA', 'ELECTRON_RUN_AS_NODE')
 $savedEnvironment = @{}
 foreach ($name in $environmentNames) { $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
 $checks = [System.Collections.Generic.List[string]]::new()
@@ -53,6 +53,7 @@ try {
     $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
     $env:VUA_RENDERER_URL = 'http://127.0.0.1:1/should-not-load'
     $env:VUA_PROVIDER_EXECUTABLE = Join-Path $fixtureRoot 'should-not-exist.exe'
+    $env:VUA_DEV_USER_DATA = 'invalid-relative-dev-profile'
     [Environment]::SetEnvironmentVariable('ELECTRON_RUN_AS_NODE', $null, 'Process')
     $initial = Invoke-PackagedApp $first $smokeProfile $true
     if ($null -ne $initial.previousMarker) { throw 'Fresh profile unexpectedly contained previous data' }
