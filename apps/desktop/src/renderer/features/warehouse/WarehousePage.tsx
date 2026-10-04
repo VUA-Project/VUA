@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { catalogBrowser } from "../../app/catalog-browser-instance.ts";
 import { browseWindowSupported, openBrowseWindow } from "../../app/browse-window.ts";
 import { openExternalUrl } from "../../app/open-external.ts";
@@ -125,22 +131,32 @@ function priceText(product: {
 
 /* ---- 商品卡片 ---- */
 
+/** 卡/行交互基座(Explorer 语义,用户裁决 2026-10-05):单击 = 选中该卡,
+ * 双击/Enter = 打开详情,右键 = 交页面菜单(按选区约定裁决作用域)。
+ * data-product-id 既是选区归属标记,也是框选命中测试的锚点。 */
 function WarehouseListRow({
   item,
   selected,
+  onSelect,
   onOpen,
+  onMenu,
 }: {
   item: CatalogProductSummary;
   selected: boolean;
+  onSelect: () => void;
   onOpen: () => void;
+  onMenu: (event: ReactMouseEvent<HTMLElement>) => void;
 }) {
   return (
     <div
       className="vua-warehouse-list-row"
       data-selected={selected || undefined}
+      data-product-id={item.productId}
       role="listitem"
       tabIndex={0}
-      onClick={onOpen}
+      onClick={onSelect}
+      onDoubleClick={onOpen}
+      onContextMenu={onMenu}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
@@ -164,12 +180,14 @@ function WarehouseCard({
   item,
   purchased,
   selected,
+  onSelect,
   onOpen,
   onMenu,
 }: {
   item: CatalogProductSummary;
   purchased: boolean;
   selected: boolean;
+  onSelect: () => void;
   onOpen: () => void;
   /** 素材卡右键菜单(S-XII):由页面组装真实动作项 */
   onMenu: (event: ReactMouseEvent<HTMLElement>) => void;
@@ -178,10 +196,11 @@ function WarehouseCard({
     <article
       className="vua-warehouse-card"
       data-selected={selected || undefined}
-      onClick={onOpen}
+      data-product-id={item.productId}
+      onClick={onSelect}
+      onDoubleClick={onOpen}
       onContextMenu={onMenu}
-      // 卡片本体即"查看详情"入口(浮层已随相册交互移除):键盘可达,
-      // Enter/Space 打开详情(用户反馈 #5;购买标记由其他功能模块承担)
+      // 键盘可达:Enter/Space 打开详情(用户反馈 #5;购买标记由其他功能模块承担)
       role="listitem"
       tabIndex={0}
       onKeyDown={(event) => {
@@ -509,8 +528,8 @@ export function WarehousePage({
   // 单库页(用户方向 2026-10-02):云端三来源 + 本地,来源只作筛选
   // 视图模式(用户裁决 2026-03):卡片墙(带图)↔ 纯文字标题列表
   const [viewMode, setViewMode] = useState<"cards" | "list">("cards");
-  // 多选模式(用户裁决 2026-10-04):卡片墙选材 → 加入 Recipe
-  const [selectMode, setSelectMode] = useState(false);
+  // 选区(Explorer 语义,用户裁决 2026-10-05):单击选卡/框选/右键拖选,
+  // 无独立"选择模式"开关;Esc、空白单击、重新框选即清空
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
   const [recipeDialogOpen, setRecipeDialogOpen] = useState(false);
   const [contextSelection, setContextSelection] = useState<readonly RecipeAssetRef[]>([]);
@@ -521,17 +540,8 @@ export function WarehousePage({
   } | null>(null);
   // 按商品删除受理回执(诚实短提示;各条目任务进度在通知中心呈现)
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
   const clearSelection = () => {
     setSelectedIds(new Set());
-    setSelectMode(false);
   };
   const [source, setSource] = useState<
     "all" | "bought" | "gifts" | "free" | "local"
@@ -645,20 +655,135 @@ export function WarehousePage({
     };
   }, [syncNotice, syncRunId, gateway]);
 
-  // Esc 清空多选(用户裁决 ①:加入后选区保留,Esc 清空)
+  // Esc 清空选区(菜单打开时先关菜单,选区保留——Esc 一次只收一层)
   useEffect(() => {
-    if (!selectMode) return;
+    if (cardMenu !== null) return;
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") clearSelection();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [selectMode]);
+  }, [cardMenu]);
 
   // 指针聚光 + 微倾斜:回调 ref 追踪 wall-scroll 元素(视图切换会重建它),
   // hook 内部按场景模式决定是否挂载监听(非 animated 模式零开销)
   const [wallEl, setWallEl] = useState<HTMLDivElement | null>(null);
   useCardSpotlight(wallEl);
+
+  /* ---- 框选(Explorer marquee,用户裁决 2026-10-05) ----
+   * 墙内任意位置(卡上/空白)按住左或右键拖动即框选;位移超过阈值前按
+   * 单击处理(手抖不误入);右键拖动结束时在松开点打开选区菜单。监听挂
+   * window(不持 pointer capture),拖出容器仍可跟踪,click 语义不受影响。 */
+  const MARQUEE_THRESHOLD_PX = 4;
+  const dragStartRef = useRef<{
+    x: number;
+    y: number;
+    button: number;
+    becameMarquee: boolean;
+  } | null>(null);
+  const [marqueeRect, setMarqueeRect] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
+  // 拖动结束后的 click/contextmenu 抑制:框选落定不回落为单击/原生菜单
+  const suppressNextClickRef = useRef(false);
+  const suppressNextContextMenuRef = useRef(false);
+
+  const marqueeRectOf = (x0: number, y0: number, x1: number, y1: number) => ({
+    left: Math.min(x0, x1),
+    top: Math.min(y0, y1),
+    width: Math.abs(x1 - x0),
+    height: Math.abs(y1 - y0),
+  });
+
+  const selectByRect = (rect: { left: number; top: number; width: number; height: number }) => {
+    const el = wallEl;
+    if (el === null) return;
+    const ids = new Set<string>();
+    const hit = (r: DOMRect) =>
+      r.left < rect.left + rect.width && r.right > rect.left
+      && r.top < rect.top + rect.height && r.bottom > rect.top;
+    for (const card of el.querySelectorAll<HTMLElement>("[data-product-id]")) {
+      if (hit(card.getBoundingClientRect())) ids.add(card.dataset.productId ?? "");
+    }
+    setSelectedIds(ids);
+  };
+
+  const onWallPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 && event.button !== 2) return;
+    const target = event.target as HTMLElement;
+    if (target.closest("button, select, input, a, textarea") !== null) return;
+    const start = {
+      x: event.clientX,
+      y: event.clientY,
+      button: event.button,
+      becameMarquee: false,
+    };
+    dragStartRef.current = start;
+    const onMove = (moveEvent: PointerEvent) => {
+      if (
+        !start.becameMarquee
+        && Math.hypot(moveEvent.clientX - start.x, moveEvent.clientY - start.y)
+          <= MARQUEE_THRESHOLD_PX
+      ) {
+        return;
+      }
+      start.becameMarquee = true;
+      const rect = marqueeRectOf(start.x, start.y, moveEvent.clientX, moveEvent.clientY);
+      setMarqueeRect(rect);
+      selectByRect(rect);
+    };
+    const finish = (upEvent: PointerEvent) => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", finish);
+      window.removeEventListener("pointercancel", finish);
+      dragStartRef.current = null;
+      setMarqueeRect(null);
+      if (!start.becameMarquee) return;
+      suppressNextClickRef.current = true;
+      if (start.button === 2) {
+        suppressNextContextMenuRef.current = true;
+        openSelectionMenu(upEvent.clientX, upEvent.clientY);
+      }
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", finish);
+    window.addEventListener("pointercancel", finish);
+  };
+
+  // 空白单击清空选区(卡/行自己的单击=选中;抑制标记吞掉框选落定的尾随 click)
+  const onWallClick = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (suppressNextClickRef.current) {
+      suppressNextClickRef.current = false;
+      return;
+    }
+    const target = event.target as HTMLElement;
+    if (target.closest("[data-product-id], button, a, select, input, textarea") === null) {
+      clearSelection();
+    }
+  };
+
+  const onWallContextMenu = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (suppressNextContextMenuRef.current) {
+      suppressNextContextMenuRef.current = false;
+      event.preventDefault();
+      return;
+    }
+    // 空白右键无菜单:抑制原生菜单;卡/行上的右键由其 onContextMenu 处理
+    const target = event.target as HTMLElement;
+    if (target.closest("[data-product-id]") === null) event.preventDefault();
+  };
+
+  // 单击选中(替换选区)——框选落定后的尾随单击经抑制标记吞掉,不塌缩选区
+  const selectSingle = (id: string) => {
+    if (suppressNextClickRef.current) {
+      suppressNextClickRef.current = false;
+      return;
+    }
+    setSelectedIds(new Set([id]));
+  };
 
   // 列表查询:筛选变更保留旧结果(stale-while-revalidate),骨架屏只留给首次加载
   useEffect(() => {
@@ -714,10 +839,55 @@ export function WarehousePage({
     catalogEmpty: resultsView !== null && resultsView.items.length === 0,
   });
 
+  /** 选区 → Recipe 引用(云端卡;本地条目不进选区模型) */
+  const recipeRefsOfSelection = (): RecipeAssetRef[] =>
+    (resultsView?.items ?? [])
+      .filter((selected) => selectedIds.has(selected.productId))
+      .map((selected) => ({
+        identity: selected.productId,
+        displayName: selected.title ?? selected.productId,
+        source: "cloud" as const,
+        variantName: selected.variantName,
+        shopName: selected.shopName,
+      }));
+
+  /** 选区菜单(框选右键落点/多选右键):作用于整个选区 */
+  const openSelectionMenu = (x: number, y: number) => {
+    const refs = recipeRefsOfSelection();
+    setCardMenu({
+      x,
+      y,
+      items: [
+        ...(refs.length > 0
+          ? [{
+              id: "addToRecipe",
+              label: format(copy.selectBar.addToRecipe, { count: refs.length }),
+              onSelect: () => {
+                setContextSelection(refs);
+                setRecipeDialogOpen(true);
+              },
+            }]
+          : []),
+        {
+          id: "clearSelection",
+          label: copy.selectBar.clearSelection,
+          onSelect: () => setSelectedIds(new Set()),
+        },
+      ],
+    });
+  };
+
   /** 素材卡右键菜单(S-XII):仅真实动作——查看详情/已购标记。
-   *  sourceUrl 只在详情负载上,打开来源/复制链接归详情抽屉,卡片菜单不猜 URL */
+   *  sourceUrl 只在详情负载上,打开来源/复制链接归详情抽屉,卡片菜单不猜 URL。
+   *  Explorer 约定(2026-10-05):右键在多选选区内 = 菜单作用于整组;
+   *  在选区外 = 先选中该卡再出单项菜单 */
   const openCardMenu = (event: ReactMouseEvent<HTMLElement>, item: CatalogProductSummary) => {
     event.preventDefault();
+    if (selectedIds.has(item.productId) && selectedIds.size > 1) {
+      openSelectionMenu(event.clientX, event.clientY);
+      return;
+    }
+    setSelectedIds(new Set([item.productId]));
     const marked = lifecycleOf(lifecycle, item.productId).purchase === "user_confirmed";
     const menuItems: ContextMenuState["items"] = [
       { id: "open", label: copy.card.detailsCta, onSelect: () => setSelectedId(item.productId) },
@@ -793,25 +963,16 @@ export function WarehousePage({
     <div className="vua-page vua-warehouse">
       <section className="vua-page__hero">
         <h1 className="vua-title">{termLabel("warehouse")}</h1>
-        {/* 多选模式入口(用户裁决 2026-10-04):启用后卡片可多选加入 Recipe */}
-        <button
-          type="button"
-          className="vua-warehouse__filter"
-          aria-pressed={selectMode}
-          onClick={() => {
-            if (selectMode) clearSelection();
-            else setSelectMode(true);
-          }}
-        >
-          {selectMode
-            ? format(copy.selectBar.cancel, { count: selectedIds.size })
-            : copy.selectBar.enter}
-        </button>
-        {selectMode && selectedIds.size > 0 ? (
+        {/* 选区动作位(Explorer 语义,2026-10-05):选区存在才出现;选区本身
+            由单击/框选建立,无独立"选择模式"开关 */}
+        {selectedIds.size > 0 ? (
           <button
             type="button"
             className="vua-warehouse__filter"
-            onClick={() => setRecipeDialogOpen(true)}
+            onClick={() => {
+              setContextSelection(recipeRefsOfSelection());
+              setRecipeDialogOpen(true);
+            }}
           >
             {format(copy.selectBar.addToRecipe, { count: selectedIds.size })}
           </button>
@@ -990,7 +1151,24 @@ export function WarehousePage({
             </div>
 
             {/* 滚动限定在本容器:工具栏/hero 不随图片墙滚动(用户反馈 #2) */}
-            <div className="vua-warehouse__wall-scroll" ref={setWallEl}>
+            <div
+              className="vua-warehouse__wall-scroll"
+              ref={setWallEl}
+              onPointerDown={onWallPointerDown}
+              onClick={onWallClick}
+              onContextMenu={onWallContextMenu}
+            >
+              {marqueeRect !== null ? (
+                <div
+                  className="vua-warehouse__marquee"
+                  style={{
+                    left: `${marqueeRect.left}px`,
+                    top: `${marqueeRect.top}px`,
+                    width: `${marqueeRect.width}px`,
+                    height: `${marqueeRect.height}px`,
+                  }}
+                />
+              ) : null}
               {listState.kind === "loading" ? (
                 /* 真实加载期间:与卡片墙同形的骨架(ui-ux §2.8) */
                 <div className="vua-warehouse__wall" aria-hidden="true">
@@ -1054,12 +1232,9 @@ export function WarehousePage({
                             key={item.productId}
                             item={item}
                             purchased={lifecycleOf(lifecycle, item.productId).purchase === "user_confirmed"}
-                            selected={selectMode ? selectedIds.has(item.productId) : selectedId === item.productId}
+                            selected={selectedIds.has(item.productId)}
+                            onSelect={() => selectSingle(item.productId)}
                             onOpen={() => {
-                              if (selectMode) {
-                                toggleSelect(item.productId);
-                                return;
-                              }
                               setSelectedLocalId(null);
                               setSelectedId(item.productId);
                             }}
@@ -1069,14 +1244,16 @@ export function WarehousePage({
                           <WarehouseListRow
                             key={item.productId}
                             item={item}
-                            selected={selectedId === item.productId}
+                            selected={selectedIds.has(item.productId)}
+                            onSelect={() => selectSingle(item.productId)}
                             onOpen={() => {
                               setSelectedLocalId(null);
                               setSelectedId(item.productId);
                             }}
+                            onMenu={(event) => openCardMenu(event, item)}
                           />
                         )
-                    )
+                      )
                     : null}
                   {source !== "gifts" && source !== "bought" && source !== "free"
                     ? localCards.map((card) => (

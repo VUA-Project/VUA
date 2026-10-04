@@ -1013,9 +1013,8 @@ rolled_back: "已回滚",
       deleteFailedHint: "删除本地文件被拒绝,原因见任务记录。",
     },
     selectBar: {
-      enter: "选择",
-      cancel: "取消（{count}）",
       addToRecipe: "加入配方（{count}）",
+      clearSelection: "清除选区",
     },
     recipeDialog: {
       title: "加入配方",

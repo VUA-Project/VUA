@@ -1026,9 +1026,8 @@ demoTaskTitle: "Demo task",
       deleteFailedHint: "Local file deletion was rejected; the task record keeps the reason.",
     },
     selectBar: {
-      enter: "Select",
-      cancel: "Cancel ({count})",
       addToRecipe: "Add {count}",
+      clearSelection: "Clear selection",
     },
     recipeDialog: {
       title: "Add selection",

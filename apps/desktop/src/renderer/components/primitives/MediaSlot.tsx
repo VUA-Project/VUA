@@ -125,6 +125,8 @@ export function MediaSlot({
         data-pending={effective !== "ready" || undefined}
         loading="lazy"
         decoding="async"
+        /* 拖影禁用:仓储墙按住拖动=框选(2026-10-05),原生 ghost-drag 会劫持手势 */
+        draggable={false}
         src={effectiveSrc}
         alt={alt}
         onLoad={() => setState((s) => mediaReducer(s, "load"))}

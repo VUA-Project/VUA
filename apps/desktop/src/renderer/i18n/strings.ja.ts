@@ -973,9 +973,8 @@ rolled_back: "ロールバック済み",
       deleteFailedHint: "ローカルファイルの削除は拒否されました。理由はタスク記録にあります。",
     },
     selectBar: {
-      enter: "選択",
-      cancel: "キャンセル（{count}）",
       addToRecipe: "レシピに追加（{count}）",
+      clearSelection: "選択を解除",
     },
     recipeDialog: {
       title: "レシピに追加",

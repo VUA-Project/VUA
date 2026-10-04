@@ -93,13 +93,30 @@
   min-height: 0;
 }
 
-/* 图片墙滚动区:工具栏固定,仅本区域滚动 */
+/* 图片墙滚动区:工具栏固定,仅本区域滚动。
+ * Explorer 选区交互(2026-10-05):墙内禁原生文本选择与图片拖影——
+ * 拖动一律归框选语义,双击才开详情 */
 .vua-warehouse__wall-scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   /* 卡片 hover 上浮(-2px)在滚动区内不裁切 */
   padding-top: 2px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.vua-warehouse__wall-scroll img {
+  -webkit-user-drag: none;
+}
+
+/* 框选矩形(视口坐标 fixed;pointer-events 穿透,不影响命中测试) */
+.vua-warehouse__marquee {
+  position: fixed;
+  border: 1px solid var(--vua-accent, #ff8c42);
+  background: color-mix(in srgb, var(--vua-accent, #ff8c42) 12%, transparent);
+  pointer-events: none;
+  z-index: 500;
 }
 
 /* ---- 工具栏:搜索 + 筛选 + 计数 ---- */

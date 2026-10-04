@@ -972,9 +972,8 @@ rolled_back: "롤백됨",
       deleteFailedHint: "로컬 파일 삭제가 거부되었습니다. 이유는 작업 기록에 있습니다.",
     },
     selectBar: {
-      enter: "선택",
-      cancel: "취소({count})",
       addToRecipe: "레시피에 추가({count})",
+      clearSelection: "선택 해제",
     },
     recipeDialog: {
       title: "레시피에 추가",
