@@ -1017,6 +1017,9 @@ demoTaskTitle: "Demo task",
   warehouse: {
     importedBadge: "Imported",
     viewCards: "Cards",
+    cardMenu: {
+      download: "Download to local",
+    },
     selectBar: {
       enter: "Select",
       cancel: "Cancel ({count})",

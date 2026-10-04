@@ -963,6 +963,9 @@ rolled_back: "롤백됨",
   warehouse: {
     importedBadge: "가져옴",
     viewCards: "카드",
+    cardMenu: {
+      download: "로컬에 다운로드",
+    },
     selectBar: {
       enter: "선택",
       cancel: "취소({count})",

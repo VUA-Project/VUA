@@ -964,6 +964,9 @@ rolled_back: "ロールバック済み",
   warehouse: {
     importedBadge: "インポート済み",
     viewCards: "カード",
+    cardMenu: {
+      download: "ローカルにダウンロード",
+    },
     selectBar: {
       enter: "選択",
       cancel: "キャンセル（{count}）",

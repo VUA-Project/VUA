@@ -522,6 +522,25 @@ function registerIpc(provider: OrchestratorProviderV01): void {
     assertLocalSender(senderFrameUrl(event));
     catalogSyncRun?.stop();
   });
+  // 选择性下载(N5,2026-10-04):打开商品页,用户点击下载,will-download 管道接管
+  ipcMain.handle(
+    "vua:catalog-sync:download-product",
+    async (event, productId: unknown) => {
+      assertLocalSender(senderFrameUrl(event));
+      if (remoteContent === null) throw new Error("remote content is unavailable");
+      if (typeof productId !== "string" || !/^booth:[0-9]+$/.test(productId)) {
+        throw new Error("invalid product id");
+      }
+      const nativeId = productId.slice("booth:".length);
+      const url = `https://booth.pm/zh-cn/items/${nativeId}`;
+      try {
+        remoteContent.open(url);
+        return { ok: true };
+      } catch {
+        return { ok: false };
+      }
+    },
+  );
   // 详情富化(N5 D2,2026-10-03):单商品页抓取 → 同一 ingest 面(provider
   // 自动识别 #items 商品页语法走全量观察);URL 由商品号派生,不放开任意 URL
   ipcMain.handle(

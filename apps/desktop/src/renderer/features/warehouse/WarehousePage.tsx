@@ -35,6 +35,7 @@ import {
 } from "./asset-lifecycle.ts";
 import { useDebugMode } from "../../app/debug-mode.ts";
 import { useCardSpotlight } from "./use-card-spotlight.ts";
+import type { RecipeAssetRef } from "../../gateway/recipe-port.ts";
 import { registerTaskIdentity } from "../../gateway/task-identity.ts";
 import { CardAlbumMedia, DetailAlbum } from "./WarehouseAlbum.tsx";
 import { ArtifactCard, EntryDetail } from "./WarehouseAcquire.tsx";
@@ -510,6 +511,7 @@ export function WarehousePage({
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
   const [recipeDialogOpen, setRecipeDialogOpen] = useState(false);
+  const [contextSelection, setContextSelection] = useState<readonly RecipeAssetRef[]>([]);
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -711,6 +713,28 @@ export function WarehousePage({
       y: event.clientY,
       items: [
         { id: "open", label: copy.card.detailsCta, onSelect: () => setSelectedId(item.productId) },
+        {
+          id: "download",
+          label: copy.cardMenu.download,
+          onSelect: () => {
+            void window.vua?.catalogSync?.downloadProduct(item.productId);
+          },
+        },
+        {
+          id: "addToRecipe",
+          label: copy.recipeDialog.title,
+          onSelect: () => {
+            const refs: RecipeAssetRef[] = [{
+              identity: item.productId,
+              displayName: item.title ?? item.productId,
+              source: "cloud",
+              variantName: item.variantName,
+              shopName: item.shopName,
+            }];
+            setContextSelection(refs);
+            setRecipeDialogOpen(true);
+          },
+        },
         {
           id: "togglePurchased",
           label: marked ? copy.card.unmarkPurchased : copy.card.markPurchased,

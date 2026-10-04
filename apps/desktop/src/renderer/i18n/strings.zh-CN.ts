@@ -1004,6 +1004,9 @@ rolled_back: "已回滚",
   warehouse: {
     importedBadge: "已入库",
     viewCards: "卡片",
+    cardMenu: {
+      download: "下载到本地",
+    },
     selectBar: {
       enter: "选择",
       cancel: "取消（{count}）",
