@@ -1353,8 +1353,21 @@ export interface CatalogSyncApiV1 {
   /** 请求中止当前运行(无运行时为 no-op);中止如实记为 aborted,已完成
    * 页的目录更新保留。 */
   stop(): Promise<void>;
+  /** 运行状态探针(N5,2026-10-05):首页即失败的运行在 provider 侧不产生
+   * 任务,任务轮询等不到——lastFailureCode 携带该类终态事实(仅 idle 时有
+   * 意义;null = 无失败记录或运行中),渲染层据此收口“已开始”提示 */
+  probe(): Promise<CatalogSyncProbeOutcomeV1>;
   /** 详情富化:抓取该商品页并更新本地目录观察(变体/画廊/描述) */
   fetchProduct(productId: string): Promise<{ ok: boolean }>;
+}
+
+/** catalog-sync 运行状态探针回执(任务前失败可见性) */
+export interface CatalogSyncProbeOutcomeV1 {
+  readonly status: "running" | "idle";
+  /** running = 当前运行;idle = 最近一次运行(无历史为 null) */
+  readonly runId: string | null;
+  /** 最近一次运行的失败码(仅 idle 有意义;null = 无失败记录) */
+  readonly lastFailureCode: string | null;
 }
 
 /** 壳能力自报(桌面壳静态声明;proposal 015 §11 仲裁方案 a):能力拥有者

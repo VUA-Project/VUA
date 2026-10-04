@@ -180,6 +180,8 @@ const api: VuaDesktopApiV1 = Object.freeze({
       readonly libraryType?: "bought" | "gifts" | "free_downloads";
     }) => ipcRenderer.invoke("vua:catalog-sync:start", request),
     stop: () => ipcRenderer.invoke("vua:catalog-sync:stop"),
+    // 运行状态探针:任务前失败(首页即失败,provider 无任务)经此面可见
+    probe: () => ipcRenderer.invoke("vua:catalog-sync:probe"),
     // 详情富化:经分区会话抓一个商品页,provider 侧自动识别商品页语法
     // 并以全量观察(变体/画廊/描述/品牌)更新该行;无网络外泄面
     fetchProduct: (productId: string) =>

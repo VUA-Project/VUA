@@ -603,8 +603,9 @@ export function WarehousePage({
     // 把该列覆盖为 NULL(真机 2026-10-03:14 条已购行被清空的根因)
     const outcome = await catalogSync.start({ libraryType });
     if (outcome.status === "blocked") {
-      // 登录引导:空态卡翻为登录形态(主进程门控已确认无账户 Cookie);
-      // 同时给可见反馈——用户动作无可见响应等同于坏(设计标准反馈纪律)
+      // 登录引导:门已升级为真实预检(2026-10-05)——「访问过登录页」的
+      // 半登录会话(cookie 在、登录未完成)也会被拦截;空态卡翻为登录
+      // 形态,同时给可见反馈(动作无可见响应等同于坏)
       setSignInHint("none");
       setSyncNotice("blocked");
       return;
@@ -648,16 +649,35 @@ export function WarehousePage({
         .then((view) => {
           if (!active) return;
           const run = view.tasks.find((task) => task.id === syncRunId);
-          if (run === undefined) return;
-          if (run.status === "completed" || run.status === "completedWithWarnings") {
-            setSyncNotice("done");
-            setSyncRunId(null);
-            setReloadKey((key) => key + 1);
-          } else if (run.status === "failed" || run.status === "cancelled") {
-            setSyncNotice("failed");
-            setSyncRunId(null);
-            setReloadKey((key) => key + 1);
+          if (run !== undefined) {
+            if (run.status === "completed" || run.status === "completedWithWarnings") {
+              setSyncNotice("done");
+              setSyncRunId(null);
+              setReloadKey((key) => key + 1);
+            } else if (run.status === "failed" || run.status === "cancelled") {
+              setSyncNotice("failed");
+              setSyncRunId(null);
+              setReloadKey((key) => key + 1);
+            }
+            return;
           }
+          // 任务面没有该运行(首页即失败,provider 从未折叠任务):查探针的
+          // 终态事实收口提示,不让“已开始”永远挂着(真机 2026-10-05)
+          void window.vua?.catalogSync
+            ?.probe()
+            .then((probe) => {
+              if (
+                !active ||
+                probe.status !== "idle" ||
+                probe.runId !== syncRunId ||
+                probe.lastFailureCode === null
+              ) {
+                return;
+              }
+              setSyncNotice("failed");
+              setSyncRunId(null);
+            })
+            .catch(() => {});
         })
         .catch(() => {});
     }, 2000);

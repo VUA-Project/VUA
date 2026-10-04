@@ -86,6 +86,20 @@ export interface CatalogSyncRun {
  */
 export const CATALOG_SYNC_DEFAULT_START_URL = "https://accounts.booth.pm/library?page=1";
 
+/** 登录重定向判定(真机 2026-10-05 确诊):「访问过登录页」的会话在账户域
+ * 有 Cookie,启动门旧判据(cookie 存在)会放行;但未真正登录的会话访问
+ * 账号库被 302 到 accounts.booth.pm/users/sign_in——HTTP 层已是跟随后的
+ * 200,唯一线索是 finalUrl。该形态与「页面结构变了」不同:会话不可用,
+ * 续页无意义,以专码停跑;启动门用同一判定做真实预检。 */
+export function isSignInRedirect(finalUrl: string): boolean {
+  try {
+    const url = new URL(finalUrl);
+    return url.host === "accounts.booth.pm" && url.pathname === "/users/sign_in";
+  } catch {
+    return false;
+  }
+}
+
 export function startCatalogSync(
   options: CatalogSyncRunnerOptions,
   start?: {
@@ -151,6 +165,19 @@ export function startCatalogSync(
           }),
         );
         return failure("http_status", url);
+      }
+      // 未登录会话的库页 = 登录页重定向:专码停跑,不投递解析(投递只会
+      // 以 not_a_library_page 拒绝,掩盖真实成因)
+      if (isSignInRedirect(outcome.finalUrl)) {
+        log(
+          JSON.stringify({
+            channel: "catalog-sync",
+            runId,
+            signInRedirect: true,
+            url,
+          }),
+        );
+        return failure("sign_in_redirect", url);
       }
 
       let invokeResult: CatalogSyncInvokeResult;

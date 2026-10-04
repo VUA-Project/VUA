@@ -16,7 +16,13 @@ import type { OrchestratorProviderV01 } from "@vua/orchestrator-provider";
 import { routeDesktopGatewayInvoke } from "./gateway-router.js";
 import { DownloadPort } from "./download-port.js";
 import { createDownloadEventSink } from "./download-ingest.js";
-import { startCatalogSync, type CatalogSyncInvoke, type CatalogSyncRun } from "./catalog-sync.js";
+import {
+  CATALOG_SYNC_DEFAULT_START_URL,
+  isSignInRedirect,
+  startCatalogSync,
+  type CatalogSyncInvoke,
+  type CatalogSyncRun,
+} from "./catalog-sync.js";
 import { registerImageCacheProtocol, registerImageCacheScheme } from "./image-cache.js";
 import { RemoteContentManager } from "./remote-content.js";
 import { createDesktopOrchestratorProvider } from "./provider-bootstrap.js";
@@ -108,6 +114,10 @@ let remoteContent: RemoteContentManager | null = null;
 let downloadPort: DownloadPort | null = null;
 // 账号库同步当前运行(N5 S1):单并发守卫的持有位;结果落 provider 任务面
 let catalogSyncRun: CatalogSyncRun | null = null;
+// 最近一次同步运行的终态事实(任务前失败可见性,真机 2026-10-05):首页就
+// 失败的运行在 provider 侧不产生任务,通知中心/任务轮询永远等不到——此处
+// 记下终态码,probe 面据此让渲染层把「已开始」翻成失败提示
+let catalogSyncLastTerminal: { runId: string; code: string | null } | null = null;
 // 系统资源占用采集器(顶栏占用查看器):whenReady 启动,退出前 stop
 const systemUsage = new SystemUsageCollector();
 let providerHandshake: Awaited<ReturnType<OrchestratorProviderV01["start"]>> | null = null;
@@ -571,6 +581,21 @@ function registerIpc(provider: OrchestratorProviderV01): void {
         : libraryType === "free_downloads"
           ? "https://accounts.booth.pm/library/free_downloads?page=1"
           : undefined;
+    // 真实登录预检(真机 2026-10-05 确诊):「访问过登录页」的会话在账户域
+    // 有 Cookie,hint 为 "stored" 但并未登录——旧门会放行,首页被 302 到
+    // 登录页,任务在 provider 侧从未创建,通知中心静默、提示卡在“已开始”。
+    // 以同一登录重定向判定预检首开地址;探测异常不拦截(网络失败由运行
+    // 器如实报告,不猜因)
+    try {
+      const probe = await remoteContent.fetchWithSession(
+        startUrl ?? CATALOG_SYNC_DEFAULT_START_URL,
+      );
+      if (isSignInRedirect(probe.finalUrl)) {
+        return { status: "blocked", reason: "sign-in-required" };
+      }
+    } catch {
+      /* 探测不可达不拦截;运行器会以真实失败面报告 */
+    }
     const content = remoteContent;
     const invokeCatalogSyncPage: CatalogSyncInvoke = (params) => {
       if (provider === null) {
@@ -603,6 +628,18 @@ function registerIpc(provider: OrchestratorProviderV01): void {
       },
     );
     catalogSyncRun = run;
+    catalogSyncLastTerminal = null;
+    void run.result.then(
+      (result) => {
+        catalogSyncLastTerminal = {
+          runId: run.runId,
+          code: result.status === "failed" ? (result.error?.code ?? "failed") : null,
+        };
+      },
+      () => {
+        catalogSyncLastTerminal = { runId: run.runId, code: "internal" };
+      },
+    );
     void run.result.finally(() => {
       if (catalogSyncRun === run) catalogSyncRun = null;
     });
@@ -611,6 +648,16 @@ function registerIpc(provider: OrchestratorProviderV01): void {
   ipcMain.handle("vua:catalog-sync:stop", (event) => {
     assertLocalSender(senderFrameUrl(event));
     catalogSyncRun?.stop();
+  });
+  // 运行状态探针(任务前失败可见性):渲染层轮询 provider 任务之外,经此面
+  // 得知「运行已结束且从未产生任务」的终态事实,把卡住的“已开始”翻成失败
+  ipcMain.handle("vua:catalog-sync:probe", (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    return {
+      status: catalogSyncRun !== null ? ("running" as const) : ("idle" as const),
+      runId: catalogSyncRun?.runId ?? catalogSyncLastTerminal?.runId ?? null,
+      lastFailureCode: catalogSyncRun === null ? catalogSyncLastTerminal?.code ?? null : null,
+    };
   });
   // 详情富化(N5 D2,2026-10-03):单商品页抓取 → 同一 ingest 面(provider
   // 自动识别 #items 商品页语法走全量观察);URL 由商品号派生,不放开任意 URL
