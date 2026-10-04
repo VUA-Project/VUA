@@ -8,6 +8,8 @@ import { openExternalUrl } from "../../app/open-external.ts";
 import { useUnityMirrors } from "../../app/unity-download-preference.ts";
 import { Button } from "../../components/primitives/Button.tsx";
 import { Card } from "../../components/primitives/Card.tsx";
+import { GuideEntryButton } from "../guide/GuideEntryButton.tsx";
+import { guideTargetForComponent } from "../guide/guide-target.ts";
 import type { CheckZone } from "./deployer-model.ts";
 
 const copy = strings.deployment;
@@ -124,6 +126,8 @@ export function DeploymentPanel({ zone }: { zone: CheckZone }) {
         <p className="vua-caption">{copy.reasons[s.reason]}{s.version === null ? "" : ` (${s.version})`}</p>
         {s.location !== null ? <code>{s.location}</code> : null}
         {s.action !== "retain" && s.officialUrl !== null ? <Button variant="subtle" disabled={disabled} onClick={() => { void openExternalUrl(s.officialUrl!); }}>{copy.official}</Button> : null}
+        {/* 「查看操作指南」入口(首玩 B 切片):步骤组件有定位映射时出现 */}
+        <GuideEntryButton target={guideTargetForComponent(s.component)} label={copy.guideCta} />
       </li>)}</ol>
       {plan.installer !== null ? <p>{copy.installer}{": "}{copy.installerKinds[plan.installer.kind]} ({plan.installer.version})<br /><code>{plan.installer.location}</code></p> : null}
       {plan.installer?.kind !== "hub_cli" && plan.installer !== null ? <p>{copy.installerHint}</p> : null}

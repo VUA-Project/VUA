@@ -23,6 +23,9 @@ export const storageKeys = {
   theme: "vua-theme",
   /** 界面语言(C-I18N):LocaleId;缺省走系统探测,fallback 见 i18n/locales.ts */
   locale: "vua-locale",
+  /** 指南阅读位置(首玩 B 切片):版本化前仅存 {topic, section?};只保存阅读
+   *  信息,不保存账号信息或部署任务进度;读写见 features/guide/guide-target.ts */
+  guideReading: "vua-guide-reading",
   /** 高对比度(C-I18N):"auto" 跟随系统 forced-colors | "on" 始终开启;缺省 auto */
   hc: "vua-hc",
   /** 动态特效总开关(S-VFX-5,VR/省资源):"on" | "off";缺省 on */

@@ -71,6 +71,7 @@ export const strings: Strings = {
     "uuRecheck": "기존 가속기를 계속 사용할 수 있습니다. VUA와 게임의 통신 경로는 다를 수 있으므로 가속 후 VRChat 내 로그인과 로딩도 확인하세요.",
     "scope": "서비스 접속 가능 여부를 확인하며 게임 지연이나 다운로드 속도를 측정하지 않습니다. 결과와 관계없이 설치를 계속하고 플레이할 때 게임 접속을 확인할 수 있습니다.",
     "picoLocal": "PICO의 USB 및 Wi-Fi 연결은 PICO Connect에서 별도로 확인합니다. 인터넷이 되는데 헤드셋이 연결되지 않으면 케이블이나 로컬 Wi-Fi 연결을 확인하세요.",
+    guideCta: "PICO 스트리밍 가이드 보기",
     "linkFailed": "페이지를 열지 못했습니다. 다시 시도하세요."
   },
   terms: {
@@ -416,6 +417,7 @@ demoTaskTitle: "데모 작업",
     "working": "처리 중…",
     "execute": "이 계획을 확인하고 실행",
     "official": "안내 또는 다운로드 출처 열기",
+    guideCta: "가이드 보기",
     "consent": "자동 단계는 표시된 경로에 지정 버전과 모듈을 설치하고 기존 소프트웨어를 유지합니다. 로그인, 라이선스 및 권한 승인은 사용자가 처리합니다. 취소는 안전한 단계 경계에서 적용되며 완료된 설치는 되돌리지 않습니다.",
     "actions": {
       "retain": "기존 설치 유지",
@@ -467,6 +469,7 @@ demoTaskTitle: "데모 작업",
     }
   },
   deployer: {
+    guideCta: "가이드 보기",
     zones: {
       play: {
         title: "플레이 환경",
@@ -1510,6 +1513,8 @@ rolled_back: "롤백됨",
     cancelHint: "취소는 요청입니다. 작업은 안전한 경계에서 중지됩니다.",
     cancelArmedHint: "한 번 더 누르면 취소가 확정됩니다.",
     closeWindow: "창 닫기",
+    collapse: "숨기기",
+    returnToMain: "메인 창으로 돌아가기",
     retry: "다시 시도",
     loadErrorTitle: "지금은 앱 레이어에 연결할 수 없습니다",
     loadErrorBody:

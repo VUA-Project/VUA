@@ -1140,6 +1140,18 @@ export interface OverlayWindowShowResultV1 {
   readonly view: OverlayViewV1;
 }
 
+/**
+ * 指南定位载荷(首玩 B 切片 additive):按「主题 + 分节」打开引导视图。
+ * 跨进程只承载词面形状(两个字符串字段);主题/分节词表归渲染层引导模型
+ * 所有——形状外/词表外值由渲染层安全回退到开始页,Main 只做形状收窄。
+ */
+export interface GuideTargetV1 {
+  /** 引导主题词面(渲染层 guide-content 的 GuideTopicId 词表) */
+  readonly topic: string;
+  /** 主题内分节 id;缺席 = 主题开头 */
+  readonly section?: string;
+}
+
 export interface DesktopWindowApiV1 {
   minimize(): Promise<void>;
   toggleMaximize(): Promise<void>;
@@ -1158,6 +1170,22 @@ export interface DesktopWindowApiV1 {
   overlayViewEvents: {
     subscribe(listener: (view: OverlayViewV1) => void): () => void;
   };
+  /** 按定位打开引导(首玩 B 切片 additive):无窗口 = 创建并显示引导视图,
+   *  定位经加载查询投递;隐藏 = 显示并投递;可见 = 仅投递(绝不隐藏)。
+   *  target 缺席/null = 仅打开引导视图(渲染层恢复上次阅读位置);
+   *  已开窗的切换经 vua:overlay:guide-target 事件投递 */
+  showGuide(target?: GuideTargetV1 | null): Promise<OverlayWindowShowResultV1>;
+  /** 收起覆盖层(隐藏不销毁,保留窗口与阅读状态;additive):窗口缺席
+   *  幂等回执 false,绝不创建窗口 */
+  hideOverlay(): Promise<OverlayWindowVisibilityV1>;
+  /** 指南定位事件(Main → 本地渲染层;additive):已开窗时的定位通知
+   *  (载荷即 GuideTargetV1 或 null=仅切引导视图);只投递给覆盖层窗口本身 */
+  guideTargetEvents: {
+    subscribe(listener: (target: GuideTargetV1 | null) => void): () => void;
+  };
+  /** 返回主窗口(additive):主窗口最小化则还原,随后显示并聚焦——仅响应
+   *  用户明确动作(覆盖层「返回主窗口」),允许切换焦点 */
+  focusMainWindow(): Promise<void>;
 }
 
 /**

@@ -6,6 +6,7 @@ import type {
   ApplicationEventV01,
   DownloadEventV01,
   EditorSettingsV1,
+  GuideTargetV1,
   NavigationConfirmRequestV1,
   OverlayViewV1,
   RemoteContentEventV1,
@@ -33,7 +34,9 @@ import {
   OVERLAY_WINDOW_LEVEL,
   OVERLAY_WINDOW_WIDTH,
   decideOverlayWindowAction,
+  guideTargetQuery,
   overlayVisibilityAfterDecision,
+  parseGuideTargetPayload,
 } from "./overlay-window.js";
 import {
   installLocalContentNavigationPolicy,
@@ -402,6 +405,33 @@ function registerIpc(provider: OrchestratorProviderV01): void {
     return showOverlayWindow(view === null ? "guide" : view);
   });
 
+  // 按定位打开引导(首玩 B 切片 additive):形状收窄在 overlay-window.ts
+  // 纯函数(垃圾形状响亮 throw;主题/分节词表回退归渲染层引导模型)
+  ipcMain.handle("vua:overlay:show-guide", (event, target: unknown) => {
+    assertLocalSender(senderFrameUrl(event));
+    return showGuideWindow(parseGuideTargetPayload(target));
+  });
+
+  // 收起覆盖层(首玩 B 切片 additive):隐藏不销毁,保留窗口与阅读状态;
+  // 窗口缺席幂等回执 false,绝不创建窗口(与 toggle 的 create 语义区分)
+  ipcMain.handle("vua:overlay:hide", (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    if (overlayWindow !== null && !overlayWindow.isDestroyed() && overlayWindow.isVisible()) {
+      overlayWindow.hide();
+    }
+    return { visible: false };
+  });
+
+  // 返回主窗口(首玩 B 切片 additive):仅响应用户明确动作(覆盖层「返回
+  // 主窗口」),允许切换焦点;最小化先还原;主窗口缺席(启动中/已关闭)幂等
+  ipcMain.handle("vua:window:focus-main", (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    if (mainWindow === null || mainWindow.isDestroyed()) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  });
+
   // 远程内容窄面(F4-2 隔离基座):Renderer 只发语义动作;来源允许清单在
   // Main 侧裁决,视图内违规以事件透明上报。种子允许清单只含目录浏览域,
   // 真实值随 catalog 契约冻结(F4-1②)调整
@@ -509,7 +539,10 @@ function confirmNavigation(
  *   下次 toggle 重建;主窗口关闭(closed)销毁 overlay——主窗口关闭＝应用
  *   退出语义不变(window-all-closed 行为不被悬浮窗拖住)。
  */
-function createOverlayWindow(view: OverlayViewV1 = "guide"): void {
+function createOverlayWindow(
+  view: OverlayViewV1 = "guide",
+  guideTarget: GuideTargetV1 | null = null,
+): void {
   const preload = path.join(__dirname, "preload.js");
   const win = new BrowserWindow({
     width: OVERLAY_WINDOW_WIDTH,
@@ -530,7 +563,8 @@ function createOverlayWindow(view: OverlayViewV1 = "guide"): void {
   win.on("closed", () => {
     if (overlayWindow === win) overlayWindow = null;
   });
-  const search = `surface=${OVERLAY_SURFACE_PARAM}&view=${view}`;
+  // 首帧投递:视图经 view=,指南定位(首玩 B 切片)经 guideTopic=/guideSection=
+  const search = `surface=${OVERLAY_SURFACE_PARAM}&view=${view}${guideTargetQuery(guideTarget)}`;
   if (rendererUrl) void win.loadURL(`${rendererUrl}?${search}`);
   else {
     void win.loadFile(path.join(__dirname, "../renderer/index.html"), {
@@ -573,6 +607,30 @@ function showOverlayWindow(view: OverlayViewV1): {
     overlayWindow!.webContents.send("vua:overlay:set-view", view);
   }
   return { visible: true, view };
+}
+
+/**
+ * showGuide 语义(首玩 B 切片 additive,契约 DesktopWindowApiV1.showGuide):
+ * 窗口缺席 = 创建并显示引导视图,定位经加载查询投递(首帧落位);
+ * 隐藏 = showInactive 显示并投递;可见 = 仅投递(绝不隐藏)。
+ * 已开窗的投递先发 set-view(guide)再发 guide-target——DesktopOverlaySurface
+ * 常驻并暂存定位请求,GuideOverlayView 的挂载时序不影响定位到达。
+ */
+function showGuideWindow(target: GuideTargetV1 | null): {
+  readonly visible: boolean;
+  readonly view: OverlayViewV1;
+} {
+  const exists = overlayWindow !== null && !overlayWindow.isDestroyed();
+  if (!exists) {
+    createOverlayWindow("guide", target);
+    return { visible: true, view: "guide" };
+  }
+  if (!overlayWindow!.isVisible()) overlayWindow!.showInactive();
+  if (!overlayWindow!.webContents.isDestroyed()) {
+    overlayWindow!.webContents.send("vua:overlay:set-view", "guide");
+    overlayWindow!.webContents.send("vua:overlay:guide-target", target);
+  }
+  return { visible: true, view: "guide" };
 }
 
 async function createWindow(): Promise<void> {

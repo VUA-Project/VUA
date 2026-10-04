@@ -51,3 +51,9 @@ test("媒体解析:登记 id 有资产,未登记 id 为 null", () => {
   }
   assert.equal(resolveGuideMedia("no-such-media"), null);
 });
+
+test("媒体 src 一律相对路径(file:// 打包形态下绝对路径必破图,B 切片真机实证)", () => {
+  for (const [id, media] of Object.entries(GUIDE_MEDIA)) {
+    assert.ok(media.src.startsWith("./guide/"), `${id} src 必须是 ./guide/ 相对路径`);
+  }
+});

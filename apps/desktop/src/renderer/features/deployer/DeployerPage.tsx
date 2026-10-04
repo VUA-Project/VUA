@@ -14,6 +14,8 @@ import { format, strings } from "../../i18n/index.ts";
 import { useDataSource, useEnvironmentView, useGateway } from "../../gateway/index.ts";
 import { summarizeGroup, summarizeHealth, zoneSummaryItems, type CheckItem, type CheckZone } from "./deployer-model.ts";
 import { canAdvanceStep, type FixPlanV1 } from "./fix-plan-model.ts";
+import { GuideEntryButton } from "../guide/GuideEntryButton.tsx";
+import { guideTargetForCheckId } from "../guide/guide-target.ts";
 import { VersionPanel } from "./VersionPanel.tsx";
 import "./deployer.css";
 
@@ -403,6 +405,9 @@ function EnvironmentChecks({
                 <p className="vua-caption vua-text-secondary">{entry.item.fixLabel}</p>
               )
             ) : null}
+            {/* 「查看操作指南」入口(首玩 B 切片):检查项有定位映射时出现;
+                指南是静态内容,不经 capability 门控 */}
+            <GuideEntryButton target={guideTargetForCheckId(entry.item.id)} label={copy.guideCta} />
           </Card>
           ),
         )}
@@ -454,6 +459,7 @@ function RuntimeGroupCard({
             <StatusLight level={member.status} />
             <span className="vua-deployer__group-member-title">{member.title}</span>
             <span className="vua-caption vua-text-secondary">{member.description}</span>
+            <GuideEntryButton target={guideTargetForCheckId(member.id)} label={copy.guideCta} />
           </li>
         ))}
       </ul>

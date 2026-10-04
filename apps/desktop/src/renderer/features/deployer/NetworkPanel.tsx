@@ -7,6 +7,8 @@ import { format, formatDateTime, strings } from "../../i18n/index.ts";
 import { Card } from "../../components/primitives/Card.tsx";
 import { Button } from "../../components/primitives/Button.tsx";
 import { StatusLight } from "../../components/primitives/StatusLight.tsx";
+import { GuideEntryButton } from "../guide/GuideEntryButton.tsx";
+import { GUIDE_TARGETS } from "../guide/guide-target.ts";
 
 const copy = strings.network;
 export function NetworkPanel() {
@@ -95,6 +97,9 @@ export function NetworkPanel() {
       </details>
       <p className="vua-caption vua-text-secondary">{copy.scope}</p>
       {intent.route === "pico_pcvr" ? <p>{copy.picoLocal}</p> : null}
+      {intent.route === "pico_pcvr" ? (
+        <GuideEntryButton target={GUIDE_TARGETS.picoPrepare} label={copy.guideCta} />
+      ) : null}
     </>}
   </Card>;
 }

@@ -75,6 +75,7 @@ export const strings: Strings = {
     "uuRecheck": "已有的加速器可以继续使用。VUA 的检测请求与游戏可能采用不同线路，启用加速后还应在 VRChat 内验证登录和加载。",
     "scope": "这里检测服务入口的可达性，不测量游戏延迟或下载速度。无论结果如何，都可以继续安装，并在游玩时验证游戏连接。",
     "picoLocal": "PICO 的 USB 和 Wi-Fi 串流连接在 PICO Connect 中单独检查。互联网正常但头显无法连接时，请在那里检查线缆或局域网连接。",
+    guideCta: "查看 PICO 串流指南",
     "linkFailed": "页面未能打开，请重试。"
   },
   /** 术语本地注释(键必须与 terms.ts 的 TERMS 一一对应;空串 = 无注释,仅显示术语) */
@@ -426,6 +427,7 @@ demoTaskTitle: "演示任务",
     "working": "正在处理…",
     "execute": "确认此计划并执行",
     "official": "打开说明或下载来源",
+    guideCta: "查看操作指南",
     "consent": "自动步骤会将指定版本和组件安装到列出的位置，保留已有软件。登录、许可和提权由用户处理。取消在步骤安全边界生效，已完成的安装不自动回滚。",
     "actions": {
       "retain": "保留已有安装",
@@ -477,6 +479,7 @@ demoTaskTitle: "演示任务",
     }
   },
   deployer: {
+    guideCta: "查看操作指南",
     zones: {
       play: {
         title: "游玩环境",
@@ -1565,6 +1568,8 @@ rolled_back: "已回滚",
     cancelHint: "取消是请求语义:任务会在安全边界结束。",
     cancelArmedHint: "再按一次确认取消。",
     closeWindow: "关闭窗口",
+    collapse: "收起",
+    returnToMain: "返回主窗口",
     retry: "重试",
     loadErrorTitle: "暂时无法连接应用层",
     loadErrorBody: "覆盖层快照请求失败或超时。重试不会影响主窗口;关闭本窗口仅关闭覆盖层。",

@@ -77,6 +77,7 @@ export const strings = {
     "uuRecheck": "An existing accelerator can stay in use. These VUA requests and the game may use different routes; after enabling acceleration, also verify login and loading in VRChat.",
     "scope": "These checks measure access to service entrances, not game latency or download speed. Setup can continue with any result; the game connection is verified when playing.",
     "picoLocal": "PICO USB and Wi-Fi streaming are checked separately in PICO Connect. If Internet access works but the headset cannot connect, check the cable or local Wi-Fi connection there.",
+    guideCta: "View the PICO streaming guide",
     "linkFailed": "The page could not be opened. Try again."
   },
   terms: {
@@ -430,6 +431,7 @@ demoTaskTitle: "Demo task",
     "working": "Working…",
     "execute": "Confirm this plan and execute",
     "official": "Open instructions / download source",
+    guideCta: "View guide",
     "consent": "Automatic steps install the listed version/components at the listed location. Existing software is retained. Account sign-in, licenses and elevation stay with the user. Cancellation takes effect at safe step boundaries; completed installation is not rolled back.",
     "actions": {
       "retain": "Keep existing installation",
@@ -481,6 +483,7 @@ demoTaskTitle: "Demo task",
     }
   },
   deployer: {
+    guideCta: "View guide",
     zones: {
       play: {
         title: "Play Environment",
@@ -1560,6 +1563,8 @@ demoTaskTitle: "Demo task",
     cancelHint: "Cancellation is a request — the task stops at a safe boundary.",
     cancelArmedHint: "Tap again to confirm cancellation.",
     closeWindow: "Close window",
+    collapse: "Collapse",
+    returnToMain: "Return to main window",
     retry: "Retry",
     loadErrorTitle: "Cannot reach the app layer right now",
     loadErrorBody:
