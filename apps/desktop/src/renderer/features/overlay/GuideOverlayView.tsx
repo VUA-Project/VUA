@@ -12,7 +12,9 @@
  * - 插图四语言图注(section.caption,与 media 成对出现):明确其为示意图,
  *   与真实软件截图区分;图注是文案的一部分,随语言表切换;
  * - 主题切换条键盘操作:roving tabindex + 方向键/Home/End(tablist 语义),
- *   Tab 键只停一次,Enter/Space 激活沿用原生 button 行为。
+ *   Tab 键只停一次,Enter/Space 激活沿用原生 button 行为;
+ * - 正文面板可聚焦(tabpanel tabIndex=0):Tab 自主题进入正文,聚焦后
+ *   方向键/翻页键经最近滚动祖先(.vua-overlay__body)滚动阅读。
  */
 import { useRef, useState, type KeyboardEvent } from "react";
 import { MediaSlot } from "../../components/primitives/MediaSlot.tsx";
@@ -86,6 +88,7 @@ export function GuideOverlayView() {
         role="tabpanel"
         id={GUIDE_PANEL_ID}
         aria-labelledby={guideTabId(topic)}
+        tabIndex={0}
       >
         <h1 className="vua-overlay-guide__title">{topicCopy.title}</h1>
         <p className="vua-overlay-guide__intro">{topicCopy.intro}</p>
