@@ -3,7 +3,7 @@
 
 > Status: Accepted
 > Scope: Electron Main / Preload / Renderer, package scripts, and quality gates
-> Updated: 2026-10-01
+> Updated: 2026-10-04
 > Authority: development entry point; product boundary and contracts live in `docs/`
 
 ## Development commands
@@ -46,6 +46,46 @@ The development launcher does not rebuild the Rust Provider; repeat the build af
 Quality gates: `check:boundary` (Gateway only via the barrel; renderer must not import `electron`/`node:`/`@tauri-apps`),
 `check:i18n` (no CJK literals; locale tables aligned, including table validation), `check:contrast` (WCAG AA in 5 contexts),
 `check:leak` and `check:forest-leak` (production leakage checks).
+
+## Development data and parallel checkouts
+
+Development runs automatically use a separate profile per checkout, including linked Git
+worktrees. On Windows the default is
+`%LOCALAPPDATA%\VUA-dev\<checkout-name>-<canonical-path-hash>` (falling back to the app-data
+directory when LOCALAPPDATA is unavailable). The normalized absolute checkout path determines
+identity; the current terminal directory, Git branch and commit do not. Moving a checkout creates
+a different default profile. Native window titles (including taskbar/Alt+Tab) show its development
+label; the `desktop-profile` startup diagnostic prints the selected directories.
+
+The profile contains both BDL/task databases, settings, material associations, managed warehouse
+and production directories, download staging, guide reading state and browser storage/cache.
+Electron userData and sessionData are configured together before initialization. Account
+persistence policy is unchanged. Steam/PICO installations, external client accounts and physical
+devices remain shared machine resources; coordinate installation and headset tests.
+
+The old `%APPDATA%\@vua\desktop` directory stays untouched. New profiles start empty. To reuse
+data, close the source/target VUA processes and copy a complete consistent profile into a compatible
+checkout's selected directory. Do not copy only a live SQLite .db file (WAL data may still be
+pending), edit its schema version or let an older build open a newer profile. A normal branch
+switch keeps the checkout profile; use a separate test profile when exercising older/incompatible
+schemas.
+
+For a disposable test or an explicit data copy, choose an absolute directory for this shell:
+
+```powershell
+$env:VUA_DEV_USER_DATA = Join-Path $env:TEMP 'vua-profile-test'
+$env:VUA_DEV_PORT = '5174'
+pnpm dev:desktop
+Remove-Item Env:VUA_DEV_USER_DATA, Env:VUA_DEV_PORT
+```
+
+`VUA_DEV_USER_DATA` overrides development data only; relative/empty paths fail before startup.
+`VUA_DEV_PORT` selects the renderer port (default 5173). Use distinct ports when running multiple
+development checkouts concurrently. Each process needs its own profile; explicitly choosing the
+same directory disables that separation. Build/use the matching Provider from each checkout,
+and keep profiles/evidence local and out of Git.
+
+Packaged builds use `%APPDATA%\VUA` and ignore development profile overrides.
 
 ## Migration and verification records
 

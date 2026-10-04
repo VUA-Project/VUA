@@ -44,8 +44,23 @@ import {
 import { checkLatestRelease } from "./update-check.js";
 import { SystemUsageCollector } from "./system-usage.js";
 import { createFsDirectory, listFsDirectory } from "./fs-directory.js";
+import { configureDesktopProfile, resolveDesktopProfile, tagDevelopmentWindow } from "./runtime-profile.js";
 
 const rendererUrl = process.env.VUA_RENDERER_URL;
+// Resolve all persistence before app.ready/Session/Provider initialization. Resolve
+// symlinks in development so a second spelling of one checkout retains its identity.
+const desktopProfile = resolveDesktopProfile({
+  isPackaged: app.isPackaged,
+  appData: app.getPath("appData"),
+  localAppData: process.env.LOCALAPPDATA,
+  mainDirectory: app.isPackaged ? __dirname : fs.realpathSync(__dirname),
+  platform: process.platform,
+  developmentOverride: process.env.VUA_DEV_USER_DATA,
+});
+configureDesktopProfile(app, desktopProfile);
+if (desktopProfile.kind !== "release") {
+  process.stderr.write(`${JSON.stringify({ channel: "desktop-profile", ...desktopProfile })}\n`);
+}
 let mainWindow: BrowserWindow | null = null;
 let overlayWindow: BrowserWindow | null = null;
 let provider: OrchestratorProviderV01 | null = null;
@@ -518,6 +533,7 @@ function createOverlayWindow(view: OverlayViewV1 = "guide"): void {
     hasShadow: false,
     webPreferences: localWindowWebPreferences(preload),
   });
+  tagDevelopmentWindow(win, desktopProfile);
   win.setAlwaysOnTop(true, OVERLAY_WINDOW_LEVEL);
   overlayWindow = win;
   win.once("ready-to-show", () => {
@@ -593,6 +609,8 @@ async function createWindow(): Promise<void> {
       backgroundThrottling: false,
     },
   });
+
+  tagDevelopmentWindow(mainWindow, desktopProfile);
 
   // U9 四分法(本地壳窗口):http/https 弹窗不再交系统浏览器——清单内直行/
   // 清单外确认后转当前内嵌视图(RemoteContentManager);外部协议手势+确认后
