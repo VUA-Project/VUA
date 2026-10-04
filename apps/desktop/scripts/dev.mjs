@@ -4,7 +4,11 @@ import { fileURLToPath } from "node:url";
 
 const useShell = process.platform === "win32";
 const REPO_ROOT = path.resolve(fileURLToPath(new URL(".", import.meta.url)), "..", "..", "..");
-const VITE_PORT = 5173;
+// Distinct worktrees may run concurrently with separate renderer ports.
+const VITE_PORT = Number(process.env.VUA_DEV_PORT ?? "5173");
+if (!Number.isInteger(VITE_PORT) || VITE_PORT < 1 || VITE_PORT > 65535) {
+  throw new Error("VUA_DEV_PORT must be an integer from 1 to 65535");
+}
 
 // #29 裁决(集成 2026-09-15 深夜,缺陷成立=dev 工具链护栏缺口):Windows 下
 // spawn(pnpm, {shell:true}) 的实际进程树是 cmd.exe → pnpm → vite/electron,
@@ -120,10 +124,15 @@ async function waitForRenderer() {
 const killedStale = preflightPort(VITE_PORT);
 if (killedStale) await waitPortFree(VITE_PORT);
 
-// --force:每次启动重建依赖预打包。真机 2026-10-02/03 三次踩中陈旧
-// @vua/contracts 预打包(运行时导入 undefined → 渲染崩溃整树卸载);
-// 几秒的重建代价换掉这一整类缺陷
-const vite = spawn("pnpm", ["exec", "vite", "--force"], { stdio: "inherit", shell: useShell });
+// Refresh linked CJS packages before Vite prebundles or Electron imports them.
+// TypeScript sees source types even when their runtime dist is still outdated.
+const dependencies = spawn("pnpm", ["--filter", "@vua/orchestrator-provider", "build"], {
+  stdio: "inherit", shell: useShell,
+});
+const dependencyCode = await new Promise((resolve) => dependencies.once("exit", resolve));
+if (dependencyCode !== 0) throw new Error("Desktop runtime dependencies failed to build");
+
+const vite = spawn("pnpm", ["exec", "vite", "--force", "--port", String(VITE_PORT)], { stdio: "inherit", shell: useShell });
 
 // Electron 额外参数透传(W25 走查取证护栏,2026-09-23):VUA_ELECTRON_ARGS
 // 以空格分词追加到 electron 命令(如 --remote-debugging-port=51993,供

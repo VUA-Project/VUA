@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img">
+  <!-- 自制示意图:PICO 4 Pro 经 USB-C 线连接 PC(无文字,标签由 HTML/i18n 提供)。
+       配色取双主题均可读的中性色,不绑定任一主题 Token(SVG 经 img 引用
+       无法继承 currentColor)。 -->
+  <!-- PC 显示器 -->
+  <g fill="none" stroke="#8f8aa8" stroke-width="4">
+    <rect x="24" y="44" width="96" height="64" rx="8"/>
+    <line x1="72" y1="108" x2="72" y2="126"/>
+    <line x1="52" y1="126" x2="92" y2="126"/>
+  </g>
+  <rect x="36" y="56" width="72" height="40" rx="4" fill="#8f8aa8" opacity="0.35"/>
+  <!-- PICO 头显:镜体 + 头带 + 双透镜 -->
+  <g fill="none" stroke="#8f8aa8" stroke-width="4">
+    <path d="M 236 56 Q 268 40 296 56"/>
+    <rect x="216" y="56" width="80" height="48" rx="16"/>
+  </g>
+  <g fill="#6557d2">
+    <circle cx="240" cy="80" r="9"/>
+    <circle cx="272" cy="80" r="9"/>
+  </g>
+  <!-- 高亮:USB 数据线(显示器 → 头显) -->
+  <path d="M 96 108 Q 140 150 190 120 T 232 100" fill="none" stroke="#6557d2" stroke-width="4" stroke-linecap="round"/>
+  <rect x="88" y="102" width="16" height="10" rx="3" fill="#6557d2"/>
+  <rect x="224" y="94" width="16" height="10" rx="3" fill="#6557d2"/>
+</svg>

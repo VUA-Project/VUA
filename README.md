@@ -17,7 +17,7 @@ Prepare the software and settings your play setup needs, then learn the basics o
 
 The first account guide opens official registration pages in the built-in browser: Steam and VRChat for play, with optional Unity and BOOTH accounts for creators. Users complete registration, Steam library actions and official account linking themselves. Upload guidance explains the full VRChat account and New User or higher requirements; local Avatar preparation can start before upload eligibility.
 
-The first two optional tool connections are VRCFaceTracking and hyblocker OpenVR Space Calibrator. VUA is planned to detect and launch their independent installations and guide setup in the upstream applications; Steam/upstream manages installation and updates.
+Planned optional connections cover tracking, VR overlays, sleep utilities and capture/streaming. VUA will detect independent installations, open official Steam purchase/install routes and launch the applications; Steam/upstream manages updates. The tracking tools also receive setup guidance, with PICO eye tracking included in the first play release. See the [selected tools and support scope](docs/development-outline.md#n2-external-gameplay-tools).
 
 ### 2. Avatar production
 
@@ -43,7 +43,7 @@ Project and package management prepares the required Unity environment and depen
 
 ## Development progress
 
-v0.6.0 is the latest source tag; no installable artifact is published yet (the only GitHub Release, v0.5.0, carries no assets). Development follows the [N1–N7 sequence](docs/development-outline.md): deployment, two selected runtime tools, complex Avatar production, Recipe reproduction, audited material-management rework, recovery, and a Beta installer with an illustrated user guide.
+v0.6.0 is the latest source tag; no installable artifact is published yet (the only GitHub Release, v0.5.0, carries no assets). Development follows the [N1–N7 sequence](docs/development-outline.md): deployment, selected external gameplay tools, complex Avatar production, Recipe reproduction, audited material-management rework, recovery, and a Beta installer with an illustrated user guide.
 
 The project is expected to remain in Beta for a long time. These descriptions express the product direction; implemented pieces and automated tests do not establish complete real-machine workflows. Read the [sequence](docs/development-outline.md) and the [release notes](docs/release/) for actual acceptance status.
 
@@ -63,7 +63,7 @@ The project is expected to remain in Beta for a long time. These descriptions ex
 
 ## License
 
-VUA is licensed under [Apache-2.0](LICENSE). The first planned external connections are [VRCFaceTracking (Apache-2.0)](https://github.com/benaclejames/VRCFaceTracking/blob/master/LICENSE) and [Space Calibrator (MIT core; separate third-party licenses)](https://github.com/hyblocker/OpenVR-SpaceCalibrator/blob/develop/LICENSE). See [third-party notices](THIRD_PARTY_NOTICES.md) for upstream attribution and conditions for any future redistribution.
+VUA is licensed under [Apache-2.0](LICENSE). External applications retain their own licenses, including [VRCFaceTracking (Apache-2.0)](https://github.com/benaclejames/VRCFaceTracking/blob/master/LICENSE) and [Space Calibrator (MIT core; separate third-party licenses)](https://github.com/hyblocker/OpenVR-SpaceCalibrator/blob/develop/LICENSE). See [third-party notices](THIRD_PARTY_NOTICES.md) for all planned connections, upstream attribution and conditions for any future redistribution.
 
 [NOTICE](NOTICE) · [Trademark guidance](TRADEMARKS.md)
 

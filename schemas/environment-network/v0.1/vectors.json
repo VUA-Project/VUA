@@ -1,0 +1,342 @@
+[
+  {
+    "name": "desktop auto",
+    "kind": "intent",
+    "valid": true,
+    "value": {
+      "route": "desktop_play",
+      "region": "auto"
+    }
+  },
+  {
+    "name": "pico manual",
+    "kind": "intent",
+    "valid": true,
+    "value": {
+      "route": "pico_pcvr",
+      "region": "china_mainland"
+    }
+  },
+  {
+    "name": "reject arbitrary host",
+    "kind": "intent",
+    "valid": false,
+    "value": {
+      "route": "desktop_play",
+      "region": "auto",
+      "url": "http://127.0.0.1"
+    }
+  },
+  {
+    "name": "reject widened route",
+    "kind": "intent",
+    "valid": false,
+    "value": {
+      "route": "quest",
+      "region": "auto"
+    }
+  },
+  {
+    "name": "reject missing region",
+    "kind": "intent",
+    "valid": false,
+    "value": {
+      "route": "desktop_play"
+    }
+  },
+  {
+    "name": "mixed result",
+    "kind": "report",
+    "valid": true,
+    "value": {
+      "schemaVersion": "0.1",
+      "intent": {
+        "route": "desktop_play",
+        "region": "auto"
+      },
+      "detectedRegion": "china_mainland",
+      "effectiveRegion": "china_mainland",
+      "capturedAt": "2026-10-03T01:00:00Z",
+      "durationMs": 6030,
+      "results": [
+        {
+          "target": "steam_store",
+          "status": "reachable",
+          "elapsedMs": 100,
+          "httpStatus": 200
+        },
+        {
+          "target": "steam_community",
+          "status": "timeout",
+          "elapsedMs": 6000,
+          "httpStatus": null
+        },
+        {
+          "target": "steam_download",
+          "status": "reachable",
+          "elapsedMs": 100,
+          "httpStatus": 200
+        },
+        {
+          "target": "vrchat_web",
+          "status": "reachable",
+          "elapsedMs": 100,
+          "httpStatus": 200
+        }
+      ]
+    }
+  },
+  {
+    "name": "pico manual report",
+    "kind": "report",
+    "valid": true,
+    "value": {
+      "schemaVersion": "0.1",
+      "intent": {
+        "route": "pico_pcvr",
+        "region": "other"
+      },
+      "detectedRegion": "unknown",
+      "effectiveRegion": "other",
+      "capturedAt": "2026-10-03T01:00:00Z",
+      "durationMs": 6030,
+      "results": [
+        {
+          "target": "steam_store",
+          "status": "reachable",
+          "elapsedMs": 100,
+          "httpStatus": 200
+        },
+        {
+          "target": "steam_community",
+          "status": "timeout",
+          "elapsedMs": 6000,
+          "httpStatus": null
+        },
+        {
+          "target": "steam_download",
+          "status": "reachable",
+          "elapsedMs": 100,
+          "httpStatus": 200
+        },
+        {
+          "target": "vrchat_web",
+          "status": "reachable",
+          "elapsedMs": 100,
+          "httpStatus": 200
+        },
+        {
+          "target": "pico_connect",
+          "status": "http_error",
+          "elapsedMs": 10,
+          "httpStatus": 403
+        }
+      ]
+    }
+  },
+  {
+    "name": "reject missing target",
+    "kind": "report",
+    "valid": false,
+    "value": {
+      "schemaVersion": "0.1",
+      "intent": {
+        "route": "desktop_play",
+        "region": "auto"
+      },
+      "detectedRegion": "china_mainland",
+      "effectiveRegion": "china_mainland",
+      "capturedAt": "2026-10-03T01:00:00Z",
+      "durationMs": 6030,
+      "results": [
+        {
+          "target": "steam_store",
+          "status": "reachable",
+          "elapsedMs": 100,
+          "httpStatus": 200
+        },
+        {
+          "target": "steam_community",
+          "status": "timeout",
+          "elapsedMs": 6000,
+          "httpStatus": null
+        },
+        {
+          "target": "steam_download",
+          "status": "reachable",
+          "elapsedMs": 100,
+          "httpStatus": 200
+        }
+      ]
+    }
+  },
+  {
+    "name": "reject duplicate target",
+    "kind": "report",
+    "valid": false,
+    "value": {
+      "schemaVersion": "0.1",
+      "intent": {
+        "route": "desktop_play",
+        "region": "auto"
+      },
+      "detectedRegion": "china_mainland",
+      "effectiveRegion": "china_mainland",
+      "capturedAt": "2026-10-03T01:00:00Z",
+      "durationMs": 6030,
+      "results": [
+        {
+          "target": "steam_store",
+          "status": "reachable",
+          "elapsedMs": 100,
+          "httpStatus": 200
+        },
+        {
+          "target": "steam_community",
+          "status": "timeout",
+          "elapsedMs": 6000,
+          "httpStatus": null
+        },
+        {
+          "target": "steam_download",
+          "status": "reachable",
+          "elapsedMs": 100,
+          "httpStatus": 200
+        },
+        {
+          "target": "steam_store",
+          "status": "reachable",
+          "elapsedMs": 100,
+          "httpStatus": 200
+        }
+      ]
+    }
+  },
+  {
+    "name": "reject false HTTP success",
+    "kind": "report",
+    "valid": false,
+    "value": {
+      "schemaVersion": "0.1",
+      "intent": {
+        "route": "desktop_play",
+        "region": "auto"
+      },
+      "detectedRegion": "china_mainland",
+      "effectiveRegion": "china_mainland",
+      "capturedAt": "2026-10-03T01:00:00Z",
+      "durationMs": 6030,
+      "results": [
+        {
+          "target": "steam_store",
+          "status": "reachable",
+          "elapsedMs": 100,
+          "httpStatus": 403
+        },
+        {
+          "target": "steam_community",
+          "status": "reachable",
+          "elapsedMs": 6000,
+          "httpStatus": 403
+        },
+        {
+          "target": "steam_download",
+          "status": "reachable",
+          "elapsedMs": 100,
+          "httpStatus": 403
+        },
+        {
+          "target": "vrchat_web",
+          "status": "reachable",
+          "elapsedMs": 100,
+          "httpStatus": 403
+        }
+      ]
+    }
+  },
+  {
+    "name": "reject leaked identity",
+    "kind": "report",
+    "valid": false,
+    "value": {
+      "schemaVersion": "0.1",
+      "intent": {
+        "route": "desktop_play",
+        "region": "auto"
+      },
+      "detectedRegion": "china_mainland",
+      "effectiveRegion": "china_mainland",
+      "capturedAt": "2026-10-03T01:00:00Z",
+      "durationMs": 6030,
+      "results": [
+        {
+          "target": "steam_store",
+          "status": "reachable",
+          "elapsedMs": 100,
+          "httpStatus": 200
+        },
+        {
+          "target": "steam_community",
+          "status": "timeout",
+          "elapsedMs": 6000,
+          "httpStatus": null
+        },
+        {
+          "target": "steam_download",
+          "status": "reachable",
+          "elapsedMs": 100,
+          "httpStatus": 200
+        },
+        {
+          "target": "vrchat_web",
+          "status": "reachable",
+          "elapsedMs": 100,
+          "httpStatus": 200
+        }
+      ],
+      "ip": "192.0.2.1"
+    }
+  },
+  {
+    "name": "reject region mismatch",
+    "kind": "report",
+    "valid": false,
+    "value": {
+      "schemaVersion": "0.1",
+      "intent": {
+        "route": "desktop_play",
+        "region": "auto"
+      },
+      "detectedRegion": "china_mainland",
+      "effectiveRegion": "other",
+      "capturedAt": "2026-10-03T01:00:00Z",
+      "durationMs": 6030,
+      "results": [
+        {
+          "target": "steam_store",
+          "status": "reachable",
+          "elapsedMs": 100,
+          "httpStatus": 200
+        },
+        {
+          "target": "steam_community",
+          "status": "timeout",
+          "elapsedMs": 6000,
+          "httpStatus": null
+        },
+        {
+          "target": "steam_download",
+          "status": "reachable",
+          "elapsedMs": 100,
+          "httpStatus": 200
+        },
+        {
+          "target": "vrchat_web",
+          "status": "reachable",
+          "elapsedMs": 100,
+          "httpStatus": 200
+        }
+      ]
+    }
+  }
+]

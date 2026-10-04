@@ -1,0 +1,39 @@
+appId: org.vua-project.desktop
+productName: VUA
+asar: true
+# Use the pinned official runtime prepared by install-electron. This also avoids
+# re-downloading it and the builder's Windows temporary-directory rename path.
+electronDist: node_modules/electron/dist
+npmRebuild: false
+directories:
+  output: out
+files:
+  - from: dist/packaged-electron
+    to: dist/electron
+    filter: ['*.js']
+  - dist/renderer/**
+  - package.json
+  - '!node_modules/**/*'
+extraResources:
+  # Native processes cannot execute inside app.asar.
+  - from: ../../target/x86_64-pc-windows-msvc/release/vua-orchestrator-provider.exe
+    to: provider/vua-orchestrator-provider.exe
+  - from: ../../LICENSE
+    to: notices/LICENSE-VUA.txt
+  - from: ../../THIRD_PARTY_NOTICES.md
+    to: notices/THIRD_PARTY_NOTICES.md
+  - from: packaging/README.txt
+    to: README.txt
+  - from: node_modules/react/LICENSE
+    to: notices/LICENSE-react.txt
+  - from: node_modules/react-dom/LICENSE
+    to: notices/LICENSE-react-dom.txt
+  - from: node_modules/three/LICENSE
+    to: notices/LICENSE-three.txt
+win:
+  target:
+    - target: zip
+      arch: [x64]
+  # Local previews are unsigned; public signing is a separate release step.
+  signExecutable: false
+artifactName: VUA-${version}-windows-${arch}-preview.zip

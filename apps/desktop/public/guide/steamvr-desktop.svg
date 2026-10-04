@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" role="img">
+  <!-- 自制示意图:头显内 SteamVR 桌面视图(视野中浮着桌面窗口,手柄射线
+       指向窗口;无文字,标签由 HTML/i18n 提供)。配色取双主题均可读的中性色。 -->
+  <!-- 头显视野外框 -->
+  <rect x="16" y="16" width="288" height="148" rx="24" fill="none" stroke="#8f8aa8" stroke-width="4"/>
+  <!-- 视野中的桌面窗口:窗框 + 标题条 + 内容行 -->
+  <g fill="none" stroke="#6557d2" stroke-width="4">
+    <rect x="56" y="36" width="160" height="92" rx="8"/>
+  </g>
+  <rect x="56" y="36" width="160" height="18" rx="8" fill="#6557d2" opacity="0.45"/>
+  <g fill="#8f8aa8" opacity="0.35">
+    <rect x="68" y="64" width="136" height="10" rx="4"/>
+    <rect x="68" y="82" width="104" height="10" rx="4"/>
+    <rect x="68" y="100" width="120" height="10" rx="4"/>
+  </g>
+  <!-- 手柄 + 指向窗口的射线 -->
+  <line x1="244" y1="140" x2="196" y2="96" stroke="#6557d2" stroke-width="3" stroke-linecap="round"/>
+  <g fill="#8f8aa8">
+    <rect x="238" y="136" width="14" height="34" rx="7" transform="rotate(-38 245 153)"/>
+  </g>
+  <path d="M 236 130 a 12 12 0 0 1 20 -6" fill="none" stroke="#8f8aa8" stroke-width="4" stroke-linecap="round"/>
+</svg>

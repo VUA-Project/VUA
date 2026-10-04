@@ -1,4 +1,4 @@
-import { dialogStrings } from "./dialog-i18n.js";
+import { dialogStrings, startupFailureCopy } from "./dialog-i18n.js";
 import { app, BrowserWindow, dialog, ipcMain, net, session, shell } from "electron";
 import fs from "node:fs";
 import path from "node:path";
@@ -6,6 +6,7 @@ import type {
   ApplicationEventV01,
   DownloadEventV01,
   EditorSettingsV1,
+  GuideTargetV1,
   NavigationConfirmRequestV1,
   OverlayViewV1,
   RemoteContentEventV1,
@@ -35,8 +36,29 @@ import {
   OVERLAY_WINDOW_LEVEL,
   OVERLAY_WINDOW_WIDTH,
   decideOverlayWindowAction,
+  guideTargetQuery,
   overlayVisibilityAfterDecision,
+  parseGuideTargetPayload,
 } from "./overlay-window.js";
+import {
+  READER_SURFACE_PARAM,
+  READER_WINDOW_HEIGHT,
+  READER_WINDOW_MIN_HEIGHT,
+  READER_WINDOW_MIN_WIDTH,
+  READER_WINDOW_WIDTH,
+  decideReaderWindowAction,
+  readerVisibilityAfterDecision,
+} from "./reader-window.js";
+import {
+  GAME_GUIDE_SURFACE_PARAM,
+  GAME_GUIDE_WINDOW_HEIGHT,
+  GAME_GUIDE_WINDOW_LEVEL,
+  GAME_GUIDE_WINDOW_MIN_HEIGHT,
+  GAME_GUIDE_WINDOW_MIN_WIDTH,
+  GAME_GUIDE_WINDOW_WIDTH,
+  decideGameGuideWindowAction,
+  gameGuideVisibilityAfterDecision,
+} from "./game-guide-window.js";
 import {
   installLocalContentNavigationPolicy,
   installPermissionDenyPolicy,
@@ -46,12 +68,41 @@ import {
 import { checkLatestRelease } from "./update-check.js";
 import { SystemUsageCollector } from "./system-usage.js";
 import { createFsDirectory, listFsDirectory } from "./fs-directory.js";
+import { resolveDesktopRuntime } from "./runtime-paths.js";
+import { preparePackagedSmoke } from "./packaged-smoke.js";
+import { configureDesktopProfile, resolveDesktopProfile, tagDevelopmentWindow } from "./runtime-profile.js";
 
 registerImageCacheScheme();
 
-const rendererUrl = process.env.VUA_RENDERER_URL;
+const desktopRuntime = resolveDesktopRuntime({
+  isPackaged: app.isPackaged,
+  resourcesPath: process.resourcesPath,
+  mainDirectory: __dirname,
+  platform: process.platform,
+  env: process.env,
+});
+const rendererUrl = desktopRuntime.rendererUrl;
+// Resolve all persistence before app.ready/Session/Provider initialization. Resolve
+// symlinks in development so a second spelling of one checkout retains its identity.
+const desktopProfile = resolveDesktopProfile({
+  isPackaged: app.isPackaged,
+  appData: app.getPath("appData"),
+  localAppData: process.env.LOCALAPPDATA,
+  mainDirectory: app.isPackaged ? __dirname : fs.realpathSync(__dirname),
+  platform: process.platform,
+  developmentOverride: process.env.VUA_DEV_USER_DATA,
+  packagedSmokeDirectory: app.isPackaged && app.commandLine.hasSwitch("vua-smoke-test")
+    ? app.commandLine.getSwitchValue("vua-smoke-test") : undefined,
+});
+configureDesktopProfile(app, desktopProfile);
+if (desktopProfile.kind !== "release") {
+  process.stderr.write(`${JSON.stringify({ channel: "desktop-profile", ...desktopProfile })}\n`);
+}
+const packagedSmoke = preparePackagedSmoke();
 let mainWindow: BrowserWindow | null = null;
 let overlayWindow: BrowserWindow | null = null;
+let readerWindow: BrowserWindow | null = null;
+let gameGuideWindow: BrowserWindow | null = null;
 let provider: OrchestratorProviderV01 | null = null;
 let remoteContent: RemoteContentManager | null = null;
 let downloadPort: DownloadPort | null = null;
@@ -162,8 +213,8 @@ function broadcastRemoteContentEvent(rendererUrl: string | undefined, event: Rem
 
 /**
  * 受监督 Provider 端点解析(M2):
- * - 可执行文件:VUA_PROVIDER_EXECUTABLE 覆盖,否则取仓库构建产物
- *   (dist/electron 相对仓库根上溯四级);文件缺失即启动失败——
+ * - 可执行文件:分发包取 resources/provider;开发环境允许覆盖或取仓库构建产物。
+ *   文件缺失即启动失败——
  *   诚实失败优于静默回落 Mock;
  * - 任务库:用户数据目录,跨重启持久(重启恢复验收的权威来源);
  * - Provider 运行时根(用户实测缺口修复 2026-09-12):数据根=用户数据目录
@@ -188,21 +239,12 @@ function resolveProviderEndpoint(): {
    *  设置面如实标注(诚实纪律:不宣称即时生效) */
   unityEditorPath: string | null;
 } {
-  const platformSuffix = process.platform === "win32" ? ".exe" : "";
-  const executablePath = process.env.VUA_PROVIDER_EXECUTABLE
-    ?? path.join(
-      __dirname,
-      "..",
-      "..",
-      "..",
-      "..",
-      "target",
-      "release",
-      `vua-orchestrator-provider${platformSuffix}`,
-    );
-  if (!fs.existsSync(executablePath)) {
+  const executablePath = desktopRuntime.providerExecutable;
+  if (!fs.existsSync(executablePath) || !fs.statSync(executablePath).isFile()) {
     throw new Error(
-      `Provider executable is missing: ${executablePath} (build it with: cargo build --release -p vua-provider-host --bin vua-orchestrator-provider)`,
+      app.isPackaged
+        ? `The bundled VUA backend is missing. Extract the complete ZIP again: ${executablePath}`
+        : `Provider executable is missing: ${executablePath} (build it with: cargo build --release -p vua-provider-host --bin vua-orchestrator-provider)`,
     );
   }
   const userData = app.getPath("userData");
@@ -402,6 +444,54 @@ function registerIpc(provider: OrchestratorProviderV01): void {
       throw new Error("invalid overlay view");
     }
     return showOverlayWindow(view === null ? "guide" : view);
+  });
+
+  // 按定位打开引导(首玩 B 切片 additive):形状收窄在 overlay-window.ts
+  // 纯函数(垃圾形状响亮 throw;主题/分节词表回退归渲染层引导模型)
+  ipcMain.handle("vua:overlay:show-guide", (event, target: unknown) => {
+    assertLocalSender(senderFrameUrl(event));
+    return showGuideWindow(parseGuideTargetPayload(target));
+  });
+
+  // 打开/聚焦准备阅读器(三类引导裁决 additive):只受理本地来源;定位载荷
+  // 形状收窄复用 overlay-window 纯函数(垃圾形状响亮 throw;词表回退归渲染
+  // 层引导模型);窗口显隐语义在 reader-window.ts 决策面(纯函数可测)
+  ipcMain.handle("vua:reader:show", (event, target: unknown) => {
+    assertLocalSender(senderFrameUrl(event));
+    return showReaderWindow(parseGuideTargetPayload(target));
+  });
+
+  // 打开/聚焦游戏引导小窗(三类引导 §4 手动版 additive):只受理本地来源;
+  // 窗口显隐语义在 game-guide-window.ts 决策面(纯函数可测);隐藏由渲染面
+  // 经 vua:game-guide:hide 显式发起
+  ipcMain.handle("vua:game-guide:show", (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    return showGameGuideWindow();
+  });
+  ipcMain.handle("vua:game-guide:hide", (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    hideGameGuideWindow();
+    return { visible: false };
+  });
+
+  // 收起覆盖层(首玩 B 切片 additive):隐藏不销毁,保留窗口与阅读状态;
+  // 窗口缺席幂等回执 false,绝不创建窗口(与 toggle 的 create 语义区分)
+  ipcMain.handle("vua:overlay:hide", (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    if (overlayWindow !== null && !overlayWindow.isDestroyed() && overlayWindow.isVisible()) {
+      overlayWindow.hide();
+    }
+    return { visible: false };
+  });
+
+  // 返回主窗口(首玩 B 切片 additive):仅响应用户明确动作(覆盖层「返回
+  // 主窗口」),允许切换焦点;最小化先还原;主窗口缺席(启动中/已关闭)幂等
+  ipcMain.handle("vua:window:focus-main", (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    if (mainWindow === null || mainWindow.isDestroyed()) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
   });
 
   // 远程内容窄面(F4-2 隔离基座):Renderer 只发语义动作;来源允许清单在
@@ -622,7 +712,10 @@ function confirmNavigation(
  *   下次 toggle 重建;主窗口关闭(closed)销毁 overlay——主窗口关闭＝应用
  *   退出语义不变(window-all-closed 行为不被悬浮窗拖住)。
  */
-function createOverlayWindow(view: OverlayViewV1 = "guide"): void {
+function createOverlayWindow(
+  view: OverlayViewV1 = "guide",
+  guideTarget: GuideTargetV1 | null = null,
+): void {
   const preload = path.join(__dirname, "preload.js");
   const win = new BrowserWindow({
     width: OVERLAY_WINDOW_WIDTH,
@@ -635,6 +728,7 @@ function createOverlayWindow(view: OverlayViewV1 = "guide"): void {
     hasShadow: false,
     webPreferences: localWindowWebPreferences(preload),
   });
+  tagDevelopmentWindow(win, desktopProfile);
   win.setAlwaysOnTop(true, OVERLAY_WINDOW_LEVEL);
   overlayWindow = win;
   win.once("ready-to-show", () => {
@@ -643,7 +737,8 @@ function createOverlayWindow(view: OverlayViewV1 = "guide"): void {
   win.on("closed", () => {
     if (overlayWindow === win) overlayWindow = null;
   });
-  const search = `surface=${OVERLAY_SURFACE_PARAM}&view=${view}`;
+  // 首帧投递:视图经 view=,指南定位(首玩 B 切片)经 guideTopic=/guideSection=
+  const search = `surface=${OVERLAY_SURFACE_PARAM}&view=${view}${guideTargetQuery(guideTarget)}`;
   if (rendererUrl) void win.loadURL(`${rendererUrl}?${search}`);
   else {
     void win.loadFile(path.join(__dirname, "../renderer/index.html"), {
@@ -688,6 +783,150 @@ function showOverlayWindow(view: OverlayViewV1): {
   return { visible: true, view };
 }
 
+/**
+ * showGuide 语义(首玩 B 切片 additive,契约 DesktopWindowApiV1.showGuide):
+ * 窗口缺席 = 创建并显示引导视图,定位经加载查询投递(首帧落位);
+ * 隐藏 = showInactive 显示并投递;可见 = 仅投递(绝不隐藏)。
+ * 已开窗的投递先发 set-view(guide)再发 guide-target——DesktopOverlaySurface
+ * 常驻并暂存定位请求,GuideOverlayView 的挂载时序不影响定位到达。
+ */
+function showGuideWindow(target: GuideTargetV1 | null): {
+  readonly visible: boolean;
+  readonly view: OverlayViewV1;
+} {
+  const exists = overlayWindow !== null && !overlayWindow.isDestroyed();
+  if (!exists) {
+    createOverlayWindow("guide", target);
+    return { visible: true, view: "guide" };
+  }
+  if (!overlayWindow!.isVisible()) overlayWindow!.showInactive();
+  if (!overlayWindow!.webContents.isDestroyed()) {
+    overlayWindow!.webContents.send("vua:overlay:set-view", "guide");
+    overlayWindow!.webContents.send("vua:overlay:guide-target", target);
+  }
+  return { visible: true, view: "guide" };
+}
+
+/**
+ * 准备阅读器(三类引导裁决 2026-10-05 additive,契约 DesktopWindowApiV1.
+ * showReader):普通不透明可缩放窗口——系统窗框承担最小化/还原/关闭,有
+ * 任务栏条目;不置顶、不透明、无边框默认全部不用。打开允许夺焦点(用户
+ * 明确动作);后台任务事件不抬起窗口(本窗口不订阅任何广播,事件广播
+ * 清单天然只按 URL 放行本地来源,阅读器不主动请求任何事件通道)。
+ * 定位:窗口缺席 = 创建并经加载查询 ?guideTopic=/guideSection= 首帧投递;
+ * 已开窗 = show + focus 后经 vua:reader:guide-target 事件投递(渲染层
+ * ReaderSurface 暂存转发,与覆盖层 guide-target 同纪律)。关闭即销毁:
+ * 阅读位置在渲染层 localStorage,重建窗口按上次阅读位置恢复;关闭只关
+ * 呈现,安装任务与游戏不受影响。
+ */
+function createReaderWindow(target: GuideTargetV1 | null): void {
+  const preload = path.join(__dirname, "preload.js");
+  const win = new BrowserWindow({
+    width: READER_WINDOW_WIDTH,
+    height: READER_WINDOW_HEIGHT,
+    minWidth: READER_WINDOW_MIN_WIDTH,
+    minHeight: READER_WINDOW_MIN_HEIGHT,
+    show: false,
+    backgroundColor: "#0b0a12",
+    webPreferences: localWindowWebPreferences(preload),
+  });
+  tagDevelopmentWindow(win, desktopProfile);
+  readerWindow = win;
+  // 普通阅读窗口不带应用菜单:系统窗框只承担最小化/还原/关闭( Electron
+  // 默认菜单是无框主窗口看不到的开发遗留,标准窗框下会露出 File/Edit 行)
+  win.removeMenu();
+  win.once("ready-to-show", () => {
+    if (!win.isDestroyed()) win.show();
+  });
+  win.on("closed", () => {
+    if (readerWindow === win) readerWindow = null;
+  });
+  const search = `surface=${READER_SURFACE_PARAM}${guideTargetQuery(target)}`;
+  if (rendererUrl) void win.loadURL(`${rendererUrl}?${search}`);
+  else {
+    void win.loadFile(path.join(__dirname, "../renderer/index.html"), {
+      search,
+    });
+  }
+}
+
+function showReaderWindow(target: GuideTargetV1 | null): { readonly visible: boolean } {
+  const exists = readerWindow !== null && !readerWindow.isDestroyed();
+  const decision = decideReaderWindowAction({ exists });
+  if (decision === "create") {
+    createReaderWindow(target);
+    return { visible: readerVisibilityAfterDecision(decision) };
+  }
+  if (readerWindow!.isMinimized()) readerWindow!.restore();
+  readerWindow!.show();
+  readerWindow!.focus();
+  if (!readerWindow!.webContents.isDestroyed()) {
+    readerWindow!.webContents.send("vua:reader:guide-target", target);
+  }
+  return { visible: readerVisibilityAfterDecision(decision) };
+}
+
+/**
+ * 游戏引导小窗(三类引导 §4 手动版 additive,契约 DesktopWindowApiV1.
+ * showGameGuide):小型透明置顶窗——transparent + frameless + skipTaskbar +
+ * hasShadow:false,360×560 可缩放,alwaysOnTop("screen-saver" 级,盖过全屏
+ * 游戏)。打开永远 showInactive:不夺游戏焦点;玩家自行拖到游戏画面上
+ * (窗口观察与跟随属后续切片)。隐藏走渲染面显式动作(隐藏不销毁,保留
+ * 位置与进度),已开窗(含隐藏态)的打开 = showInactive 恢复。透明度由
+ * 渲染面就地调节并持久化,不经 Main。
+ */
+function createGameGuideWindow(): void {
+  const preload = path.join(__dirname, "preload.js");
+  const win = new BrowserWindow({
+    width: GAME_GUIDE_WINDOW_WIDTH,
+    height: GAME_GUIDE_WINDOW_HEIGHT,
+    minWidth: GAME_GUIDE_WINDOW_MIN_WIDTH,
+    minHeight: GAME_GUIDE_WINDOW_MIN_HEIGHT,
+    show: false,
+    frame: false,
+    transparent: true,
+    resizable: true,
+    skipTaskbar: true,
+    hasShadow: false,
+    webPreferences: localWindowWebPreferences(preload),
+  });
+  tagDevelopmentWindow(win, desktopProfile);
+  win.setAlwaysOnTop(true, GAME_GUIDE_WINDOW_LEVEL);
+  gameGuideWindow = win;
+  win.once("ready-to-show", () => {
+    if (!win.isDestroyed()) win.showInactive();
+  });
+  win.on("closed", () => {
+    if (gameGuideWindow === win) gameGuideWindow = null;
+  });
+  const search = `surface=${GAME_GUIDE_SURFACE_PARAM}`;
+  if (rendererUrl) void win.loadURL(`${rendererUrl}?${search}`);
+  else {
+    void win.loadFile(path.join(__dirname, "../renderer/index.html"), {
+      search,
+    });
+  }
+}
+
+function showGameGuideWindow(): { readonly visible: boolean } {
+  const exists = gameGuideWindow !== null && !gameGuideWindow.isDestroyed();
+  const decision = decideGameGuideWindowAction({ exists });
+  if (decision === "create") {
+    createGameGuideWindow();
+    return { visible: gameGuideVisibilityAfterDecision(decision) };
+  }
+  if (gameGuideWindow!.isMinimized()) gameGuideWindow!.restore();
+  gameGuideWindow!.showInactive();
+  return { visible: gameGuideVisibilityAfterDecision(decision) };
+}
+
+/** 游戏引导窗隐藏(渲染面显式动作):隐藏不销毁,保留位置与进度呈现 */
+function hideGameGuideWindow(): void {
+  if (gameGuideWindow !== null && !gameGuideWindow.isDestroyed() && gameGuideWindow.isVisible()) {
+    gameGuideWindow.hide();
+  }
+}
+
 async function createWindow(): Promise<void> {
   const preload = path.join(__dirname, "preload.js");
   mainWindow = new BrowserWindow({
@@ -711,6 +950,8 @@ async function createWindow(): Promise<void> {
     },
   });
 
+  tagDevelopmentWindow(mainWindow, desktopProfile);
+
   // U9 四分法(本地壳窗口):http/https 弹窗不再交系统浏览器——清单内直行/
   // 清单外确认后转当前内嵌视图(RemoteContentManager);外部协议手势+确认后
   // 交系统;伪协议无条件拒。浏览允许清单与下载域清单严格分开(U9 双轨)
@@ -724,7 +965,7 @@ async function createWindow(): Promise<void> {
     openExternal: (url) => void shell.openExternal(url),
     confirmNavigation,
   });
-  mainWindow.once("ready-to-show", () => mainWindow?.show());
+  mainWindow.once("ready-to-show", () => { if (!packagedSmoke) mainWindow?.show(); });
 
   // 下载端口(F4-3/F4-4):will-download 接管 + 冻结词表事件规范化。事件汇
   // 按传输定案批量投递 download.ingest(at-least-once:回执裁剪缓冲 + BDL
@@ -805,9 +1046,11 @@ async function createWindow(): Promise<void> {
   });
   mainWindow.on("closed", () => {
     mainWindow = null;
-    // 主窗口关闭＝应用退出语义:悬浮窗不拖住 window-all-closed(overlay
-    // 窗口随主窗口生命周期销毁,closed 处理器自行清引用)
+    // 主窗口关闭＝应用退出语义:悬浮窗、阅读器与游戏引导窗都不拖住
+    // window-all-closed(窗口随主窗口生命周期销毁,closed 处理器自行清引用)
     overlayWindow?.destroy();
+    readerWindow?.destroy();
+    gameGuideWindow?.destroy();
   });
 
   if (rendererUrl) await mainWindow.loadURL(rendererUrl);
@@ -846,9 +1089,20 @@ app.whenReady().then(async () => {
   registerIpc(provider);
   systemUsage.start();
   await createWindow();
+  if (packagedSmoke && mainWindow) {
+    await packagedSmoke.verify(mainWindow, provider);
+    return;
+  }
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) void createWindow();
   });
+}).catch((error: unknown) => {
+  if (packagedSmoke) packagedSmoke.fail(error);
+  else {
+    console.error("[vua] desktop bootstrap failed:", error);
+    dialog.showErrorBox("VUA", startupFailureCopy(app.getLocale()));
+    app.quit();
+  }
 });
 
 app.on("window-all-closed", () => {

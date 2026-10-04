@@ -219,6 +219,7 @@ pub struct EnvironmentConfig {
 }
 
 struct EnvironmentServices {
+    network: vua_orchestrator::network::NetworkService,
     deployment: vua_orchestrator::deployment::DeploymentService,
     engine: EnvironmentEngine,
 }
@@ -889,6 +890,10 @@ pub fn run_provider_host_full(
         .transpose()?;
     let environment = environment.map(|config| -> Result<_, SqliteStoreError> {
         Ok(Arc::new(EnvironmentServices {
+            network: vua_orchestrator::network::NetworkService::new(
+                Arc::new(vua_project_manager::network_probe::HttpsNetworkProbe),
+                Arc::new(SystemClock),
+            ),
             deployment: vua_orchestrator::deployment::DeploymentService::new(
                 Arc::new(vua_project_manager::deployment_adapter::WindowsDeploymentAdapter::new(config.roots.clone())),
                 TaskRuntime::with_sqlite(store.clone(), Arc::new(SystemClock), Arc::new(NanosTaskIdGenerator::default()))?),
@@ -1348,6 +1353,11 @@ fn handle_application_request(state: &mut HostState, request: &Value) -> FrameOu
     if method.starts_with("packages.") {
         return packages_request(state, method, request, request_id, correlation_id);
     }
+    if matches!(method, "environment.checkNetwork" | "environment.testWebsites") {
+        return crate::network_routes::request(
+            state.environment.as_ref().map(|s| &s.network), request, request_id, correlation_id,
+        );
+    }
     if matches!(method, "environment.planDeployment" | "environment.executeDeployment") {
         return crate::deployment_routes::request(state.environment.as_ref().map(|s| &s.deployment), method, request, request_id, correlation_id);
     }
@@ -1638,6 +1648,8 @@ fn served_capabilities(state: &HostState) -> Value {
     json!([
         {"operationId": "task.list", "availability": "available"},
         {"operationId": "environment.getSnapshot", "availability": "available"},
+        {"operationId": "environment.checkNetwork", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "environment.testWebsites", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
         deployment_capability(state, "environment.planDeployment"),
         deployment_capability(state, "environment.executeDeployment"),
         {"operationId": "environment.verifyEditor", "availability": "available"},

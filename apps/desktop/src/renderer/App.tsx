@@ -54,6 +54,7 @@ import {
   resolveForestVariant,
 } from "./app/ui-variant-discovery.ts";
 import { Button } from "./components/primitives/Button.tsx";
+import { BrandMark } from "./components/BrandMark.tsx";
 import { Card } from "./components/primitives/Card.tsx";
 import { EmptyState } from "./components/primitives/EmptyState.tsx";
 import { Icon } from "@vua/design-system";
@@ -63,6 +64,7 @@ import { creatorEnvReady } from "./features/deployer/deployer-model.ts";
 import { DeployerPage } from "./features/deployer/DeployerPage.tsx";
 import { OnboardingPage, type OnboardingResult } from "./features/onboarding/OnboardingPage.tsx";
 import { NavigationConfirmOverlay } from "./app/NavigationConfirmOverlay.tsx";
+import { AppTour } from "./features/tour/AppTour.tsx";
 import { PackagesPage } from "./features/packages/PackagesPage.tsx";
 import { ProductionIntroOverlay } from "./features/production/ProductionIntroOverlay.tsx";
 import { RecipePage } from "./features/recipe/RecipePage.tsx";
@@ -414,7 +416,8 @@ function GoalsSettingsPage({ onRestart }: { onRestart: () => void }) {
       <section className="vua-page__hero">
         <h1 className="vua-title">{strings.nav.pages.settingsGoals}</h1>
       </section>
-      <Card>
+      {/* 应用导览「route」步锚点(三类引导裁决 2026-10-05) */}
+      <Card data-tour-anchor="tour-goals">
         <div className="vua-page__stack">
           <h2 className="vua-title">{copy.heading}</h2>
           <p className="vua-text-secondary">{copy.description}</p>
@@ -740,6 +743,9 @@ function AppShell({
 
   // 命令面板(C-EFFICIENCY,ui-ux §6.1):Ctrl/Cmd+P 开关;命令 = 全部页面跳转 + 主题切换
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // 应用导览重播信号(三类引导裁决 2026-10-05):命令面板动作递增,
+  // AppTour 据此从第一步重开;导览的进度/自动开始在其内部自治
+  const [tourStartRequest, setTourStartRequest] = useState(0);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (isPaletteToggle(event)) {
@@ -875,6 +881,13 @@ function AppShell({
       ),
     );
     const actions: CommandItem[] = [
+      {
+        id: "start-tour",
+        group: "actions",
+        label: strings.tour.paletteEntry,
+        keywords: "tour guide onboarding",
+        run: () => setTourStartRequest((value) => value + 1),
+      },
       {
         id: "toggle-theme",
         group: "actions",
@@ -1044,9 +1057,13 @@ function AppShell({
        *  拖拽属性只放在容器与品牌元素上,Tabs/按钮保持可点 */}
       <header className="vua-shell__header vua-drag-region">
         <div className="vua-shell__brand vua-drag-region">
-          {/* §10:占位字标阶段,中性色不随模块变(§10【建议】),正式标志 v0.5 以后另立文档;
-           *  2026-09-25 用户裁决:「VRC Ultra Assistant」副标题自顶栏退役 */}
-          <span className="vua-shell__wordmark vua-drag-region">VUA</span>
+          {/* 正式字标(品牌候选 06「Level」,2026-10-07 用户裁决):随模块辖区
+           *  变色——环境部署紫、模型生产橙(--vua-accent 别名自动切换),
+           *  设置 = 三色混合(V 紫/U 中性/A 橙)。「中性色不随模块变」的
+           *  占位字标纪律随之退役 */}
+          <span className="vua-shell__wordmark vua-drag-region">
+            <BrandMark variant={activeModule === "settings" ? "mixed" : "solid"} />
+          </span>
         </div>
         {/* tabs 容器 flex:1 占满中段——拖拽属性必须落在容器上,否则按钮右侧的
          *  空白属于 nav 而非 header,无法拖动窗口(按钮自身不受影响) */}
@@ -1136,17 +1153,38 @@ function AppShell({
         >
           {strings.commandPalette.cta} · {strings.commandPalette.ctaHint}
         </button>
-        {/* Overlay 置顶窗引导入口(2026-09-26 用户裁决:游戏引导 Tab 退役,
-         *  覆盖层窗口成为引导宿主):showOverlay(\"guide\") 打开/聚焦覆盖层
-         *  并切到引导视图(窗口缺席=创建并显示;隐藏=显示并切视图;可见=
-         *  仅切视图);无 preload 环境(浏览器直开主壳)可选链安全退化为无动作 */}
+        {/* 准备阅读器入口(三类引导裁决 2026-10-05:长篇引导迁入普通阅读
+         *  窗口):showReader() 无定位 = 普通打开并恢复上次阅读位置;带定位
+         *  的上下文帮助(GuideEntryButton)同样进入阅读器。无 preload 环境
+         *  (浏览器直开主壳)可选链安全退化为无动作 */}
         <button
           type="button"
           className="vua-shell__theme-toggle vua-caption"
           title={strings.app.overlayGuide}
-          onClick={() => void window.vua?.window.showOverlay("guide")}
+          data-tour-anchor="tour-guide-entry"
+          onClick={() => void window.vua?.window.showReader()}
         >
           {strings.app.overlayGuide}
+        </button>
+        {/* 任务状态置顶窗入口(阅读器迁移后状态访问保持独立):打开即状态
+         *  视图;关闭阅读器或本窗口不影响任何任务 */}
+        <button
+          type="button"
+          className="vua-shell__theme-toggle vua-caption"
+          title={strings.overlay.views.status}
+          onClick={() => void window.vua?.window.showOverlay("status")}
+        >
+          {strings.overlay.views.status}
+        </button>
+        {/* 游戏引导小窗入口(三类引导 §4 手动版):透明置顶窗,打开不夺
+         *  焦点;隐藏不销毁,进度与透明度本地持久化 */}
+        <button
+          type="button"
+          className="vua-shell__theme-toggle vua-caption"
+          title={strings.app.gameGuide}
+          onClick={() => void window.vua?.window.showGameGuide()}
+        >
+          {strings.app.gameGuide}
         </button>
         {/* 通知中心顶栏入口(对标 Comfy 铃铛,自绘):与底部任务条共用同一通知投影;
          *  capability 非 ready 时组件自身不渲染 */}
@@ -1237,6 +1275,9 @@ function AppShell({
       <Taskbar navigate={navigate} />
       {/* 导航确认卡(015 §12,批 B-3):U9(1)/(3) 确认层的渲染层载体,全局一次挂载 */}
       <NavigationConfirmOverlay />
+      {/* 应用导览(三类引导裁决 2026-10-05):主窗口内有序高亮;从未运行自动
+       *  开始,active 按步号恢复,重播经命令面板;状态独立于阅读器/安装 */}
+      <AppTour page={page} navigate={navigate} startRequest={tourStartRequest} />
       {paletteOpen ? (
         <CommandPalette commands={commands} onClose={() => setPaletteOpen(false)} />
       ) : null}

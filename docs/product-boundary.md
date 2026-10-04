@@ -1,10 +1,10 @@
 # VUA product boundary
 
 
-> Document version: 2.4.1
+> Document version: 2.10.0
 > Status: Accepted
 > Scope: Entire VUA product
-> Updated: 2026-10-02
+> Updated: 2026-10-05
 > Normative effect: Yes
 
 ## Product definition
@@ -58,14 +58,17 @@ records.
    local-package-registry faces of `settings.json`) are the same file shared with VCC/ALCOM;
    VUA may read and write it, and changes are visible to both sides immediately — this exception
    covers the settings face only; the project-file face keeps U3 unchanged.
-6. **Unity Bridge:** a versioned deterministic protocol whose production target is exactly global
-   Unity `2022.3.22f1`; historical editor projects enter through the documented migration boundary.
-7. **Desktop overlay:** guidance, status, and runtime information through stable application
-   services. **VR overlay:** remains unscheduled outside the active
+6. **Unity Bridge:** a versioned deterministic protocol using the
+   [Editor compatibility policy](compatibility/unity-editor.md). During development, global
+   `2022.3.22f1` and China `2022.3.22f1c1` form the accepted pair; historical projects enter
+   through the documented migration boundary. Existing frozen protocol migrations remain explicit.
+7. **Guidance and desktop presentation:** an in-app VUA tour, an ordinary preparation reader,
+   and a guide associated with the VRChat game window; task/runtime status retains its own
+   application authority. **VR overlay:** remains unscheduled outside the active
    [N acceptance sequence](development-outline.md).
 8. **Integrated runtimes:** major optional native-feeling capabilities, including face tracking,
    motion tracking, and Avatar optimization, through managed or external-connection adapters.
-   The two tools named in the active delivery policy enter N2; other integrations remain unscheduled.
+   The tools named in the active delivery policy enter N2; other integrations remain unscheduled.
 9. **Community plugin interface:** a versioned protocol for optional enhancements and customization,
    with declared capabilities, lifecycle, tasks, permissions, and compatibility rules.
 
@@ -208,24 +211,109 @@ gate derives risk from declared capabilities and behavior.
 - **Least privilege:** remote content, plugins, and third-party components receive only required
   capabilities.
 
+## N1 device and network onboarding
+
+### First play release (user ruling, 2026-10-03)
+
+The first play release takes a Windows user from missing play software to desktop VRChat play
+or PICO Connect streaming. It delivers the following bounded scope:
+
+- Inspect the relevant Internet services and download sources; distinguish these failures from
+  local PC/headset connectivity. Explain useful remedies and recheck after the user's action.
+  The first mainland-China accelerator recommendation is only NetEase UU, with the existing
+  no-financial-relationship disclosure. Region is a correctable hint, not a connectivity verdict.
+- Guide Steam registration, verification and client login. Existing accounts skip registration.
+  Explain VRChat's first login with Steam; a full VRChat account and account linking remain
+  optional guidance. Hand off PICO account/device confirmations when its official flow needs them.
+- Detect and install Steam and VRChat for desktop play. Only the VR route additionally requires
+  SteamVR, PICO Connect and the necessary components supplied by their official installers.
+  Inspect Windows, disk space and graphics/driver readiness, with specific remediation guidance.
+- Guide launch, connection, basic controls, audio/microphone setup and the next play session.
+  Prefer supported silent installation with visible progress and explicit user handoffs.
+  Reuse installed software and recover interrupted work through inspection and explicit retry.
+- Provide three guidance contexts (user ruling, 2026-10-05): a transparent, ordered tour over
+  VUA's own controls; a normal readable window for room/equipment preparation; and a transparent
+  guide over the Windows VRChat game window for controls/settings and available tutorial worlds.
+  The game guide defaults to following VRChat and 50% transparency. Reuse shared instructions
+  and illustrations, with independent progress for each context. Guidance works without AMF.
+  The [guidance architecture](architecture/guidance.md) owns presentation and window behavior.
+  Test the preparation reader through SteamVR's desktop view on the headset; a native VUA
+  VR overlay remains later work.
+- Include optional PICO 4 Pro eye tracking through independently installed VRCFaceTracking.
+  Guide Steam installation, the PICO hardware module, headset calibration and VRChat OSC;
+  verify gaze and blinking over USB and Wi-Fi, including reconnect and simultaneous microphone
+  use. Use an existing suitable Avatar; Avatar modification is not a prerequisite. This N2
+  slice is required release acceptance even though players can skip enabling eye tracking.
+
+PICO 4 Pro with both USB and Wi-Fi is the first hardware acceptance target. Record actual
+PICO OS, PICO Connect, SteamVR and game versions at test time. PICO precedes Quest so this
+release does not depend on resolving Quest's initial activation path. Other brands, alternative
+streaming tools, creator accounts, Unity/AMF and the remaining N2 tools follow in later deliveries.
+Existing code and the wider N-stage scope are retained; this release does not close all of N1.
+
+Distribute a self-contained Windows x64 ZIP first. Advance the shared N7 packaging work and
+the relevant illustrated guide; NSIS, automatic updating and the rest of N7 follow separately.
+Prepare exact-build third-party notices and SignPath Foundation application/integration alongside
+development. Local unsigned previews are explicitly labeled; public signing status and remaining
+limitations are recorded at publication. No certificate application blocks implementation.
+Acceptance belongs to [the first play release rows](development-outline.md#first-play-release-acceptance).
+The [delivery plan](development/first-play-delivery-plan.md) records completed slices and the
+remaining work. N5 is reviewed separately when complete and can accompany this release after
+that review; its work is not part of the current first-play checklist or a play prerequisite.
+
+### Subsequent device expansion
+
+The device pool from the 2026-10-02 ruling remains the subsequent expansion direction after
+the first play release. It covers Meta Quest, Oculus Rift S, PICO, HTC VIVE, Valve Index
+and Sony PS VR2. Investigate Windows Mixed Reality's installation and validation cost before
+committing it to a delivery; substantial work may be deferred under the user's permission.
+Bigscreen and Varjo follow the initial pool. Deliver one complete route per supported model
+first, preferentially the official manufacturer route, then add alternative streaming choices.
+
+Players select brand and model. Derive direct video connection, USB streaming or wireless
+streaming internally; ask a plain-language connection question only where that model has multiple
+relevant choices. Match consumer/enterprise editions explicitly. Streaming choices include the
+manufacturer's software, ALVR, Virtual Desktop and Steam Link as model-specific routes land.
+
+Prefer supported silent installation with a visible task: actual phase, elapsed time, available
+progress/activity, interaction requests and next actions during prolonged inactivity. Verify
+installed results and keep user actions attached to that task. Route-specific account guidance,
+headset activation and regional connectivity are N1 prerequisites. For mainland-China users,
+evaluate dedicated activation/acceleration services; the first accelerator recommendation is NetEase UU with
+an explicit no-financial-relationship disclosure. Region informs suggestions; target-service
+reachability and user correction refine the plan. Existing privacy boundaries apply.
+See the [N1 delivery plan](development/n1-delivery-plan.md).
+
 ## Unity deployment
 
-For N1, detect the download-network region first: mainland China prefers NoUnityCN; other or
-unknown regions prefer Unity's official source (user ruling, 2026-10-01). Try the other enabled
-source if acquisition fails, then guide installation through Unity Hub. Settings includes an
-enabled-by-default mirror switch; when off, use only the official source and Hub fallback.
-Download the exact supported global Editor onto the user's machine, install it with Unity's
-original installer, and register it with the official standalone CLI. Hub is optional until a
-fallback is needed. VUA does not bundle Unity CLI/Editor or operate its own Unity mirror. Users choose
+For N1, use the official Unity CLI to look up the target release and prefer Unity's official
+download route in every region. Identify the actual downloaded f1/c1 artifact before installation.
+NoUnityCN is an optional backup source, never the first source. Settings includes an
+enabled-by-default mirror switch; when off, use only Unity's official download sources.
+
+Prefer an existing usable global `2022.3.22f1`, then an existing China `2022.3.22f1c1`.
+When installation is needed, request the global official entry first. If it returns the accepted
+China artifact, install that actual edition directly. If global installation fails, try China;
+hand off to Unity Hub when the accepted alternatives fail.
+The author accepts this exact f1/c1 pair as equivalent for current development (2026-10-02),
+informed by community reports and their own inquiries. Preserve the observed full version in
+plans, installation records and later Build Records; do not rename c1 as f1. Use small real
+project trials to fix actual compatibility issues as they arise.
+
+Install the original Unity installer on the user's machine and register the Editor with the
+official standalone CLI. VUA does not bundle Unity CLI/Editor or operate its own Unity mirror. Users choose
 licenses and accept agreements themselves, and Unity's tooling keeps its own credentials. The
 [deployment direction](architecture/unity-deployment.md) owns the installation and evidence path;
 this does not widen first-delivery account storage or authentication automation.
 
 ## Account onboarding (user ruling, 2026-09-30)
 
-The first usable delivery guides people through official pages in the built-in browser. It is
-not a multi-platform account manager. The initial scope is exactly Steam and VRChat for play,
-with optional Unity and BOOTH/pixiv registration guidance for the creator route. Existing users
+The first play release uses the subset defined above; creator account guidance follows with
+creator delivery. N1 account guidance uses official pages in the built-in browser, with
+client, phone-app or headset handoffs where required. The base scope is Steam and VRChat for play,
+with optional Unity and BOOTH/pixiv registration guidance for the creator route. Add manufacturer,
+headset-store, streaming and accelerator account guidance when the selected device route requires
+it (user ruling 2026-10-02). Existing users
 can skip registration. VUA explains each step; users enter account information, solve challenges,
 accept terms, add VRChat to their Steam library, and perform account upgrade/linking themselves.
 Account linking means the official Steam-platform-account to full VRChat-account flow, not a
@@ -300,8 +388,8 @@ User-adopted implementation boundary (2026-09-29), informed by the
 - Developers may run local integration and smoke validation with Unity assets they lawfully obtained
   or purchased. Those assets, user projects, test configuration, and outputs stay local and do not
   enter the repository or cloud-CI artifacts.
-- [Unity editor compatibility](compatibility/unity-editor.md) defines global `2022.3.22f1` as the
-  sole production target. `2019.4.31f1` and `2022.3.6f1` are migration sources. Other Unity versions
+- [Unity editor compatibility](compatibility/unity-editor.md) defines the development pair
+  `2022.3.22f1` / `2022.3.22f1c1`. `2019.4.31f1` and `2022.3.6f1` are migration sources. Other Unity versions
   report their exact difference from the production target while project files remain unchanged;
   Tuanjie Engine is currently unsupported.
 - **ALCOM/VCC project compatibility (user ruling U3, 2026-09-08, after third-party arbitration
@@ -380,11 +468,16 @@ limitations.
 
 Scope rulings attached to the active sequence:
 
-- N2's external-tool scope is exactly the two tools named in the
-  [outline](development-outline.md#n2-exactly-two-gameplay-tools), connected as independently
-  installed external applications; the official applications retain their upstream features and
-  license terms, and upstream owns their lifecycle. Internal Space Calibrator driver IPC is not a
-  VUA integration contract. This grants no VRChat injection or generic plugin-host authority.
+- N2's external-tool scope is the seven applications listed in the
+  [outline](development-outline.md#n2-external-gameplay-tools). A common Steam connection provides
+  local installation inventory, official purchase/install handoff, launch and observed status.
+  VRCFT and Space Calibrator retain their specific setup and hardware acceptance; the five other
+  applications need no individual usage tutorial or automation of their internal features.
+  PICO eye tracking is advanced into the first play release; the remaining N2 work follows it.
+  Official applications retain their upstream features, licenses and lifecycle. A native VUA
+  entry means a built-in connector to the external app, not a bundled copy or a VUA plugin.
+  Internal Space Calibrator driver IPC is not a VUA integration contract. This grants no VRChat
+  injection or generic plugin-host authority.
 - [N5](development-outline.md#n5-audit-and-redo-material-management) BOOTH acquisition does not
   authorize purchasing, access bypass, or a project-operated asset server. Source sessions,
   orders, files and account catalogs remain local.
@@ -403,27 +496,23 @@ plugin execution and a marketplace still require their separately accepted secur
 
 ## Document changelog
 
+- 2.10.0 (2026-10-05): separate app, preparation and game guidance in the first play scope and retain N5 as an independently reviewed co-release.
+- 2.9.0 (2026-10-03): add PICO eye tracking to the first play release and expand N2 to seven external tools with shared Steam inventory/install/launch acceptance.
+
+- 2.8.1 (2026-10-03): limit the initial accelerator recommendation to NetEase UU per the author's ruling.
+
+- 2.8.0 (2026-10-03): bound the first play release to desktop/PICO onboarding, a desktop guide overlay and ZIP distribution; retain wider N1 work for later deliveries.
+- 2.7.0 (2026-10-02): make CLI-led official acquisition first in every region and identify the actual downloaded edition; mirrors are optional backups.
+
+- 2.6.0 (2026-10-02): accept the f1/c1 development pair and global → China → Hub deployment order while retaining actual identities.
+
+- 2.5.0 (2026-10-02): adopt model-driven official-first headset routes, observable silent installs
+  and N1 activation/network guidance; make WMR first-delivery support conditional on investigation.
+
 - 2.4.1 (2026-10-02): state the first-delivery account exclusions at full strength (not "required")
   and compress the active-delivery policy to boundary rulings, linking acceptance definitions to
   the development outline; no scope change.
 - 2.4.0 (2026-10-01): select region-aware Unity/NoUnityCN source priority, a mirror switch and Hub fallback; authorize original-installer deployment with official CLI registration during N1 development.
 - 2.3.0 (2026-09-30): select official standalone Unity CLI installation with separate user licensing; Hub is optional.
-- 2.2.2 (2026-09-30): link the independent product-release numbering policy; N acceptance scope is unchanged.
-- 2.2.1 (2026-09-30): describe the selected Steam/external integration path directly.
-- 2.2.0 (2026-09-30): limit initial accounts to guided onboarding and select external-only N2 tools; record deferred VRChat account experiments.
-- 2.1.0 (2026-09-29): consolidate user-requested VRChat interaction, credential, account-operation and privacy boundaries.
-- 2.0.1 (2026-09-28): replace an outdated unwired claim with source evidence and the N5 verification boundary.
-- 2.0.0 (2026-09-28): adopt agile continuing-Beta N delivery, automated non-UI acceptance, exact N2 integrations, complex production, audited material rework, local reinstall testing and illustrated user guidance.
-- 1.5.0 (2026-09-22): the full user ruling of 2026-09-22 landed — new "Production scope and product
-  rulings" section (confirmed scope: beginner Wizard and Quest guidance, Recipe as a stackable set
-  of modifications with four conflict options, sharing and reproduction boundary, provenance filled
-  at sharing time, BDL base capabilities retained with experimental forensics off by default,
-  Inspection folded into production records, MA/SDK responsibilities reusing upstream checks;
-  explicitly deferred: an egui/Slint lightweight standalone UI; five to-be-verified items listed as
-  undecided); AMF composition item 3 no longer lists Inspection as a user stage; the SDK-upload
-  boundary clause gains the technical-check limitations and honest display of unexecuted checks;
-  prominent notice that the section is accepted direction, not an implementation or real-machine
-  acceptance claim, and that frozen protocols and data formats do not automatically change.
-  Mirrors the ZH edition.
 
-Earlier entries (1.4.0 and older) live in git history.
+Earlier entries remain in Git history.

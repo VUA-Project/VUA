@@ -17,7 +17,7 @@ Avatar の組み立て・検査・復旧まで、VUA がガイドします。
 
 初回のアカウント案内では、内蔵ブラウザーで公式の登録ページを開きます。プレイ向けは Steam と VRChat、制作向けは任意で Unity と BOOTH を案内します。登録、Steam ライブラリへの追加、公式のアカウント連携は利用者自身が行います。アップロードには完全な VRChat アカウントと New User 以上のランクが必要ですが、資格を得る前でもローカルで Avatar の制作準備を進められます。
 
-最初の任意の外部連携対象は VRCFaceTracking と hyblocker OpenVR Space Calibrator です。VUA は独立してインストールされた上流アプリの検出・起動と、上流アプリ側での設定手順の案内を行う予定です。インストールと更新は Steam または上流アプリが管理します。
+任意の外部連携として、トラッキング、VR オーバーレイ、睡眠支援、録画・配信ツールへの対応を予定しています。VUA は独立したアプリのインストール状態を検出し、Steam の購入・インストール画面への案内と起動を行います。更新は Steam または上流アプリが管理します。トラッキングツールには設定案内も用意し、PICO のアイトラッキングは最初のプレイ向けリリースに含めます。[対象ツールと対応範囲](docs/development-outline.md#n2-external-gameplay-tools)を参照してください。
 
 ### 2. Avatar 制作
 
@@ -43,7 +43,7 @@ Avatar の組み立て・検査・復旧まで、VUA がガイドします。
 
 ## 開発状況
 
-v0.6.0 は最新のソースタグであり、インストール可能な成果物はまだ公開されていません（唯一の GitHub Release である v0.5.0 にはアセットがありません）。[N1–N7](docs/development-outline.md) に沿って環境構築、指定の二つのツール、複雑な Avatar 制作、Recipe 再現、素材管理の監査と再実装、復旧、画像付きユーザーガイドを備えた Beta インストーラーを進めます。
+v0.6.0 は最新のソースタグであり、インストール可能な成果物はまだ公開されていません（唯一の GitHub Release である v0.5.0 にはアセットがありません）。[N1–N7](docs/development-outline.md) に沿って環境構築、選定した外部プレイ支援ツール、複雑な Avatar 制作、Recipe 再現、素材管理の監査と再実装、復旧、画像付きユーザーガイドを備えた Beta インストーラーを進めます。
 
 プロジェクトは今後も長期間 Beta の状態が続く見込みです。説明は製品の方向性であり、実装や自動テストだけで実機の一連の動作が検証済みになるわけではありません。実際の受け入れ状況は[開発シーケンス](docs/development-outline.md)と[リリースノート](docs/release/)を参照してください。
 
@@ -63,7 +63,7 @@ v0.6.0 は最新のソースタグであり、インストール可能な成果�
 
 ## ライセンス
 
-VUA は [Apache-2.0](LICENSE) です。最初に対応予定の外部連携は [VRCFaceTracking（Apache-2.0）](https://github.com/benaclejames/VRCFaceTracking/blob/master/LICENSE) と [Space Calibrator（MIT の本体と個別ライセンスの第三者コンポーネント）](https://github.com/hyblocker/OpenVR-SpaceCalibrator/blob/develop/LICENSE) です。帰属と将来の再配布条件は[第三者通知](THIRD_PARTY_NOTICES.md)を参照してください。
+VUA は [Apache-2.0](LICENSE) です。外部アプリにはそれぞれのライセンスが適用されます。[VRCFaceTracking（Apache-2.0）](https://github.com/benaclejames/VRCFaceTracking/blob/master/LICENSE) や [Space Calibrator（MIT の本体と個別ライセンスの第三者コンポーネント）](https://github.com/hyblocker/OpenVR-SpaceCalibrator/blob/develop/LICENSE) も同様です。対応予定の全外部連携、帰属と将来の再配布条件は[第三者通知](THIRD_PARTY_NOTICES.md)を参照してください。
 
 [NOTICE](NOTICE) · [商標ガイダンス](TRADEMARKS.md)
 

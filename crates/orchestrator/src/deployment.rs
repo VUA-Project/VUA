@@ -8,12 +8,35 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 pub const DEPLOYMENT_SCHEMA: &str = "vua.environment-deployment/v0.1";
-/// Mirror entry selected by the author for N1; policy chooses its priority.
+/// Optional backup index; the official Unity route always comes first.
 pub const UNITY_EDITOR_SOURCE: &str =
     "https://www.nounitycn.top/download?v=unityhub%3A%2F%2F2022.3.22f1%2F887be4894c44";
 pub const UNITY_OFFICIAL_EDITOR_SOURCE: &str =
     "https://unity.com/releases/editor/whats-new/2022.3.22f1";
 pub const UNITY_HUB_INSTALL_LINK: &str = "unityhub://2022.3.22f1/887be4894c44";
+
+/// Author-approved N1 development compatibility pair. Keep the observed identity;
+/// this admission rule does not rewrite the frozen Editor-inspection classification.
+pub const CHINA_EDITOR_TARGET: &str = "2022.3.22f1c1";
+pub fn accepted_development_editor(version: &str) -> bool {
+    matches!(version, crate::PRODUCTION_TARGET | CHINA_EDITOR_TARGET)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EditorEdition {
+    Global,
+    China,
+}
+
+impl EditorEdition {
+    pub fn version(self) -> &'static str {
+        match self {
+            Self::Global => crate::PRODUCTION_TARGET,
+            Self::China => CHINA_EDITOR_TARGET,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "snake_case")]
@@ -31,26 +54,23 @@ pub enum EditorDownloadSource {
     Nounitycn,
 }
 
-/// Small, explicit source policy. Region affects priority; the user's setting can
-/// remove the mirror entirely. Unknown region starts with the official source.
+/// Official-first in every region. Region remains an observation for guidance;
+/// the user's setting controls whether the backup mirror may be contacted.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct EditorDownloadPolicy {
     pub region: DownloadRegion,
     pub mirrors_enabled: bool,
     pub sources: Vec<EditorDownloadSource>,
+    pub editor_editions: Vec<EditorEdition>,
     pub hub_fallback_url: String,
 }
 
 impl EditorDownloadPolicy {
     pub fn new(region: DownloadRegion, mirrors_enabled: bool) -> Self {
-        let sources = match (region, mirrors_enabled) {
-            (_, false) => vec![EditorDownloadSource::Official],
-            (DownloadRegion::ChinaMainland, true) => vec![
-                EditorDownloadSource::Nounitycn,
-                EditorDownloadSource::Official,
-            ],
-            (_, true) => vec![
+        let sources = match mirrors_enabled {
+            false => vec![EditorDownloadSource::Official],
+            true => vec![
                 EditorDownloadSource::Official,
                 EditorDownloadSource::Nounitycn,
             ],
@@ -59,6 +79,7 @@ impl EditorDownloadPolicy {
             region,
             mirrors_enabled,
             sources,
+            editor_editions: vec![EditorEdition::Global, EditorEdition::China],
             hub_fallback_url: UNITY_HUB_INSTALL_LINK.into(),
         }
     }
@@ -220,6 +241,61 @@ pub enum DeploymentInstallerKind {
     UnityCliBootstrap,
 }
 
+/// Adapter facts within a prerequisite step. Byte counts describe downloaded/checked
+/// data, never fabricated installer percentages. Failure codes exclude raw vendor text.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeploymentActivity {
+    pub phase: DeploymentPhase,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub editor_version: Option<&'static str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<EditorDownloadSource>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub completed_bytes: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_bytes: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cause: Option<&'static str>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DeploymentPhase {
+    ResolvingSource,
+    Downloading,
+    Verifying,
+    Installing,
+    Inspecting,
+    Registering,
+    SourceFailed,
+    InstallationFailed,
+    CacheRejected,
+}
+
+impl DeploymentActivity {
+    pub fn new(phase: DeploymentPhase) -> Self {
+        Self {
+            phase,
+            editor_version: None,
+            source: None,
+            completed_bytes: None,
+            total_bytes: None,
+            cause: None,
+        }
+    }
+    pub fn from_source(phase: DeploymentPhase, source: EditorDownloadSource) -> Self {
+        Self {
+            source: Some(source),
+            ..Self::new(phase)
+        }
+    }
+}
+
+/// A failed report stops acquisition before its next write or installer launch. While
+/// a native installer is running, cancellation still waits for that process boundary.
+pub type DeploymentReporter<'a> = dyn FnMut(DeploymentActivity) -> Result<(), &'static str> + 'a;
+
 /// Infrastructure implements these facts/actions in project-manager. New installers must
 /// not bypass this boundary or change the plan's meanings in React/Electron handlers.
 pub trait DeploymentAdapter: Send + Sync {
@@ -233,6 +309,7 @@ pub trait DeploymentAdapter: Send + Sync {
         intent: &DeploymentIntent,
         action: DeploymentAction,
         confirmed: &DeploymentInstaller,
+        report: &mut DeploymentReporter<'_>,
     ) -> Result<(), &'static str>;
 }
 
@@ -307,15 +384,10 @@ pub fn plan_deployment_with_region(
                 "https://docs.unity.com/en-us/unity-cli/use-unity-cli",
             )
         };
-        let editor_source = if download_policy
-            .as_ref()
-            .is_some_and(|p| p.sources.first() == Some(&EditorDownloadSource::Nounitycn))
-        {
-            UNITY_EDITOR_SOURCE
-        } else {
-            UNITY_OFFICIAL_EDITOR_SOURCE
-        };
-        required.extend([installer_component, ("unity_editor", editor_source)]);
+        required.extend([
+            installer_component,
+            ("unity_editor", UNITY_OFFICIAL_EDITOR_SOURCE),
+        ]);
     }
     if quest {
         required.push((
@@ -512,12 +584,30 @@ impl DeploymentService {
                                 "nextStep": step, "prerequisitesReady": false, "functionalVerification": "not_run"})));
                         },
                         action => {
-                            let result = adapter.install(&intent, action, fresh.installer.as_ref().ok_or_else(|| deployment_error("vua.deployment.installer_unavailable", &correlation))?);
+                            let mut source_failures = Vec::new();
+                            let mut installation_failures = Vec::new();
+                            let result = adapter.install(&intent, action, fresh.installer.as_ref().ok_or_else(|| deployment_error("vua.deployment.installer_unavailable", &correlation))?, &mut |activity| {
+                                if ctx.check_cancel() { return Err("vua.deployment.cancelled"); }
+                                if matches!(activity.phase, DeploymentPhase::SourceFailed) {
+                                    source_failures.push(serde_json::to_value(&activity).expect("activity serializes"));
+                                }
+                                if matches!(activity.phase, DeploymentPhase::InstallationFailed) {
+                                    installation_failures.push(serde_json::to_value(&activity).expect("activity serializes"));
+                                }
+                                let mut payload = progress(step, index, fresh.steps.len(), "started");
+                                let facts = serde_json::to_value(activity).expect("activity serializes");
+                                payload["params"].as_object_mut().unwrap().extend(facts.as_object().unwrap().clone());
+                                ctx.emit_progress(payload);
+                                if ctx.check_cancel() { Err("vua.deployment.cancelled") } else { Ok(()) }
+                            });
+                            if ctx.check_cancel() { return Ok(TaskExit::Cancelled); }
                             if result == Err("vua.deployment.hub_fallback_required") && action == DeploymentAction::InstallEditor {
                                 if ctx.check_cancel() { return Ok(TaskExit::Cancelled); }
                                 ctx.warn();
                                 return Ok(TaskExit::Done(serde_json::json!({"schemaVersion": DEPLOYMENT_SCHEMA,
                                     "operation":"environment.executeDeployment", "outcome":"manual_required",
+                                    "sourceFailures":source_failures,
+                                    "installationFailures":installation_failures,
                                     "handoff":"unity_hub", "handoffUrl":UNITY_HUB_INSTALL_LINK,
                                     "nextStep": {"component":"unity_hub", "action":"manual_install", "reason":"missing",
                                         "location":null, "version":null, "officialUrl":"https://unity.com/download"},
@@ -536,6 +626,7 @@ impl DeploymentService {
                 if !after.prerequisites_ready { return Err(deployment_error("vua.deployment.verification_failed", &correlation)); }
                 Ok(TaskExit::Done(serde_json::json!({"schemaVersion": DEPLOYMENT_SCHEMA,
                     "operation": "environment.executeDeployment", "outcome": "prerequisites_verified",
+                    "editor": after.steps.iter().find(|s| s.component == "unity_editor"),
                     "prerequisitesReady": true, "functionalVerification": "not_run"})))
             }) }, "environment.executeDeployment", command_id, &fingerprint)
     }

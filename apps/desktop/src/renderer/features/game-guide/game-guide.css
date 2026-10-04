@@ -1,0 +1,130 @@
+/* 游戏引导小窗样式(三类引导架构 §4 手动版):
+ * - 透明窗体:根透明,面板承担底色——透明度滑杆只调面板 opacity
+ *   (缺省 50%),文字与控件同受其影响,是玩家在游戏画面上权衡可读性
+ *   的自选折衷;
+ * - 拖拽条:标题栏整条可拖(frameless 小窗),交互元素显式 no-drag;
+ * - 单步指引:计数 + 标题 + 少量段落 + 确认/跳过;颜色/间距只消费
+ *   语义 token,与覆盖层同纪律。 */
+
+.vua-game-guide {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 8px;
+  background: transparent;
+  box-sizing: border-box;
+}
+
+.vua-game-guide__panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--vua-bg-panel);
+  border: 1px solid var(--vua-border);
+  border-radius: var(--vua-radius-overlay, 12px);
+  overflow: hidden;
+  font-family: var(--vua-font-family);
+  font-size: 14px;
+  color: var(--vua-text-strong);
+}
+
+.vua-game-guide__titlebar {
+  display: flex;
+  align-items: center;
+  gap: var(--vua-space-2, 8px);
+  height: 40px;
+  padding: 0 var(--vua-space-2, 8px) 0 var(--vua-space-3, 12px);
+  border-bottom: 1px solid var(--vua-border);
+  -webkit-app-region: drag;
+  user-select: none;
+  flex: none;
+}
+
+.vua-game-guide__title {
+  margin: 0;
+  font-size: 0.92em;
+  color: var(--vua-text-secondary);
+}
+
+.vua-game-guide__titlebar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--vua-space-2, 8px);
+  margin-inline-start: auto;
+  -webkit-app-region: no-drag;
+}
+
+.vua-game-guide__opacity {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--vua-text-secondary);
+}
+
+.vua-game-guide__opacity input[type="range"] {
+  width: 72px;
+  accent-color: var(--vua-accent);
+}
+
+.vua-game-guide__chrome {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: var(--vua-radius-control, 6px);
+  background: transparent;
+  color: var(--vua-text-secondary);
+  cursor: pointer;
+}
+
+.vua-game-guide__chrome:hover {
+  background: var(--vua-bg-elevated);
+  color: var(--vua-text-strong);
+}
+
+.vua-game-guide__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--vua-space-4, 16px);
+  display: flex;
+  flex-direction: column;
+}
+
+.vua-game-guide__step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-3, 12px);
+}
+
+.vua-game-guide__step[data-complete] {
+  gap: var(--vua-space-4, 16px);
+}
+
+.vua-game-guide__counter {
+  margin: 0;
+  font-size: 0.82em;
+  color: var(--vua-text-secondary);
+}
+
+.vua-game-guide__step-title {
+  margin: 0;
+  font-size: 1.12em;
+  color: var(--vua-text-strong);
+}
+
+.vua-game-guide__paragraph {
+  margin: 0;
+  color: var(--vua-text-secondary);
+  line-height: 1.55;
+}
+
+.vua-game-guide__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--vua-space-2, 8px);
+  margin-top: auto;
+  padding-top: var(--vua-space-2, 8px);
+}

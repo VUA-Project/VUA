@@ -3,7 +3,7 @@
 
 > Status: Accepted
 > Scope: Electron Main / Preload / Renderer, package scripts, and quality gates
-> Updated: 2026-10-01
+> Updated: 2026-10-04
 > Authority: development entry point; product boundary and contracts live in `docs/`
 
 ## Development commands
@@ -46,6 +46,85 @@ The development launcher does not rebuild the Rust Provider; repeat the build af
 Quality gates: `check:boundary` (Gateway only via the barrel; renderer must not import `electron`/`node:`/`@tauri-apps`),
 `check:i18n` (no CJK literals; locale tables aligned, including table validation), `check:contrast` (WCAG AA in 5 contexts),
 `check:leak` and `check:forest-leak` (production leakage checks).
+
+## Development data and parallel checkouts
+
+Development runs automatically use a separate profile per checkout, including linked Git
+worktrees. On Windows the default is
+`%LOCALAPPDATA%\VUA-dev\<checkout-name>-<canonical-path-hash>` (falling back to the app-data
+directory when LOCALAPPDATA is unavailable). The normalized absolute checkout path determines
+identity; the current terminal directory, Git branch and commit do not. Moving a checkout creates
+a different default profile. Native window titles (including taskbar/Alt+Tab) show its development
+label; the `desktop-profile` startup diagnostic prints the selected directories.
+
+The profile contains both BDL/task databases, settings, material associations, managed warehouse
+and production directories, download staging, guide reading state and browser storage/cache.
+Electron userData and sessionData are configured together before initialization. Account
+persistence policy is unchanged. Steam/PICO installations, external client accounts and physical
+devices remain shared machine resources; coordinate installation and headset tests.
+
+The old `%APPDATA%\@vua\desktop` directory stays untouched. New profiles start empty. To reuse
+data, close the source/target VUA processes and copy a complete consistent profile into a compatible
+checkout's selected directory. Do not copy only a live SQLite .db file (WAL data may still be
+pending), edit its schema version or let an older build open a newer profile. A normal branch
+switch keeps the checkout profile; use a separate test profile when exercising older/incompatible
+schemas.
+
+For a disposable test or an explicit data copy, choose an absolute directory for this shell:
+
+```powershell
+$env:VUA_DEV_USER_DATA = Join-Path $env:TEMP 'vua-profile-test'
+$env:VUA_DEV_PORT = '5174'
+pnpm dev:desktop
+Remove-Item Env:VUA_DEV_USER_DATA, Env:VUA_DEV_PORT
+```
+
+`VUA_DEV_USER_DATA` overrides development data only; relative/empty paths fail before startup.
+`VUA_DEV_PORT` selects the renderer port (default 5173). Use distinct ports when running multiple
+development checkouts concurrently. Each process needs its own profile; explicitly choosing the
+same directory disables that separation. Build/use the matching Provider from each checkout,
+and keep profiles/evidence local and out of Git.
+
+Packaged apps ignore development profile overrides and retain `%APPDATA%\VUA` across updates
+and ZIP moves. Only the explicit packaged-smoke switch selects the smoke harness's isolated
+profile, including browser storage.
+
+## Windows ZIP preview
+
+```powershell
+pnpm --filter @vua/desktop package:win
+pnpm --filter @vua/desktop smoke:packaged
+```
+
+The first command compiles the existing application and real Rust Provider, then creates
+`apps/desktop/out/VUA-<package version>-windows-x64-preview.zip`. Version comes from the desktop
+package manifest; creating a preview does not select a new public release number. The ZIP is
+unsigned. It contains the current application, including creator code retained for later work;
+it is not a declaration that the first desktop/PICO play guide is complete.
+The packaging-only Main/preload bundles are emitted to `dist/packaged-electron/`; normal
+`dist/electron/` modules remain available to the existing development and security-smoke scripts.
+The package excludes workspace sources, tests and development mocks.
+
+Extract the entire archive and launch `VUA.exe`. The end-user machine needs neither Node nor
+Rust nor this checkout. Keep all runtime files together. Packaged app data lives in
+`%APPDATA%\VUA`, so replacing/moving the extracted folder does not remove settings or tasks.
+Close VUA before updating or deleting its program folder; remove data separately only when wanted.
+The ZIP's `resources/README.txt` includes these instructions and the unsigned-preview status.
+
+The smoke harness extracts the actual ZIP to a new temporary directory containing spaces and
+non-ASCII characters, uses an isolated profile and a hidden window, and queries the real bundled
+Provider through preload/Gateway. It repeats after moving the program folder and checks a missing
+backend produces a failed result. It removes developer tools from the launched process's PATH
+and supplies stale development overrides deliberately. No platform account or software installer
+is used. `out/packaged-smoke.json` records the archive SHA-256 and result; raw diagnostics and
+profiles stay in the named temporary directory for investigation. They are not committed.
+
+This bootstrap check complements the [first-play acceptance](../../docs/development-outline.md#first-play-release-acceptance).
+Physical PICO USB/Wi-Fi tests and human UI review are separate. Before publication, finish the
+exact-build license inventory, signing decision, illustrated guide and remaining play rows.
+The [Windows ZIP workflow](../../.github/workflows/windows-zip.yml) runs on relevant packaging
+PR changes or manual dispatch and keeps unsigned preview artifacts for seven days. It does
+not create a GitHub release; documentation-only edits do not trigger that workflow.
 
 ## Migration and verification records
 

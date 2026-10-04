@@ -15,6 +15,19 @@ function request(): unknown {
 }
 
 describe("Electron Desktop Gateway routing", () => {
+  it("routes network checks as read-only queries and rejects arbitrary endpoints", async () => {
+    const provider = new MockOrchestratorProviderV01();
+    await provider.start();
+    const invoke = vi.spyOn(provider, "invoke");
+    const context = { provider, productVersion: "0.6.0", platform: "win32" as const, rendererUrl };
+    const params = { intent: { route: "desktop_play", region: "china_mainland" } };
+    await routeDesktopGatewayInvoke(context, `${rendererUrl}/`, { schemaVersion: 1, requestId: "network", method: "environment.checkNetwork", params });
+    expect(invoke).toHaveBeenCalledWith(expect.objectContaining({ kind: "query", method: "environment.checkNetwork", params }));
+    invoke.mockClear();
+    const rejected = await routeDesktopGatewayInvoke(context, `${rendererUrl}/`, { schemaVersion: 1, requestId: "network", method: "environment.checkNetwork", params: { ...params, url: "http://localhost" } });
+    expect(rejected).toMatchObject({ ok: false, error: { code: "invalid_request" } });
+    expect(invoke).not.toHaveBeenCalled();
+  });
   it("maps N1 confirmation into the application command and rejects renderer commands", async () => {
     const provider = new MockOrchestratorProviderV01(); await provider.start();
     const invoke = vi.spyOn(provider, "invoke");

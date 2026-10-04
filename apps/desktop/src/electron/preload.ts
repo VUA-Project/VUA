@@ -3,6 +3,7 @@ import type {
   ApplicationEventV01,
   DesktopGatewayRequestV1,
   EditorSettingsV1,
+  GuideTargetV1,
   NavigationConfirmRequestV1,
   OverlayViewV1,
   RemoteContentEventV1,
@@ -33,6 +34,16 @@ const navConfirmListeners = new WeakMap<
 const overlayViewListeners = new WeakMap<
   (view: OverlayViewV1) => void,
   (event: IpcRendererEvent, payload: OverlayViewV1) => void
+>();
+
+const guideTargetListeners = new WeakMap<
+  (target: GuideTargetV1 | null) => void,
+  (event: IpcRendererEvent, payload: GuideTargetV1 | null) => void
+>();
+
+const readerTargetListeners = new WeakMap<
+  (target: GuideTargetV1 | null) => void,
+  (event: IpcRendererEvent, payload: GuideTargetV1 | null) => void
 >();
 
 const api: VuaDesktopApiV1 = Object.freeze({
@@ -89,6 +100,53 @@ const api: VuaDesktopApiV1 = Object.freeze({
         };
       },
     }),
+    // 指南定位(首玩 B 切片 additive):按主题+分节打开引导;形状收窄在
+    // Main,词表回退在渲染层;undefined 经 IPC 序列化为 null(仅打开)
+    showGuide: (target?: GuideTargetV1 | null) =>
+      ipcRenderer.invoke("vua:overlay:show-guide", target ?? null),
+    // 收起覆盖层(隐藏不销毁;幂等,绝不创建窗口)
+    hideOverlay: () => ipcRenderer.invoke("vua:overlay:hide"),
+    // 指南定位事件:additive;Main 只投递给覆盖层窗口本身
+    guideTargetEvents: Object.freeze({
+      subscribe: (listener: (target: GuideTargetV1 | null) => void) => {
+        const wrapped = (_event: IpcRendererEvent, payload: GuideTargetV1 | null) =>
+          listener(payload);
+        guideTargetListeners.set(listener, wrapped);
+        ipcRenderer.on("vua:overlay:guide-target", wrapped);
+        return () => {
+          const wrappedListener = guideTargetListeners.get(listener);
+          if (wrappedListener)
+            ipcRenderer.removeListener("vua:overlay:guide-target", wrappedListener);
+          guideTargetListeners.delete(listener);
+        };
+      },
+    }),
+    // 准备阅读器(三类引导裁决 additive):普通阅读窗口,打开允许夺焦点;
+    // 无定位参数 = 普通打开(渲染层恢复上次阅读位置);undefined 经 IPC
+    // 序列化为 null,Main 侧按 null=缺省收窄
+    showReader: (target?: GuideTargetV1 | null) =>
+      ipcRenderer.invoke("vua:reader:show", target ?? null),
+    // 阅读器定位事件:additive;Main 只投递给阅读器窗口本身
+    readerTargetEvents: Object.freeze({
+      subscribe: (listener: (target: GuideTargetV1 | null) => void) => {
+        const wrapped = (_event: IpcRendererEvent, payload: GuideTargetV1 | null) =>
+          listener(payload);
+        readerTargetListeners.set(listener, wrapped);
+        ipcRenderer.on("vua:reader:guide-target", wrapped);
+        return () => {
+          const wrappedListener = readerTargetListeners.get(listener);
+          if (wrappedListener)
+            ipcRenderer.removeListener("vua:reader:guide-target", wrappedListener);
+          readerTargetListeners.delete(listener);
+        };
+      },
+    }),
+    // 游戏引导小窗(三类引导 §4 手动版 additive):透明置顶窗,打开永远
+    // showInactive 不夺焦点;隐藏不销毁(保留位置与进度),由窗内/Esc 显式发起
+    showGameGuide: () => ipcRenderer.invoke("vua:game-guide:show"),
+    hideGameGuide: () => ipcRenderer.invoke("vua:game-guide:hide"),
+    // 返回主窗口(仅响应用户明确动作,允许切换焦点)
+    focusMainWindow: () => ipcRenderer.invoke("vua:window:focus-main"),
   }),
   // 远程内容窄面(F4-2):只发语义动作;远程页面本身无 preload、无本面
   remoteContent: Object.freeze({

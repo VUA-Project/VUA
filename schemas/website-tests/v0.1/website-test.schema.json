@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Website tests v0.1 request params",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["urls"],
+  "properties": {
+    "urls": {
+      "type": "array", "minItems": 1, "maxItems": 12, "uniqueItems": true,
+      "items": { "$ref": "#/$defs/url" }
+    }
+  },
+  "$defs": {
+    "url": { "type": "string", "minLength": 9, "maxLength": 2048, "format": "uri", "pattern": "^https://[^/@#\\s]+(?:/[^#\\s]*)?$", "description": "Runtime URL validation additionally rejects embedded credentials and ports other than 443." },
+    "observation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["url", "status", "elapsedMs", "httpStatus"],
+      "properties": {
+        "url": { "$ref": "#/$defs/url" },
+        "status": { "enum": ["reachable", "redirected", "http_error", "timeout", "connection_failed", "probe_error"] },
+        "elapsedMs": { "type": "integer", "minimum": 0 },
+        "httpStatus": { "type": ["integer", "null"] }
+      },
+      "oneOf": [
+        { "properties": { "status": { "const": "reachable" }, "httpStatus": { "type": "integer", "minimum": 200, "maximum": 299 } } },
+        { "properties": { "status": { "const": "redirected" }, "httpStatus": { "type": "integer", "minimum": 300, "maximum": 399 } } },
+        { "properties": { "status": { "const": "http_error" }, "httpStatus": { "type": "integer", "minimum": 400, "maximum": 599 } } },
+        { "properties": { "status": { "enum": ["timeout", "connection_failed", "probe_error"] }, "httpStatus": { "type": "null" } } }
+      ]
+    },
+    "result": {
+      "type": "object", "additionalProperties": false, "required": ["websiteTests"],
+      "properties": { "websiteTests": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "$ref": "#/$defs/observation" } } }
+    }
+  }
+}

@@ -117,7 +117,10 @@ describe("N1 deployment consumer", () => {
     expect(callback).not.toHaveBeenCalled();
     emit(event);
     expect(callback).toHaveBeenCalledWith({ component: "unity_editor", action: "install_editor", phase: "started" });
-    unsubscribe(); emit(event); expect(callback).toHaveBeenCalledTimes(1);
+    emit({ ...event, payload: { ...event.payload, params: { ...event.payload.params, phase: "downloading", source: "nounitycn", completedBytes: 1024, totalBytes: 2048 } } });
+    expect(callback).toHaveBeenLastCalledWith({ component: "unity_editor", action: "install_editor", phase: "downloading", source: "nounitycn", completedBytes: 1024, totalBytes: 2048 });
+    emit({ ...event, payload: { ...event.payload, params: { ...event.payload.params, phase: "downloading", completedBytes: -1 } } });
+    unsubscribe(); emit(event); expect(callback).toHaveBeenCalledTimes(2);
   });
 });
 

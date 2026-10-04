@@ -1,4 +1,5 @@
 import { DeploymentPanel } from "./DeploymentPanel.tsx";
+import { NetworkPanel } from "./NetworkPanel.tsx";
 import { formatDateTime } from "../../i18n/index.ts";
 import { useEffect, useState } from "react";
 import { useMinBusyValue } from "../../app/busy-timing.ts";
@@ -13,6 +14,8 @@ import { format, strings } from "../../i18n/index.ts";
 import { useDataSource, useEnvironmentView, useGateway } from "../../gateway/index.ts";
 import { summarizeGroup, summarizeHealth, zoneSummaryItems, type CheckItem, type CheckZone } from "./deployer-model.ts";
 import { canAdvanceStep, type FixPlanV1 } from "./fix-plan-model.ts";
+import { GuideEntryButton } from "../guide/GuideEntryButton.tsx";
+import { guideTargetForCheckId } from "../guide/guide-target.ts";
 import { VersionPanel } from "./VersionPanel.tsx";
 import "./deployer.css";
 
@@ -79,7 +82,15 @@ type PlanState =
  * 取数(G3):视图经 Gateway 环境端口注入(useEnvironmentView),
  * "演示数据"徽标由 dataSource 驱动,页面不感知 fixture / live 实现差异。
  */
-export function DeployerPage({
+/** Keep the network panel mounted when software inspection changes phase. */
+export function DeployerPage(props: { zone: CheckZone; goal?: "active" | "goal-off" | "env-off"; onChooseGoals?: () => void }) {
+  return <>
+    {props.zone === "play" && (props.goal ?? "active") === "active" ? <NetworkPanel /> : null}
+    <EnvironmentChecks {...props} />
+  </>;
+}
+
+function EnvironmentChecks({
   zone,
   goal = "active",
   onChooseGoals,
@@ -232,7 +243,9 @@ export function DeployerPage({
   const evidence = phase.kind === "results" ? phase : phase.last;
   const evidenceTime =
     evidence !== null ? formatDateTime(evidence.checkedAt) : null;
-  const items = evidence?.items ?? [];
+  // The dedicated HTTPS panel replaces the legacy TCP card in the live play view.
+  // Keep its frozen wire facts intact for other consumers and historical fixtures.
+  const items = (evidence?.items ?? []).filter(item => !(zone === "play" && gateway.environment.network && item.id === "network"));
   // 摘要计数口径(2026-09-20 用户裁决,与生产门同源):创作辖区只数门内项
   // (Unity 编辑器是唯一硬前置);信息性展示项卡照常逐张呈现,不进「还差
   // N 项准备」计数与总览灯。游玩辖区全量计入。
@@ -392,6 +405,9 @@ export function DeployerPage({
                 <p className="vua-caption vua-text-secondary">{entry.item.fixLabel}</p>
               )
             ) : null}
+            {/* 「查看操作指南」入口(首玩 B 切片):检查项有定位映射时出现;
+                指南是静态内容,不经 capability 门控 */}
+            <GuideEntryButton target={guideTargetForCheckId(entry.item.id)} label={copy.guideCta} />
           </Card>
           ),
         )}
@@ -443,6 +459,7 @@ function RuntimeGroupCard({
             <StatusLight level={member.status} />
             <span className="vua-deployer__group-member-title">{member.title}</span>
             <span className="vua-caption vua-text-secondary">{member.description}</span>
+            <GuideEntryButton target={guideTargetForCheckId(member.id)} label={copy.guideCta} />
           </li>
         ))}
       </ul>

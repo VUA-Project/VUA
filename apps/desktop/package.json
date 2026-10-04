@@ -2,6 +2,9 @@
   "name": "@vua/desktop",
   "version": "0.6.0",
   "private": true,
+  "description": "A local-first desktop assistant for VRChat play and avatar workflows.",
+  "author": "VUA Project contributors",
+  "license": "Apache-2.0",
   "sideEffects": [
     "**/*.css"
   ],
@@ -18,6 +21,8 @@
     "check:forest-leak": "node scripts/check-forest-leak.mjs",
     "dev": "node scripts/dev.mjs",
     "start": "pnpm build && electron .",
+    "package:win": "pnpm --filter @vua/orchestrator-provider build && node scripts/build-windows-provider.mjs && tsc -p tsconfig.electron.json --noEmit && node scripts/build-electron.mjs && vite build && install-electron && node scripts/package-windows.mjs",
+    "smoke:packaged": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-packaged.ps1",
     "smoke:remote-permissions": "pnpm build && electron scripts/smoke-remote-permissions.mjs",
     "smoke:m2-deliverables": "pnpm build && electron scripts/smoke-m2-deliverables.mjs",
     "preview:overlay": "electron scripts/preview-overlay.mjs",
@@ -25,6 +30,7 @@
     "smoke:download-port": "pnpm build && electron scripts/smoke-download-port.mjs",
     "smoke:f4-deliverables": "pnpm build && node scripts/smoke-f4-deliverables.mjs",
     "smoke:production-review": "electron scripts/smoke-production-review.mjs",
+    "smoke:network": "electron scripts/smoke-network.mjs",
     "smoke:import-dialog": "electron scripts/smoke-import-dialog.mjs",
     "smoke:resource-monitor": "electron scripts/smoke-resource-monitor.mjs"
   },
@@ -43,6 +49,7 @@
     "@types/three": "0.185.4",
     "@vitejs/plugin-react": "6.1.1",
     "electron": "44.1.1",
+    "electron-builder": "26.15.3",
     "typescript": "7.0.2",
     "vite": "8.2.2",
     "vitest": "4.1.11"
