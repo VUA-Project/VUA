@@ -86,18 +86,15 @@ export interface CatalogSyncRun {
  */
 export const CATALOG_SYNC_DEFAULT_START_URL = "https://accounts.booth.pm/library?page=1";
 
-/** 登录重定向判定(真机 2026-10-05 确诊):「访问过登录页」的会话在账户域
- * 有 Cookie,启动门旧判据(cookie 存在)会放行;但未真正登录的会话访问
- * 账号库被 302 到 accounts.booth.pm/users/sign_in——HTTP 层已是跟随后的
- * 200,唯一线索是 finalUrl。该形态与「页面结构变了」不同:会话不可用,
- * 续页无意义,以专码停跑;启动门用同一判定做真实预检。 */
-export function isSignInRedirect(finalUrl: string): boolean {
-  try {
-    const url = new URL(finalUrl);
-    return url.host === "accounts.booth.pm" && url.pathname === "/users/sign_in";
-  } catch {
-    return false;
-  }
+/** 登录页内容判定(真机 2026-10-05 确诊,两轮取证):「访问过登录页」的
+ * 会话在账户域有 Cookie,启动门旧判据(cookie 存在)会放行;未真正登录
+ * 的会话访问账号库被 302 到登录页——HTTP 层已是跟随后的 200,且 Electron
+ * session.fetch 的 Response.url 不回填(finalUrl 恒空),只能按内容判定。
+ * 标记取登录页独有的结构路径(pixiv 认证表单/密码登录帮助链接),与界面
+ * 语言无关;真实库页语法(/items/、店铺子域、/downloadables/)不含它们。 */
+export function isSignInPage(html: string): boolean {
+  return html.includes('action="/users/auth/pixiv"')
+    || html.includes("users/sign_in_by_password");
 }
 
 export function startCatalogSync(
@@ -166,15 +163,16 @@ export function startCatalogSync(
         );
         return failure("http_status", url);
       }
-      // 未登录会话的库页 = 登录页重定向:专码停跑,不投递解析(投递只会
-      // 以 not_a_library_page 拒绝,掩盖真实成因)
-      if (isSignInRedirect(outcome.finalUrl)) {
+      // 未登录会话的库页 = 登录页(302 已被跟随):按内容判定,专码停跑,
+      // 不投递解析(投递只会以 not_a_library_page 拒绝,掩盖真实成因)
+      if (isSignInPage(outcome.body)) {
         log(
           JSON.stringify({
             channel: "catalog-sync",
             runId,
             signInRedirect: true,
             url,
+            bodyBytes: outcome.body.length,
           }),
         );
         return failure("sign_in_redirect", url);
@@ -199,7 +197,32 @@ export function startCatalogSync(
       }
       if (!invokeResult.ok) {
         const code = invokeResult.error?.code ?? "ingest_error";
-        log(JSON.stringify({ channel: "catalog-sync", runId, ingestError: code, url }));
+        log(
+          JSON.stringify({
+            channel: "catalog-sync",
+            runId,
+            ingestError: code,
+            url,
+            bodyTitle: /<title[^>]*>([^<]{0,120})/i.exec(outcome.body)?.[1] ?? null,
+            bodyBytes: outcome.body.length,
+          }),
+        );
+        // 一次性取证开关:VUA_CATALOG_SYNC_DUMP_BODY=1 时把被拒页面落盘,
+        // 供结构标记排查(生产不开)
+        if (process.env.VUA_CATALOG_SYNC_DUMP_BODY === "1") {
+          try {
+            const fs = await import("node:fs/promises");
+            const os = await import("node:os");
+            const path = await import("node:path");
+            await fs.writeFile(
+              path.join(os.tmpdir(), `catalog-sync-rejected-${pageNumber}.html`),
+              outcome.body,
+              "utf8",
+            );
+          } catch {
+            /* 取证失败不影响失败面 */
+          }
+        }
         return failure(code, url);
       }
 

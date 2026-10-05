@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   CATALOG_SYNC_DEFAULT_START_URL,
-  isSignInRedirect,
+  isSignInPage,
   startCatalogSync,
   type CatalogSyncFetch,
   type CatalogSyncInvoke,
@@ -44,26 +44,29 @@ function okInvoke(result: CatalogSyncPageResultV01): CatalogSyncInvoke {
 
 const noDelay = { pageDelayMs: 0, sleep: async () => {} };
 
-describe("isSignInRedirect", () => {
-  it("recognizes exactly the accounts sign-in destination", () => {
-    expect(isSignInRedirect("https://accounts.booth.pm/users/sign_in")).toBe(true);
-    expect(isSignInRedirect("https://accounts.booth.pm/users/sign_in?return_to=%2Flibrary")).toBe(true);
-    expect(isSignInRedirect("https://booth.pm/users/sign_in")).toBe(false);
-    expect(isSignInRedirect("https://accounts.booth.pm/library?page=1")).toBe(false);
-    expect(isSignInRedirect("https://accounts.booth.pm/users/sign_in/other")).toBe(false);
-    expect(isSignInRedirect("not a url")).toBe(false);
+describe("isSignInPage", () => {
+  it("recognizes the structural sign-in markers, not locale text", () => {
+    // 真机取证 2026-10-05:登录页核心结构 = pixiv 认证表单 + 密码登录帮助链接
+    expect(isSignInPage('<form class="button_to" method="post" action="/users/auth/pixiv">')).toBe(true);
+    expect(isSignInPage('<a href="https://booth.pm/users/sign_in_by_password">help</a>')).toBe(true);
+    // 真实库页语法不含这些路径
+    expect(isSignInPage('<a href="https://booth.pm/zh-cn/items/7463144">item</a>')).toBe(false);
+    expect(isSignInPage('<a href="https://booth.pm/downloadables/880001">Download</a>')).toBe(false);
+    expect(isSignInPage("<html><body>library</body></html>")).toBe(false);
+    expect(isSignInPage("")).toBe(false);
   });
 });
 
 describe("startCatalogSync", () => {
   it("stops with sign_in_redirect before ingest when the session is half-logged-in", async () => {
-    // 真机 2026-10-05:cookie 在、登录未完成的会话访问库页,HTTP 200 但
-    // finalUrl 落在登录页——不投递解析(not_a_library_page 会掩盖成因),
-    // 以专码停跑,渲染层据此收口“已开始”提示
+    // 真机 2026-10-05:cookie 在、登录未完成的会话访问库页,HTTP 200 且
+    // 内容是登录页(finalUrl 恒空,只能按内容判定)——不投递解析
+    // (not_a_library_page 会掩盖成因),以专码停跑
     const fetch: CatalogSyncFetch = async () => ({
       status: 200,
-      body: "<html>sign-in form</html>",
-      finalUrl: "https://accounts.booth.pm/users/sign_in",
+      body: '<html><head><title>Sign in - BOOTH</title></head>'
+        + '<body><form class="button_to" method="post" action="/users/auth/pixiv"></form></body></html>',
+      finalUrl: "",
     });
     const invoke: CatalogSyncInvoke = async () => {
       throw new Error("ingest must not be called for a sign-in redirect");

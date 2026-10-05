@@ -18,7 +18,7 @@ import { DownloadPort } from "./download-port.js";
 import { createDownloadEventSink } from "./download-ingest.js";
 import {
   CATALOG_SYNC_DEFAULT_START_URL,
-  isSignInRedirect,
+  isSignInPage,
   startCatalogSync,
   type CatalogSyncInvoke,
   type CatalogSyncRun,
@@ -584,13 +584,13 @@ function registerIpc(provider: OrchestratorProviderV01): void {
     // 真实登录预检(真机 2026-10-05 确诊):「访问过登录页」的会话在账户域
     // 有 Cookie,hint 为 "stored" 但并未登录——旧门会放行,首页被 302 到
     // 登录页,任务在 provider 侧从未创建,通知中心静默、提示卡在“已开始”。
-    // 以同一登录重定向判定预检首开地址;探测异常不拦截(网络失败由运行
-    // 器如实报告,不猜因)
+    // 预检首开地址并按内容识别登录页(finalUrl 恒空,见 isSignInPage 注);
+    // 探测异常不拦截(网络失败由运行器如实报告,不猜因)
     try {
       const probe = await remoteContent.fetchWithSession(
         startUrl ?? CATALOG_SYNC_DEFAULT_START_URL,
       );
-      if (isSignInRedirect(probe.finalUrl)) {
+      if (isSignInPage(probe.body)) {
         return { status: "blocked", reason: "sign-in-required" };
       }
     } catch {
