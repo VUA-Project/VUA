@@ -1342,6 +1342,11 @@ rolled_back: "ロールバック済み",
   warehouse: {
     importedBadge: "インポート済み",
     viewCards: "カード",
+    loginBrowser: {
+      successTitle: "ログインしました",
+      autoCloseHint: "{countdown} 秒後に自動で閉じます",
+      cancel: "キャンセル",
+    },
     cardMenu: {
       download: "ローカルにダウンロード",
           deleteLocal: "ローカルファイルを削除",

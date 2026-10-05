@@ -1335,6 +1335,11 @@ rolled_back: "롤백됨",
   warehouse: {
     importedBadge: "가져옴",
     viewCards: "카드",
+    loginBrowser: {
+      successTitle: "로그인 성공",
+      autoCloseHint: "{countdown}초 후 자동으로 닫습니다",
+      cancel: "취소",
+    },
     cardMenu: {
       download: "로컬에 다운로드",
           deleteLocal: "로컬 파일 삭제",

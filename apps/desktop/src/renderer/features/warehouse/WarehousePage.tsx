@@ -59,6 +59,7 @@ import {
   type WarehouseQueryState,
 } from "./warehouse-model.ts";
 import { BOOTH_SIGN_IN_URL } from "../import/import-model.ts";
+import { openLoginBrowser, useLoginBrowserRequest } from "../../app/login-browser-store.ts";
 import "./warehouse.css";
 
 const copy = strings.warehouse;
@@ -594,6 +595,19 @@ export function WarehousePage({
       active = false;
     };
   }, [importDialogOpen, remoteBrowser]);
+  // 登录浏览器(2026-10-05)关闭回执:同上重探——登录成功自动关闭(或用户
+  // ×)后空态卡立即翻为同步引导
+  const loginBrowserOpen = useLoginBrowserRequest() !== null;
+  useEffect(() => {
+    if (loginBrowserOpen || !remoteBrowser) return;
+    let active = true;
+    void window.vua?.remoteContent?.signInHint().then((hint) => {
+      if (active) setSignInHint(hint);
+    });
+    return () => {
+      active = false;
+    };
+  }, [loginBrowserOpen, remoteBrowser]);
   const startCatalogSync = async (): Promise<void> => {
     const catalogSync = window.vua?.catalogSync;
     if (catalogSync === undefined) return;
@@ -1224,12 +1238,10 @@ export function WarehousePage({
                       <Button
                         variant="default"
                         onClick={() => {
-                          // 登录走素材导入弹窗的内嵌浏览面板(2026-10-05 修,
-                          // 孤儿视图第三例):面板是远程视图唯一控制面(导航条
-                          // /关闭);直连 remoteContent.open 会留下无导航条的
-                          // 全屏视图,用户被锁在登录页外
-                          setImportInitialUrl(BOOTH_SIGN_IN_URL);
-                          setImportDialogOpen(true);
+                          // 窗口级登录浏览器(2026-10-05 用户裁决):登录不再
+                          // 借用素材导入弹窗(已废弃的过渡形态);导航条直挂
+                          // 窗口,登录成功 6 秒倒计时自动关闭
+                          openLoginBrowser(BOOTH_SIGN_IN_URL);
                         }}
                       >
                         {copy.catalogSync.signInAction}

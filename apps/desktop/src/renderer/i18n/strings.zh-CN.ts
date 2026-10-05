@@ -1367,6 +1367,11 @@ rolled_back: "已回滚",
   warehouse: {
     importedBadge: "已入库",
     viewCards: "卡片",
+    loginBrowser: {
+      successTitle: "登录成功",
+      autoCloseHint: "{countdown} 秒后自动关闭",
+      cancel: "取消",
+    },
     cardMenu: {
       download: "下载到本地",
           deleteLocal: "删除本地文件",

@@ -159,6 +159,9 @@ const api: VuaDesktopApiV1 = Object.freeze({
     setVisible: (viewId: string, visible: boolean) =>
       ipcRenderer.invoke("vua:remote-content:set-visible", viewId, visible),
     signInHint: () => ipcRenderer.invoke("vua:remote-content:sign-in-hint"),
+    // 真实登录判定:抓一次库首页按内容识别登录页(线索三态会被半登录会话
+    // 误报;authOk 才是「此刻能读到账号库」)
+    authProbe: () => ipcRenderer.invoke("vua:remote-content:auth-probe"),
     events: Object.freeze({
       subscribe: (listener: (event: RemoteContentEventV1) => void) => {
         const wrapped = (_event: IpcRendererEvent, payload: RemoteContentEventV1) => listener(payload);

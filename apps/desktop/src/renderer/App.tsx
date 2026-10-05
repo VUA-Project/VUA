@@ -65,6 +65,7 @@ import { DeployerPage } from "./features/deployer/DeployerPage.tsx";
 import { OnboardingPage, type OnboardingResult } from "./features/onboarding/OnboardingPage.tsx";
 import { NavigationConfirmOverlay } from "./app/NavigationConfirmOverlay.tsx";
 import { AppTour } from "./features/tour/AppTour.tsx";
+import { LoginBrowserOverlay } from "./app/LoginBrowserOverlay.tsx";
 import { PackagesPage } from "./features/packages/PackagesPage.tsx";
 import { RecipePage } from "./features/recipe/RecipePage.tsx";
 import { ReleasePage } from "./features/release/ReleasePage.tsx";
@@ -1263,6 +1264,9 @@ function AppShell({
       {/* 应用导览(三类引导裁决 2026-10-05):主窗口内有序高亮;从未运行自动
        *  开始,active 按步号恢复,重播经命令面板;状态独立于阅读器/安装 */}
       <AppTour page={page} navigate={navigate} startRequest={tourStartRequest} />
+      {/* 窗口级登录浏览器(2026-10-05 用户裁决):无开启意图时零渲染;视图
+          生命周期归组件(卸载即关),宿主不依赖任何页面/弹窗 */}
+      <LoginBrowserOverlay />
       {paletteOpen ? (
         <CommandPalette commands={commands} onClose={() => setPaletteOpen(false)} />
       ) : null}

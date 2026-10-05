@@ -1378,6 +1378,11 @@ demoTaskTitle: "Demo task",
   warehouse: {
     importedBadge: "Imported",
     viewCards: "Cards",
+    loginBrowser: {
+      successTitle: "Signed in",
+      autoCloseHint: "Closing in {countdown}s",
+      cancel: "Cancel",
+    },
     cardMenu: {
       download: "Download to local",
           deleteLocal: "Delete local files",

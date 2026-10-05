@@ -550,6 +550,18 @@ function registerIpc(provider: OrchestratorProviderV01): void {
     assertLocalSender(senderFrameUrl(event));
     return remoteContent!.signInHint();
   });
+  // 真实登录判定(2026-10-05,登录浏览器轮询用):抓一次已购库首页按内容
+  // 识别登录页——与同步启动门同一判据;探测异常恒 false,不冒充已登录
+  ipcMain.handle("vua:remote-content:auth-probe", async (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    if (remoteContent === null) return { authOk: false };
+    try {
+      const probe = await remoteContent.fetchWithSession(CATALOG_SYNC_DEFAULT_START_URL);
+      return { authOk: probe.status === 200 && !isSignInPage(probe.body) };
+    } catch {
+      return { authOk: false };
+    }
+  });
 
   // 账号库同步触发面(N5 S1,计划 D4):分区会话逐页抓取 → provider
   // catalog.ingestLibraryPage 折叠;进度与终态走九态任务面(通知中心),
