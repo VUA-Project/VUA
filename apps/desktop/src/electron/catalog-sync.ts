@@ -97,12 +97,21 @@ export function isSignInPage(html: string): boolean {
     || html.includes("users/sign_in_by_password");
 }
 
+/** 同步段:一个账号库的起始地址 + 类型;「全部」同步 = 三段串行
+ * (用户期望 2026-10-05:一次点击覆盖已购/礼物/免费三库,~35 件)。 */
+export interface CatalogSyncSegment {
+  readonly startUrl: string;
+  readonly libraryType: "bought" | "gifts" | "free_downloads";
+}
+
 export function startCatalogSync(
   options: CatalogSyncRunnerOptions,
   start?: {
     readonly runId?: string;
     readonly startUrl?: string;
     readonly libraryType?: "bought" | "gifts" | "free_downloads";
+    /** 多段串行(覆盖「全部」);单段 start 参数是它的单段退化形 */
+    readonly segments?: readonly CatalogSyncSegment[];
   },
 ): CatalogSyncRun {
   const pageDelayMs = options.pageDelayMs ?? 1_500;
@@ -116,42 +125,56 @@ export function startCatalogSync(
   const runId = start?.runId ?? `catalog-sync-${now().toISOString()}`;
   let stopped = false;
 
+  const segments: readonly CatalogSyncSegment[] =
+    start?.segments !== undefined && start.segments.length > 0
+      ? start.segments
+      : [{
+          startUrl: start?.startUrl ?? CATALOG_SYNC_DEFAULT_START_URL,
+          libraryType: start?.libraryType ?? "bought",
+        }];
+
   const result = (async (): Promise<CatalogSyncRunResult> => {
-    let url: string | null = start?.startUrl ?? CATALOG_SYNC_DEFAULT_START_URL;
     let pageNumber = 0;
-    // 完成页计数：只有抓取+投递都成功的页才计入（中止/失败时报的是
-    // 已完成的部分，不是尝试到的序号）。
+    // 完成页计数:跨段累计(只有抓取+投递都成功的页才计入;中止/失败时
+    // 报告的是已完成的部分)。
     let pages = 0;
     let parsedCount = 0;
     let upsertedCount = 0;
     let rejectedCount = 0;
+    let firstPageOfRun = true;
 
-    while (url !== null && !stopped) {
-      pageNumber += 1;
-      if (pageNumber > maxPages) {
-        return {
-          status: "page_limit_reached",
-          runId,
-          pages,
-          parsedCount,
-          upsertedCount,
-          rejectedCount,
-          nextPageUrl: url,
-        };
-      }
-      if (pageNumber > 1) {
-        await sleep(pageDelayMs);
-        if (stopped) break;
-      }
+    for (const segment of segments) {
+      if (stopped) break;
+      let url: string | null = segment.startUrl;
 
-      const fetchedAt = now().toISOString();
-      let outcome: CatalogSyncFetchOutcome;
-      try {
-        outcome = await options.fetch(url);
-      } catch (error) {
-        log(JSON.stringify({ channel: "catalog-sync", runId, fetchError: String(error), url }));
-        return failure("fetch_error", url);
-      }
+      while (url !== null && !stopped) {
+        pageNumber += 1;
+        if (pageNumber > maxPages) {
+          return {
+            status: "page_limit_reached",
+            runId,
+            pages,
+            parsedCount,
+            upsertedCount,
+            rejectedCount,
+            nextPageUrl: url,
+          };
+        }
+        // 礼貌限速:页间与段间都等待(段切换也是一次新的库页请求)
+        if (!firstPageOfRun) {
+          await sleep(pageDelayMs);
+          if (stopped) break;
+        }
+        firstPageOfRun = false;
+
+        const fetchedAt = now().toISOString();
+        let outcome: CatalogSyncFetchOutcome;
+        try {
+          outcome = await options.fetch(url);
+        } catch (error) {
+          log(JSON.stringify({ channel: "catalog-sync", runId, fetchError: String(error), url }));
+          return failure("fetch_error", url);
+        }
       if (outcome.status !== 200) {
         log(
           JSON.stringify({
@@ -203,9 +226,7 @@ export function startCatalogSync(
           fetchedAt,
           pageNumber,
           runId,
-          ...(start?.libraryType === undefined
-            ? {}
-            : { libraryType: start.libraryType }),
+          libraryType: segment.libraryType,
         });
       } catch (error) {
         log(JSON.stringify({ channel: "catalog-sync", runId, invokeError: String(error), url }));
@@ -260,6 +281,7 @@ export function startCatalogSync(
           log(JSON.stringify({ channel: "catalog-sync", runId, badNextPageUrl: rawNext }));
           return failure("next_page_url_unresolvable", url);
         }
+      }
       }
     }
 

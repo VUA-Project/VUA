@@ -233,6 +233,58 @@ describe("startCatalogSync", () => {
   });
 });
 
+describe("multi-segment sync (all libraries, 2026-10-05)", () => {
+  it("walks all segments serially with per-segment libraryType and pacing", async () => {
+    const BOUGHT = CATALOG_SYNC_DEFAULT_START_URL;
+    const GIFTS = "https://accounts.booth.pm/library/gifts?page=1";
+    const FREE = "https://accounts.booth.pm/library/free_downloads?page=1";
+    const { fetch, urls } = makeFetch({
+      [BOUGHT]: { body: "<bought1/>" },
+      [GIFTS]: { body: "<gifts1/>" },
+      [FREE]: { body: "<free1/>" },
+    });
+    const invoked: Array<{ libraryType: string; html: string }> = [];
+    const invoke: CatalogSyncInvoke = async (params) => {
+      invoked.push({ libraryType: params.libraryType ?? "(none)", html: params.html });
+      return { ok: true, value: pageResult({ sourceUrl: params.sourceUrl, nextPageUrl: null }) };
+    };
+    const sleeps: number[] = [];
+
+    const run = startCatalogSync(
+      { fetch, invoke, pageDelayMs: 1500, sleep: async (ms) => { sleeps.push(ms); } },
+      {
+        segments: [
+          { startUrl: BOUGHT, libraryType: "bought" },
+          { startUrl: GIFTS, libraryType: "gifts" },
+          { startUrl: FREE, libraryType: "free_downloads" },
+        ],
+      },
+    );
+    const result = await run.result;
+
+    expect(result.status).toBe("completed");
+    expect(result.pages).toBe(3);
+    expect(urls).toEqual([BOUGHT, GIFTS, FREE]);
+    expect(invoked.map((entry) => entry.libraryType)).toEqual(["bought", "gifts", "free_downloads"]);
+    // 礼貌限速:首页不等待,段间/页间都等待(3 页 = 2 次间隔)
+    expect(sleeps).toEqual([1500, 1500]);
+  });
+
+  it("empty segments fall back to the single bought start", async () => {
+    const { fetch, urls } = makeFetch({
+      [CATALOG_SYNC_DEFAULT_START_URL]: { body: "<page1/>" },
+    });
+    const invoke: CatalogSyncInvoke = async () => ({
+      ok: true,
+      value: pageResult({ nextPageUrl: null }),
+    });
+    const run = startCatalogSync({ fetch, invoke, ...noDelay }, { segments: [] });
+    const result = await run.result;
+    expect(result.status).toBe("completed");
+    expect(urls).toEqual([CATALOG_SYNC_DEFAULT_START_URL]);
+  });
+});
+
 describe("relative next-page continuation (real library grammar)", () => {
   it("resolves a relative rel=next href against the current page before fetching", async () => {
     const { fetch, urls } = makeFetch({

@@ -255,6 +255,7 @@ demoTaskTitle: "デモタスク",
       toolsInstalled: "インストール済みツール",
       settingsGoals: "目標の再選択",
       settingsEnvironment: "環境とパス",
+      settingsAccounts: "アカウント管理",
       settingsLanguage: "言語",
       settingsTheme: "テーマ",
       settingsExperimental: "実験的な機能",
@@ -2659,6 +2660,22 @@ rolled_back: "ロールバック済み",
   },
 
   settings: {
+    accounts: {
+      boothTitle: "Booth / pixiv",
+      boothDescription: "ログインするとライブラリを同期し、取得済みファイルをサイレントダウンロードします。認証情報は本マシンの隔離セッションにのみ保存され、VUA は取り扱いません。",
+      steamTitle: "Steam",
+      steamDescription: "Steam アカウント連携は未開放です。",
+      vrchatTitle: "VRChat",
+      vrchatDescription: "VRChat アカウント連携は未開放です。",
+      unityTitle: "Unity",
+      unityDescription: "Unity アカウント連携は未開放です。",
+      statusSignedIn: "ログイン済み",
+      statusSignedOut: "未ログイン",
+      statusUnknown: "確認中",
+      signIn: "ログイン",
+      signOut: "ログアウト",
+      notWired: "未接続",
+    },
         /** 実験的機能ページ(W15 リワーク,ユーザーウォークスルー図 A/B):単一カード=
      *  タイトル+サブタイトル+警告帯+2行のトグル。1行目「VPM 生成で置き換え」=
      *  グローバル既定モードの書き込み面(bdl-commands v0.2 グローバル層

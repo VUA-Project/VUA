@@ -162,6 +162,8 @@ const api: VuaDesktopApiV1 = Object.freeze({
     // 真实登录判定:抓一次库首页按内容识别登录页(线索三态会被半登录会话
     // 误报;authOk 才是「此刻能读到账号库」)
     authProbe: () => ipcRenderer.invoke("vua:remote-content:auth-probe"),
+    // 登出:清空分区存储(Cookie/本地存储/认证缓存)并关闭远程视图
+    signOut: () => ipcRenderer.invoke("vua:remote-content:sign-out"),
     events: Object.freeze({
       subscribe: (listener: (event: RemoteContentEventV1) => void) => {
         const wrapped = (_event: IpcRendererEvent, payload: RemoteContentEventV1) => listener(payload);
@@ -178,9 +180,10 @@ const api: VuaDesktopApiV1 = Object.freeze({
   // 账号库同步窄面(N5 S1):只触发/中止;进度与终态走任务面。会话凭据
   // 不经过本面(见 contracts CatalogSyncApiV1 注释)
   catalogSync: Object.freeze({
-    // libraryType 可选:同步哪个账号库(缺省已购);入口由 Main 按类型派生
+    // libraryType 可选:同步哪个账号库(缺省已购;all=三库串行);
+    // 入口由 Main 按类型派生
     start: (request?: {
-      readonly libraryType?: "bought" | "gifts" | "free_downloads";
+      readonly libraryType?: "bought" | "gifts" | "free_downloads" | "all";
     }) => ipcRenderer.invoke("vua:catalog-sync:start", request),
     stop: () => ipcRenderer.invoke("vua:catalog-sync:stop"),
     // 运行状态探针:任务前失败(首页即失败,provider 无任务)经此面可见

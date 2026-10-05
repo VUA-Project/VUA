@@ -255,6 +255,7 @@ demoTaskTitle: "데모 작업",
       toolsInstalled: "설치된 도구",
       settingsGoals: "목표 다시 선택",
       settingsEnvironment: "환경 및 경로",
+      settingsAccounts: "계정 관리",
       settingsLanguage: "언어",
       settingsTheme: "테마",
       settingsExperimental: "실험 기능",
@@ -2647,6 +2648,22 @@ rolled_back: "롤백됨",
   },
 
   settings: {
+    accounts: {
+      boothTitle: "Booth / pixiv",
+      boothDescription: "로그인하면 라이브러리를 동기화하고 보유 파일을 자동으로 내려받습니다. 자격 증명은 이 컴퓨터의 격리 세션에만 저장되며 VUA는 접근하지 않습니다.",
+      steamTitle: "Steam",
+      steamDescription: "Steam 계정 연동은 아직 개방되지 않았습니다.",
+      vrchatTitle: "VRChat",
+      vrchatDescription: "VRChat 계정 연동은 아직 개방되지 않았습니다.",
+      unityTitle: "Unity",
+      unityDescription: "Unity 계정 연동은 아직 개방되지 않았습니다.",
+      statusSignedIn: "로그인됨",
+      statusSignedOut: "로그아웃됨",
+      statusUnknown: "확인 중",
+      signIn: "로그인",
+      signOut: "로그아웃",
+      notWired: "미연결",
+    },
         /** 실험적 기능 페이지(W15 리워크, 사용자 워크스루 도식 A/B): 단일 카드=
      *  제목+부제+경고 띠+2줄 토글. 1행「VPM 생성 대체」= 전역 기본 모드 쓰기면
      *  (bdl-commands v0.2 전역 층 setGlobalDefaultMode); 2행「생성 후 원본 삭제」=

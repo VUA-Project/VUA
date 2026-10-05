@@ -266,6 +266,7 @@ demoTaskTitle: "演示任务",
       toolsInstalled: "已安装工具",
       settingsGoals: "目标重选",
       settingsEnvironment: "环境与路径",
+      settingsAccounts: "账号管理",
       settingsLanguage: "语言",
       settingsTheme: "主题",
       settingsExperimental: "实验性",
@@ -2672,6 +2673,22 @@ rolled_back: "已回滚",
   },
 
   settings: {
+    accounts: {
+      boothTitle: "Booth / pixiv",
+      boothDescription: "登录后同步账号素材库并静默下载已拥有文件;凭据只保存在本机分区别会话,VUA 不接触。",
+      steamTitle: "Steam",
+      steamDescription: "Steam 账号接入尚未开放。",
+      vrchatTitle: "VRChat",
+      vrchatDescription: "VRChat 账号接入尚未开放。",
+      unityTitle: "Unity",
+      unityDescription: "Unity 账号接入尚未开放。",
+      statusSignedIn: "已登录",
+      statusSignedOut: "未登录",
+      statusUnknown: "检测中",
+      signIn: "登录",
+      signOut: "登出",
+      notWired: "尚未接入",
+    },
     /** 实验性功能页(W15 重做形态,用户走查示意图 A/B):单卡=标题+副题+警示条
      *  +两行开关。行1「生成 VPM 包替代」=全局默认模式写面(bdl-commands v0.2 全局层
      *  setGlobalDefaultMode);行2「生成后删除原始素材文件」=危险开关,008 路径 a 接线(生成完成→逐条目

@@ -562,6 +562,12 @@ function registerIpc(provider: OrchestratorProviderV01): void {
       return { authOk: false };
     }
   });
+  // 登出(账号管理,2026-10-05):清空分区存储并关闭打开中的远程视图
+  ipcMain.handle("vua:remote-content:sign-out", async (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    if (remoteContent === null) throw new Error("remote content is unavailable");
+    await remoteContent.signOut();
+  });
 
   // 账号库同步触发面(N5 S1,计划 D4):分区会话逐页抓取 → provider
   // catalog.ingestLibraryPage 折叠;进度与终态走九态任务面(通知中心),
@@ -578,30 +584,36 @@ function registerIpc(provider: OrchestratorProviderV01): void {
     if (hint === "none") {
       return { status: "blocked", reason: "sign-in-required" };
     }
-    // 库类型(已购缺省/gifts/free_downloads)→ 入口派生;来源守卫由
-    // fetchWithSession 的允许清单最终把关
+    // 库类型(已购缺省/gifts/free_downloads/all=三库串行,用户期望
+    // 2026-10-05:一次点击覆盖全部 ~35 件);来源守卫由 fetchWithSession
+    // 的允许清单最终把关
     const libraryTypeRaw = (request as { libraryType?: unknown } | null | undefined)?.libraryType;
     // 缺省显式化为 bought:观察面是“最新事实全量覆盖”,不带类型的同步
     // 会把已分类行清回 NULL(真机 2026-10-03 确诊)
     const libraryType =
-      libraryTypeRaw === "gifts" || libraryTypeRaw === "free_downloads" || libraryTypeRaw === "bought"
+      libraryTypeRaw === "gifts" || libraryTypeRaw === "free_downloads" || libraryTypeRaw === "bought" || libraryTypeRaw === "all"
         ? libraryTypeRaw
         : ("bought" as const);
-    const startUrl =
-      libraryType === "gifts"
-        ? "https://accounts.booth.pm/library/gifts?page=1"
-        : libraryType === "free_downloads"
-          ? "https://accounts.booth.pm/library/free_downloads?page=1"
-          : undefined;
+    const segments =
+      libraryType === "all"
+        ? [
+            { startUrl: CATALOG_SYNC_DEFAULT_START_URL, libraryType: "bought" as const },
+            { startUrl: "https://accounts.booth.pm/library/gifts?page=1", libraryType: "gifts" as const },
+            { startUrl: "https://accounts.booth.pm/library/free_downloads?page=1", libraryType: "free_downloads" as const },
+          ]
+        : libraryType === "gifts"
+          ? [{ startUrl: "https://accounts.booth.pm/library/gifts?page=1", libraryType: "gifts" as const }]
+          : libraryType === "free_downloads"
+            ? [{ startUrl: "https://accounts.booth.pm/library/free_downloads?page=1", libraryType: "free_downloads" as const }]
+            : [{ startUrl: CATALOG_SYNC_DEFAULT_START_URL, libraryType: "bought" as const }];
     // 真实登录预检(真机 2026-10-05 确诊):「访问过登录页」的会话在账户域
     // 有 Cookie,hint 为 "stored" 但并未登录——旧门会放行,首页被 302 到
     // 登录页,任务在 provider 侧从未创建,通知中心静默、提示卡在“已开始”。
-    // 预检首开地址并按内容识别登录页(finalUrl 恒空,见 isSignInPage 注);
+    // 预检首段地址并按内容识别登录页(finalUrl 恒空,见 isSignInPage 注);
     // 探测异常不拦截(网络失败由运行器如实报告,不猜因)
     try {
-      const probe = await remoteContent.fetchWithSession(
-        startUrl ?? CATALOG_SYNC_DEFAULT_START_URL,
-      );
+      const probeStart = segments[0]?.startUrl ?? CATALOG_SYNC_DEFAULT_START_URL;
+      const probe = await remoteContent.fetchWithSession(probeStart);
       if (isSignInPage(probe.body)) {
         return { status: "blocked", reason: "sign-in-required" };
       }
@@ -634,10 +646,7 @@ function registerIpc(provider: OrchestratorProviderV01): void {
         fetch: (url) => content.fetchWithSession(url),
         invoke: invokeCatalogSyncPage,
       },
-      {
-        ...(startUrl === undefined ? {} : { startUrl }),
-        ...(libraryType === undefined ? {} : { libraryType }),
-      },
+      { segments },
     );
     catalogSyncRun = run;
     catalogSyncLastTerminal = null;

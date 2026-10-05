@@ -263,6 +263,7 @@ demoTaskTitle: "Demo task",
       toolsInstalled: "Installed Tools",
       settingsGoals: "Reset Goals",
       settingsEnvironment: "Environment & Paths",
+      settingsAccounts: "Accounts",
       settingsLanguage: "Language",
       settingsTheme: "Theme",
       settingsExperimental: "Experimental features",
@@ -2721,6 +2722,22 @@ demoTaskTitle: "Demo task",
   },
 
   settings: {
+    accounts: {
+      boothTitle: "Booth / pixiv",
+      boothDescription: "Sign in to sync your library and silently download owned files; credentials stay in this machine's partition session - VUA never touches them.",
+      steamTitle: "Steam",
+      steamDescription: "Steam account integration is not available yet.",
+      vrchatTitle: "VRChat",
+      vrchatDescription: "VRChat account integration is not available yet.",
+      unityTitle: "Unity",
+      unityDescription: "Unity account integration is not available yet.",
+      statusSignedIn: "Signed in",
+      statusSignedOut: "Signed out",
+      statusUnknown: "Checking",
+      signIn: "Sign in",
+      signOut: "Sign out",
+      notWired: "Not wired yet",
+    },
     /** Experimental page (W15 rework, user walkthrough mockups A/B): one card
      *  = title + subtitle + warning strip + two toggle rows. Row 1 “Generate
      *  VPM replacement” writes the frozen warehouse.setGlobalDefaultMode

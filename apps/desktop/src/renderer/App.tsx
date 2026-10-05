@@ -84,6 +84,7 @@ import {
 } from "./features/settings/diagnostics.ts";
 import { ExperimentalCommands } from "./features/settings/experimental-commands.tsx";
 import { DevModeSection } from "./features/settings/dev-mode-section.tsx";
+import { AccountSettingsPage } from "./features/settings/AccountSettingsPage.tsx";
 import { EnvironmentSettingsPage } from "./features/settings/environment-page.tsx";
 import { useAutoDeleteOriginals } from "./app/delete-originals-auto.ts";
 import {
@@ -661,6 +662,8 @@ function renderPage(
       return <GoalsSettingsPage onRestart={actions.restartOnboarding} />;
     case "settings-environment":
       return <EnvironmentSettingsPage />;
+    case "settings-accounts":
+      return <AccountSettingsPage />;
     case "settings-language":
       return <LanguageSettingsPage />;
     case "settings-theme":

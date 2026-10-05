@@ -215,6 +215,21 @@ export class RemoteContentManager {
   }
 
   /**
+   * 登出(账号管理,2026-10-05):清空本分区的全部存储——Cookie、
+   * localStorage、缓存凭据都属于「BOOTH/Pixiv 登录态」这一件事,登出
+   * 即整体清除,不做过期裁剪(分区本就专用于远程浏览,无其它数据可误伤)。
+   * 打开中的视图一并关闭(带着旧会话的页面没有继续存在的意义)。
+   */
+  async signOut(): Promise<void> {
+    this.#assertUsable();
+    this.closeAll();
+    await this.#session.clearStorageData();
+    await this.#session.clearAuthCache().catch(() => {
+      /* 认证缓存清理失败不阻断登出事实 */
+    });
+  }
+
+  /**
    * 以本管理器的分区会话发起一次只读 GET（N5 S1 账号库同步读取器专用）。
    * 会话 Cookie 只在本方法内部的 Electron 网络层使用；返回面只有
    * status/body/finalUrl 文本——凭据与 Cookie 永不出分区边界。来源守卫

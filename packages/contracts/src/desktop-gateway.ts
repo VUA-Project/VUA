@@ -1336,6 +1336,9 @@ export interface RemoteContentApiV1 {
    *  会话误报,本面返回的 authOk 才是「此刻会话能否读到账号库」。探测
    *  异常/非 200 恒 false,不冒充已登录;Cookie 与页面内容不出 Main */
   authProbe(): Promise<{ readonly authOk: boolean }>;
+  /** 登出(账号管理,2026-10-05):清空分区存储并关闭打开中的远程视图;
+   *  分区专用于远程浏览,整体清除不伤及其它数据 */
+  signOut(): Promise<void>;
   events: { subscribe(listener: (event: RemoteContentEventV1) => void): () => void };
 }
 
@@ -1353,7 +1356,9 @@ export interface CatalogSyncApiV1 {
   /** libraryType 可选:同步哪个账号库(缺省已购);Main 按类型派生入口,
    *  来源守卫在 fetchWithSession 的允许清单 */
   start(request?: {
-    readonly libraryType?: "bought" | "gifts" | "free_downloads";
+    /** all = 三库串行(bought → gifts → free_downloads,2026-10-05 用户
+     * 期望:一次点击覆盖全部账号库) */
+    readonly libraryType?: "bought" | "gifts" | "free_downloads" | "all";
   }): Promise<CatalogSyncStartOutcomeV1>;
   /** 请求中止当前运行(无运行时为 no-op);中止如实记为 aborted,已完成
    * 页的目录更新保留。 */

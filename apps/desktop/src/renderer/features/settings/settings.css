@@ -70,3 +70,21 @@
 .vua-exp-card__header p {
   margin: 0;
 }
+
+/* 账号管理(2026-10-05):四家账号卡片——Booth/Pixiv 真接线,其余占位 */
+.vua-settings-account {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-3);
+}
+
+.vua-settings-account__head {
+  display: flex;
+  align-items: center;
+  gap: var(--vua-space-3);
+}
+
+.vua-settings-account__actions {
+  display: flex;
+  gap: var(--vua-space-2);
+}

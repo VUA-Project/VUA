@@ -612,7 +612,13 @@ export function WarehousePage({
     const catalogSync = window.vua?.catalogSync;
     if (catalogSync === undefined) return;
     const libraryType =
-      source === "gifts" ? "gifts" : source === "free" ? "free_downloads" : "bought";
+      source === "gifts"
+        ? "gifts"
+        : source === "free"
+          ? "free_downloads"
+          : source === "all"
+            ? "all"
+            : "bought";
     // 显式携带类型(含 bought):wire 请求不带 libraryType 会让观察 upsert
     // 把该列覆盖为 NULL(真机 2026-10-03:14 条已购行被清空的根因)
     const outcome = await catalogSync.start({ libraryType });
