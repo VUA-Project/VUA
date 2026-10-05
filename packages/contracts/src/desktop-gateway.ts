@@ -1152,6 +1152,15 @@ export interface GuideTargetV1 {
   readonly section?: string;
 }
 
+/**
+ * Reader 窗口动作回执(三类引导裁决 2026-10-05 additive:准备阅读器是
+ * 普通不透明可缩放窗口)。阅读器只有「打开/聚焦」一个动作——没有覆盖层的
+ * 隐藏语义:关闭走系统窗框,关闭只关呈现,不影响安装任务与游戏。
+ */
+export interface ReaderWindowShowResultV1 {
+  readonly visible: boolean;
+}
+
 export interface DesktopWindowApiV1 {
   minimize(): Promise<void>;
   toggleMaximize(): Promise<void>;
@@ -1181,6 +1190,19 @@ export interface DesktopWindowApiV1 {
   /** 指南定位事件(Main → 本地渲染层;additive):已开窗时的定位通知
    *  (载荷即 GuideTargetV1 或 null=仅切引导视图);只投递给覆盖层窗口本身 */
   guideTargetEvents: {
+    subscribe(listener: (target: GuideTargetV1 | null) => void): () => void;
+  };
+  /** 打开(或聚焦)准备阅读器(三类引导裁决 2026-10-05 additive):普通
+   *  不透明可缩放阅读窗口,打开允许夺焦点(用户明确动作)。target 缺席/
+   *  null = 普通打开(渲染层恢复上次阅读位置);窗口缺席 = 创建并显示,
+   *  定位经加载查询 ?guideTopic= 投递;已开窗的定位经 vua:reader:guide-target
+   *  事件投递。阅读器没有隐藏语义:关闭走系统窗框,关闭只关呈现,不取消
+   *  安装任务、不停止游戏 */
+  showReader(target?: GuideTargetV1 | null): Promise<ReaderWindowShowResultV1>;
+  /** 阅读器定位事件(Main → 本地渲染层;additive):已开窗阅读器的定位
+   *  通知(载荷即 GuideTargetV1 或 null=仅打开恢复阅读);只投递给阅读器
+   *  窗口本身 */
+  readerTargetEvents: {
     subscribe(listener: (target: GuideTargetV1 | null) => void): () => void;
   };
   /** 返回主窗口(additive):主窗口最小化则还原,随后显示并聚焦——仅响应

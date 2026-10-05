@@ -39,6 +39,15 @@ import {
   parseGuideTargetPayload,
 } from "./overlay-window.js";
 import {
+  READER_SURFACE_PARAM,
+  READER_WINDOW_HEIGHT,
+  READER_WINDOW_MIN_HEIGHT,
+  READER_WINDOW_MIN_WIDTH,
+  READER_WINDOW_WIDTH,
+  decideReaderWindowAction,
+  readerVisibilityAfterDecision,
+} from "./reader-window.js";
+import {
   installLocalContentNavigationPolicy,
   installPermissionDenyPolicy,
   isAllowedLocalSender,
@@ -78,6 +87,7 @@ if (desktopProfile.kind !== "release") {
 const packagedSmoke = preparePackagedSmoke();
 let mainWindow: BrowserWindow | null = null;
 let overlayWindow: BrowserWindow | null = null;
+let readerWindow: BrowserWindow | null = null;
 let provider: OrchestratorProviderV01 | null = null;
 let remoteContent: RemoteContentManager | null = null;
 let downloadPort: DownloadPort | null = null;
@@ -426,6 +436,14 @@ function registerIpc(provider: OrchestratorProviderV01): void {
     return showGuideWindow(parseGuideTargetPayload(target));
   });
 
+  // 打开/聚焦准备阅读器(三类引导裁决 additive):只受理本地来源;定位载荷
+  // 形状收窄复用 overlay-window 纯函数(垃圾形状响亮 throw;词表回退归渲染
+  // 层引导模型);窗口显隐语义在 reader-window.ts 决策面(纯函数可测)
+  ipcMain.handle("vua:reader:show", (event, target: unknown) => {
+    assertLocalSender(senderFrameUrl(event));
+    return showReaderWindow(parseGuideTargetPayload(target));
+  });
+
   // 收起覆盖层(首玩 B 切片 additive):隐藏不销毁,保留窗口与阅读状态;
   // 窗口缺席幂等回执 false,绝不创建窗口(与 toggle 的 create 语义区分)
   ipcMain.handle("vua:overlay:hide", (event) => {
@@ -648,6 +666,65 @@ function showGuideWindow(target: GuideTargetV1 | null): {
   return { visible: true, view: "guide" };
 }
 
+/**
+ * 准备阅读器(三类引导裁决 2026-10-05 additive,契约 DesktopWindowApiV1.
+ * showReader):普通不透明可缩放窗口——系统窗框承担最小化/还原/关闭,有
+ * 任务栏条目;不置顶、不透明、无边框默认全部不用。打开允许夺焦点(用户
+ * 明确动作);后台任务事件不抬起窗口(本窗口不订阅任何广播,事件广播
+ * 清单天然只按 URL 放行本地来源,阅读器不主动请求任何事件通道)。
+ * 定位:窗口缺席 = 创建并经加载查询 ?guideTopic=/guideSection= 首帧投递;
+ * 已开窗 = show + focus 后经 vua:reader:guide-target 事件投递(渲染层
+ * ReaderSurface 暂存转发,与覆盖层 guide-target 同纪律)。关闭即销毁:
+ * 阅读位置在渲染层 localStorage,重建窗口按上次阅读位置恢复;关闭只关
+ * 呈现,安装任务与游戏不受影响。
+ */
+function createReaderWindow(target: GuideTargetV1 | null): void {
+  const preload = path.join(__dirname, "preload.js");
+  const win = new BrowserWindow({
+    width: READER_WINDOW_WIDTH,
+    height: READER_WINDOW_HEIGHT,
+    minWidth: READER_WINDOW_MIN_WIDTH,
+    minHeight: READER_WINDOW_MIN_HEIGHT,
+    show: false,
+    backgroundColor: "#0b0a12",
+    webPreferences: localWindowWebPreferences(preload),
+  });
+  tagDevelopmentWindow(win, desktopProfile);
+  readerWindow = win;
+  // 普通阅读窗口不带应用菜单:系统窗框只承担最小化/还原/关闭( Electron
+  // 默认菜单是无框主窗口看不到的开发遗留,标准窗框下会露出 File/Edit 行)
+  win.removeMenu();
+  win.once("ready-to-show", () => {
+    if (!win.isDestroyed()) win.show();
+  });
+  win.on("closed", () => {
+    if (readerWindow === win) readerWindow = null;
+  });
+  const search = `surface=${READER_SURFACE_PARAM}${guideTargetQuery(target)}`;
+  if (rendererUrl) void win.loadURL(`${rendererUrl}?${search}`);
+  else {
+    void win.loadFile(path.join(__dirname, "../renderer/index.html"), {
+      search,
+    });
+  }
+}
+
+function showReaderWindow(target: GuideTargetV1 | null): { readonly visible: boolean } {
+  const exists = readerWindow !== null && !readerWindow.isDestroyed();
+  const decision = decideReaderWindowAction({ exists });
+  if (decision === "create") {
+    createReaderWindow(target);
+    return { visible: readerVisibilityAfterDecision(decision) };
+  }
+  if (readerWindow!.isMinimized()) readerWindow!.restore();
+  readerWindow!.show();
+  readerWindow!.focus();
+  if (!readerWindow!.webContents.isDestroyed()) {
+    readerWindow!.webContents.send("vua:reader:guide-target", target);
+  }
+  return { visible: readerVisibilityAfterDecision(decision) };
+}
+
 async function createWindow(): Promise<void> {
   const preload = path.join(__dirname, "preload.js");
   mainWindow = new BrowserWindow({
@@ -759,9 +836,10 @@ async function createWindow(): Promise<void> {
   });
   mainWindow.on("closed", () => {
     mainWindow = null;
-    // 主窗口关闭＝应用退出语义:悬浮窗不拖住 window-all-closed(overlay
-    // 窗口随主窗口生命周期销毁,closed 处理器自行清引用)
+    // 主窗口关闭＝应用退出语义:悬浮窗与阅读器都不拖住 window-all-closed
+    // (窗口随主窗口生命周期销毁,closed 处理器自行清引用)
     overlayWindow?.destroy();
+    readerWindow?.destroy();
   });
 
   if (rendererUrl) await mainWindow.loadURL(rendererUrl);

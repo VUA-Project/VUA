@@ -9,6 +9,7 @@ import {
   type DesktopWindowApiV1,
   type OverlayViewV1,
   type OverlayWindowShowResultV1,
+  type ReaderWindowShowResultV1,
 } from "./desktop-gateway.js";
 
 describe("DesktopWindowApiV1 overlay faces (2026-09-26 additive: showOverlay + view events)", () => {
@@ -18,6 +19,8 @@ describe("DesktopWindowApiV1 overlay faces (2026-09-26 additive: showOverlay + v
     // 编译期即锁定形状;运行期钉方法名存在性,防 preload 面漂移
     // 首玩 B 切片 additive:showGuide/hideOverlay/guideTargetEvents/
     // focusMainWindow 扩展,既有成员原样保留(旧调用兼容)
+    // 三类引导裁决 additive:showReader/readerTargetEvents(准备阅读器,
+    // 普通窗口),覆盖层既有成员原样保留
     const apiShape: Record<keyof DesktopWindowApiV1, true> = {
       minimize: true,
       toggleMaximize: true,
@@ -28,6 +31,8 @@ describe("DesktopWindowApiV1 overlay faces (2026-09-26 additive: showOverlay + v
       showGuide: true,
       hideOverlay: true,
       guideTargetEvents: true,
+      showReader: true,
+      readerTargetEvents: true,
       focusMainWindow: true,
     };
     expect(Object.keys(apiShape)).toEqual([
@@ -40,6 +45,8 @@ describe("DesktopWindowApiV1 overlay faces (2026-09-26 additive: showOverlay + v
       "showGuide",
       "hideOverlay",
       "guideTargetEvents",
+      "showReader",
+      "readerTargetEvents",
       "focusMainWindow",
     ]);
   });
@@ -52,6 +59,11 @@ describe("DesktopWindowApiV1 overlay faces (2026-09-26 additive: showOverlay + v
     expect(created.visible).toBe(true);
     expect(created.view).toBe("guide");
     expect(switched.view).toBe("status");
+  });
+
+  it("reader show receipt carries visibility only (no hide semantics; close is the OS frame)", () => {
+    const opened: ReaderWindowShowResultV1 = { visible: true };
+    expect(opened.visible).toBe(true);
   });
 });
 

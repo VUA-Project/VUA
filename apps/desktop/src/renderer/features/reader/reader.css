@@ -1,0 +1,31 @@
+/* 准备阅读器窗口样式(三类引导架构 2026-10-05:普通阅读窗口)。
+ * 复用 overlay.css 的引导内容样式与 token(颜色/间距只消费语义 token,
+ * 同覆盖层纪律);本文件只补普通窗口形态的排版差异:
+ * - 普通窗口不透明、无圆角边框(与覆盖层的窗体样式区分);
+ * - 滚动容器必须与覆盖层同构:.vua-reader 定高约束,.vua-overlay__body
+ *   (flex:1 + overflow-y:auto)成为实际滚动元素——GuideOverlayView 的
+ *   定位滚动/阅读位置跟踪都以最近的 .vua-overlay__body 祖先为基准,
+ *   让文档本身滚动会让程序化定位与分节跟踪全部静默失效(冒烟实证);
+ * - 长文阅读限宽居中——阅读窗可缩放到很宽,行宽不随窗口无限增长;
+ * - 正文略大一号:阅读窗是持续阅读面,不是紧凑状态面板。 */
+
+.vua-reader {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--vua-bg-canvas);
+  color: var(--vua-text-strong);
+  font-family: var(--vua-font-family);
+  font-size: 15px;
+}
+
+.vua-reader__body {
+  width: 100%;
+}
+
+.vua-reader .vua-overlay-guide {
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+}

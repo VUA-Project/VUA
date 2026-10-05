@@ -340,8 +340,11 @@ demoTaskTitle: "Demo task",
     windowMaximize: "Maximize/Restore",
     windowClose: "Close",
     /** Topbar overlay entry (2026-09-26 ruling): open/focus the pinned window
-     *  on the guide view */
+     *  on the guide view. Three-context ruling (2026-10-05): this entry opens
+     *  the preparation reader (ordinary reading window) */
     overlayGuide: "Guide",
+    /** Preparation reader window title (taskbar / system frame) */
+    readerWindowTitle: "VUA Guide",
   },
   onboarding: {
     steps: {
@@ -879,6 +882,45 @@ demoTaskTitle: "Demo task",
         "Diagram of eye-tracking data flowing from a PICO headset through tracking software on the PC to an avatar's eyes",
     },
     pages: {
+      room: {
+        title: "Room & Play Area",
+        intro:
+          "Prepare the physical space before the software — a safe, comfortable play area makes every later step easier.",
+        sections: [
+          {
+            id: "space",
+            title: "Clear your play space",
+            paragraphs: [
+              "Standing play wants roughly 2×2 m of clear floor; seated or in-place play works with less. Move loose cables, chairs with hard corners and anything fragile out of arm's reach.",
+              "Set the play boundary when the headset or SteamVR asks for it — take the boundary seriously in a shared room; children and pets are the usual surprise guests.",
+            ],
+          },
+          {
+            id: "lighting",
+            title: "Lighting the room",
+            paragraphs: [
+              "The headset tracks your room with cameras: even, ordinary indoor lighting works best. Avoid direct sunlight on the play area and strong backlight right behind you.",
+              "Keep the headset's camera areas clean and unobstructed — smudges or covers over them degrade tracking noticeably.",
+            ],
+          },
+          {
+            id: "network",
+            title: "Network for streaming",
+            paragraphs: [
+              "PICO streaming over Wi-Fi wants the headset and the PC on the same router, ideally on the 5 GHz band, with the router in or near the play room. Walls and appliances between the router and the headset cost image quality.",
+              "If the stream stays unstable, a USB cable is the steady fallback — the devices chapter covers the connection steps.",
+            ],
+          },
+          {
+            id: "comfort",
+            title: "Comfort and breaks",
+            paragraphs: [
+              "Adjust the head strap so the weight rests on the top of your head, not on your face; a loose fit blurs the view and tires the neck.",
+              "Keep water nearby and take short breaks regularly — VR fatigue builds quietly, and the first sessions should end before it does.",
+            ],
+          },
+        ],
+      },
       start: {
         title: "Getting Started",
         intro: "From a Steam account to your first world — the full first-play path.",

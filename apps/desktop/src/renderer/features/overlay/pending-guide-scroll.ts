@@ -48,15 +48,31 @@ export function schedulePendingGuideScroll(
 
 /* ---- 评审 P2(页底定位/用户滚动)纯判定 ---- */
 
-/** 分节是否已进入视口(到达判定):页底目标会被钳到最大滚动,锚点不可能
- *  贴到期望偏移——以"锚点在视口内"为准,天然区分"布局未就绪"(锚点还在
- *  视口外,继续重试)与"已滚到底"(锚点可见,到位) */
+/** 分节是否已进入视口(到达判定的可见性半边):页底目标会被钳到最大滚动,
+ *  锚点不可能贴到期望偏移——以"锚点在视口内"为准 */
 export function guideAnchorVisible(
   anchorTop: number,
   bodyTop: number,
   bodyHeight: number,
 ): boolean {
   return anchorTop >= bodyTop - 2 && anchorTop <= bodyTop + bodyHeight - 24;
+}
+
+/**
+ * 分节定位到达判定(阅读窗冒烟发现的误到位回归,2026-10-06):
+ * 到位需要三件事同时成立——锚点可见、布局连续两帧稳定(scrollHeight 不再
+ * 变化)、且滚动真正落地(贴齐期望偏移)或钳在页底。
+ * 单看"锚点可见"会把宽版阅读窗的布局未成熟误判为到位:字体/插图载入前
+ * 内容偏短,目标分节提前落进视口,有界重试被过早放弃,定位静默失效
+ * (窄版覆盖窗内容够高,同一时序从不显现);布局稳定这一半边把两种
+ * "暂时钳在页底"区分开——真页底两帧即达,未长开的布局继续按实时布局重试。 */
+export function guideSectionArrival(
+  anchorSeen: boolean,
+  layoutSettled: boolean,
+  landedAtDesired: boolean,
+  clampedAtEnd: boolean,
+): boolean {
+  return anchorSeen && layoutSettled && (landedAtDesired || clampedAtEnd);
 }
 
 /** 滚动来源分类:与上次程序滚动值一致(±2px)= 程序自身;否则用户主动滚动。
@@ -69,4 +85,21 @@ export function classifyGuideScroll(
 ): GuideScrollOrigin {
   if (lastProgrammatic === null) return "user";
   return Math.abs(scrollTop - lastProgrammatic) <= 2 ? "programmatic" : "user";
+}
+
+/** 滚动事件是否取消待执行定位(纯函数,可测;交付计划挂账的 B 修复):
+ * - 有程序滚动在途:位置与程序落点不符 = 用户接管 → 取消(评审 P2 第二轮);
+ * - 无程序滚动在途但有待执行定位(首个程序滚动帧尚未执行,或处于重试
+ *   间隙)→ 该滚动来自用户而非定位自身 → 取消。原视图外层守卫在此窗口
+ *   直接跳过分类,用户先滚后定位仍会执行并抢回滚动位置;
+ * - 其余(无程序滚动也无待执行定位的纯阅读跟踪)不取消。 */
+export function scrollCancelsPendingGuide(
+  scrollTop: number,
+  lastProgrammatic: number | null,
+  pending: string | null,
+): boolean {
+  if (lastProgrammatic !== null) {
+    return classifyGuideScroll(scrollTop, lastProgrammatic) === "user";
+  }
+  return pending !== null;
 }

@@ -32,7 +32,13 @@
  *   (schedulePendingGuideScroll):StrictMode 双调用与首帧布局未长开的
  *   dev 形态下首次定位照常滚动(评审 P2 回归);
  * - 页底定位以「分节进入视口」为到达判定(钳到最大滚动后实测),
- *   用户主动滚动即时停止重试,不抢回滚动位置(评审 P2 第二轮)。
+ *   用户主动滚动即时停止重试,不抢回滚动位置(评审 P2 第二轮);
+ * - 首个程序滚动帧之前(或重试间隙)用户先滚同样取消定位请求——原外层
+ *   守卫在无程序滚动时跳过分类,定位会在用户滚动后照常执行(交付计划
+ *   挂账的 B 修复,scrollCancelsPendingGuide 纯判定 + 回归用例);
+ * - 到位判定要求布局连续两帧稳定:宽版阅读窗在字体/插图载入前内容偏短,
+ *   "分节可见"会误判到位并静默放弃定位(阅读窗冒烟 2026-10-06 实证,
+ *   guideSectionArrival 纯判定 + 回归用例)。
  */
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { GuideTargetV1 } from "@vua/contracts";
@@ -53,9 +59,10 @@ import {
   type GuideTarget,
 } from "../guide/guide-target.ts";
 import {
-  classifyGuideScroll,
   guideAnchorVisible,
+  guideSectionArrival,
   schedulePendingGuideScroll,
+  scrollCancelsPendingGuide,
 } from "./pending-guide-scroll.ts";
 
 const GUIDE_PANEL_ID = "guide-overlay-panel";
@@ -110,6 +117,9 @@ export function GuideOverlayView({
 
   /** 最近一次程序滚动的实际落点(滚动事件据此区分程序/用户来源) */
   const lastProgrammaticScroll = useRef<number | null>(null);
+  /** 上一尝试帧的滚动内容高度(到达判定需布局连续两帧稳定;阅读窗冒烟
+   *  发现的宽窗误到位回归,见 pending-guide-scroll.guideSectionArrival) */
+  const lastBodyScrollHeight = useRef(-1);
 
   const scrollBodyTo = (top: number): boolean => {
     const body = scroller();
@@ -123,8 +133,12 @@ export function GuideOverlayView({
     const body = scroller();
     const anchor = panelRef.current?.querySelector(`#${guideSectionId(section)}`);
     if (!body || !anchor) return false;
-    // 页底钳制:期望偏移不得超过最大滚动;到达判定用「分节进入视口」
-    // (guideAnchorVisible),不是贴齐期望偏移——区分布局未就绪与已滚到底
+    // 布局稳定判定先行:与上一尝试帧的 scrollHeight 相同才算稳定;新定位
+    // 请求在调度时清历史高度,首帧恒不稳定,强制至少两帧观察
+    const layoutSettled = lastBodyScrollHeight.current === body.scrollHeight;
+    lastBodyScrollHeight.current = body.scrollHeight;
+    // 页底钳制:期望偏移不得超过最大滚动;到达判定用「分节进入视口 +
+    // 滚动真正落地或钳在页底 + 布局稳定」(guideSectionArrival)
     const maxScroll = Math.max(0, body.scrollHeight - body.clientHeight);
     const desired = Math.min(
       Math.max(
@@ -139,7 +153,12 @@ export function GuideOverlayView({
     body.scrollTop = desired;
     lastProgrammaticScroll.current = body.scrollTop;
     const anchorTop = anchor.getBoundingClientRect().top;
-    return guideAnchorVisible(anchorTop, body.getBoundingClientRect().top, body.clientHeight);
+    return guideSectionArrival(
+      guideAnchorVisible(anchorTop, body.getBoundingClientRect().top, body.clientHeight),
+      layoutSettled,
+      Math.abs(body.scrollTop - desired) <= 2 && maxScroll > 0,
+      maxScroll === 0 || body.scrollTop >= maxScroll - 2,
+    );
   };
 
   /** 应用定位(显式步骤或恢复值):切主题、渲染后滚动、记为当前阅读位置 */
@@ -181,9 +200,11 @@ export function GuideOverlayView({
 
   // 渲染提交后执行待滚动(初始分节 / 定位 / 手动切主题开头);
   // 依赖 scrollNonce:同主题内换分节(setTopic 同值不重渲染)也必然触发;
-  // 标记活到动画帧执行时刻(schedulePendingGuideScroll 的 StrictMode 纪律)
+  // 标记活到动画帧执行时刻(schedulePendingGuideScroll 的 StrictMode 纪律);
+  // 新请求清布局高度历史,到达判定的「连续两帧稳定」从本请求重新观察
   useEffect(() => {
     if (pendingScroll.current === null) return;
+    lastBodyScrollHeight.current = -1;
     return schedulePendingGuideScroll(
       {
         read: () => pendingScroll.current,
@@ -222,20 +243,25 @@ export function GuideOverlayView({
   }, [guideRequest, onGuideRequestApplied]);
 
   // 滚动跟踪(去抖 150ms):正文当前分节记为阅读位置;只存 {topic, section?}
-  // 用户主动滚动即时判定(不去抖):与上次程序滚动落点不同 = 用户接管,
-  // 停止定位重试,不再抢回滚动位置(评审 P2)
+  // 用户主动滚动即时判定(不去抖):程序滚动落点不符,或首个程序滚动帧
+  // 尚未执行(含重试间隙)时用户先滚 = 用户接管,即时取消待执行定位,
+  // 不再抢回滚动位置(评审 P2 第二轮 + 交付计划挂账的首帧前滚动修复)
   useEffect(() => {
     const panel = panelRef.current;
     const body = scroller();
     if (!panel || !body) return;
     let timer: number | undefined;
     const onScroll = () => {
-      if (lastProgrammaticScroll.current !== null) {
-        if (classifyGuideScroll(body.scrollTop, lastProgrammaticScroll.current) === "user") {
-          pendingScroll.current = null;
-        }
-        lastProgrammaticScroll.current = null;
+      if (
+        scrollCancelsPendingGuide(
+          body.scrollTop,
+          lastProgrammaticScroll.current,
+          pendingScroll.current,
+        )
+      ) {
+        pendingScroll.current = null;
       }
+      lastProgrammaticScroll.current = null;
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
         const bodyTop = body.getBoundingClientRect().top;

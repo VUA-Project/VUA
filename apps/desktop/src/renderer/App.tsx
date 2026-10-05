@@ -1136,17 +1136,27 @@ function AppShell({
         >
           {strings.commandPalette.cta} · {strings.commandPalette.ctaHint}
         </button>
-        {/* Overlay 置顶窗引导入口(2026-09-26 用户裁决:游戏引导 Tab 退役,
-         *  覆盖层窗口成为引导宿主):showOverlay(\"guide\") 打开/聚焦覆盖层
-         *  并切到引导视图(窗口缺席=创建并显示;隐藏=显示并切视图;可见=
-         *  仅切视图);无 preload 环境(浏览器直开主壳)可选链安全退化为无动作 */}
+        {/* 准备阅读器入口(三类引导裁决 2026-10-05:长篇引导迁入普通阅读
+         *  窗口):showReader() 无定位 = 普通打开并恢复上次阅读位置;带定位
+         *  的上下文帮助(GuideEntryButton)同样进入阅读器。无 preload 环境
+         *  (浏览器直开主壳)可选链安全退化为无动作 */}
         <button
           type="button"
           className="vua-shell__theme-toggle vua-caption"
           title={strings.app.overlayGuide}
-          onClick={() => void window.vua?.window.showOverlay("guide")}
+          onClick={() => void window.vua?.window.showReader()}
         >
           {strings.app.overlayGuide}
+        </button>
+        {/* 任务状态置顶窗入口(阅读器迁移后状态访问保持独立):打开即状态
+         *  视图;关闭阅读器或本窗口不影响任何任务 */}
+        <button
+          type="button"
+          className="vua-shell__theme-toggle vua-caption"
+          title={strings.overlay.views.status}
+          onClick={() => void window.vua?.window.showOverlay("status")}
+        >
+          {strings.overlay.views.status}
         </button>
         {/* 通知中心顶栏入口(对标 Comfy 铃铛,自绘):与底部任务条共用同一通知投影;
          *  capability 非 ready 时组件自身不渲染 */}

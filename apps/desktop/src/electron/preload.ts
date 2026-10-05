@@ -41,6 +41,11 @@ const guideTargetListeners = new WeakMap<
   (event: IpcRendererEvent, payload: GuideTargetV1 | null) => void
 >();
 
+const readerTargetListeners = new WeakMap<
+  (target: GuideTargetV1 | null) => void,
+  (event: IpcRendererEvent, payload: GuideTargetV1 | null) => void
+>();
+
 const api: VuaDesktopApiV1 = Object.freeze({
   gateway: Object.freeze({
     version: DESKTOP_GATEWAY_VERSION,
@@ -113,6 +118,26 @@ const api: VuaDesktopApiV1 = Object.freeze({
           if (wrappedListener)
             ipcRenderer.removeListener("vua:overlay:guide-target", wrappedListener);
           guideTargetListeners.delete(listener);
+        };
+      },
+    }),
+    // 准备阅读器(三类引导裁决 additive):普通阅读窗口,打开允许夺焦点;
+    // 无定位参数 = 普通打开(渲染层恢复上次阅读位置);undefined 经 IPC
+    // 序列化为 null,Main 侧按 null=缺省收窄
+    showReader: (target?: GuideTargetV1 | null) =>
+      ipcRenderer.invoke("vua:reader:show", target ?? null),
+    // 阅读器定位事件:additive;Main 只投递给阅读器窗口本身
+    readerTargetEvents: Object.freeze({
+      subscribe: (listener: (target: GuideTargetV1 | null) => void) => {
+        const wrapped = (_event: IpcRendererEvent, payload: GuideTargetV1 | null) =>
+          listener(payload);
+        readerTargetListeners.set(listener, wrapped);
+        ipcRenderer.on("vua:reader:guide-target", wrapped);
+        return () => {
+          const wrappedListener = readerTargetListeners.get(listener);
+          if (wrappedListener)
+            ipcRenderer.removeListener("vua:reader:guide-target", wrappedListener);
+          readerTargetListeners.delete(listener);
         };
       },
     }),
