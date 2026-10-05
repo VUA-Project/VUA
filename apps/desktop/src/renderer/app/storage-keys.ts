@@ -26,6 +26,10 @@ export const storageKeys = {
   /** 指南阅读位置(首玩 B 切片):版本化前仅存 {topic, section?};只保存阅读
    *  信息,不保存账号信息或部署任务进度;读写见 features/guide/guide-target.ts */
   guideReading: "vua-guide-reading",
+  /** 应用导览进度(三类引导裁决 2026-10-05):版本化 TourProgressV1
+   *  {v,status,step};独立于阅读器阅读位置与安装任务状态;读写见
+   *  features/tour/tour-model.ts */
+  tourProgress: "vua-tour-progress",
   /** 高对比度(C-I18N):"auto" 跟随系统 forced-colors | "on" 始终开启;缺省 auto */
   hc: "vua-hc",
   /** 动态特效总开关(S-VFX-5,VR/省资源):"on" | "off";缺省 on */

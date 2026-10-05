@@ -63,6 +63,7 @@ import { creatorEnvReady } from "./features/deployer/deployer-model.ts";
 import { DeployerPage } from "./features/deployer/DeployerPage.tsx";
 import { OnboardingPage, type OnboardingResult } from "./features/onboarding/OnboardingPage.tsx";
 import { NavigationConfirmOverlay } from "./app/NavigationConfirmOverlay.tsx";
+import { AppTour } from "./features/tour/AppTour.tsx";
 import { PackagesPage } from "./features/packages/PackagesPage.tsx";
 import { ProductionIntroOverlay } from "./features/production/ProductionIntroOverlay.tsx";
 import { RecipePage } from "./features/recipe/RecipePage.tsx";
@@ -414,7 +415,8 @@ function GoalsSettingsPage({ onRestart }: { onRestart: () => void }) {
       <section className="vua-page__hero">
         <h1 className="vua-title">{strings.nav.pages.settingsGoals}</h1>
       </section>
-      <Card>
+      {/* 应用导览「route」步锚点(三类引导裁决 2026-10-05) */}
+      <Card data-tour-anchor="tour-goals">
         <div className="vua-page__stack">
           <h2 className="vua-title">{copy.heading}</h2>
           <p className="vua-text-secondary">{copy.description}</p>
@@ -740,6 +742,9 @@ function AppShell({
 
   // 命令面板(C-EFFICIENCY,ui-ux §6.1):Ctrl/Cmd+P 开关;命令 = 全部页面跳转 + 主题切换
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // 应用导览重播信号(三类引导裁决 2026-10-05):命令面板动作递增,
+  // AppTour 据此从第一步重开;导览的进度/自动开始在其内部自治
+  const [tourStartRequest, setTourStartRequest] = useState(0);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (isPaletteToggle(event)) {
@@ -875,6 +880,13 @@ function AppShell({
       ),
     );
     const actions: CommandItem[] = [
+      {
+        id: "start-tour",
+        group: "actions",
+        label: strings.tour.paletteEntry,
+        keywords: "tour guide onboarding",
+        run: () => setTourStartRequest((value) => value + 1),
+      },
       {
         id: "toggle-theme",
         group: "actions",
@@ -1144,6 +1156,7 @@ function AppShell({
           type="button"
           className="vua-shell__theme-toggle vua-caption"
           title={strings.app.overlayGuide}
+          data-tour-anchor="tour-guide-entry"
           onClick={() => void window.vua?.window.showReader()}
         >
           {strings.app.overlayGuide}
@@ -1247,6 +1260,9 @@ function AppShell({
       <Taskbar navigate={navigate} />
       {/* 导航确认卡(015 §12,批 B-3):U9(1)/(3) 确认层的渲染层载体,全局一次挂载 */}
       <NavigationConfirmOverlay />
+      {/* 应用导览(三类引导裁决 2026-10-05):主窗口内有序高亮;从未运行自动
+       *  开始,active 按步号恢复,重播经命令面板;状态独立于阅读器/安装 */}
+      <AppTour page={page} navigate={navigate} startRequest={tourStartRequest} />
       {paletteOpen ? (
         <CommandPalette commands={commands} onClose={() => setPaletteOpen(false)} />
       ) : null}

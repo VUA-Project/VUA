@@ -346,6 +346,51 @@ demoTaskTitle: "Demo task",
     /** Preparation reader window title (taskbar / system frame) */
     readerWindowTitle: "VUA Guide",
   },
+  /** In-app tour (three-context ruling 2026-10-05, guidance §2): ordered
+   *  highlights over real controls. Step copy states where a thing is and
+   *  what to expect; absent entries explain the prerequisite honestly. */
+  tour: {
+    title: "VUA tour",
+    stepsAria: "Guided tour",
+    back: "Back",
+    next: "Next",
+    finish: "Finish tour",
+    skip: "Skip tour",
+    /** Command palette restart entry (tour state separate from reader/install) */
+    paletteEntry: "Replay the VUA tour",
+    /** Fallback absent note when a step has no specific hint */
+    absentDefault: "This entry is not shown right now. You can continue the tour and come back later.",
+    steps: {
+      route: {
+        title: "This is where you choose",
+        body: "Environment setup prepares the software for playing VRChat; avatar production covers creating and dressing up your avatar. Choose a goal to start — you can change it anytime under Settings → Goal selection.",
+      },
+      network: {
+        title: "Network checks live here",
+        body: "Before installing, VUA checks each service (Steam, VRChat and more) separately. Follow a remedy and re-check when something fails. The check never signs in to an account.",
+        absent: "The network checks appear here once an environment deployment goal is selected.",
+      },
+      checks: {
+        title: "Software findings live here",
+        body: "This hero summarizes the real inspection of this machine: ready, missing or needing attention. VUA only reports — it never changes your system without your confirmation.",
+        absent: "The software inspection appears here once an environment deployment goal is selected.",
+      },
+      plan: {
+        title: "Review the plan before installing",
+        body: "After you pick purposes and generate a plan, every installation step is listed here for review before anything runs. A game launch entry will appear here as later install/launch steps land.",
+        absent: "The installation plan appears here once an environment deployment goal is selected.",
+      },
+      tasks: {
+        title: "Task progress lives here",
+        body: "Running installs and downloads gather in the bottom taskbar; the Status entry in the topbar opens a pinned status card. Closing or exiting either never cancels a task.",
+        absent: "The taskbar appears here once the task engine is ready.",
+      },
+      guide: {
+        title: "Guidance is always reachable",
+        body: "The Guide entry in the topbar opens the preparation reader; each check on the deployment page carries a \"View guide\" button that jumps to the matching section. Replay this tour anytime from the command palette (Ctrl+P).",
+      },
+    },
+  },
   onboarding: {
     steps: {
       goals: "Choose goals",
