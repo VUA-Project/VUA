@@ -67,11 +67,13 @@ pub struct LibraryPageItem {
     pub price_amount: Option<String>,
     pub item_url: Option<String>,
     pub thumbnail_url: Option<String>,
-    /// Per-file download anchors from the library row (N5 silent download,
-    /// 2026-10-05): `(stable downloadable id, verbatim anchor text)` in page
-    /// order, deduped by id. The href is a stable
-    /// `https://booth.pm/downloadables/{id}` — the signed CDN target lives
-    /// only behind a redirect at download time and is never captured here.
+    /// Per-file download entries from the library page's file section (N5
+    /// silent download; real-machine grammar verified 2026-10-05):
+    /// `(stable downloadable id, verbatim file label)` in page order,
+    /// deduped by id. The button is a `div.js-download-button[data-href]`
+    /// carrying a stable `https://booth.pm/downloadables/{id}` — the signed
+    /// CDN target lives only behind a redirect at download time and is never
+    /// captured. Empty label = page showed no file name (honest absent).
     pub downloadables: Vec<(String, String)>,
 }
 
@@ -136,6 +138,13 @@ pub fn extract_library_page(html: &str) -> Result<LibraryPage, LibraryPageError>
 /// Grammar A: account-library rows. One entry per unique product id; the
 /// title comes from the anchor that carries text, the thumbnail from the
 /// first anchor's image.
+///
+/// 真实页面两级结构(实机取证 2026-10-05,库页原文落盘核对):商品行头是
+/// `.border-b` div(缩略锚 + 标题锚 + 店铺锚),**文件区是行头的兄弟结点**
+/// (不是子结点)——行头之后、下一个行头之前的兄弟区里,每个文件块 = 文件
+/// 名(`.text-14`)+ 主下载钮(`div.js-download-button[data-href]`,稳定直链
+/// /downloadables/{id})+ Other Downloads 钮(`data-dropdown-items` JSON,
+/// 官方深链 client=booth-library-manager/vroid;无 data-href,不参与捕获)。
 fn extract_library_rows(document: &Html) -> Vec<LibraryPageItem> {
     let anchor = Selector::parse("a[href*='/items/']").expect("static selector");
     let image = Selector::parse("img").expect("static selector");
@@ -143,10 +152,72 @@ fn extract_library_rows(document: &Html) -> Vec<LibraryPageItem> {
     // 行内位于标题链接之后。向上找行容器再向内搜,避免误取相邻行。
     let shop_anchor =
         Selector::parse("a[href*='.booth.pm/']:not([href*='/items/'])").expect("static selector");
-    // 逐文件下载锚:稳定直链 /downloadables/{digits}(N5 静默下载捕获)。
-    // 同样以行容器为界,避免误取相邻行的文件链接
-    let download_anchor =
-        Selector::parse("a[href*='/downloadables/']").expect("static selector");
+    // 行头:.border-b div;文件区 = 行头的后续兄弟直到下一个行头
+    let row_selector = Selector::parse("div.border-b").expect("static selector");
+    let download_button =
+        Selector::parse(".js-download-button[data-href]").expect("static selector");
+    let file_name = Selector::parse(".text-14").expect("static selector");
+
+    // 预扫:行头 → 该商品的文件区捕获(行头内首个 /items/ 锚点定归属)
+    let mut files_by_product: std::collections::HashMap<String, Vec<(String, String)>> =
+        std::collections::HashMap::new();
+    for row in document.select(&row_selector) {
+        let Some(product_anchor) = row.select(&anchor).next() else {
+            continue;
+        };
+        let Some(native_product_id) =
+            product_id_from_href(product_anchor.value().attr("href").unwrap_or_default())
+        else {
+            continue;
+        };
+        let mut captured: Vec<(String, String)> = Vec::new();
+        // 兄弟结点遍历(含跳过文本结点):直到下一个行头(border-b)为止
+        let mut cursor = (*row).next_sibling();
+        while let Some(current) = cursor {
+            let Some(section) = scraper::ElementRef::wrap(current) else {
+                cursor = current.next_sibling();
+                continue;
+            };
+            if section
+                .value()
+                .has_class("border-b", scraper::CaseSensitivity::CaseSensitive)
+            {
+                break;
+            }
+            for button in section.select(&download_button) {
+                let Some(id) =
+                    downloadable_id_from_href(button.value().attr("data-href").unwrap_or(""))
+                else {
+                    continue;
+                };
+                if captured.iter().any(|(known, _)| known == &id) {
+                    continue;
+                }
+                // 文件名:按钮最近的上层文件块内的 .text-14(文件名与按钮
+                // 同在文件块;上层再往外就是整个文件区,会串名——最近优先)
+                let label = button
+                    .ancestors()
+                    .filter_map(scraper::ElementRef::wrap)
+                    .find_map(|ancestor| {
+                        ancestor
+                            .select(&file_name)
+                            .next()
+                            .map(element_text)
+                            .filter(|text| !text.is_empty())
+                    })
+                    .unwrap_or_default();
+                captured.push((id, label));
+            }
+            cursor = current.next_sibling();
+        }
+        if !captured.is_empty() {
+            files_by_product
+                .entry(native_product_id)
+                .or_default()
+                .extend(captured);
+        }
+    }
+
     let mut items: Vec<LibraryPageItem> = Vec::new();
     let mut index: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
 
@@ -174,17 +245,6 @@ fn extract_library_rows(document: &Html) -> Vec<LibraryPageItem> {
                 )
             })
             .unwrap_or((None, None));
-        let row_downloadables = row
-            .map(|row| {
-                row.select(&download_anchor)
-                    .filter_map(|link| {
-                        let id = downloadable_id_from_href(link.value().attr("href")?)?;
-                        let label = element_text(link);
-                        Some((id, label))
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default();
         // 标题拆尾缀:最后一个 "(xxx)" 段视为变体标记,前面的是规范标题。
         // 仅当括号在末尾且内有非空内容时拆;开头括号(如 "(無料)タイトル")不动
         let (canonical_name, variant_name) = match &text {
@@ -210,11 +270,6 @@ fn extract_library_rows(document: &Html) -> Vec<LibraryPageItem> {
                         .and_then(|img| img.value().attr("src"))
                         .and_then(|src| non_empty(Some(src)));
                 }
-                for (id, label) in row_downloadables {
-                    if !item.downloadables.iter().any(|(known, _)| known == &id) {
-                        item.downloadables.push((id, label));
-                    }
-                }
             }
             None => {
                 let thumbnail_url = element
@@ -222,12 +277,9 @@ fn extract_library_rows(document: &Html) -> Vec<LibraryPageItem> {
                     .next()
                     .and_then(|img| img.value().attr("src"))
                     .and_then(|src| non_empty(Some(src)));
-                let mut downloadables = Vec::new();
-                for (id, label) in row_downloadables {
-                    if !downloadables.iter().any(|(known, _)| known == &id) {
-                        downloadables.push((id, label));
-                    }
-                }
+                let downloadables = files_by_product
+                    .remove(&native_product_id)
+                    .unwrap_or_default();
                 index.insert(native_product_id.clone(), items.len());
                 items.push(LibraryPageItem {
                     native_product_id,
@@ -627,13 +679,12 @@ mod tests {
 mod library_rows_tests {
     use super::*;
 
-    /// Real account-library row grammar (verified signed-in 2026-10-02;
+    /// Real account-library grammar (row headers verified signed-in
+    /// 2026-10-02; the sibling file-section shape + js-download-button
+    /// divs verified against the on-machine page dump 2026-10-05;
     /// ids/titles anonymized): thumbnail anchor + title anchor per item,
-    /// shop links are not item links, `a[rel="next"]` pagination. The
-    /// per-file download anchors (`/downloadables/{id}`) follow the
-    /// stable-link shape verified against third-party downloader tooling
-    /// 2026-10-05; real-run confirmation rides the N5 silent-download
-    /// slice.
+    /// shop links are not item links, file blocks sit in SIBLING sections
+    /// after each row header, `a[rel="next"]` pagination.
     const ROWS: &str = r#"<!DOCTYPE html><html><body>
 <div id="js-library-search-header"></div>
 <div class="bg-white">
@@ -642,15 +693,41 @@ mod library_rows_tests {
     <div>
       <a class="no-underline" href="https://booth.pm/zh-cn/items/7463144"><div class="font-bold">Sample outfit A (shop-one)</div></a>
       <a href="https://shop-one.booth.pm/">shop-one</a>
-      <a href="https://booth.pm/downloadables/880001">Download</a>
-      <a href="/downloadables/880002">Download</a>
-      <a href="https://booth.pm/downloadables/880001">Download</a>
+    </div>
+  </div>
+  <div class="mt-16">
+    <div class="desktop:flex desktop:justify-between">
+      <div class="min-w-0"><div class="text-14">outfit_a_ver1.0.0.zip</div></div>
+      <div class="flex items-center gap-8">
+        <div><div class="js-download-button" data-href="https://booth.pm/downloadables/880001" data-label="Download" data-test="downloadable"></div></div>
+        <div class="js-download-button" data-dropdown-items='[{"text":"DL with BOOTH Library Manager","deeplinkDownloadableUrl":"https://booth.pm/downloadables/880001/deeplink?client=booth-library-manager&variation_id=12663417"}]'></div>
+      </div>
+    </div>
+    <div class="desktop:flex desktop:justify-between">
+      <div class="min-w-0"><div class="text-14">outfit_a_unitypackage.unitypackage</div></div>
+      <div class="flex items-center gap-8">
+        <div><div class="js-download-button" data-href="/downloadables/880002" data-label="Download"></div></div>
+      </div>
+    </div>
+    <!-- 同文件重复出现:按 id 去重 -->
+    <div class="desktop:flex desktop:justify-between">
+      <div class="min-w-0"><div class="text-14">outfit_a_ver1.0.0.zip</div></div>
+      <div class="flex items-center gap-8">
+        <div><div class="js-download-button" data-href="https://booth.pm/downloadables/880001" data-label="Download"></div></div>
+      </div>
     </div>
   </div>
   <div class="flex gap-8 border-b">
     <a href="/zh-cn/items/5511003"><img src="https://booth.pximg.net/second.jpg"></a>
     <a class="no-underline" href="/zh-cn/items/5511003"><div class="font-bold">Sample gift B (shop-two)</div></a>
-    <div><a href="/downloadables/880003">Download</a></div>
+  </div>
+  <div class="mt-16">
+    <div class="desktop:flex desktop:justify-between">
+      <div class="min-w-0"><div class="text-14">gift_b_fullset.zip</div></div>
+      <div class="flex items-center gap-8">
+        <div><div class="js-download-button" data-href="/downloadables/880003" data-label="Download"></div></div>
+      </div>
+    </div>
   </div>
 </div>
 <nav><ul>
@@ -672,21 +749,23 @@ mod library_rows_tests {
         // 库行无品牌/价格事实:留空而不是猜
         assert_eq!(first.brand, None);
         assert_eq!(first.price_amount, None);
-        // 逐文件下载锚:行内提取、按 id 去重、绝对与相对 href 都收
+        // 文件区捕获:行头兄弟结点、主下载钮 data-href、文件名取 .text-14;
+        // Other Downloads 钮(仅 data-dropdown-items,无 data-href)不参与;
+        // 同 id 重复出现去重;相对/绝对 data-href 都收
         assert_eq!(
             first.downloadables,
             vec![
-                ("880001".to_owned(), "Download".to_owned()),
-                ("880002".to_owned(), "Download".to_owned()),
+                ("880001".to_owned(), "outfit_a_ver1.0.0.zip".to_owned()),
+                ("880002".to_owned(), "outfit_a_unitypackage.unitypackage".to_owned()),
             ]
         );
         let second = &page.items[1];
         assert_eq!(second.native_product_id, "5511003");
         assert_eq!(second.thumbnail_url.as_deref(), Some("https://booth.pximg.net/second.jpg"));
-        // 行容器为界:第二行的文件不串到第一行(880003 只属于 5511003)
+        // 行头为界:第二行头的文件区不串到第一行(880003 只属于 5511003)
         assert_eq!(
             second.downloadables,
-            vec![("880003".to_owned(), "Download".to_owned())]
+            vec![("880003".to_owned(), "gift_b_fullset.zip".to_owned())]
         );
     }
 

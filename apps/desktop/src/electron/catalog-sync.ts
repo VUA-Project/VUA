@@ -163,6 +163,22 @@ export function startCatalogSync(
         );
         return failure("http_status", url);
       }
+      // 一次性取证开关:VUA_CATALOG_SYNC_DUMP_BODY=1 时落盘首抓页原文,
+      // 供解析语法排查(生产不开)
+      if (process.env.VUA_CATALOG_SYNC_DUMP_BODY === "1" && pageNumber === 1) {
+        try {
+          const fs = await import("node:fs/promises");
+          const os = await import("node:os");
+          const path = await import("node:path");
+          await fs.writeFile(
+            path.join(os.tmpdir(), "catalog-sync-page1.html"),
+            outcome.body,
+            "utf8",
+          );
+        } catch {
+          /* 取证失败不影响同步 */
+        }
+      }
       // 未登录会话的库页 = 登录页(302 已被跟随):按内容判定,专码停跑,
       // 不投递解析(投递只会以 not_a_library_page 拒绝,掩盖真实成因)
       if (isSignInPage(outcome.body)) {

@@ -10,8 +10,9 @@
 --
 --   downloadable_id  BOOTH's stable per-file id (URL digits)
 --   product_id       owning product ("booth:<id>"), FK to products
---   anchor_text      verbatim anchor label at capture time (honest raw;
---                    e.g. the localized button word — not a file name)
+--   anchor_text      verbatim file label at capture time (the .text-14
+--                    name shown in the library file block; empty = page
+--                    showed no name)
 --   first_seen_at    first capture (preserved across re-syncs)
 --   last_seen_at     latest library page that still listed the file
 --   last_seen_run_id the catalog-sync run of that latest sighting
