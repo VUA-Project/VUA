@@ -551,15 +551,21 @@ function registerIpc(provider: OrchestratorProviderV01): void {
     return remoteContent!.signInHint();
   });
   // 真实登录判定(2026-10-05,登录浏览器轮询用):抓一次已购库首页按内容
-  // 识别登录页——与同步启动门同一判据;探测异常恒 false,不冒充已登录
+  // 识别登录页——与同步启动门同一判据;探测异常恒 false,不冒充已登录。
+  // 已登录时顺带提取页头 data-user-name(登录 ID 原样,账号管理卡显示用;
+  // 提取失败 = null,不猜)
   ipcMain.handle("vua:remote-content:auth-probe", async (event) => {
     assertLocalSender(senderFrameUrl(event));
-    if (remoteContent === null) return { authOk: false };
+    if (remoteContent === null) return { authOk: false, accountName: null };
     try {
       const probe = await remoteContent.fetchWithSession(CATALOG_SYNC_DEFAULT_START_URL);
-      return { authOk: probe.status === 200 && !isSignInPage(probe.body) };
+      const authOk = probe.status === 200 && !isSignInPage(probe.body);
+      const accountName = authOk
+        ? /data-user-name="([^"]{1,64})"/.exec(probe.body)?.[1] ?? null
+        : null;
+      return { authOk, accountName };
     } catch {
-      return { authOk: false };
+      return { authOk: false, accountName: null };
     }
   });
   // 登出(账号管理,2026-10-05):清空分区存储并关闭打开中的远程视图

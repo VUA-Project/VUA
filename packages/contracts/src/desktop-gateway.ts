@@ -1335,7 +1335,7 @@ export interface RemoteContentApiV1 {
    *  页,按内容识别登录页——"stored" 线索会被「访问过登录页」的半登录
    *  会话误报,本面返回的 authOk 才是「此刻会话能否读到账号库」。探测
    *  异常/非 200 恒 false,不冒充已登录;Cookie 与页面内容不出 Main */
-  authProbe(): Promise<{ readonly authOk: boolean }>;
+  authProbe(): Promise<{ readonly authOk: boolean; readonly accountName: string | null }>;
   /** 登出(账号管理,2026-10-05):清空分区存储并关闭打开中的远程视图;
    *  分区专用于远程浏览,整体清除不伤及其它数据 */
   signOut(): Promise<void>;

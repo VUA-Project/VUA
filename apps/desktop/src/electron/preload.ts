@@ -160,7 +160,7 @@ const api: VuaDesktopApiV1 = Object.freeze({
       ipcRenderer.invoke("vua:remote-content:set-visible", viewId, visible),
     signInHint: () => ipcRenderer.invoke("vua:remote-content:sign-in-hint"),
     // 真实登录判定:抓一次库首页按内容识别登录页(线索三态会被半登录会话
-    // 误报;authOk 才是「此刻能读到账号库」)
+    // 误报;authOk 才是「此刻能读到账号库」);accountName = 页头登录 ID
     authProbe: () => ipcRenderer.invoke("vua:remote-content:auth-probe"),
     // 登出:清空分区存储(Cookie/本地存储/认证缓存)并关闭远程视图
     signOut: () => ipcRenderer.invoke("vua:remote-content:sign-out"),

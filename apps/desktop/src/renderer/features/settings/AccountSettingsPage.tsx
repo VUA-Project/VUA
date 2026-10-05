@@ -17,15 +17,17 @@ const copy = strings.settings.accounts;
  * 按钮禁用不猜状态。
  */
 export function AccountSettingsPage() {
-  const [authOk, setAuthOk] = useState<boolean | null>(null);
+  const [auth, setAuth] = useState<
+    { authOk: boolean; accountName: string | null } | null
+  >(null);
   const [signingOut, setSigningOut] = useState(false);
 
   const refreshAuth = () => {
-    setAuthOk(null);
+    setAuth(null);
     void window.vua?.remoteContent
       ?.authProbe()
-      .then((probe) => setAuthOk(probe.authOk))
-      .catch(() => setAuthOk(false));
+      .then((probe) => setAuth({ authOk: probe.authOk, accountName: probe.accountName }))
+      .catch(() => setAuth({ authOk: false, accountName: null }));
   };
 
   useEffect(() => {
@@ -44,6 +46,8 @@ export function AccountSettingsPage() {
     }
   };
 
+  const signedIn = auth?.authOk === true;
+
   return (
     <div className="vua-page">
       <section className="vua-page__hero">
@@ -54,23 +58,30 @@ export function AccountSettingsPage() {
           <div className="vua-settings-account">
             <div className="vua-settings-account__head">
               <h2 className="vua-title">{copy.boothTitle}</h2>
-              {authOk === null ? (
+              {auth === null ? (
                 <Badge tone="neutral">{copy.statusUnknown}</Badge>
-              ) : authOk ? (
-                <Badge tone="success">{copy.statusSignedIn}</Badge>
+              ) : signedIn ? (
+                <Badge tone="success">
+                  {copy.statusSignedIn}
+                  {auth.accountName !== null ? ` · ${auth.accountName}` : ""}
+                </Badge>
               ) : (
                 <Badge tone="neutral">{copy.statusSignedOut}</Badge>
               )}
             </div>
             <p className="vua-text-secondary">{copy.boothDescription}</p>
             <div className="vua-settings-account__actions">
-              <Button
-                variant="default"
-                onClick={() => openLoginBrowser(BOOTH_SIGN_IN_URL)}
-              >
-                {copy.signIn}
-              </Button>
-              <Button variant="subtle" disabled={!authOk || signingOut} onClick={() => void signOut()}>
+              {/* 已登录不渲染登录钮(用户裁决 2026-10-05):残留可点的
+                  登录入口只会把已登录会话带进库页 */}
+              {signedIn ? null : (
+                <Button
+                  variant="default"
+                  onClick={() => openLoginBrowser(BOOTH_SIGN_IN_URL)}
+                >
+                  {copy.signIn}
+                </Button>
+              )}
+              <Button variant="subtle" disabled={!signedIn || signingOut} onClick={() => void signOut()}>
                 {copy.signOut}
               </Button>
             </div>
