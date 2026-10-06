@@ -410,6 +410,9 @@ export class MockOrchestratorProviderV01 implements OrchestratorProviderV01 {
         ));
       case "dependencies.lookup":
       case "dependencies.listByProduct":
+      // bdl-queries v0.7(N5 静默下载):同族诚实缺席纪律——mock 无 BDL
+      // 观察库,文件清单不伪造
+      case "catalog.productDownloadables":
         // bdl-queries v0.5(030 §5.7 案 A,数据席第 168 批 FROZEN,桌面消费
         // 准备切片 2026-09-22 登记 TS 方法闭集时的穷尽性最小表态,业务路由
         // 归核心接线批):模拟 Provider 无 BDL 观察库,两方法恒答诚实缺席

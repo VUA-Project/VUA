@@ -228,6 +228,9 @@ function toApplicationRequest(
       };
     case "dependencies.listByProduct":
       return { ...base, kind: "query", method: "dependencies.listByProduct", params: { productId: request.params.productId } };
+    // bdl-queries v0.7(N5 静默下载):单商品已捕获文件清单
+    case "catalog.productDownloadables":
+      return { ...base, kind: "query", method: "catalog.productDownloadables", params: { productId: request.params.productId } };
     // 013 读面第一翼(核心 e720544):environmentManagers 快照,空参数 verbatim
     case "project.environmentManagers":
       return { ...base, kind: "query", method: "project.environmentManagers", params: {} };

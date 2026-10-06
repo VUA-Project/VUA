@@ -577,6 +577,7 @@ describe("gateway guard covers every declared method (regression: silent guard g
     "downloads.listCompleted": {},
     "dependencies.lookup": { name: "lilToon" },
     "dependencies.listByProduct": { productId: "booth:6584744" },
+    "catalog.productDownloadables": { productId: "booth:6190761" },
     "project.environmentManagers": {},
     "project.listProjects": {},
     "project.inspectProject": { projectPath: "C:/proj" },

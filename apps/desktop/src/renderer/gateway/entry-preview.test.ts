@@ -92,6 +92,9 @@ function stubCatalog(
     async list() {
       throw new Error("list is not part of the entry-preview composed read");
     },
+    async productDownloadables() {
+      return { kind: "absent" as const };
+    },
     async detail(productId: string): Promise<CatalogDetailView> {
       calledIds.push(productId);
       if (failing.includes(productId)) throw new Error("transport failure");

@@ -1673,6 +1673,33 @@ export interface DependenciesListByProductQueryV05 extends ApplicationRequestBas
   };
 }
 
+/** bdl-queries v0.7(N5 静默下载):单商品已捕获文件清单查询。数据来自
+ *  BDL v0.4 product_downloadables(库页同步时的稳定直链捕获);已知商品
+ *  零捕获 = 诚实空集(下载流再补抓),未知商品 = not-found 事实 */
+export interface CatalogProductDownloadablesQueryV07 extends ApplicationRequestBaseV01 {
+  readonly kind: "query";
+  readonly method: "catalog.productDownloadables";
+  readonly params: {
+    readonly productId: string;
+  };
+}
+
+/** v0.7 wire 信封(同 021 先例):外层 const "0.7" + operation 字面量 */
+export interface CatalogProductDownloadablesResultV07 {
+  readonly schemaVersion: "0.7";
+  readonly operation: "catalog.productDownloadables";
+  readonly result: {
+    readonly productId: string;
+    /** 行序 = (first_seen_at, downloadable_id) 升序(捕获序,确定性) */
+    readonly items: readonly {
+      /** BOOTH 稳定逐文件 id(downloadables/{id} 数字) */
+      readonly downloadableId: number;
+      /** 库页原样文件名;空串 = 页面未示名(诚实缺席) */
+      readonly fileName: string;
+    }[];
+  };
+}
+
 /** bdl-queries v0.5 冻结 wire 信封(021 先例对齐):外层三键闭集(schemaVersion
  *  const "0.5" + operation 字面量),内层 result 才是结果本体;平铺消费即类型
  *  错误。total:0 + matches:[] = 「无匹配名义」(按当前规则表),绝不渲染成
@@ -2815,7 +2842,8 @@ export type ApplicationRequestV01 =
   | ReleaseOpenForInspectionCommandV02
   | RecipeExportProjectDraftQueryV01
   | DependenciesLookupQueryV05
-  | DependenciesListByProductQueryV05;
+  | DependenciesListByProductQueryV05
+  | CatalogProductDownloadablesQueryV07;
 
 export interface TaskListSnapshotV01 {
   readonly contractVersion: ApplicationContractVersion;
@@ -3272,6 +3300,14 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
   // listByProduct params 单键闭集 {productId}(catalog.detail 同 pattern);
   // 无 name/过滤键——客户端过滤 = 契约错误(负例向量钉死),绝不静默空答
   if (value.kind === "query" && value.method === "dependencies.listByProduct") {
+    return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
+      && hasExactKeys(value.params, ["productId"])
+      && typeof value.params.productId === "string"
+      && /^booth:[0-9]+$/.test(value.params.productId);
+  }
+  // bdl-queries v0.7(N5 静默下载):params 闭集 = {productId}(booth 身份
+  // 形态,同 listByProduct;无过滤键)
+  if (value.kind === "query" && value.method === "catalog.productDownloadables") {
     return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
       && hasExactKeys(value.params, ["productId"])
       && typeof value.params.productId === "string"

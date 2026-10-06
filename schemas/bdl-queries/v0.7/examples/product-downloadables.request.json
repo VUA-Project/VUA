@@ -1,0 +1,7 @@
+{
+  "schemaVersion": "0.7",
+  "operation": "catalog.productDownloadables",
+  "params": {
+    "productId": "booth:6190761"
+  }
+}

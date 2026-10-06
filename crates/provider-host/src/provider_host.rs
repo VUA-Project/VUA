@@ -5403,6 +5403,11 @@ fn catalog_request(
         "catalog.list" => catalog_list(warehouse, request, request_id, correlation_id),
         "catalog.detail" => catalog_detail(warehouse, request, request_id, correlation_id),
         "catalog.status" => catalog_status(warehouse, request, request_id, correlation_id),
+        // bdl-queries v0.7(N5 静默下载):单商品已捕获文件清单,弹清单与
+        // 下载编排的数据源;结果不带路径、不带签名地址
+        "catalog.productDownloadables" => {
+            catalog_product_downloadables(warehouse, request, request_id, correlation_id)
+        }
         _ => FrameOutcome::Response(application_error(
             request_id,
             correlation_id,
@@ -5425,6 +5430,76 @@ fn bdl_query_success(request_id: &str, operation: &str, result: Value) -> FrameO
             "result": result,
         }),
     ))
+}
+
+/// bdl-queries v0.7 envelope (N5 silent download): the one-operation family
+/// carrying `catalog.productDownloadables`; versioned apart from the frozen
+/// v0.6 stamp above by the family's own const.
+fn bdl_query_success_v07(request_id: &str, operation: &str, result: Value) -> FrameOutcome {
+    FrameOutcome::Response(application_success(
+        request_id,
+        json!({
+            "schemaVersion": "0.7",
+            "operation": operation,
+            "result": result,
+        }),
+    ))
+}
+
+/// bdl-queries v0.7 `catalog.productDownloadables`: the captured per-file
+/// download list for one product (BDL v0.4 product_downloadables), in
+/// (first_seen_at, downloadable_id) order. Params closed set {productId};
+/// unknown product = the family's not-found error, never a fabricated
+/// empty list — an empty capture on a known product IS an honest empty
+/// set (the download flow then re-captures from a fresh library fetch).
+fn catalog_product_downloadables(
+    warehouse: Arc<WarehouseServices>,
+    request: &Value,
+    request_id: &str,
+    correlation_id: &str,
+) -> FrameOutcome {
+    let product_id = match request.get("params") {
+        Some(Value::Object(params)) if params.keys().all(|key| key == "productId") => params
+            .get("productId")
+            .and_then(Value::as_str)
+            .map(str::to_owned)
+            .filter(|id| !id.is_empty()),
+        _ => None,
+    };
+    let Some(product_id) = product_id else {
+        return catalog_invalid_params(request_id, correlation_id);
+    };
+    let known = match warehouse.bdl.catalog_detail(&product_id) {
+        Ok(Some(_)) => true,
+        // Miss/tombstone: not-found fact (same ruling as catalog.detail)
+        Ok(None) => {
+            return FrameOutcome::Response(application_error(
+                request_id,
+                correlation_id,
+                "vua.catalog.product_not_found",
+                "errors.catalog.productNotFound",
+                "validation",
+            ))
+        }
+        Err(_) => return catalog_store_failed(request_id, correlation_id),
+    };
+    debug_assert!(known);
+    match warehouse.bdl.downloadables_for_product(&product_id) {
+        Ok(files) => {
+            let items: Vec<Value> = files
+                .into_iter()
+                .map(|(downloadable_id, file_name)| {
+                    json!({ "downloadableId": downloadable_id, "fileName": file_name })
+                })
+                .collect();
+            bdl_query_success_v07(
+                request_id,
+                "catalog.productDownloadables",
+                json!({ "productId": product_id, "items": items }),
+            )
+        }
+        Err(_) => catalog_store_failed(request_id, correlation_id),
+    }
 }
 
 /// The `downloads.*` read face (bdl-queries v0.4): the adoptable

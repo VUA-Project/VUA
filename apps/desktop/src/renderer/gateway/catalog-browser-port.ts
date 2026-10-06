@@ -212,10 +212,24 @@ export type CatalogDetailView =
   | { schemaVersion: 1; kind: "error"; messageKey: CatalogErrorKey }
   | { schemaVersion: 1; kind: "detail"; product: CatalogProductDetail };
 
+/** 单商品已捕获文件清单视图(bdl-queries v0.7,N5 静默下载弹清单用):
+ *  known 商品零捕获 = 诚实空集;absent = 实现域未接线/传输不可达 */
+export type ProductDownloadablesView =
+  | { readonly kind: "absent" }
+  | { readonly kind: "not-found" }
+  | {
+      readonly kind: "files";
+      readonly productId: string;
+      /** 行序 = 捕获序(first_seen_at, id) */
+      readonly items: readonly { readonly downloadableId: number; readonly fileName: string }[];
+    };
+
 export interface CatalogBrowserPort {
   list(query?: CatalogBrowserQuery): Promise<CatalogListView>;
   detail(productId: string): Promise<CatalogDetailView>;
   /** 目录新鲜度视图(catalog.ts 词汇;修订序号语义见 CatalogRevision) */
   status(): Promise<CatalogStatus>;
+  /** bdl-queries v0.7:单商品已捕获文件清单(N5 静默下载弹清单的数据源) */
+  productDownloadables(productId: string): Promise<ProductDownloadablesView>;
   capability(): Promise<CapabilityReport>;
 }

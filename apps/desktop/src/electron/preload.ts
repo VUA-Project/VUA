@@ -193,6 +193,12 @@ const api: VuaDesktopApiV1 = Object.freeze({
     fetchProduct: (productId: string) =>
       ipcRenderer.invoke("vua:catalog-sync:fetch-product", productId),
   }),
+  // 静默下载(N5,2026-10-05 用户裁决):文件 id 批入队即受理;进度与终态
+  // 走下载任务面(通知中心),本面不返回过程
+  silentDownload: Object.freeze({
+    start: (productId: string, downloadableIds: readonly number[]) =>
+      ipcRenderer.invoke("vua:silent-download:start", productId, downloadableIds),
+  }),
   // 壳能力自报(proposal 015 §11 方案 a):能力拥有者静态声明;内嵌浏览
   // 基座(remote-content + U9 导航策略)随本壳交付,呈现两态由渲染层据此
   // 驱动(端到端可用才翻转呈现,desktop 架构 1.1.0)。沙箱 preload 不能

@@ -60,6 +60,8 @@ import {
 } from "./warehouse-model.ts";
 import { BOOTH_SIGN_IN_URL } from "../import/import-model.ts";
 import { openLoginBrowser, useLoginBrowserRequest } from "../../app/login-browser-store.ts";
+import { useDownloadChecklist } from "../../app/download-checklist-flag.ts";
+import { DownloadChecklistDialog } from "./DownloadChecklistDialog.tsx";
 import "./warehouse.css";
 
 const copy = strings.warehouse;
@@ -541,6 +543,13 @@ export function WarehousePage({
   } | null>(null);
   // 按商品删除受理回执(诚实短提示;各条目任务进度在通知中心呈现)
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
+  const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
+  // 静默下载(N5):清单对话的打开意图 + 受理回执提示
+  const [checklistProduct, setChecklistProduct] = useState<{
+    productId: string;
+    title: string;
+  } | null>(null);
+  const [checklistOn] = useDownloadChecklist();
   const clearSelection = () => {
     setSelectedIds(new Set());
   };
@@ -891,6 +900,28 @@ export function WarehousePage({
     catalogEmpty: resultsView !== null && resultsView.items.length === 0,
   });
 
+  /** 静默下载发起:ids = null 表示「全部已捕获文件」;受理后任务进度走
+   *  通知中心,本页只给受理回执(动作无可见响应等同于坏) */
+  const startSilentDownload = async (productId: string, ids: readonly number[] | null): Promise<void> => {
+    const face = window.vua?.silentDownload;
+    if (face === undefined) return;
+    let resolved = ids;
+    if (resolved === null) {
+      const view = await catalogBrowser.productDownloadables(productId).catch(() => null);
+      if (view === null || view.kind !== "files" || view.items.length === 0) {
+        setDownloadNotice(copy.cardMenu.downloadNoCapture);
+        return;
+      }
+      resolved = view.items.map((file) => file.downloadableId);
+    }
+    try {
+      const outcome = await face.start(productId, resolved);
+      setDownloadNotice(format(copy.cardMenu.downloadQueuedHint, { count: outcome.accepted }));
+    } catch {
+      setDownloadNotice(copy.cardMenu.downloadFailedHint);
+    }
+  };
+
   /** 选区 → Recipe 引用(云端卡;本地条目不进选区模型) */
   const recipeRefsOfSelection = (): RecipeAssetRef[] =>
     (resultsView?.items ?? [])
@@ -947,13 +978,14 @@ export function WarehousePage({
           id: "download",
           label: copy.cardMenu.download,
           onSelect: () => {
-            // 经素材导入弹窗的内嵌浏览面板定向首开商品页(N5 排障 2026-10-04
-            // 修复):该面板是远程视图唯一控制面——固定导航条 + will-download
-            // 下载管道 + 完成下载采纳都在这条线上;直连 remoteContent.open 会
-            // 留下无导航条的全屏孤儿视图(用户实测缺口)
-            const nativeId = item.productId.slice("booth:".length);
-            setImportInitialUrl(`https://booth.pm/zh-cn/items/${nativeId}`);
-            setImportDialogOpen(true);
+            // 静默下载(用户裁决 2026-10-05,Steam 式:不打开页面):按设置
+            // 决定直下全部或先弹文件清单;文件 id 来自 BDL 捕获(v0.7 查询),
+            // 入队后进度走下载任务面(通知中心)
+            if (checklistOn) {
+              setChecklistProduct({ productId: item.productId, title: item.title ?? item.productId });
+              return;
+            }
+            void startSilentDownload(item.productId, null);
           },
         },
         {
@@ -1086,6 +1118,9 @@ export function WarehousePage({
           ) : null}
           {deleteNotice !== null ? (
             <span className="vua-caption vua-text-secondary" role="status">{deleteNotice}</span>
+          ) : null}
+          {downloadNotice !== null ? (
+            <span className="vua-caption vua-text-secondary" role="status">{downloadNotice}</span>
           ) : null}
         </div>
         {dataSource === "fixture" ? (
@@ -1482,6 +1517,14 @@ export function WarehousePage({
         open={recipeDialogOpen}
         onClose={() => setRecipeDialogOpen(false)}
         selections={contextSelection}
+      />
+      <DownloadChecklistDialog
+        product={checklistProduct}
+        onClose={() => setChecklistProduct(null)}
+        onStart={(productId, downloadableIds) => {
+          setChecklistProduct(null);
+          void startSilentDownload(productId, downloadableIds);
+        }}
       />
       <CompatibleItemsDialog
         query={compatibleQuery}

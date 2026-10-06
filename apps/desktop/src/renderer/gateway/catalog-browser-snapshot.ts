@@ -475,6 +475,8 @@ export function createSnapshotCatalogBrowser(data: CatalogSnapshotData): Catalog
         vocabulary,
       });
     },
+    // bdl-queries v0.7:快照网关无文件清单事实,诚实缺席
+    productDownloadables: () => Promise.resolve({ kind: "absent" }),
     detail: (productId: string) => {
       const record = byId.get(productId);
       if (!record) {

@@ -11,6 +11,7 @@ import type {
   CatalogProductDetail,
   CatalogProductSummary,
   CatalogSubproduct,
+  ProductDownloadablesView,
 } from "./catalog-browser-port.ts";
 import type { CatalogPrice } from "./refs.ts";
 import type { GatewayClient, GatewayResult } from "./gateway-client.ts";
@@ -54,7 +55,7 @@ const BOOTH_PRODUCT_ID_PATTERN = /^booth:[0-9]+$/;
 /** catalog 三方法的请求窄化:wildcard method 字面量收窄出联合 */
 type CatalogGatewayRequest = Extract<
   DesktopGatewayRequestV1,
-  { readonly method: "catalog.list" | "catalog.detail" | "catalog.status" }
+  { readonly method: "catalog.list" | "catalog.detail" | "catalog.status" | "catalog.productDownloadables" }
 >;
 
 function asString(value: unknown): string | null {
@@ -379,6 +380,52 @@ export function createLiveCatalogBrowser(client: GatewayClient): CatalogBrowserP
       return result.error.kind === "application"
         ? { schemaVersion: 1, kind: "error", messageKey: applicationErrorView(result.error) }
         : { schemaVersion: 1, kind: "not-connected" };
+    },
+    // bdl-queries v0.7(N5 静默下载):v0.7 家族自有信封常量,与 v0.6 家族
+    // 分开钉死;已知商品零捕获 = 诚实空集(下载流补抓),未知 = not-found
+    async productDownloadables(productId): Promise<ProductDownloadablesView> {
+      if (!BOOTH_PRODUCT_ID_PATTERN.test(productId)) {
+        return { kind: "not-found" };
+      }
+      const result = await invokeCatalog(client, {
+        schemaVersion: 1,
+        requestId: crypto.randomUUID(),
+        method: "catalog.productDownloadables",
+        params: { productId },
+      });
+      if (result.ok) {
+        const envelope = asRecord(result.value);
+        if (
+          envelope === null
+          || envelope.schemaVersion !== "0.7"
+          || envelope.operation !== "catalog.productDownloadables"
+        ) {
+          return { kind: "absent" };
+        }
+        const body = asRecord(envelope.result);
+        const rawItems = body === null ? null : body.items;
+        if (body === null || !Array.isArray(rawItems)) return { kind: "absent" };
+        const items: { downloadableId: number; fileName: string }[] = [];
+        for (const raw of rawItems) {
+          const row = asRecord(raw);
+          const id = row === null ? null : row.downloadableId;
+          const name = row === null ? null : row.fileName;
+          if (typeof id !== "number" || !Number.isInteger(id) || typeof name !== "string") {
+            return { kind: "absent" };
+          }
+          items.push({ downloadableId: id, fileName: name });
+        }
+        return { kind: "files", productId, items };
+      }
+      if (
+        result.error.kind === "application"
+        && result.error.error.code === "vua.catalog.product_not_found"
+      ) {
+        return { kind: "not-found" };
+      }
+      return result.error.kind === "application"
+        ? { kind: "absent" }
+        : { kind: "absent" };
     },
 
     async status(): Promise<CatalogStatus> {

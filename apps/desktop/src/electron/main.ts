@@ -15,6 +15,7 @@ import { APPLICATION_CONTRACT_VERSION } from "@vua/contracts";
 import type { OrchestratorProviderV01 } from "@vua/orchestrator-provider";
 import { routeDesktopGatewayInvoke } from "./gateway-router.js";
 import { DownloadPort } from "./download-port.js";
+import { createSilentDownloadQueue } from "./silent-download.js";
 import { createDownloadEventSink } from "./download-ingest.js";
 import {
   CATALOG_SYNC_DEFAULT_START_URL,
@@ -112,6 +113,7 @@ let gameGuideWindow: BrowserWindow | null = null;
 let provider: OrchestratorProviderV01 | null = null;
 let remoteContent: RemoteContentManager | null = null;
 let downloadPort: DownloadPort | null = null;
+let silentDownloadQueue: ReturnType<typeof createSilentDownloadQueue> | null = null;
 // 账号库同步当前运行(N5 S1):单并发守卫的持有位;结果落 provider 任务面
 let catalogSyncRun: CatalogSyncRun | null = null;
 // 最近一次同步运行的终态事实(任务前失败可见性,真机 2026-10-05):首页就
@@ -676,6 +678,28 @@ function registerIpc(provider: OrchestratorProviderV01): void {
     assertLocalSender(senderFrameUrl(event));
     catalogSyncRun?.stop();
   });
+  // 静默下载触发面(N5,2026-10-05 用户裁决:Steam 式,不打开页面):渲染层
+  // 传入 BDL 捕获的文件 id 批;入队即受理,进度与终态走下载任务面(通知中心)
+  ipcMain.handle(
+    "vua:silent-download:start",
+    (event, productId: unknown, downloadableIds: unknown) => {
+      assertLocalSender(senderFrameUrl(event));
+      if (silentDownloadQueue === null) throw new Error("silent download is unavailable");
+      if (typeof productId !== "string" || !/^booth:[0-9]+$/.test(productId)) {
+        throw new Error("invalid product id");
+      }
+      if (
+        !Array.isArray(downloadableIds)
+        || downloadableIds.length === 0
+        || !downloadableIds.every((id) => Number.isInteger(id) && id > 0)
+      ) {
+        throw new Error("invalid downloadable ids");
+      }
+      return {
+        accepted: silentDownloadQueue.enqueue(productId, downloadableIds),
+      };
+    },
+  );
   // 运行状态探针(任务前失败可见性):渲染层轮询 provider 任务之外,经此面
   // 得知「运行已结束且从未产生任务」的终态事实,把卡住的“已开始”翻成失败
   ipcMain.handle("vua:catalog-sync:probe", (event) => {
@@ -1082,6 +1106,11 @@ async function createWindow(): Promise<void> {
     partitionSession: session.fromPartition("persist:vua-remote"),
     allowedOrigins: ["https://booth.pm"],
     sink: downloadSink,
+  });
+  // 静默下载编排(N5,2026-10-05 用户裁决):串行 + 6s 源站礼貌间隔,经
+  // downloadURL 走 will-download 管道(暂存/事件/九态任务/采纳全复用)
+  silentDownloadQueue = createSilentDownloadQueue({
+    partitionSession: session.fromPartition("persist:vua-remote"),
   });
 
   // 远程内容管理器(F4-2):独立 partition Session;目录浏览域为种子允许清单,

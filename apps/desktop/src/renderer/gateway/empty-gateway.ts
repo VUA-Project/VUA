@@ -220,6 +220,8 @@ export function createEmptyCatalogBrowser(): CatalogBrowserPort {
     list: () => Promise.resolve(catalogListView),
     detail: () => Promise.resolve(catalogDetailView),
     status: () => Promise.resolve<CatalogStatus>({ health: "unknown" }),
+    // v0.7 文件清单:not-connected 恒 absent(诚实缺席,不伪造空清单)
+    productDownloadables: () => Promise.resolve({ kind: "absent" }),
     capability: () =>
       Promise.resolve<CapabilityReport>({ state: "unavailable", detailKey: "catalogMissing" }),
   };

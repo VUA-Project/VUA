@@ -287,6 +287,15 @@ export interface DependenciesListByProductRequestV1 {
   readonly params: { readonly productId: string };
 }
 
+/** bdl-queries v0.7(N5 静默下载):单商品已捕获文件清单;已知商品零
+ *  捕获 = 诚实空集,未知商品 = not-found 事实 */
+export interface CatalogProductDownloadablesRequestV1 {
+  readonly schemaVersion: 1;
+  readonly requestId: string;
+  readonly method: "catalog.productDownloadables";
+  readonly params: { readonly productId: string };
+}
+
 /** 产物模式三命令入口(bdl-commands v0.1,proposal 005):任务级动作经 AMF */
 export interface WarehouseSetArtifactModeRequestV1 {
   readonly schemaVersion: 1;
@@ -945,6 +954,7 @@ export type DesktopGatewayRequestV1 =
   | DownloadRetryRequestV1
   | DependenciesLookupRequestV1
   | DependenciesListByProductRequestV1
+  | CatalogProductDownloadablesRequestV1
   | WarehouseSetArtifactModeRequestV1
   | WarehouseGenerateVpmRequestV1
   | WarehouseDeleteOriginalsRequestV1
@@ -1022,6 +1032,7 @@ export const DESKTOP_GATEWAY_METHOD_KINDS = {
   // bdl-queries v0.5(桌面 TS 登记面 2026-09-22):两方法只读同族
   "dependencies.lookup": "query",
   "dependencies.listByProduct": "query",
+  "catalog.productDownloadables": "query",
   "project.environmentManagers": "query",
   "project.listProjects": "query",
   "project.inspectProject": "query",
@@ -1342,6 +1353,12 @@ export interface RemoteContentApiV1 {
   events: { subscribe(listener: (event: RemoteContentEventV1) => void): () => void };
 }
 
+/** 静默下载窄面(N5,2026-10-05 用户裁决:Steam 式):文件 id 批入队即受
+ *  理;限速(串行 + 6s 源站间隔)与进度呈现归 Main/下载任务面,本面零过程 */
+export interface SilentDownloadApiV1 {
+  start(productId: string, downloadableIds: readonly number[]): Promise<{ readonly accepted: number }>;
+}
+
 /** 账号库同步触发结果(N5 S1):触发面只启动/中止运行,进度与终态走
  * provider 九态任务面(通知中心),本面不返回运行过程。 */
 export type CatalogSyncStartOutcomeV1 =
@@ -1534,6 +1551,7 @@ export interface VuaDesktopApiV1 {
   readonly window: DesktopWindowApiV1;
   readonly remoteContent: RemoteContentApiV1;
   readonly catalogSync: CatalogSyncApiV1;
+  readonly silentDownload: SilentDownloadApiV1;
   readonly capabilities: DesktopCapabilitiesV1;
   readonly navigationConfirm: DesktopNavigationConfirmApiV1;
   readonly editorSettings: DesktopEditorSettingsApiV1;
@@ -1821,6 +1839,12 @@ export function isDesktopGatewayRequestV1(value: unknown): value is DesktopGatew
     // booth: 命名空间身份);无 name/过滤键——客户端过滤 = 契约错误(负例
     // 向量钉死),绝不静默空答
     case "dependencies.listByProduct":
+      return hasExactKeys(value, REQUEST_KEYS)
+        && hasExactKeys(value.params, ["productId"])
+        && typeof value.params.productId === "string"
+        && /^booth:[0-9]+$/.test(value.params.productId);
+    // bdl-queries v0.7(N5 静默下载):params 单键闭集 {productId}(booth 身份)
+    case "catalog.productDownloadables":
       return hasExactKeys(value, REQUEST_KEYS)
         && hasExactKeys(value.params, ["productId"])
         && typeof value.params.productId === "string"
