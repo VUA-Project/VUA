@@ -48,6 +48,16 @@ import {
   readerVisibilityAfterDecision,
 } from "./reader-window.js";
 import {
+  GAME_GUIDE_SURFACE_PARAM,
+  GAME_GUIDE_WINDOW_HEIGHT,
+  GAME_GUIDE_WINDOW_LEVEL,
+  GAME_GUIDE_WINDOW_MIN_HEIGHT,
+  GAME_GUIDE_WINDOW_MIN_WIDTH,
+  GAME_GUIDE_WINDOW_WIDTH,
+  decideGameGuideWindowAction,
+  gameGuideVisibilityAfterDecision,
+} from "./game-guide-window.js";
+import {
   installLocalContentNavigationPolicy,
   installPermissionDenyPolicy,
   isAllowedLocalSender,
@@ -88,6 +98,7 @@ const packagedSmoke = preparePackagedSmoke();
 let mainWindow: BrowserWindow | null = null;
 let overlayWindow: BrowserWindow | null = null;
 let readerWindow: BrowserWindow | null = null;
+let gameGuideWindow: BrowserWindow | null = null;
 let provider: OrchestratorProviderV01 | null = null;
 let remoteContent: RemoteContentManager | null = null;
 let downloadPort: DownloadPort | null = null;
@@ -444,6 +455,19 @@ function registerIpc(provider: OrchestratorProviderV01): void {
     return showReaderWindow(parseGuideTargetPayload(target));
   });
 
+  // 打开/聚焦游戏引导小窗(三类引导 §4 手动版 additive):只受理本地来源;
+  // 窗口显隐语义在 game-guide-window.ts 决策面(纯函数可测);隐藏由渲染面
+  // 经 vua:game-guide:hide 显式发起
+  ipcMain.handle("vua:game-guide:show", (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    return showGameGuideWindow();
+  });
+  ipcMain.handle("vua:game-guide:hide", (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    hideGameGuideWindow();
+    return { visible: false };
+  });
+
   // 收起覆盖层(首玩 B 切片 additive):隐藏不销毁,保留窗口与阅读状态;
   // 窗口缺席幂等回执 false,绝不创建窗口(与 toggle 的 create 语义区分)
   ipcMain.handle("vua:overlay:hide", (event) => {
@@ -725,6 +749,67 @@ function showReaderWindow(target: GuideTargetV1 | null): { readonly visible: boo
   return { visible: readerVisibilityAfterDecision(decision) };
 }
 
+/**
+ * 游戏引导小窗(三类引导 §4 手动版 additive,契约 DesktopWindowApiV1.
+ * showGameGuide):小型透明置顶窗——transparent + frameless + skipTaskbar +
+ * hasShadow:false,360×560 可缩放,alwaysOnTop("screen-saver" 级,盖过全屏
+ * 游戏)。打开永远 showInactive:不夺游戏焦点;玩家自行拖到游戏画面上
+ * (窗口观察与跟随属后续切片)。隐藏走渲染面显式动作(隐藏不销毁,保留
+ * 位置与进度),已开窗(含隐藏态)的打开 = showInactive 恢复。透明度由
+ * 渲染面就地调节并持久化,不经 Main。
+ */
+function createGameGuideWindow(): void {
+  const preload = path.join(__dirname, "preload.js");
+  const win = new BrowserWindow({
+    width: GAME_GUIDE_WINDOW_WIDTH,
+    height: GAME_GUIDE_WINDOW_HEIGHT,
+    minWidth: GAME_GUIDE_WINDOW_MIN_WIDTH,
+    minHeight: GAME_GUIDE_WINDOW_MIN_HEIGHT,
+    show: false,
+    frame: false,
+    transparent: true,
+    resizable: true,
+    skipTaskbar: true,
+    hasShadow: false,
+    webPreferences: localWindowWebPreferences(preload),
+  });
+  tagDevelopmentWindow(win, desktopProfile);
+  win.setAlwaysOnTop(true, GAME_GUIDE_WINDOW_LEVEL);
+  gameGuideWindow = win;
+  win.once("ready-to-show", () => {
+    if (!win.isDestroyed()) win.showInactive();
+  });
+  win.on("closed", () => {
+    if (gameGuideWindow === win) gameGuideWindow = null;
+  });
+  const search = `surface=${GAME_GUIDE_SURFACE_PARAM}`;
+  if (rendererUrl) void win.loadURL(`${rendererUrl}?${search}`);
+  else {
+    void win.loadFile(path.join(__dirname, "../renderer/index.html"), {
+      search,
+    });
+  }
+}
+
+function showGameGuideWindow(): { readonly visible: boolean } {
+  const exists = gameGuideWindow !== null && !gameGuideWindow.isDestroyed();
+  const decision = decideGameGuideWindowAction({ exists });
+  if (decision === "create") {
+    createGameGuideWindow();
+    return { visible: gameGuideVisibilityAfterDecision(decision) };
+  }
+  if (gameGuideWindow!.isMinimized()) gameGuideWindow!.restore();
+  gameGuideWindow!.showInactive();
+  return { visible: gameGuideVisibilityAfterDecision(decision) };
+}
+
+/** 游戏引导窗隐藏(渲染面显式动作):隐藏不销毁,保留位置与进度呈现 */
+function hideGameGuideWindow(): void {
+  if (gameGuideWindow !== null && !gameGuideWindow.isDestroyed() && gameGuideWindow.isVisible()) {
+    gameGuideWindow.hide();
+  }
+}
+
 async function createWindow(): Promise<void> {
   const preload = path.join(__dirname, "preload.js");
   mainWindow = new BrowserWindow({
@@ -836,10 +921,11 @@ async function createWindow(): Promise<void> {
   });
   mainWindow.on("closed", () => {
     mainWindow = null;
-    // 主窗口关闭＝应用退出语义:悬浮窗与阅读器都不拖住 window-all-closed
-    // (窗口随主窗口生命周期销毁,closed 处理器自行清引用)
+    // 主窗口关闭＝应用退出语义:悬浮窗、阅读器与游戏引导窗都不拖住
+    // window-all-closed(窗口随主窗口生命周期销毁,closed 处理器自行清引用)
     overlayWindow?.destroy();
     readerWindow?.destroy();
+    gameGuideWindow?.destroy();
   });
 
   if (rendererUrl) await mainWindow.loadURL(rendererUrl);

@@ -32,6 +32,13 @@ export const storageKeys = {
    *  {v,status,step};独立于阅读器阅读位置与安装任务状态;读写见
    *  features/tour/tour-model.ts */
   tourProgress: "vua-tour-progress",
+  /** 游戏引导进度(三类引导 §4 手动版):版本化 GameGuideProgressV1
+   *  {v,current,decided};只记录玩家自己确认/跳过过哪些步骤,不代表
+   *  VUA 检查或更改了游戏设置;读写见 features/game-guide/game-guide-model.ts */
+  gameGuideProgress: "vua-game-guide-progress",
+  /** 游戏引导呈现偏好(透明度 0.2–1,缺省 0.5 用户裁决):版本化
+   *  GameGuidePresentationV1;与进度分键;读写同上 */
+  gameGuidePresentation: "vua-game-guide-presentation",
   /** 高对比度(C-I18N):"auto" 跟随系统 forced-colors | "on" 始终开启;缺省 auto */
   hc: "vua-hc",
   /** 动态特效总开关(S-VFX-5,VR/省资源):"on" | "off";缺省 on */

@@ -357,6 +357,60 @@ demoTaskTitle: "Demo task",
     overlayGuide: "Guide",
     /** Preparation reader window title (taskbar / system frame) */
     readerWindowTitle: "VUA Guide",
+    /** Topbar game-guide entry (three-context ruling): open the small
+     *  transparent game-guide window */
+    gameGuide: "Game guide",
+  },
+  /** Game guide (three-context ruling 2026-10-05, guidance §4, manual
+   *  edition): one short step at a time over the game window. Copy restates
+   *  verified guidance facts; confirm/skip records the player's own reading
+   *  progress and never claims a game setting was inspected or changed. */
+  gameGuide: {
+    title: "Game guide",
+    hide: "Hide",
+    opacityLabel: "Transparency",
+    confirm: "Got it",
+    skip: "Skip",
+    restart: "Start over",
+    allDoneTitle: "All steps done",
+    allDone: "This progress only records which steps you have read through; you can look again anytime. VUA has not inspected or changed any game setting.",
+    steps: {
+      controls: {
+        title: "Basic controls",
+        body: [
+          "Desktop: W/A/S/D moves, the mouse turns your view, Esc opens the Quick Menu, and holding V talks (push-to-talk by default).",
+          "VR: the trigger interacts, the side grip grabs, the thumbsticks move and turn, and the menu button opens the in-game menu. The full key list lives in VRChat's official controls documentation.",
+        ],
+      },
+      audio: {
+        title: "Sound and microphone",
+        body: [
+          "The microphone is push-to-talk by default: hold V to speak. A crossed-out mic icon on your HUD means muted.",
+          "Pick your microphone and volumes in the audio section of the settings. If others cannot hear you, check Windows' recording device, the device inside VRChat, and the mute state — in that order.",
+        ],
+      },
+      personalSpace: {
+        title: "Personal Space",
+        body: [
+          "Personal Space in the safety settings hides or fades avatars that come inside your radius — recommended in crowded worlds and around strangers.",
+          "It only changes what you see locally; other players are not notified or affected.",
+        ],
+      },
+      untrustedUrls: {
+        title: "Allow untrusted URLs",
+        body: [
+          "Allow Untrusted URLs is off by default: with it off, external images or videos written into a world do not load.",
+          "Turning it on means you trust the addresses a world's author embedded. When unsure, keep it off — ordinary play is unaffected.",
+        ],
+      },
+      worlds: {
+        title: "Finding tutorial worlds",
+        body: [
+          "Open the Main Menu → Worlds and search in the language you want to learn (try \"tutorial\" or the language's name), then join a populated room and follow along.",
+          "A language-checked tutorial-world list is being verified by the author; until it ships, this search route is the honest path — no invented world identifiers here.",
+        ],
+      },
+    },
   },
   /** In-app tour (three-context ruling 2026-10-05, guidance §2): ordered
    *  highlights over real controls. Step copy states where a thing is and

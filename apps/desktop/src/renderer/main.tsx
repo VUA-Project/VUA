@@ -7,6 +7,7 @@ import { TutorialSurface } from "./features/tutorial/TutorialSurface.tsx";
 import { DesktopOverlaySurface } from "./features/overlay/DesktopOverlaySurface.tsx";
 import { VrOverlaySurface } from "./features/overlay/VrOverlaySurface.tsx";
 import { ReaderSurface } from "./features/reader/ReaderSurface.tsx";
+import { GameGuideSurface } from "./features/game-guide/GameGuideSurface.tsx";
 import { currentLocale } from "./i18n/index.ts";
 import "@vua/design-system/tokens.css";
 import "@vua/design-system/base.css";
@@ -57,6 +58,8 @@ createRoot(document.getElementById("root")!).render(
       <VrOverlaySurface />
     ) : surface === "reader" ? (
       <ReaderSurface />
+    ) : surface === "game-guide" ? (
+      <GameGuideSurface />
     ) : devView === "showcase" ? (
       <ShowcasePage />
     ) : devView === "preview-lab" && PreviewLabPage !== null ? (

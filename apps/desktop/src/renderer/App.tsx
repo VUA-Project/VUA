@@ -1176,6 +1176,16 @@ function AppShell({
         >
           {strings.overlay.views.status}
         </button>
+        {/* 游戏引导小窗入口(三类引导 §4 手动版):透明置顶窗,打开不夺
+         *  焦点;隐藏不销毁,进度与透明度本地持久化 */}
+        <button
+          type="button"
+          className="vua-shell__theme-toggle vua-caption"
+          title={strings.app.gameGuide}
+          onClick={() => void window.vua?.window.showGameGuide()}
+        >
+          {strings.app.gameGuide}
+        </button>
         {/* 通知中心顶栏入口(对标 Comfy 铃铛,自绘):与底部任务条共用同一通知投影;
          *  capability 非 ready 时组件自身不渲染 */}
         <NotificationPopover navigate={navigate} />

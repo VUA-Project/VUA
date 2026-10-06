@@ -1164,6 +1164,15 @@ export interface ReaderWindowShowResultV1 {
   readonly visible: boolean;
 }
 
+/**
+ * 游戏引导窗动作回执(三类引导裁决 additive,小窗手动版):小型透明置顶
+ * 窗。隐藏走窗内/Esc 的显式动作(隐藏不销毁,保留位置与进度);打开
+ * 永远 showInactive,不夺游戏焦点。窗口观察与自动显隐属后续切片。
+ */
+export interface GameGuideWindowShowResultV1 {
+  readonly visible: boolean;
+}
+
 export interface DesktopWindowApiV1 {
   minimize(): Promise<void>;
   toggleMaximize(): Promise<void>;
@@ -1208,6 +1217,15 @@ export interface DesktopWindowApiV1 {
   readerTargetEvents: {
     subscribe(listener: (target: GuideTargetV1 | null) => void): () => void;
   };
+  /** 打开/聚焦游戏引导小窗(三类引导裁决 additive,手动版):小型透明置顶
+   *  窗,打开永远 showInactive 不夺焦点。窗口缺席 = 创建并显示;已开窗
+   *  (含隐藏态)= 显示;没有定位载荷——步骤与确认/跳过进度归渲染层
+   *  本地状态,隐藏走窗内/Esc 显式动作(隐藏不销毁)。窗口观察与跟随
+   *  属后续切片 */
+  showGameGuide(): Promise<GameGuideWindowShowResultV1>;
+  /** 隐藏游戏引导小窗(additive):渲染面显式动作(窗内按钮/Esc);隐藏不
+   *  销毁——位置与进度保留,重开经 showGameGuide;窗口缺席幂等 */
+  hideGameGuide(): Promise<GameGuideWindowShowResultV1>;
   /** 返回主窗口(additive):主窗口最小化则还原,随后显示并聚焦——仅响应
    *  用户明确动作(覆盖层「返回主窗口」),允许切换焦点 */
   focusMainWindow(): Promise<void>;

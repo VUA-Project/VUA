@@ -7,6 +7,7 @@ import {
   type DesktopFsListV1,
   type DesktopFsResultV1,
   type DesktopWindowApiV1,
+  type GameGuideWindowShowResultV1,
   type OverlayViewV1,
   type OverlayWindowShowResultV1,
   type ReaderWindowShowResultV1,
@@ -33,6 +34,8 @@ describe("DesktopWindowApiV1 overlay faces (2026-09-26 additive: showOverlay + v
       guideTargetEvents: true,
       showReader: true,
       readerTargetEvents: true,
+      showGameGuide: true,
+      hideGameGuide: true,
       focusMainWindow: true,
     };
     expect(Object.keys(apiShape)).toEqual([
@@ -47,6 +50,8 @@ describe("DesktopWindowApiV1 overlay faces (2026-09-26 additive: showOverlay + v
       "guideTargetEvents",
       "showReader",
       "readerTargetEvents",
+      "showGameGuide",
+      "hideGameGuide",
       "focusMainWindow",
     ]);
   });
@@ -63,6 +68,11 @@ describe("DesktopWindowApiV1 overlay faces (2026-09-26 additive: showOverlay + v
 
   it("reader show receipt carries visibility only (no hide semantics; close is the OS frame)", () => {
     const opened: ReaderWindowShowResultV1 = { visible: true };
+    expect(opened.visible).toBe(true);
+  });
+
+  it("game guide show receipt carries visibility only (hide is an explicit in-window action)", () => {
+    const opened: GameGuideWindowShowResultV1 = { visible: true };
     expect(opened.visible).toBe(true);
   });
 });
