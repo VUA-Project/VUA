@@ -5,6 +5,7 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { catalogBrowser } from "../../app/catalog-browser-instance.ts";
 import { browseWindowSupported, openBrowseWindow } from "../../app/browse-window.ts";
 import { openExternalUrl } from "../../app/open-external.ts";
@@ -1249,17 +1250,25 @@ export function WarehousePage({
               onClick={onWallClick}
               onContextMenu={onWallContextMenu}
             >
-              {marqueeRect !== null ? (
-                <div
-                  className="vua-warehouse__marquee"
-                  style={{
-                    left: `${marqueeRect.left}px`,
-                    top: `${marqueeRect.top}px`,
-                    width: `${marqueeRect.width}px`,
-                    height: `${marqueeRect.height}px`,
-                  }}
-                />
-              ) : null}
+              {/* 框选矩形经 portal 挂 document.body(人审 B5/B6 修复
+                  2026-10-06):fixed 定位会被带 transform/backdrop-filter 的
+                  祖先劫持成包含块,矩形画在容器内即与鼠标错位;portal 脱离
+                  后 clientX/Y 恢复视口语义(#38 导航条同类先例)。命中测试
+                  用 getBoundingClientRect(恒为视口真值)不受影响 */}
+              {marqueeRect !== null
+                ? createPortal(
+                    <div
+                      className="vua-warehouse__marquee"
+                      style={{
+                        left: `${marqueeRect.left}px`,
+                        top: `${marqueeRect.top}px`,
+                        width: `${marqueeRect.width}px`,
+                        height: `${marqueeRect.height}px`,
+                      }}
+                    />,
+                    document.body,
+                  )
+                : null}
               {listState.kind === "loading" ? (
                 /* 真实加载期间:与卡片墙同形的骨架(ui-ux §2.8) */
                 <div className="vua-warehouse__wall" aria-hidden="true">

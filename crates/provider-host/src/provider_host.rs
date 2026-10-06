@@ -9277,11 +9277,12 @@ fn fold_download_task(
     match event.kind {
         vua_bdl_store::download_events::DownloadEventKind::Started => {
             if state.store.task(&task_id)?.is_none() {
-                state.store.accept_task(&NewTask {
+                let (_, event) = state.store.accept_task(&NewTask {
                     task_id: task_id.clone(),
                     correlation_id: event.download_id.clone(),
                     occurred_at: occurred_at.to_owned(),
                 })?;
+                publish_task_event(state, Some(event));
             }
             // The nine-state machine walks Queued -> Preparing -> Running;
             // a started download is already transferring, so it walks both
@@ -9294,7 +9295,7 @@ fn fold_download_task(
             };
             if let Some(task) = state.store.task(&task_id)? {
                 if task.state == TaskState::Queued {
-                    state.store.mutate_task(
+                    let event = state.store.mutate_task(
                         &task_id,
                         task.revision,
                         occurred_at,
@@ -9303,11 +9304,12 @@ fn fold_download_task(
                             payload: payload(),
                         },
                     )?;
+                    publish_task_event(state, event);
                 }
             }
             if let Some(task) = state.store.task(&task_id)? {
                 if task.state == TaskState::Preparing {
-                    state.store.mutate_task(
+                    let event = state.store.mutate_task(
                         &task_id,
                         task.revision,
                         occurred_at,
@@ -9316,13 +9318,14 @@ fn fold_download_task(
                             payload: payload(),
                         },
                     )?;
+                    publish_task_event(state, event);
                 }
             }
         }
         vua_bdl_store::download_events::DownloadEventKind::Progress => {
             if let Some(task) = state.store.task(&task_id)? {
                 if task.state == TaskState::Running {
-                    state.store.mutate_task(
+                    let event = state.store.mutate_task(
                         &task_id,
                         task.revision,
                         occurred_at,
@@ -9333,6 +9336,7 @@ fn fold_download_task(
                             }),
                         },
                     )?;
+                    publish_task_event(state, event);
                 }
             }
         }
@@ -9393,7 +9397,7 @@ fn complete_download_task(
 ) -> Result<(), SqliteStoreError> {
     if let Some(task) = state.store.task(task_id)? {
         if !task.state.is_terminal() {
-            state.store.mutate_task(
+            let event = state.store.mutate_task(
                 task_id,
                 task.revision,
                 occurred_at,
@@ -9403,6 +9407,10 @@ fn complete_download_task(
                     result: None,
                 },
             )?;
+            // 通知中心可见性(人审 2026-10-06 确诊):下载任务的每个状态
+            // 推进都必须发布实时事件——不发布则渲染层只在下一次全量快照
+            // 才看到任务,而短下载届时已终态被默认过滤,用户全程不可见
+            publish_task_event(state, event);
         }
     }
     Ok(())
