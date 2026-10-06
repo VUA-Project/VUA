@@ -1,10 +1,21 @@
 /** Only validated, current-request observations become UI facts. */
-import { isNetworkResult } from "@vua/contracts";
+import { isNetworkResult, isWebsiteTestResult } from "@vua/contracts";
 import type { NetworkPort } from "./environment-port.ts";
 import type { GatewayClient } from "./gateway-client.ts";
 
 export function createLiveNetworkPort(client: GatewayClient): NetworkPort {
   return {
+    async websiteCapability() {
+      const result = await client.invoke({ schemaVersion: 1, requestId: crypto.randomUUID(), method: "app.snapshot", params: {} });
+      return { state: result.ok && "capabilities" in result.value && result.value.capabilities.operations.some(
+        op => op.operationId === "environment.testWebsites" && op.availability === "available") ? "ready" : "unavailable" };
+    },
+    async testWebsites(urls) {
+      const result = await client.invoke({ schemaVersion: 1, requestId: crypto.randomUUID(), method: "environment.testWebsites", params: { urls } });
+      if (!result.ok || !isWebsiteTestResult(result.value) || result.value.websiteTests.length !== urls.length
+        || result.value.websiteTests.some((row, index) => row.url !== urls[index])) throw new Error("website_test_unavailable");
+      return result.value.websiteTests;
+    },
     async capability() {
       const result = await client.invoke({ schemaVersion: 1, requestId: crypto.randomUUID(), method: "app.snapshot", params: {} });
       return { state: result.ok && "capabilities" in result.value && result.value.capabilities.operations.some(

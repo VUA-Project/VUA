@@ -78,9 +78,20 @@ pub struct NetworkReport {
     pub results: Vec<NetworkObservation>,
 }
 
-/// Adapter owns bounded HTTPS IO. No arbitrary host, shell command, credential or
-/// machine-network mutation is accepted by this port.
+/// One website card's observation, without browser cookies or response bodies.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct WebsiteObservation {
+    pub url: String,
+    pub status: NetworkStatus,
+    pub elapsed_ms: u64,
+    pub http_status: Option<u16>,
+}
+
+/// Adapter owns bounded HTTPS IO. Website URLs are explicit user choices; the
+/// legacy region probe owns its fixed targets. Neither accepts commands or credentials.
 pub trait NetworkProbe: Send + Sync {
+    fn test_websites(&self, urls: &[String]) -> Vec<WebsiteObservation>;
     fn probe(
         &self,
         targets: &[NetworkTarget],
@@ -94,6 +105,10 @@ pub struct NetworkService {
 }
 
 impl NetworkService {
+    /// Caller selects the cards; the adapter bounds concurrent, read-only IO.
+    pub fn test_websites(&self, urls: &[String]) -> Vec<WebsiteObservation> {
+        self.probe.test_websites(urls)
+    }
     pub fn new(probe: Arc<dyn NetworkProbe>, clock: Arc<dyn crate::Clock>) -> Self {
         Self { probe, clock }
     }
@@ -134,6 +149,9 @@ mod tests {
     use super::*;
     struct Probe;
     impl NetworkProbe for Probe {
+        fn test_websites(&self, _: &[String]) -> Vec<WebsiteObservation> {
+            Vec::new()
+        }
         fn probe(
             &self,
             targets: &[NetworkTarget],

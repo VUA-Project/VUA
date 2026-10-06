@@ -14,6 +14,18 @@
  *   (DEV-only, reachable only from gateway fixtures, tree-shaken in release).
  */
 export const strings = {
+  websiteTests: {
+    title: "Website tests", test: "Test", testAll: "Test all", testing: "Testing…",
+    add: "Add website", edit: "Edit website", editSite: "Edit {name}", testSite: "Test {name}",
+    name: "Name", url: "Website URL", save: "Save", cancel: "Cancel", remove: "Remove",
+    milliseconds: "{ms} ms", httpStatus: "HTTP {code}", resultDetail: "{status} · {ms} ms",
+    invalid: "Enter a name and a unique HTTPS URL without login information or a fragment.",
+    empty: "Add a website with the + button.", unavailable: "Website testing is currently unavailable. Software setup can continue.",
+    storageFailed: "Changes apply for this session but could not be saved.",
+    help: "Connection help", detectRegion: "Detect region",
+    scope: "Time to website response headers, not game ping or download speed. Tests run only when clicked, without account cookies.",
+    statuses: { timeout: "Timed out", connection_failed: "Failed", probe_error: "Unavailable", http_error: "HTTP error", redirected: "Redirect", reachable: "Connected" },
+  },
   network: {
     lagTitle: "Connected, but a distant instance feels slow?",
     lagRegion: "Check the instance's server region in VRChat. Compare with an instance closer to you and your friends, and check the game's ping. A successful website check does not measure this cross-region delay.",
@@ -367,7 +379,7 @@ demoTaskTitle: "Demo task",
       },
       network: {
         title: "Network checks live here",
-        body: "Before installing, VUA checks each service (Steam, VRChat and more) separately. Follow a remedy and re-check when something fails. The check never signs in to an account.",
+        body: "Test VRChat, Steam or GitHub individually, or test all websites together. The + button adds a website. Connection help contains regional advice. Tests run only when clicked and never sign in.",
         absent: "The network checks appear here once an environment deployment goal is selected.",
       },
       checks: {

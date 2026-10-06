@@ -5,6 +5,8 @@
  * - scenario 用 sessionStorage(仅本次会话,见 DevScenarioBar)。
  */
 export const storageKeys = {
+  /** Website destinations only; measured responses remain session-local. */
+  testWebsites: "vua-test-websites-v1",
   /** N1 download-source preference; absence enables region-aware mirror fallback. */
   unityMirrors: "vua-unity-mirrors",
   lastPage: "vua-last-page",

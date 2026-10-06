@@ -1,15 +1,91 @@
 //! Read-only, bounded first-play HTTPS probes. A fresh client never borrows browser
-//! cookies. URLs are adapter-owned; redirects stay on the selected vendor's HTTPS
-//! hosts. Failed probes return classifications, never raw URLs, IPs or error logs.
+//! cookies. Regional targets are adapter-owned; website cards supply validated
+//! HTTPS destinations. Responses return classifications, never page bodies or logs.
 use reqwest::{redirect::Policy, Client};
 use std::time::{Duration, Instant};
 use vua_orchestrator::network::{
     NetworkObservation, NetworkProbe, NetworkRegion, NetworkStatus, NetworkTarget,
+    WebsiteObservation,
 };
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(6);
 const BATCH_TIMEOUT: Duration = Duration::from_secs(8);
 pub struct HttpsNetworkProbe;
+
+/// Same boundary as the desktop contract: explicit HTTPS URLs, no embedded login.
+pub fn valid_website_url(value: &str) -> bool {
+    value.len() <= 2048
+        && value.trim() == value
+        && url::Url::parse(value).is_ok_and(|u| {
+            u.scheme() == "https"
+                && u.host_str().is_some()
+                && u.username().is_empty()
+                && u.password().is_none()
+                && u.fragment().is_none()
+                && u.port_or_known_default() == Some(443)
+        })
+}
+
+fn website_failure(url: &str, status: NetworkStatus, elapsed_ms: u64) -> WebsiteObservation {
+    WebsiteObservation {
+        url: url.to_owned(),
+        status,
+        elapsed_ms,
+        http_status: None,
+    }
+}
+
+/// Fetch headers only, with the OS/process network route. No cookies or credentials
+/// are installed on this fresh client. A HEAD-only denial retries GET to headers,
+/// then drops the response without consuming the page body.
+async fn test_website(value: String) -> WebsiteObservation {
+    let started = Instant::now();
+    let client = Client::builder()
+        .https_only(true)
+        .timeout(REQUEST_TIMEOUT)
+        .connect_timeout(Duration::from_secs(4))
+        .user_agent("VUA-Website-Test/0.1")
+        .redirect(Policy::custom(|a| {
+            if a.previous().len() <= 3 && valid_website_url(a.url().as_str()) {
+                a.follow()
+            } else {
+                a.stop()
+            }
+        }))
+        .build();
+    let Ok(client) = client else {
+        return website_failure(&value, NetworkStatus::ProbeError, 0);
+    };
+    let result = tokio::time::timeout(REQUEST_TIMEOUT, async {
+        let response = client.head(&value).send().await?;
+        if matches!(response.status().as_u16(), 405 | 501) {
+            drop(response);
+            client.get(&value).send().await
+        } else {
+            Ok(response)
+        }
+    })
+    .await;
+    let elapsed_ms = started.elapsed().as_millis() as u64;
+    match result {
+        Ok(Ok(response)) => WebsiteObservation {
+            url: value,
+            status: classify_http(response.status().as_u16()),
+            elapsed_ms,
+            http_status: Some(response.status().as_u16()),
+        },
+        Ok(Err(error)) => website_failure(
+            &value,
+            if error.is_timeout() {
+                NetworkStatus::Timeout
+            } else {
+                NetworkStatus::ConnectionFailed
+            },
+            elapsed_ms,
+        ),
+        Err(_) => website_failure(&value, NetworkStatus::Timeout, elapsed_ms),
+    }
+}
 
 fn endpoint(target: NetworkTarget) -> &'static str {
     match target {
@@ -154,6 +230,55 @@ async fn region() -> NetworkRegion {
 }
 
 impl NetworkProbe for HttpsNetworkProbe {
+    fn test_websites(&self, urls: &[String]) -> Vec<WebsiteObservation> {
+        // Validate again at the IO boundary, even when called outside Provider.
+        if urls.is_empty() || urls.len() > 12 || urls.iter().any(|u| !valid_website_url(u)) {
+            return urls
+                .iter()
+                .map(|u| website_failure(u, NetworkStatus::ProbeError, 0))
+                .collect();
+        }
+        let started = Instant::now();
+        let Ok(runtime) = tokio::runtime::Runtime::new() else {
+            return urls
+                .iter()
+                .map(|u| website_failure(u, NetworkStatus::ProbeError, 0))
+                .collect();
+        };
+        let observations = runtime.block_on(async {
+            let mut pending = tokio::task::JoinSet::new();
+            for value in urls {
+                pending.spawn(test_website(value.clone()));
+            }
+            let mut results = Vec::new();
+            let _ = tokio::time::timeout(BATCH_TIMEOUT, async {
+                while let Some(result) = pending.join_next().await {
+                    if let Ok(value) = result {
+                        results.push(value);
+                    }
+                }
+            })
+            .await;
+            pending.abort_all();
+            urls.iter()
+                .map(|value| {
+                    results
+                        .iter()
+                        .find(|r| &r.url == value)
+                        .cloned()
+                        .unwrap_or_else(|| {
+                            website_failure(
+                                value,
+                                NetworkStatus::Timeout,
+                                started.elapsed().as_millis() as u64,
+                            )
+                        })
+                })
+                .collect()
+        });
+        runtime.shutdown_background();
+        observations
+    }
     fn probe(
         &self,
         targets: &[NetworkTarget],
@@ -223,6 +348,20 @@ impl NetworkProbe for HttpsNetworkProbe {
 mod tests {
     use super::*;
     use std::io::{Read, Write};
+
+    #[test]
+    fn website_destinations_exclude_credentials_and_non_https() {
+        assert!(valid_website_url("https://github.com/"));
+        for value in [
+            "http://github.com",
+            "https://user:secret@example.com",
+            "file:///tmp/test",
+            "https://example.com:8443",
+            "https://example.com/#secret",
+        ] {
+            assert!(!valid_website_url(value), "{value}");
+        }
+    }
 
     fn serve_once(status: u16, delay: Duration) -> (String, std::thread::JoinHandle<String>) {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();

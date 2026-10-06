@@ -1353,7 +1353,7 @@ fn handle_application_request(state: &mut HostState, request: &Value) -> FrameOu
     if method.starts_with("packages.") {
         return packages_request(state, method, request, request_id, correlation_id);
     }
-    if method == "environment.checkNetwork" {
+    if matches!(method, "environment.checkNetwork" | "environment.testWebsites") {
         return crate::network_routes::request(
             state.environment.as_ref().map(|s| &s.network), request, request_id, correlation_id,
         );
@@ -1649,6 +1649,7 @@ fn served_capabilities(state: &HostState) -> Value {
         {"operationId": "task.list", "availability": "available"},
         {"operationId": "environment.getSnapshot", "availability": "available"},
         {"operationId": "environment.checkNetwork", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "environment.testWebsites", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
         deployment_capability(state, "environment.planDeployment"),
         deployment_capability(state, "environment.executeDeployment"),
         {"operationId": "environment.verifyEditor", "availability": "available"},

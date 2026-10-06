@@ -266,10 +266,3 @@
 .vua-deployment__location { display: block; width: min(100%, 36rem); margin-block: 8px; }
 .vua-deployment code { overflow-wrap: anywhere; }
 .vua-deployment li { margin-block: 12px; }
-.vua-network { margin-block-end: var(--vua-space-4); }
-.vua-network__options, .vua-network__actions { display: flex; flex-wrap: wrap; gap: var(--vua-space-3); }
-.vua-network__options label { display: grid; gap: var(--vua-space-2); min-width: min(100%, 16rem); }
-.vua-network__options select { padding: var(--vua-space-2); color: var(--vua-text-strong); background: var(--vua-bg-panel); border: 1px solid var(--vua-border); border-radius: var(--vua-radius-control); }
-.vua-network__results { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: var(--vua-space-3); }
-.vua-network__results li, .vua-network__guidance { padding: var(--vua-space-3); border: 1px solid var(--vua-border); border-radius: var(--vua-radius-control); }
-.vua-network__results header { display: flex; flex-wrap: wrap; align-items: center; gap: var(--vua-space-2); }

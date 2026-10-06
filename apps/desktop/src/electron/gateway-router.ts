@@ -102,6 +102,8 @@ function toApplicationRequest(
       };
     case "environment.checkNetwork":
       return { ...base, kind: "query", method: request.method, params: request.params };
+    case "environment.testWebsites":
+      return { ...base, kind: "query", method: request.method, params: request.params };
     case "environment.planDeployment":
       return { ...base, kind: "query", method: request.method, params: request.params };
     case "environment.executeDeployment":

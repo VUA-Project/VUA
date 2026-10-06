@@ -1,5 +1,6 @@
 import type { DeploymentIntent, DeploymentPlan, DeploymentProgress, TaskSnapshotV01 } from "@vua/contracts";
 import type { NetworkIntent, NetworkReport } from "@vua/contracts";
+import type { WebsiteObservation } from "@vua/contracts";
 import type { CheckZone, DeployerView, VersionTrack } from "../features/deployer/deployer-model.ts";
 import type { FixPlanV1 } from "../features/deployer/fix-plan-model.ts";
 import type { CapabilityReport, Unsubscribe } from "./types.ts";
@@ -59,6 +60,8 @@ export interface EnvironmentPort {
 
 /** Explicit HTTPS diagnostics, independent of software readiness and the legacy TCP check. */
 export interface NetworkPort {
+  websiteCapability(): Promise<CapabilityReport>;
+  testWebsites(urls: readonly string[]): Promise<readonly WebsiteObservation[]>;
   capability(): Promise<CapabilityReport>;
   check(intent: NetworkIntent): Promise<NetworkReport>;
 }

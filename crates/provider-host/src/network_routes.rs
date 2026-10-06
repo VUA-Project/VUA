@@ -47,6 +47,38 @@ pub(crate) fn request(
     {
         return reject("vua.network.invalid_intent", "validation");
     }
+    if request["method"] == "environment.testWebsites" {
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Websites {
+            urls: Vec<String>,
+        }
+        let Ok(params) = serde_json::from_value::<Websites>(request["params"].clone()) else {
+            return reject("vua.network.invalid_intent", "validation");
+        };
+        if params.urls.is_empty()
+            || params.urls.len() > 12
+            || params
+                .urls
+                .iter()
+                .any(|u| !vua_project_manager::network_probe::valid_website_url(u))
+            || params
+                .urls
+                .iter()
+                .collect::<std::collections::HashSet<_>>()
+                .len()
+                != params.urls.len()
+        {
+            return reject("vua.network.invalid_intent", "validation");
+        }
+        let Some(service) = service else {
+            return reject("vua.network.unavailable", "unavailable");
+        };
+        return FrameOutcome::Response(application_success(
+            id,
+            json!({"websiteTests": service.test_websites(&params.urls)}),
+        ));
+    }
     let Ok(params) = serde_json::from_value::<Params>(request["params"].clone()) else {
         return reject("vua.network.invalid_intent", "validation");
     };
@@ -62,6 +94,26 @@ pub(crate) fn request(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn website_query_validates_custom_destinations_before_service_access() {
+        let base = json!({"contractVersion":"0.1", "requestId":"w", "correlationId":"w", "kind":"query", "method":"environment.testWebsites", "params":{"urls":["https://github.com/"]}});
+        let code = |query: &Value| match request(None, query, "w", "w") {
+            FrameOutcome::Response(value) => value["error"]["code"].as_str().unwrap().to_owned(),
+            _ => panic!("expected response"),
+        };
+        assert_eq!(code(&base), "vua.network.unavailable");
+        for params in [
+            json!({"urls":[]}),
+            json!({"urls":["http://example.com"]}),
+            json!({"urls":["https://u:p@example.com"]}),
+            json!({"urls":["https://github.com/", "https://github.com/"]}),
+            json!({"urls":["https://github.com/"],"cookie":"private"}),
+        ] {
+            let mut query = base.clone();
+            query["params"] = params;
+            assert_eq!(code(&query), "vua.network.invalid_intent");
+        }
+    }
     #[test]
     fn validates_before_absence_and_never_accepts_a_url_or_cookie() {
         let query = json!({"contractVersion":"0.1", "requestId":"n", "correlationId":"n", "kind":"query", "method":"environment.checkNetwork", "params":{"intent":{"route":"desktop_play", "region":"auto"}}});

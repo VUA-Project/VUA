@@ -8,6 +8,18 @@ import type { Strings } from "./strings.en.ts";
  * - {placeholder} 이름은 소스 테이블과 정확히 일치해야 함.
  */
 export const strings: Strings = {
+  websiteTests: {
+    title: "웹사이트 테스트", test: "테스트", testAll: "모두 테스트", testing: "테스트 중…",
+    add: "사이트 추가", edit: "사이트 편집", editSite: "{name} 편집", testSite: "{name} 테스트",
+    name: "이름", url: "사이트 주소", save: "저장", cancel: "취소", remove: "삭제",
+    milliseconds: "{ms} ms", httpStatus: "HTTP {code}", resultDetail: "{status} · {ms} ms",
+    invalid: "이름과 중복되지 않는 HTTPS 주소를 입력하세요. 로그인 정보와 프래그먼트는 포함할 수 없습니다.",
+    empty: "오른쪽 위 + 버튼으로 사이트를 추가하세요.", unavailable: "현재 사이트 테스트를 사용할 수 없습니다. 소프트웨어 설치는 계속할 수 있습니다.",
+    storageFailed: "이번 세션에는 적용되지만 저장하지 못했습니다.",
+    help: "연결 도움말", detectRegion: "지역 확인",
+    scope: "웹사이트 응답 시간이며 게임 지연이나 다운로드 속도가 아닙니다. 클릭할 때만 계정 쿠키 없이 테스트합니다.",
+    statuses: { timeout: "시간 초과", connection_failed: "실패", probe_error: "사용 불가", http_error: "HTTP 오류", redirected: "리디렉션", reachable: "연결됨" },
+  },
   network: {
     lagTitle: "접속은 되지만 먼 지역의 인스턴스가 느린가요?",
     lagRegion: "VRChat에서 인스턴스의 서버 지역을 확인하세요. 본인과 친구들에게 더 가까운 지역의 인스턴스와 비교하고 게임 내 ping을 확인하세요. 웹사이트 접속 성공은 지역 간 지연을 측정한 결과가 아닙니다.",
@@ -357,7 +369,7 @@ demoTaskTitle: "데모 작업",
       },
       network: {
         title: "네트워크 점검은 여기",
-        body: "설치 전에 Steam, VRChat 등 각 서비스의 도달 가능성을 항목별로 확인합니다. 문제가 있으면 해결 방법을 따른 뒤 다시 점검하세요. 점검은 계정에 로그인하지 않습니다.",
+        body: "VRChat, Steam, GitHub를 개별 또는 한꺼번에 테스트하세요. + 버튼으로 사이트를 추가하고 연결 도움말에서 지역별 안내를 확인할 수 있습니다. 클릭할 때만 테스트하며 로그인하지 않습니다.",
         absent: "환경 배포 목표를 선택하면 여기에 네트워크 점검이 표시됩니다.",
       },
       checks: {

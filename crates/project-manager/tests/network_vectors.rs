@@ -30,6 +30,9 @@ fn network_vectors_and_service_output_conform() {
     }
     struct Probe;
     impl NetworkProbe for Probe {
+        fn test_websites(&self, _: &[String]) -> Vec<WebsiteObservation> {
+            Vec::new()
+        }
         fn probe(
             &self,
             targets: &[NetworkTarget],

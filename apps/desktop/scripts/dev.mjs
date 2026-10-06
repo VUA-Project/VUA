@@ -124,6 +124,14 @@ async function waitForRenderer() {
 const killedStale = preflightPort(VITE_PORT);
 if (killedStale) await waitPortFree(VITE_PORT);
 
+// Refresh linked CJS packages before Vite prebundles or Electron imports them.
+// TypeScript sees source types even when their runtime dist is still outdated.
+const dependencies = spawn("pnpm", ["--filter", "@vua/orchestrator-provider", "build"], {
+  stdio: "inherit", shell: useShell,
+});
+const dependencyCode = await new Promise((resolve) => dependencies.once("exit", resolve));
+if (dependencyCode !== 0) throw new Error("Desktop runtime dependencies failed to build");
+
 const vite = spawn("pnpm", ["exec", "vite", "--port", String(VITE_PORT)], { stdio: "inherit", shell: useShell });
 
 // Electron 额外参数透传(W25 走查取证护栏,2026-09-23):VUA_ELECTRON_ARGS

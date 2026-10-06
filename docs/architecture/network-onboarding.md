@@ -1,20 +1,28 @@
 # First-play network checks and guidance
 
-> Document version: 1.0.0
+> Document version: 1.1.0
 > Status: Accepted
-> Last conformance review: 2026-10-03
+> Last conformance review: 2026-10-07 (source and targeted checks; author UI review follows)
 > Scope: N1 first desktop/PICO play release
 
 ## User outcome
 
-The play environment page offers a network check before software setup. The user chooses
-desktop play or PICO streaming, and automatic or manual network region. Pressing **Check
-network** checks each relevant service concurrently, then shows its response, when the check
-ran, and an action for any problem. **Check again** replaces the old report. Changing either
-selection clears the previous report. **Continue setup** collapses the panel and keeps software
-setup available regardless of the result; reopening it does not claim that a check succeeded.
+The play environment page offers a compact **Website tests** card. The default sites, in order,
+are **VRChat, Steam, GitHub** (author ruling, 2026-10-07). Each tile has a local icon, name and
+test action/result. The header offers **Test all** and **+**. A test shows busy state, then
+response time in milliseconds, an HTTP status, timeout or failure. Retesting a single site
+preserves the other cards' results. No request runs merely because the page opens.
 
-Desktop mode checks the Steam registration/store entrance, Steam Community, the Steam Windows
+Users can add, edit and remove HTTPS sites, up to twelve. Only names and URLs persist locally;
+responses do not. **Connection help** is collapsed by default and contains region selection,
+explicit region detection, mainland-only UU advice and cross-region lag explanations. Software
+setup remains available with any result. The tour keeps its existing `.vua-network` anchor.
+
+The interaction reference is [Clash Verge Rev's website test card](https://github.com/clash-verge-rev/clash-verge-rev/blob/dev/src/components/home/test-card.tsx).
+VUA uses its own React/CSS, local vector glyphs and Gateway/Rust implementation; no upstream
+source or assets are bundled.
+
+The retained regional query checks the Steam registration/store entrance, Steam Community, the Steam Windows
 installer download entrance, and the VRChat website. PICO mode adds the PICO Connect download
 page. These are concrete checks of those entrances, not an exhaustive inventory of game login,
 asset CDNs or Steam content servers. Response time measures time to HTTP headers, not game
@@ -54,20 +62,30 @@ and [in-game ping/FPS and instance selection](https://help.vrchat.com/hc/en-us/a
 
 ## Implementation responsibilities
 
-- `NetworkPanel` owns selection, busy/elapsed state, translated result presentation, fixed
-  official-page links, UU guidance and continue/recheck actions. It uses the typed Gateway.
-- `createLiveNetworkPort` validates the complete report and the matching request intent. The
-  Electron Gateway routes the closed query; neither layer chooses arbitrary probe URLs.
+- `NetworkPanel` owns website preferences, per-card state and folded help. It uses the typed
+  Gateway, never renderer fetch. `website-model` validates saved destinations and user edits.
+- `createLiveNetworkPort` validates website observations against the exact requested URL list.
+  The additive [website-tests v0.1](../protocols/website-tests-v0.1.md) query accepts explicit
+  credential-free HTTPS destinations. The separate regional query retains its closed intent.
 - `NetworkService` in the orchestrator selects the four/five targets, applies the region
   preference and timestamps the observations. There is no installation or readiness verdict.
 - `HttpsNetworkProbe` in project-manager owns vendor URLs, HTTPS requests and error
   classification. Provider-host composes it with the service and advertises the operation.
+
+Website tests run concurrently with a six-second per-site/eight-second batch budget. Redirects
+are limited to three credential-free HTTPS destinations. HEAD 405/501 retries GET to response
+headers and immediately drops the response. Other HTTP errors remain visible; no browser
+challenge is automated. This request uses the Provider's network route, not a selected proxy
+node and not the game's connection. The result is time to headers, not throughput or game ping.
 
 The [network contract](../protocols/environment-network-v0.1.md) owns fields, statuses and
 validation. The frozen `environment.getSnapshot` TCP observation remains compatible for existing
 consumers; the live play page uses the dedicated HTTPS panel instead of its legacy TCP card.
 
 ## IO and failure behavior
+
+The following rules describe the retained regional query used by explicit region detection;
+the website-card operation is specified separately above.
 
 Checks run only when requested. Each service receives an HTTPS HEAD request, which fetches
 headers without downloading page or installer bodies. A fresh client sends no account
@@ -96,4 +114,5 @@ tests exercise HTTP classifications and redirect boundaries. Real-machine report
 
 ## Document changelog
 
+- 1.1.0 (2026-10-07): replace the large network form with editable VRChat/Steam/GitHub test cards and fold regional advice into help.
 - 1.0.0 (2026-10-03): define the implemented first-play network check, UU-only recommendation and its boundaries.

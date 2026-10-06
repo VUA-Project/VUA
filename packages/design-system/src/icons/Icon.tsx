@@ -30,7 +30,8 @@ export type IconName =
   | "dash"
   | "home"
   | "bell"
-  | "gauge";
+  | "gauge"
+  | "add";
 
 const paths: Record<IconName, string> = {
   check: "M5 12.5l4.5 4.5L19 7.5",
@@ -65,6 +66,8 @@ const paths: Record<IconName, string> = {
   bell: "M12 3.5a5 5 0 0 0-5 5v2.7c0 .53-.16 1.04-.46 1.47L5 15.2A1.25 1.25 0 0 0 6.04 17h11.92A1.25 1.25 0 0 0 19 15.2l-1.54-2.53a2.3 2.3 0 0 1-.46-1.47V8.5a5 5 0 0 0-5-5Z M10 18.6a2.1 2.1 0 0 0 4 0",
   // 仪表盘(顶栏占用查看器入口):半圆表盘 + 指针 + 轴心
   gauge: "M3.5 17.5a9 9 0 1 1 17 0 M12 13.5l3.6-4.8 M12 16.8v.5",
+  // 标准加号(部署页网站测试的「添加网站」入口)
+  add: "M12 5v14M5 12h14",
 };
 
 export interface IconProps {

@@ -12,6 +12,18 @@ import type { Strings } from "./strings.en.ts";
  *   仅 gateway fixture 可达,生产构建被 Tree-shaking 剔除)。
  */
 export const strings: Strings = {
+  websiteTests: {
+    title: "网站测试", test: "测试", testAll: "测试全部", testing: "测试中…",
+    add: "添加网站", edit: "编辑网站", editSite: "编辑 {name}", testSite: "测试 {name}",
+    name: "名称", url: "网站地址", save: "保存", cancel: "取消", remove: "移除",
+    milliseconds: "{ms} ms", httpStatus: "HTTP {code}", resultDetail: "{status} · {ms} ms",
+    invalid: "请输入名称和不重复的 HTTPS 地址，地址不能含登录信息或片段标记。",
+    empty: "点击右上角 + 添加网站。", unavailable: "网站测试暂不可用，可以继续安装软件。",
+    storageFailed: "修改本次有效，但未能保存。",
+    help: "连接帮助", detectRegion: "识别地区",
+    scope: "显示网站响应时间，不是游戏延迟或下载速度。仅在点击后测试，不携带账号 Cookie。",
+    statuses: { timeout: "超时", connection_failed: "失败", probe_error: "不可用", http_error: "HTTP 错误", redirected: "重定向", reachable: "已连接" },
+  },
   network: {
     lagTitle: "能进入游戏，但远方房间很卡？",
     lagRegion: "先在 VRChat 内查看房间实例的服务器地区，对比一个更接近用户和同伴所在地的实例，并查看游戏内的延迟。网页检测正常不代表跨地区房间的延迟低。",
@@ -365,7 +377,7 @@ demoTaskTitle: "演示任务",
       },
       network: {
         title: "网络检查在这里",
-        body: "安装前,VUA 会分项检查 Steam、VRChat 等服务的可达性;有问题按建议处理后重新检测即可。检测不登录任何账号。",
+        body: "单独测试 VRChat、Steam 或 GitHub，也可以测试全部网站。右上角 + 可添加网站，「连接帮助」中有地区建议。仅在点击后测试，不登录账号。",
         absent: "选择环境部署目标后,网络检查会显示在这里。",
       },
       checks: {
