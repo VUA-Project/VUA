@@ -54,6 +54,7 @@ import {
   resolveForestVariant,
 } from "./app/ui-variant-discovery.ts";
 import { Button } from "./components/primitives/Button.tsx";
+import { BrandMark } from "./components/BrandMark.tsx";
 import { Card } from "./components/primitives/Card.tsx";
 import { EmptyState } from "./components/primitives/EmptyState.tsx";
 import { Icon } from "@vua/design-system";
@@ -1056,9 +1057,13 @@ function AppShell({
        *  拖拽属性只放在容器与品牌元素上,Tabs/按钮保持可点 */}
       <header className="vua-shell__header vua-drag-region">
         <div className="vua-shell__brand vua-drag-region">
-          {/* §10:占位字标阶段,中性色不随模块变(§10【建议】),正式标志 v0.5 以后另立文档;
-           *  2026-09-25 用户裁决:「VRC Ultra Assistant」副标题自顶栏退役 */}
-          <span className="vua-shell__wordmark vua-drag-region">VUA</span>
+          {/* 正式字标(品牌候选 06「Level」,2026-10-07 用户裁决):随模块辖区
+           *  变色——环境部署紫、模型生产橙(--vua-accent 别名自动切换),
+           *  设置 = 三色混合(V 紫/U 中性/A 橙)。「中性色不随模块变」的
+           *  占位字标纪律随之退役 */}
+          <span className="vua-shell__wordmark vua-drag-region">
+            <BrandMark variant={activeModule === "settings" ? "mixed" : "solid"} />
+          </span>
         </div>
         {/* tabs 容器 flex:1 占满中段——拖拽属性必须落在容器上,否则按钮右侧的
          *  空白属于 nav 而非 header,无法拖动窗口(按钮自身不受影响) */}
