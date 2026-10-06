@@ -48,7 +48,9 @@ export function AddToRecipeDialog({
     setLoading(true);
     setFeedback(null);
     try {
-      const doc = await gateway.recipe.get(recipeId);
+      const read = await gateway.recipe.get(recipeId);
+      const doc = read?.document;
+      const baseRevision = read?.revision ?? 0;
       const existingAssets = (doc?.assets ?? []) as readonly RecipeAssetRef[];
       const existingIds = new Set(existingAssets.map((a) => a.identity));
       const fresh = selections.filter((s) => !existingIds.has(s.identity));
@@ -57,7 +59,9 @@ export function AddToRecipeDialog({
         ...(doc ?? { recipeId, title: recipeId, assets: [] }),
         assets: [...existingAssets, ...fresh],
       };
-      await gateway.recipe.save(recipeId, updatedDoc, 0);
+      // 乐观并发基线 = 读回的修订号(人审 C13 修复 2026-10-06:此前硬编码
+      // 0,对已存在配方的任何添加必然冲突被拒)
+      await gateway.recipe.save(recipeId, updatedDoc, baseRevision);
       const parts: string[] = [];
       if (fresh.length > 0) parts.push(fresh.map((f) => f.displayName).join("、"));
       if (skipped > 0) parts.push(`已含 ${skipped} 件`);

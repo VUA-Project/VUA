@@ -26,6 +26,7 @@ export function visibleNotifications(
   tasks: readonly TaskItem[],
   dismissed: ReadonlySet<string>,
   showCompleted: boolean,
+  terminalThisSession: ReadonlySet<string> = new Set(),
 ): readonly TaskItem[] {
   // notifyOnComplete(用户裁决 2026-10-02):短任务的完成通知保留到手动
   // 清除——默认"终态不显示"对秒级完成的任务是零反馈。同族只保留最新
@@ -38,8 +39,31 @@ export function visibleNotifications(
   return tasks.filter((task) => {
     if (dismissed.has(task.id)) return false;
     if (task.notifyOnComplete === true) return task.id === latestPersistentId;
-    return showCompleted || !isTerminalStatus(task.status);
+    if (isTerminalStatus(task.status)) {
+      // 会话终态集(人审 2026-10-06):启动前已终态的历史任务即使开着
+      // 「显示已完成」也不再堆在通知里;任务事实仍可经任务列表查询
+      return showCompleted && terminalThisSession.has(task.id);
+    }
+    return true;
   });
+}
+
+/** 会话终态集推进(纯函数):首帧即终态 = 启动残留,不入集;会话内
+ *  从非终态走到终态的任务入集(「显示已完成」只呈现这些) */
+export function advanceTerminalSessionSet(
+  previousStatuses: ReadonlyMap<string, TaskStatus>,
+  tasks: readonly TaskItem[],
+): Set<string> {
+  const next = new Set<string>();
+  for (const [id, status] of previousStatuses) {
+    if (isTerminalStatus(status)) next.add(id);
+  }
+  for (const task of tasks) {
+    if (!isTerminalStatus(task.status)) continue;
+    if (!previousStatuses.has(task.id)) continue;
+    next.add(task.id);
+  }
+  return next;
 }
 
 /** 清除动作的合法性:仅终态通知可清除(活动任务不可清除,取消走任务取消) */

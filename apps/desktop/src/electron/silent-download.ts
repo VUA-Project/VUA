@@ -21,6 +21,14 @@ export interface SilentDownloadQueueOptions {
   readonly log?: (line: string) => void;
   readonly sleep?: (ms: number) => Promise<void>;
   readonly now?: () => number;
+  /** 商品自动采纳钩子(人审 E18 修复 2026-10-06,Steam 式"下载即入库"):
+   *  该商品入队的全部文件落定后回调,携带**成功**文件的 downloadId 批,
+   *  调用方据此发 warehouse.importDownloads;有失败文件时同样回调成功批,
+   *  失败事实由下载任务面如实呈现 */
+  readonly onProductSettled?: (
+    productId: string,
+    completedDownloadIds: readonly string[],
+  ) => void;
 }
 
 export interface SilentDownloadQueue {
@@ -28,6 +36,9 @@ export interface SilentDownloadQueue {
   enqueue(productId: string, downloadableIds: readonly number[]): number;
   /** 队列中未发起的数量(诊断面) */
   pending(): number;
+  /** 下载事件汇回执:main 的 downloadSink 收到终态事件时按 sourceUrl 回喂,
+   *  借此把 downloadId 与 downloadableId 关联并推进商品落定 */
+  notifySettled(sourceUrl: string, downloadId: string, kind: "completed" | "failed" | "cancelled"): void;
 }
 
 export function createSilentDownloadQueue(options: SilentDownloadQueueOptions): SilentDownloadQueue {
@@ -45,6 +56,26 @@ export function createSilentDownloadQueue(options: SilentDownloadQueueOptions): 
   let running = false;
   let lastInitiatedAt = 0;
 
+  /** 发起后的在途跟踪:url → 条目;商品聚合:remaining / 成功 downloadId 批 */
+  const inFlight = new Map<string, { productId: string; downloadableId: number }>();
+  const products = new Map<
+    string,
+    { remaining: Set<number>; completed: string[] }
+  >();
+
+  function settle(url: string, downloadId: string, ok: boolean): void {
+    const tracked = inFlight.get(url);
+    if (tracked === undefined) return;
+    inFlight.delete(url);
+    const group = products.get(tracked.productId);
+    if (group === undefined) return;
+    group.remaining.delete(tracked.downloadableId);
+    if (ok) group.completed.push(downloadId);
+    if (group.remaining.size > 0) return;
+    products.delete(tracked.productId);
+    options.onProductSettled?.(tracked.productId, group.completed);
+  }
+
   async function drain(): Promise<void> {
     if (running) return;
     running = true;
@@ -59,6 +90,10 @@ export function createSilentDownloadQueue(options: SilentDownloadQueueOptions): 
         }
         lastInitiatedAt = now();
         const url = `https://booth.pm/downloadables/${entry.downloadableId}`;
+        inFlight.set(url, entry);
+        const group = products.get(entry.productId);
+        if (group !== undefined) group.remaining.add(entry.downloadableId);
+        else products.set(entry.productId, { remaining: new Set([entry.downloadableId]), completed: [] });
         try {
           // 经 will-download 管道:暂存/事件/任务/采纳全在既有面
           options.partitionSession.downloadURL(url);
@@ -98,6 +133,9 @@ export function createSilentDownloadQueue(options: SilentDownloadQueueOptions): 
     },
     pending() {
       return queue.length;
+    },
+    notifySettled(sourceUrl, downloadId, kind) {
+      settle(sourceUrl, downloadId, kind === "completed");
     },
   };
 }

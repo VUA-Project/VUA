@@ -45,9 +45,15 @@ export interface RecipeSaveResult {
   readonly revision: number;
 }
 
+/** get 的完整读回:文档 + 当前修订号(写回的乐观并发基线) */
+export interface RecipeRead {
+  readonly document: RecipeDocument;
+  readonly revision: number;
+}
+
 export interface RecipePort {
   list(): Promise<readonly RecipeListItem[]>;
-  get(recipeId: string): Promise<RecipeDocument | null>;
+  get(recipeId: string): Promise<RecipeRead | null>;
   save(recipeId: string, document: RecipeDocument, baseRevision: number): Promise<RecipeSaveResult>;
 }
 
@@ -77,11 +83,17 @@ export function createLiveRecipePort(client: GatewayClient): RecipePort {
         params: { recipeId },
       });
       if (!result.ok) return null;
-      const value = result.value as { recipeDocument?: unknown } | undefined;
-      if (value?.recipeDocument === undefined || typeof value.recipeDocument !== "object") {
+      const value = result.value as
+        | { recipeDocument?: unknown; revision?: unknown }
+        | undefined;
+      if (
+        value?.recipeDocument === undefined
+        || typeof value.recipeDocument !== "object"
+        || typeof value.revision !== "number"
+      ) {
         return null;
       }
-      return value.recipeDocument as RecipeDocument;
+      return { document: value.recipeDocument as RecipeDocument, revision: value.revision };
     },
     async save(recipeId, document, baseRevision) {
       const result = await client.invoke({

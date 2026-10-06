@@ -7,6 +7,7 @@ import {
   scrollClosesPanel,
   taskRowOpenTarget,
   visibleNotifications,
+  advanceTerminalSessionSet,
 } from "./notification-model.ts";
 import type { TaskItem } from "../../gateway/index.ts";
 
@@ -35,17 +36,23 @@ test("通知投影:默认只显示活动任务,终态不作为通知(核心条�
   );
 });
 
-test("通知投影:显示已完成开启时,未被清除的终态任务作为通知出现", () => {
-  const visible = visibleNotifications(tasks, new Set(), true);
+test("通知投影:显示已完成开启时,本会话终态任务作为通知出现(2026-10-06 语义)", () => {
+  // 会话集 = 这些任务在本会话内到达终态;不在集的终态(启动残留)不显示
+  const terminal = new Set(["t-done", "t-failed", "t-cancelled"]);
+  const visible = visibleNotifications(tasks, new Set(), true, terminal);
   assert.deepEqual(
     visible.map((task) => task.id),
     ["t-running", "t-done", "t-failed", "t-cancelled"],
   );
+  // 不传会话集(启动残留形态):终态一律不显示
+  const staleOnly = visibleNotifications(tasks, new Set(), true);
+  assert.deepEqual(staleOnly.map((task) => task.id), ["t-running"]);
 });
 
 test("通知投影:已清除集合只隐藏通知呈现(核心条件一)", () => {
   const dismissed = new Set(["t-failed"]);
-  const visible = visibleNotifications(tasks, dismissed, true);
+  const terminal = new Set(["t-done", "t-failed", "t-cancelled"]);
+  const visible = visibleNotifications(tasks, dismissed, true, terminal);
   assert.deepEqual(
     visible.map((task) => task.id),
     ["t-running", "t-done", "t-cancelled"],
@@ -143,4 +150,34 @@ test("notifyOnComplete 同族只显示最新一条(反复同步不堆通知山)"
   const running = mk("catalog-sync-4", "running");
   const withRunning = visibleNotifications([a, b, running], new Set(), false);
   assert.equal(withRunning.filter((t) => t.id === "catalog-sync-4").length, 1);
+});
+
+test("startup-terminal tasks never show even with show-completed on (2026-10-06)", () => {
+  const stale: TaskItem = {
+    id: "t-old", title: "old", status: "completed",
+    originPage: "warehouse", cancellable: false,
+  };
+  const terminal = advanceTerminalSessionSet(new Map(), [stale]);
+  assert.equal(terminal.has("t-old"), false);
+  const visible = visibleNotifications([stale], new Set(), true, terminal);
+  assert.equal(visible.length, 0);
+});
+
+test("tasks reaching terminal during the session stay visible until dismissed", () => {
+  const active: TaskItem = {
+    id: "t-run", title: "run", status: "running",
+    originPage: "warehouse", cancellable: true,
+  };
+  const first = advanceTerminalSessionSet(new Map(), [active]);
+  assert.equal(first.size, 0);
+  const finished: TaskItem = { ...active, status: "failed" };
+  const terminal = advanceTerminalSessionSet(
+    new Map([["t-run", "running" as const]]),
+    [finished],
+  );
+  assert.equal(terminal.has("t-run"), true);
+  const visible = visibleNotifications([finished], new Set(), true, terminal);
+  assert.equal(visible.length, 1);
+  const dismissed = visibleNotifications([finished], new Set(["t-run"]), true, terminal);
+  assert.equal(dismissed.length, 0);
 });

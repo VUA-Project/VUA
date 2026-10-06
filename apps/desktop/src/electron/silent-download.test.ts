@@ -67,3 +67,33 @@ describe("createSilentDownloadQueue", () => {
     expect(queue.pending()).toBe(0);
   });
 });
+
+describe("product settle tracking (auto-adoption hook)", () => {
+  it("fires onProductSettled with the completed download ids once all files settle", async () => {
+    const { session } = fakeSession();
+    const settled: Array<{ productId: string; ids: string[] }> = [];
+    const queue = createSilentDownloadQueue({
+      partitionSession: session,
+      onProductSettled: (productId, ids) => settled.push({ productId, ids: [...ids] }),
+      ...noWait,
+    });
+    queue.enqueue("booth:6190761", [11, 22]);
+    await vi.waitFor(() => expect(settled).toHaveLength(0));
+    // 两个文件先后落定:11 成功,22 失败 → 只在最后一个落定时回调一次,携带成功批
+    queue.notifySettled("https://booth.pm/downloadables/11", "dl-1", "completed");
+    queue.notifySettled("https://booth.pm/downloadables/22", "dl-2", "failed");
+    expect(settled).toEqual([{ productId: "booth:6190761", ids: ["dl-1"] }]);
+  });
+
+  it("ignores settle events for urls it never initiated", () => {
+    const { session } = fakeSession();
+    const settled: string[] = [];
+    const queue = createSilentDownloadQueue({
+      partitionSession: session,
+      onProductSettled: (productId) => settled.push(productId),
+      ...noWait,
+    });
+    queue.notifySettled("https://booth.pm/downloadables/999", "dl-x", "completed");
+    expect(settled).toHaveLength(0);
+  });
+});

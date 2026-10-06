@@ -33,16 +33,10 @@ import {
 import { format, strings, termLabel } from "../../i18n/index.ts";
 import type { PageId } from "../../app/nav-model.ts";
 import { ProductionFlowSectionHost } from "../workshop/ProductionFlowSectionHost.tsx";
-import {
-  lifecycleOf,
-  loadLifecycle,
-  saveLifecycle,
-  setPurchaseMark,
-  type StoredLifecycleV1,
-} from "./asset-lifecycle.ts";
 import { useDebugMode } from "../../app/debug-mode.ts";
 import { useCardSpotlight } from "./use-card-spotlight.ts";
 import type { RecipeAssetRef } from "../../gateway/recipe-port.ts";
+import type { TaskItem } from "../../gateway/task-port.ts";
 import { AddToRecipeDialog } from "./AddToRecipeDialog.tsx";
 import { CompatibleItemsDialog } from "./CompatibleItemsDialog.tsx";
 import { registerTaskIdentity } from "../../gateway/task-identity.ts";
@@ -182,14 +176,12 @@ function WarehouseListRow({
 
 function WarehouseCard({
   item,
-  purchased,
   selected,
   onSelect,
   onOpen,
   onMenu,
 }: {
   item: CatalogProductSummary;
-  purchased: boolean;
   selected: boolean;
   onSelect: () => void;
   onOpen: () => void;
@@ -244,8 +236,6 @@ function WarehouseCard({
           {item.availability !== "available" ? (
             <Badge tone="neutral">{copy.availability[item.availability]}</Badge>
           ) : null}
-          {/* 徽标只渲染非 unknown 事实:purchase 唯一来源是用户标记 */}
-          {purchased ? <Badge tone="success">{copy.card.purchasedBadge}</Badge> : null}
         {item.importedArtifacts > 0 ? (
           <Badge tone="neutral">{copy.importedBadge}</Badge>
         ) : null}
@@ -545,6 +535,9 @@ export function WarehousePage({
   // 按商品删除受理回执(诚实短提示;各条目任务进度在通知中心呈现)
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
   const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
+  // 静默下载观察(人审 E18 修复):受理后轮询任务面,下载任务全部落定
+  // (自动采纳已入队)即刷新卡片墙并提示入库结果——用户看得到"下到哪了"
+  const [downloadWatching, setDownloadWatching] = useState(false);
   // 静默下载(N5):清单对话的打开意图 + 受理回执提示
   const [checklistProduct, setChecklistProduct] = useState<{
     productId: string;
@@ -557,6 +550,7 @@ export function WarehousePage({
   const [source, setSource] = useState<
     "all" | "bought" | "gifts" | "free" | "local"
   >("all");
+  const [downloadState, setDownloadState] = useState<"all" | "downloaded" | "not-downloaded">("all");
 
   const [query, setQuery] = useState<WarehouseQueryState>(emptyWarehouseQuery);
   const [listState, setListState] = useState<ListState>({ kind: "loading" });
@@ -564,7 +558,6 @@ export function WarehousePage({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailState, setDetailState] = useState<DetailState>({ kind: "loading" });
   const [detailReloadKey, setDetailReloadKey] = useState(0);
-  const [lifecycle, setLifecycle] = useState<StoredLifecycleV1>(loadLifecycle);
   /** 素材卡右键菜单(S-XII):null 即关闭;动作全部映射真实能力 */
   const [cardMenu, setCardMenu] = useState<ContextMenuState | null>(null);
   // 素材导入弹窗(2026-09-20 导航重构):原独立页收敛为仓储页内弹窗,
@@ -716,6 +709,41 @@ export function WarehousePage({
       window.clearInterval(timer);
     };
   }, [syncNotice, syncRunId, gateway]);
+
+  // 终态判定与任务中心同表(九态闭集)
+  const isTerminalTaskStatus = (status: TaskItem["status"]): boolean =>
+    status === "completed"
+    || status === "completedWithWarnings"
+    || status === "failed"
+    || status === "cancelled";
+
+  useEffect(() => {
+    if (!downloadWatching) return;
+    let active = true;
+    const timer = window.setInterval(() => {
+      void gateway.task
+        .snapshot()
+        .then((view) => {
+          if (!active) return;
+          const downloading = view.tasks.some(
+            (task) => task.id.startsWith("dl-") && !isTerminalTaskStatus(task.status),
+          );
+          const adopting = view.tasks.some(
+            (task) => task.id.startsWith("task-wh-import-downloads-") && !isTerminalTaskStatus(task.status),
+          );
+          if (downloading || adopting) return;
+          setDownloadWatching(false);
+          setReloadKey((key) => key + 1);
+          setDownloadNotice(copy.cardMenu.downloadAdoptedHint);
+        })
+        .catch(() => {});
+    }, 2500);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 受理态驱动的一次性观察
+  }, [downloadWatching]);
 
   // Esc 清空选区(菜单打开时先关菜单,选区保留——Esc 一次只收一层)
   useEffect(() => {
@@ -922,6 +950,7 @@ export function WarehousePage({
         return;
       }
       setDownloadNotice(format(copy.cardMenu.downloadQueuedHint, { count: outcome.accepted }));
+      setDownloadWatching(true);
     } catch {
       setDownloadNotice(copy.cardMenu.downloadFailedHint);
     }
@@ -976,7 +1005,6 @@ export function WarehousePage({
       return;
     }
     setSelectedIds(new Set([item.productId]));
-    const marked = lifecycleOf(lifecycle, item.productId).purchase === "user_confirmed";
     const menuItems: ContextMenuState["items"] = [
       { id: "open", label: copy.card.detailsCta, onSelect: () => setSelectedId(item.productId) },
         {
@@ -1034,16 +1062,6 @@ export function WarehousePage({
             setCompatibleQuery({ productId: item.productId, title: item.title ?? item.productId });
           },
         },
-      {
-        id: "togglePurchased",
-        label: marked ? copy.card.unmarkPurchased : copy.card.markPurchased,
-        onSelect: () =>
-          setLifecycle((prev) => {
-            const next = setPurchaseMark(prev, item.productId, !marked);
-            saveLifecycle(next);
-            return next;
-          }),
-      },
     ];
     setCardMenu({ x: event.clientX, y: event.clientY, items: menuItems });
   };
@@ -1088,6 +1106,19 @@ export function WarehousePage({
           <option value="gifts">{copy.filters.sourceGifts}</option>
           <option value="free">{copy.filters.sourceFree}</option>
           <option value="local">{copy.filters.sourceLocal}</option>
+        </select>
+        {/* 下载状态筛选(人审 2026-10-06):静默下载自动采纳后,"已下载"
+            = importedArtifacts > 0(与卡片"已导入"徽标同一事实);客户端
+            过滤——列表数据已在手,该事实随快照到达 */}
+        <select
+          className="vua-warehouse__filter"
+          aria-label={copy.filters.downloadState}
+          value={downloadState}
+          onChange={(event) => setDownloadState(event.target.value as typeof downloadState)}
+        >
+          <option value="all">{copy.filters.downloadAll}</option>
+          <option value="downloaded">{copy.filters.downloaded}</option>
+          <option value="not-downloaded">{copy.filters.notDownloaded}</option>
         </select>
         <p className="vua-text-secondary">{copy.subtitle}</p>
         {/* 素材导入入口(2026-09-20 导航重构):原独立页(设计标准 §8.3)收敛为
@@ -1329,12 +1360,19 @@ export function WarehousePage({
                   role="list"
                 >
                   {source !== "local"
-                    ? resultsView?.items.map((item) =>
+                    ? resultsView?.items
+                      .filter((item) =>
+                        downloadState === "all"
+                          ? true
+                          : downloadState === "downloaded"
+                            ? item.importedArtifacts > 0
+                            : item.importedArtifacts === 0,
+                      )
+                      .map((item) =>
                         viewMode === "cards" ? (
                           <WarehouseCard
                             key={item.productId}
                             item={item}
-                            purchased={lifecycleOf(lifecycle, item.productId).purchase === "user_confirmed"}
                             selected={selectedIds.has(item.productId)}
                             onSelect={() => selectSingle(item.productId)}
                             onOpen={() => {

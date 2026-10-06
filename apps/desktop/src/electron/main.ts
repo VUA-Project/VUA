@@ -1111,6 +1111,32 @@ async function createWindow(): Promise<void> {
   // downloadURL 走 will-download 管道(暂存/事件/九态任务/采纳全复用)
   silentDownloadQueue = createSilentDownloadQueue({
     partitionSession: session.fromPartition("persist:vua-remote"),
+    onProductSettled: (productId, downloadIds) => {
+      if (downloadIds.length === 0 || provider === null) return;
+      void provider
+        .invoke({
+          contractVersion: APPLICATION_CONTRACT_VERSION,
+          requestId: crypto.randomUUID(),
+          correlationId: crypto.randomUUID(),
+          kind: "command",
+          method: "warehouse.importDownloads",
+          commandId: crypto.randomUUID(),
+          params: { downloadIds: [...downloadIds] },
+        })
+        .then((response) => {
+          if (!response.ok) {
+            process.stderr.write(`${JSON.stringify({
+              channel: "silent-download",
+              productId,
+              adoptError: response.error.code,
+            })}
+`);
+          }
+        })
+        .catch(() => {
+          /* 采纳失败如实留在已完成下载列表,用户可手动采纳 */
+        });
+    },
   });
 
   // 远程内容管理器(F4-2):独立 partition Session;目录浏览域为种子允许清单,
