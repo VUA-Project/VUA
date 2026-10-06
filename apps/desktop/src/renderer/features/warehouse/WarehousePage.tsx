@@ -916,6 +916,10 @@ export function WarehousePage({
     }
     try {
       const outcome = await face.start(productId, resolved);
+      if ("blocked" in outcome && outcome.blocked === "sign-in-required") {
+        setDownloadNotice(copy.cardMenu.downloadSessionExpired);
+        return;
+      }
       setDownloadNotice(format(copy.cardMenu.downloadQueuedHint, { count: outcome.accepted }));
     } catch {
       setDownloadNotice(copy.cardMenu.downloadFailedHint);
