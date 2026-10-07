@@ -1,4 +1,6 @@
 import { isDeploymentCommandId, isDeploymentParams, type DeploymentPlanParams, type DeploymentExecuteParams } from "./environment-deployment.js";
+import { isNetworkParams, type NetworkIntent } from "./environment-network.js";
+import { isWebsiteTestParams, type WebsiteTestParams } from "./website-test.js";
 import type {
   AppErrorV01,
   ApplicationEventV01,
@@ -902,6 +904,8 @@ export interface GatewayDeploymentPlanRequest { readonly schemaVersion: 1; reado
 export interface GatewayDeploymentExecuteRequest { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.executeDeployment"; readonly params: DeploymentExecuteParams & { readonly commandId: string } }
 
 export type DesktopGatewayRequestV1 =
+  | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.checkNetwork"; readonly params: { readonly intent: NetworkIntent } }
+  | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.testWebsites"; readonly params: WebsiteTestParams }
   | GatewayDeploymentPlanRequest
   | GatewayDeploymentExecuteRequest
   | AppSnapshotRequestV1
@@ -980,6 +984,8 @@ export const DESKTOP_GATEWAY_METHOD_KINDS = {
   "task.get": "query",
   "task.requestCancellation": "command",
   "environment.getSnapshot": "query",
+  "environment.checkNetwork": "query",
+  "environment.testWebsites": "query",
   "environment.planDeployment": "query",
   "environment.executeDeployment": "command",
   "environment.verifyEditor": "query",
@@ -1137,6 +1143,36 @@ export interface OverlayWindowShowResultV1 {
   readonly view: OverlayViewV1;
 }
 
+/**
+ * 指南定位载荷(首玩 B 切片 additive):按「主题 + 分节」打开引导视图。
+ * 跨进程只承载词面形状(两个字符串字段);主题/分节词表归渲染层引导模型
+ * 所有——形状外/词表外值由渲染层安全回退到开始页,Main 只做形状收窄。
+ */
+export interface GuideTargetV1 {
+  /** 引导主题词面(渲染层 guide-content 的 GuideTopicId 词表) */
+  readonly topic: string;
+  /** 主题内分节 id;缺席 = 主题开头 */
+  readonly section?: string;
+}
+
+/**
+ * Reader 窗口动作回执(三类引导裁决 2026-10-05 additive:准备阅读器是
+ * 普通不透明可缩放窗口)。阅读器只有「打开/聚焦」一个动作——没有覆盖层的
+ * 隐藏语义:关闭走系统窗框,关闭只关呈现,不影响安装任务与游戏。
+ */
+export interface ReaderWindowShowResultV1 {
+  readonly visible: boolean;
+}
+
+/**
+ * 游戏引导窗动作回执(三类引导裁决 additive,小窗手动版):小型透明置顶
+ * 窗。隐藏走窗内/Esc 的显式动作(隐藏不销毁,保留位置与进度);打开
+ * 永远 showInactive,不夺游戏焦点。窗口观察与自动显隐属后续切片。
+ */
+export interface GameGuideWindowShowResultV1 {
+  readonly visible: boolean;
+}
+
 export interface DesktopWindowApiV1 {
   minimize(): Promise<void>;
   toggleMaximize(): Promise<void>;
@@ -1155,6 +1191,44 @@ export interface DesktopWindowApiV1 {
   overlayViewEvents: {
     subscribe(listener: (view: OverlayViewV1) => void): () => void;
   };
+  /** 按定位打开引导(首玩 B 切片 additive):无窗口 = 创建并显示引导视图,
+   *  定位经加载查询投递;隐藏 = 显示并投递;可见 = 仅投递(绝不隐藏)。
+   *  target 缺席/null = 仅打开引导视图(渲染层恢复上次阅读位置);
+   *  已开窗的切换经 vua:overlay:guide-target 事件投递 */
+  showGuide(target?: GuideTargetV1 | null): Promise<OverlayWindowShowResultV1>;
+  /** 收起覆盖层(隐藏不销毁,保留窗口与阅读状态;additive):窗口缺席
+   *  幂等回执 false,绝不创建窗口 */
+  hideOverlay(): Promise<OverlayWindowVisibilityV1>;
+  /** 指南定位事件(Main → 本地渲染层;additive):已开窗时的定位通知
+   *  (载荷即 GuideTargetV1 或 null=仅切引导视图);只投递给覆盖层窗口本身 */
+  guideTargetEvents: {
+    subscribe(listener: (target: GuideTargetV1 | null) => void): () => void;
+  };
+  /** 打开(或聚焦)准备阅读器(三类引导裁决 2026-10-05 additive):普通
+   *  不透明可缩放阅读窗口,打开允许夺焦点(用户明确动作)。target 缺席/
+   *  null = 普通打开(渲染层恢复上次阅读位置);窗口缺席 = 创建并显示,
+   *  定位经加载查询 ?guideTopic= 投递;已开窗的定位经 vua:reader:guide-target
+   *  事件投递。阅读器没有隐藏语义:关闭走系统窗框,关闭只关呈现,不取消
+   *  安装任务、不停止游戏 */
+  showReader(target?: GuideTargetV1 | null): Promise<ReaderWindowShowResultV1>;
+  /** 阅读器定位事件(Main → 本地渲染层;additive):已开窗阅读器的定位
+   *  通知(载荷即 GuideTargetV1 或 null=仅打开恢复阅读);只投递给阅读器
+   *  窗口本身 */
+  readerTargetEvents: {
+    subscribe(listener: (target: GuideTargetV1 | null) => void): () => void;
+  };
+  /** 打开/聚焦游戏引导小窗(三类引导裁决 additive,手动版):小型透明置顶
+   *  窗,打开永远 showInactive 不夺焦点。窗口缺席 = 创建并显示;已开窗
+   *  (含隐藏态)= 显示;没有定位载荷——步骤与确认/跳过进度归渲染层
+   *  本地状态,隐藏走窗内/Esc 显式动作(隐藏不销毁)。窗口观察与跟随
+   *  属后续切片 */
+  showGameGuide(): Promise<GameGuideWindowShowResultV1>;
+  /** 隐藏游戏引导小窗(additive):渲染面显式动作(窗内按钮/Esc);隐藏不
+   *  销毁——位置与进度保留,重开经 showGameGuide;窗口缺席幂等 */
+  hideGameGuide(): Promise<GameGuideWindowShowResultV1>;
+  /** 返回主窗口(additive):主窗口最小化则还原,随后显示并聚焦——仅响应
+   *  用户明确动作(覆盖层「返回主窗口」),允许切换焦点 */
+  focusMainWindow(): Promise<void>;
 }
 
 /**
@@ -1529,6 +1603,10 @@ export function isDesktopGatewayRequestV1(value: unknown): value is DesktopGatew
     case "environment.getSnapshot":
     case "overlay.getSnapshot":
       return hasExactKeys(value, REQUEST_KEYS) && hasExactKeys(value.params, []);
+    case "environment.checkNetwork":
+      return hasExactKeys(value, REQUEST_KEYS) && isNetworkParams(value.params);
+    case "environment.testWebsites":
+      return hasExactKeys(value, REQUEST_KEYS) && isWebsiteTestParams(value.params);
     case "environment.planDeployment":
       return hasExactKeys(value, REQUEST_KEYS) && isDeploymentParams(value.params, false);
     case "environment.executeDeployment": {

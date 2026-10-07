@@ -85,7 +85,46 @@ development checkouts concurrently. Each process needs its own profile; explicit
 same directory disables that separation. Build/use the matching Provider from each checkout,
 and keep profiles/evidence local and out of Git.
 
-Packaged builds use `%APPDATA%\VUA` and ignore development profile overrides.
+Packaged apps ignore development profile overrides and retain `%APPDATA%\VUA` across updates
+and ZIP moves. Only the explicit packaged-smoke switch selects the smoke harness's isolated
+profile, including browser storage.
+
+## Windows ZIP preview
+
+```powershell
+pnpm --filter @vua/desktop package:win
+pnpm --filter @vua/desktop smoke:packaged
+```
+
+The first command compiles the existing application and real Rust Provider, then creates
+`apps/desktop/out/VUA-<package version>-windows-x64-preview.zip`. Version comes from the desktop
+package manifest; creating a preview does not select a new public release number. The ZIP is
+unsigned. It contains the current application, including creator code retained for later work;
+it is not a declaration that the first desktop/PICO play guide is complete.
+The packaging-only Main/preload bundles are emitted to `dist/packaged-electron/`; normal
+`dist/electron/` modules remain available to the existing development and security-smoke scripts.
+The package excludes workspace sources, tests and development mocks.
+
+Extract the entire archive and launch `VUA.exe`. The end-user machine needs neither Node nor
+Rust nor this checkout. Keep all runtime files together. Packaged app data lives in
+`%APPDATA%\VUA`, so replacing/moving the extracted folder does not remove settings or tasks.
+Close VUA before updating or deleting its program folder; remove data separately only when wanted.
+The ZIP's `resources/README.txt` includes these instructions and the unsigned-preview status.
+
+The smoke harness extracts the actual ZIP to a new temporary directory containing spaces and
+non-ASCII characters, uses an isolated profile and a hidden window, and queries the real bundled
+Provider through preload/Gateway. It repeats after moving the program folder and checks a missing
+backend produces a failed result. It removes developer tools from the launched process's PATH
+and supplies stale development overrides deliberately. No platform account or software installer
+is used. `out/packaged-smoke.json` records the archive SHA-256 and result; raw diagnostics and
+profiles stay in the named temporary directory for investigation. They are not committed.
+
+This bootstrap check complements the [first-play acceptance](../../docs/development-outline.md#first-play-release-acceptance).
+Physical PICO USB/Wi-Fi tests and human UI review are separate. Before publication, finish the
+exact-build license inventory, signing decision, illustrated guide and remaining play rows.
+The [Windows ZIP workflow](../../.github/workflows/windows-zip.yml) runs on relevant packaging
+PR changes or manual dispatch and keeps unsigned preview artifacts for seven days. It does
+not create a GitHub release; documentation-only edits do not trigger that workflow.
 
 ## Migration and verification records
 

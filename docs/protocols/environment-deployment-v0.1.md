@@ -2,7 +2,7 @@
 
 > Document version: 0.1
 > Status: Candidate
-> Updated: 2026-10-01
+> Updated: 2026-10-02
 > Scope: Additive purpose-plan and confirmed-execution family under Gateway v1 / application 0.1
 
 ## Reading context and ownership
@@ -55,18 +55,22 @@ and selected download destinations, including the author-selected NoUnityCN Edit
 Returned URLs are from the family's closed destination list; the renderer rejects arbitrary destinations.
 
 `downloadPolicy` contains `region` (`china_mainland`, `other`, `unknown`), `mirrorsEnabled`,
-ordered `sources` (`official`, `nounitycn`) and the fixed
-`hubFallbackUrl: "unityhub://2022.3.22f1/887be4894c44"`. Mainland China with mirrors enabled uses
-`[nounitycn, official]`; other/unknown uses `[official, nounitycn]`. Mirrors disabled uses
+ordered `sources` (`official`, `nounitycn`), `editorEditions: ["global", "china"]` and the fixed
+`hubFallbackUrl: "unityhub://2022.3.22f1/887be4894c44"`. Every region with mirrors enabled uses
+`[official, nounitycn]`. Mirrors disabled uses
 `[official]` in every region. The consumer validates the preference, source order and primary
 Editor URL together. The adapter owns the bounded country-category probe; play-only plans do
-not query it. Changing the setting clears displayed consent, including late pending plan replies.
+not query it. Request the global official entry first and classify the payload as f1/c1.
+If global installation fails, try China, then Hub. A c1 installation attempted from the first
+request is not repeated as a second China attempt. A consumer may read an older Candidate plan without `editorEditions`; all newly
+produced creator plans include and digest-bind the pair. Changing the setting clears displayed
+consent, including late pending plan replies.
 
 | Purpose | Required observations |
 | --- | --- |
 | Desktop play | Steam, VRChat; no Unity or SteamVR requirement |
 | PICO PCVR | Steam, VRChat, SteamVR, PICO Connect |
-| PC Avatar editing | Supported standalone Unity CLI (or existing supported Hub fallback), exact global Unity 2022.3.22f1 |
+| PC Avatar editing | Supported standalone Unity CLI (or existing supported Hub fallback), global Unity 2022.3.22f1 or accepted China 2022.3.22f1c1 |
 | Quest Avatar editing | Same creator prerequisites plus Android support, SDK/NDK and OpenJDK |
 
 Observations distinguish `verified`, `missing`, `unsuitable`, `detection_failed`. For play tools,
@@ -74,7 +78,10 @@ verified means the entry-point files were observed, not launched. Empty director
 unsuitable. Editor verification reads the executable version resource, not a version-shaped
 directory name. Android detection requires Editor identity and four expected module files;
 it does not replace an actual Android build test. Other supported Editor locations are not
-silently moved or overwritten: this slice inspects the explicitly chosen Editor root.
+silently moved or overwritten: this slice inspects the explicitly chosen Editor root. Inspect
+both version directories, prefer an actual global identity, then retain an actual c1 identity.
+Android module detection uses the selected Editor's directory. Frozen identity classification
+is preserved; N1's development admission uses the complete version instead of that classification.
 
 Actions are `retain`, `manual_install`, `inspect`, `install_unity_cli`, `install_editor`,
 `add_android_modules`.
@@ -89,7 +96,7 @@ not inferred from that boolean.
 
 The digest is SHA-256 over compact serde JSON serialization of the normalized intent, ordered
 steps, nullable installer identity and nullable download policy, in that order. It binds source
-order and mirror preference to confirmation. `installer` has `kind` (`unity_cli`, `hub_cli`,
+order, edition order and mirror preference to confirmation. `installer` has `kind` (`unity_cli`, `hub_cli`,
 `unity_cli_bootstrap`), `location`, `version`, `fileSha256` and `editorRoot`. Bootstrap identifies a
 reviewed artifact to acquire; other kinds identify an observed executable. The root equals intent;
 the file digest is 64 lowercase hexadecimal characters. Purpose order is normalized; timestamps are excluded. No consumer computes
@@ -112,7 +119,16 @@ nonterminal task is `inspect_required`, never silently resumed or automatically 
 
 Progress uses the frozen task-progress envelope: `completed`/`total` count prerequisite steps,
 `messageKey` is localized, and params contain the closed operation/component/action/phase facts.
-`started` is distinct from `verified`; these are not fabricated download percentages. Failed
+Phases are `started`, `resolving_source`, `downloading`, `verifying`, `installing`, `inspecting`,
+`registering`, `source_failed`, `installation_failed`, `cache_rejected` and `verified`.
+Optional `editorVersion` identifies `2022.3.22f1` or `2022.3.22f1c1`. Optional `source` is `official`
+or `nounitycn`. Optional `completedBytes`/`totalBytes` are nonnegative safe integers; a supplied
+total is positive and at least the completed count. Unknown-length transfers omit total bytes.
+Optional `cause` is a bounded `vua.deployment.*` code, never raw vendor text. A `source_failed`
+phase requires source and cause. `installation_failed` requires editorVersion and cause.
+Counts in the outer envelope still describe prerequisite steps.
+The desktop displays native installation stage and elapsed time while the process is monitored;
+it does not infer an installation percentage. Failed
 automatic steps include `component` in the error params. Progress and final results are durable;
 the current panel consumes live progress and authoritative task snapshots. Reopening a page may
 miss earlier live progress; the task list and final state remain authoritative, not guessed.
@@ -122,13 +138,17 @@ mutation boundary. Trust uses Windows Authenticode plus an exact allowlisted Uni
 name, without a shell. Certificate retrieval is cache-only; unavailable trust data refuses
 automation. CLI acquisition verifies pinned size/hash/signature and publishes into an absent managed
 slot without replacement. It makes no PATH/registry writes and refuses redirected ancestors.
-Standalone Editor installation tries the confirmed source order, downloads the original
-installer into local cache, checks the official MD5 and Unity signature, then installs at the
-confirmed destination. Official acquisition never contacts the mirror. Regional replacement
-redirects and failed file checks advance to the next enabled source. A debug-only process-local
+Standalone Editor installation validates the official CLI's fixed-release dry-run result, then
+downloads the original official installer. Regional redirects are followed; the payload's MD5
+identifies f1/c1 and selects its required publisher, cache and installation directory. Failed
+acquisition/installation advances to the next edition. Cancelling, declining elevation or
+destination drift stops the operation. Official acquisition never contacts the mirror. A debug-only process-local
 `VUA_DEV_EDITOR_INSTALLER` reuses a browser
 download with the same checks. The original NSIS installer uses `/S` and a final unquoted
 `/D=` directory. Windows owns any UAC prompt; cancellation takes effect after the installer boundary.
+Download and hash verification check cancellation when reporting activity, approximately once
+per second while bytes are flowing. An idle transfer has a 60-second read timeout. An invalid
+managed cache is retained under a unique rejected filename before retrying acquisition.
 The installed Editor is inspected and registered with the official CLI's `editors add` command.
 The elevated installer is waited directly rather than supervised through the ordinary Job Object;
 its direct completion and Editor reinspection decide this native step's outcome.
@@ -155,14 +175,18 @@ progress so an accepted cancellation does not corrupt task state.
 
 A manual step finishes with warnings and `{outcome:"manual_required", nextStep,
 prerequisitesReady:false, functionalVerification:"not_run"}`. The user completes the upstream
-step, then prepares a fresh plan. Exhausted Editor sources return that same warning outcome with
-`handoff:"unity_hub"`, `handoffUrl:"unityhub://2022.3.22f1/887be4894c44"` and a `unity_hub` manual
+step, then prepares a fresh plan. Exhausted Editor editions return that same warning outcome with
+`handoff:"unity_hub"`, `handoffUrl:"unityhub://2022.3.22f1/887be4894c44"`, ordered `sourceFailures`
+containing the reported `source_failed` activity objects, ordered `installationFailures`
+containing versioned `installation_failed` activities, and a `unity_hub` manual
 next step. The panel offers the version-specific Hub link and official Hub download page. No
 Android install follows that handoff, and replay returns the stored result without downloading
-again. Native installer or registration failures retain their ordinary error outcomes.
+again. Native installer failures advance editions; registration failure retains its ordinary
+error outcome and the already installed Editor for reinspection.
 Automatic completion requires reinspection of all selected
 prerequisites and returns `{outcome:"prerequisites_verified", prerequisitesReady:true,
-functionalVerification:"not_run"}`. A successful exit code alone never produces that result.
+functionalVerification:"not_run", editor}`. `editor` is the retained Editor step with its actual
+version and location, or null for play-only plans. A successful exit code alone never produces that result.
 
 Errors use the existing application error envelope: invalid input is `validation`, stale/busy
 or ambiguous observations are `conflict`, unavailable installer/platform is `dependency`, and installer
@@ -191,16 +215,22 @@ CLI, then required fresh consent before Editor installation. The fresh Editor ta
 `vua.deployment.install_failed`; readiness remained false. Official CLI error logs reported a
 checksum mismatch for the exact target. A follow-up download and signature inspection identified
 the regional CDN returning `2022.3.22f1c1` under the global-version filename. That artifact was not
-executed. Validation was retained, with no forced install or version substitution. This is distinct from the earlier manual
+executed under the policy in effect at that time. The author now accepts that edition for
+development; actual versions remain intact. This is distinct from the earlier manual
 handoff smoke; details and local evidence are linked from the [deployment direction](../architecture/unity-deployment.md).
 
-N1 remains open: actual Editor installation and licensing and Android module addition, disposable Unity
+N1 remains open: licensing and Android module addition, disposable Unity
 project launch with real SDK/MA, play/device checks, account guidance, software update/removal,
 configuration backup/repair and human UI acceptance are not completed by these tests. Public
 evidence must distinguish synthetic coverage from dated real-machine runs kept locally.
 
 ## Document changelog
 
+- 0.1 Candidate update (2026-10-02): require official-first plans, validate CLI release metadata and classify f1/c1 after download instead of rejecting regional redirects.
+- 0.1 Candidate update (2026-10-02): bind global/China order to consent, accept the development pair,
+  retain actual Editor identity on completion and report per-edition installation failures.
+
+- 0.1 Candidate update (2026-10-02): add closed stage/byte facts within task progress, preserve source causes in the Hub handoff, and report acquisition cancellation boundaries.
 - 0.1 Candidate update (2026-10-01): add mirror preference, consent-bound region/source policy and durable Hub handoff; use native installation, Windows elevation and official CLI registration under install_editor.
 - 0.1 Candidate update (2026-10-01): require structured CLI completion and add bounded vendor-failure guidance; record the regional artifact mismatch.
 - 0.1 Candidate update (2026-09-30): add fixed official CLI acquisition, Hub-independent installation authority and consent-bound executable identity; retain existing frozen methods.

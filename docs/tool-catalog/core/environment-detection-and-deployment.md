@@ -17,9 +17,10 @@ capabilities: ["environment.inspect", "environment.plan", "environment.execute.c
 
 Detect hardware, Windows, VR runtime, Steam/SteamVR, VRChat, Unity, and production prerequisites,
 then provide explainable readiness and official-source guidance. It plans, confirms, executes, and
-verifies system actions through Orchestrator, so it is a core module. Start read-only; confirm each
-download, write, elevation, or external launch. Never bypass installers, licenses, login, EAC, or
-system security, or present optional enhancements as requirements.
+verifies system actions through Orchestrator, so it is a core module. Inspect first, confirm the
+deployment plan, then execute its supported automated steps with visible activity and explicit
+handoffs for required user actions. See the [N1 delivery plan](../../development/n1-delivery-plan.md)
+for model-first official routes, silent installation, activation and regional connectivity.
 
 Each check has a stable ID, evidence, severity, automated or manual remediation, and verification.
 Unknown versions degrade conservatively; sources, licenses, and signatures are auditable.

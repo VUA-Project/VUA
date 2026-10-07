@@ -194,6 +194,20 @@ body:has(.vua-overlay) {
   line-height: 1.55;
 }
 
+/* 插图与四语言图注:图注明示示意图属性,与真实软件截图区分(首玩 ibis A) */
+.vua-overlay-guide__figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-1);
+}
+
+.vua-overlay-guide__caption {
+  margin: 0;
+  font-size: 0.85em;
+  color: var(--vua-text-secondary);
+}
+
 .vua-overlay__body {
   flex: 1;
   display: flex;

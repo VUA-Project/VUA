@@ -13,6 +13,8 @@ export interface EditorDownloadPolicy {
   readonly region: "china_mainland" | "other" | "unknown";
   readonly mirrorsEnabled: boolean;
   readonly sources: readonly ("official" | "nounitycn")[];
+  /** Absent only in older Candidate plans. New plans bind this order to consent. */
+  readonly editorEditions?: readonly ["global", "china"];
   readonly hubFallbackUrl: typeof UNITY_HUB_INSTALL_LINK;
 }
 export type DeploymentPresence = "verified" | "missing" | "unsuitable" | "detection_failed";
@@ -54,6 +56,42 @@ export interface DeploymentPlanParams {
 }
 export interface DeploymentExecuteParams extends DeploymentPlanParams {
   readonly confirmedDigest: string;
+}
+
+export const DEPLOYMENT_PHASES = ["started", "resolving_source", "downloading", "verifying", "installing", "inspecting", "registering", "source_failed", "installation_failed", "cache_rejected", "verified"] as const;
+export interface DeploymentProgress {
+  readonly component: string;
+  readonly action: DeploymentStep["action"];
+  readonly phase: typeof DEPLOYMENT_PHASES[number];
+  readonly source?: "official" | "nounitycn";
+  readonly editorVersion?: "2022.3.22f1" | "2022.3.22f1c1";
+  readonly completedBytes?: number;
+  readonly totalBytes?: number;
+  readonly cause?: string;
+}
+
+/** Decode only bounded adapter facts carried inside the existing task-progress params.
+ * Step counts remain separate from bytes; unknown-length transfers have no percentage. */
+export function readDeploymentProgress(v: unknown): DeploymentProgress | null {
+  if (!record(v) || v.operation !== "environment.executeDeployment"
+    || typeof v.component !== "string" || !["steam", "vrchat", "steamvr", "pico_runtime", "unity_hub", "unity_cli", "unity_editor", "android_modules"].includes(v.component)
+    || typeof v.action !== "string" || !["retain", "manual_install", "inspect", "install_editor", "add_android_modules", "install_unity_cli"].includes(v.action)
+    || !DEPLOYMENT_PHASES.some(p => p === v.phase)
+    || (v.source !== undefined && v.source !== "official" && v.source !== "nounitycn")
+    || (v.editorVersion !== undefined && v.editorVersion !== "2022.3.22f1" && v.editorVersion !== "2022.3.22f1c1")
+    || (v.cause !== undefined && (typeof v.cause !== "string" || !/^vua\.deployment\.[a-z_]{1,64}$/.test(v.cause)))) return null;
+  for (const key of ["completedBytes", "totalBytes"] as const) {
+    if (v[key] !== undefined && (typeof v[key] !== "number" || !Number.isSafeInteger(v[key]) || v[key] < 0)) return null;
+  }
+  if (typeof v.totalBytes === "number" && (v.totalBytes === 0 || typeof v.completedBytes !== "number" || v.completedBytes > v.totalBytes)) return null;
+  if (v.phase === "source_failed" && (v.source === undefined || v.cause === undefined)) return null;
+  if (v.phase === "installation_failed" && (v.editorVersion === undefined || v.cause === undefined)) return null;
+  return { component: v.component, action: v.action as DeploymentStep["action"], phase: v.phase as DeploymentProgress["phase"],
+    ...(v.source === undefined ? {} : { source: v.source }),
+    ...(v.editorVersion === undefined ? {} : { editorVersion: v.editorVersion }),
+    ...(v.completedBytes === undefined ? {} : { completedBytes: v.completedBytes as number }),
+    ...(v.totalBytes === undefined ? {} : { totalBytes: v.totalBytes as number }),
+    ...(v.cause === undefined ? {} : { cause: v.cause as string }) };
 }
 
 function record(v: unknown): v is Record<string, unknown> {
@@ -121,16 +159,17 @@ export function isDeploymentPlanResult(v: unknown): v is DeploymentPlanResult {
         && s.component === (s.action === "install_editor" ? "unity_editor" : "android_modules")))
       && (s.location === null || typeof s.location === "string") && (s.version === null || typeof s.version === "string")
       && (s.component !== "unity_editor" || !record(p.downloadPolicy)
-        || s.officialUrl === (p.downloadPolicy.region === "china_mainland" && p.downloadPolicy.mirrorsEnabled === true ? MIRROR_EDITOR_ENTRY : OFFICIAL_EDITOR_ENTRY))
+        || s.officialUrl === OFFICIAL_EDITOR_ENTRY)
       && (s.officialUrl === null || (typeof s.officialUrl === "string" && ALLOWED_DESTINATIONS.includes(s.officialUrl))));
 }
 
 function validDownloadPolicy(v: unknown, intent: DeploymentIntent): v is EditorDownloadPolicy {
-  if (!record(v) || !keys(v, ["region", "mirrorsEnabled", "sources", "hubFallbackUrl"])) return false;
+  if (!record(v) || !keys(v, ["region", "mirrorsEnabled", "sources", "hubFallbackUrl", ...(Object.hasOwn(v, "editorEditions") ? ["editorEditions"] : [])])) return false;
+  if (v.editorEditions !== undefined && (!Array.isArray(v.editorEditions) || v.editorEditions.length !== 2 || v.editorEditions[0] !== "global" || v.editorEditions[1] !== "china")) return false;
   if (!["china_mainland", "other", "unknown"].includes(String(v.region))
     || typeof v.mirrorsEnabled !== "boolean" || v.mirrorsEnabled !== (intent.useMirrors !== false)
     || v.hubFallbackUrl !== UNITY_HUB_INSTALL_LINK || !Array.isArray(v.sources)) return false;
-  const expected = !v.mirrorsEnabled ? ["official"] : v.region === "china_mainland" ? ["nounitycn", "official"] : ["official", "nounitycn"];
+  const expected = !v.mirrorsEnabled ? ["official"] : ["official", "nounitycn"];
   const sources = v.sources;
   return sources.length === expected.length && expected.every((source, index) => sources[index] === source);
 }

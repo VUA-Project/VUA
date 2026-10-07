@@ -1,76 +1,73 @@
 # Unity editor compatibility
 
+> Document version: 2.0.1
+> Status: Accepted
+> Scope: Unity detection, deployment, project intake, AMF and Unity Bridge
+> Updated: 2026-10-02
+> Normative effect: Defines the development support matrix
 
-> Document version: 1.1.1
-> Status: Accepted  
-> Scope: Unity detection, project intake, AMF production, and Unity Bridge execution  
-> Updated: 2026-10-02  
-> Normative effect: Defines VUA's editor support matrix
+## Current development decision
+
+The author accepts global `2022.3.22f1` and China `2022.3.22f1c1` as equivalent for ongoing
+development (2026-10-02), based on community reports of successful VRChat SDK build/upload
+and the author's own inquiries. Implement and exercise working paths with this pair. Resolve
+concrete differences when encountered; proving universal equivalence is not an installation gate.
+
+Always retain the complete observed version. An installation, project or Build Record produced
+with `2022.3.22f1c1` records that exact string; never rewrite it to look like global f1. This
+decision covers the named pair, not arbitrary c-suffix releases or Tuanjie Engine.
 
 ## Support matrix
 
-VUA matches the complete Unity editor version string, including release and distribution suffixes.
-The Unity version is a capability identifier for this policy, not a SemVer range.
-
-| Class | Editor versions | VUA behavior |
+| Class | Editor versions | Current development behavior |
 | --- | --- | --- |
-| Production target | Global Unity `2022.3.22f1` exactly | Sole editor eligible for full AMF and Unity Bridge inspection, mutation, validation, and Build Record support |
-| Migration source | `2019.4.31f1`, `2022.3.6f1` | Detect project metadata, require a backup or copy, and guide migration to the production target |
-| Other Unity version or build | Any complete version string outside the production target and migration sources | Report the exact difference from the production target and guide installation of global `2022.3.22f1` |
-| Unsupported editor family | Tuanjie Engine | Report the unsupported editor and guide the user to the production target |
+| Preferred target | Global `2022.3.22f1` | Reuse when available; first acquisition and installation attempt |
+| Accepted fallback | China `2022.3.22f1c1` | Reuse if no usable global target exists; install when the official entry supplies c1 or global installation fails |
+| Migration source | `2019.4.31f1`, `2022.3.6f1` | Inspect metadata and guide migration on a backup or explicit project copy |
+| Other Unity version | Any other complete version string | Report the difference and guide installation of the accepted pair |
+| Unsupported editor family | Tuanjie Engine | Report the family and guide installation of the accepted pair |
 
-The [VRChat current-version page](https://creators.vrchat.com/sdk/upgrade/current-unity-version/)
-defines its current editor as `2022.3.22f1` and warns that later editors can produce content that does
-not load in VRChat. VUA therefore promotes a new production target only after VRChat selects it and a
-VUA release passes the Bridge, SDK, package, synthetic-project, and local smoke matrices. Upstream
-recommendation and VUA verification remain separate states.
+The Unity CLI, optional Unity Hub and Unity Editor retain credentials, account sessions and
+license activation; VUA receives capability and readiness results only.
 
-Independently of the version class, the Unity CLI, the optional Unity Hub, and the Unity Editor
-retain credentials, account sessions, and license activation; VUA receives capability and
-readiness results only.
+## Deployment and source selection
 
-## Migration sources
+The [deployment adapter](../architecture/unity-deployment.md) uses CLI-led official acquisition
+first in every region. Inspect the payload: the global entry may supply either accepted edition.
+Use the observed edition's directory, checksum and publisher; try China after global failure,
+then offer Unity Hub. NoUnityCN is an optional backup. Disabling mirrors excludes it and retains
+official global/China routes. Preserve a valid existing installation.
 
-`2019.4.31f1` and `2022.3.6f1` are accepted only as project-migration inputs. VUA may inspect their
-`ProjectSettings/ProjectVersion.txt`, identify the migration route, and create or require a backup.
-Bridge v1 operations start after a project copy reaches the production target. The official
-[VRChat 2019-to-2022 guide](https://creators.vrchat.com/sdk/upgrade/unity-2022/) remains authoritative
-for that upgrade.
+Inspect the installed executable, register its real path with Unity CLI, and retain its actual
+version in the task result. Users complete Unity account authorization and license selection
+through Unity's tooling. Follow with a disposable project and the real SDK/MA workflow.
 
-## Installation route
+## Contract implementation and subsequent project work
 
-The [standalone deployment direction](../architecture/unity-deployment.md) owns the route:
-Unity's original installer installs the exact global target, and the official CLI registers the
-Editor and handles licensing; Hub is optional. Installer version/support and Editor
-compatibility are separate checks. A successful download does not establish a licensed, usable
-Editor, and the production target above is not widened by the installation route.
+N1 Candidate deployment applies this admission rule independently of the frozen Editor identity
+classifier. The frozen `editor-verify/v0.1` result still identifies c1 and reports its historical
+classification; N1 uses the full observed version to admit the current development pair.
 
-## Other Unity versions
+The accepted pair also defines the direction for AMF/Bridge work. Existing frozen project/Bridge
+version gates must receive an explicit versioned update when implementing that path; deployment
+acceptance alone does not modify those gates. Track that work with N3 real-project acceptance,
+including SDK recognition and upload preparation, rather than blocking N1 installation on it.
 
-Every complete version string outside the production target and migration sources follows the same
-unsupported-version path; VUA creates no separate product class for a particular distribution
-suffix. It reports the detected version, required production target, and available installation
-guidance while leaving `ProjectSettings/ProjectVersion.txt` unchanged.
+## Project preservation and verification
 
-## Tuanjie Engine
-
-Tuanjie Engine is currently unsupported. VUA may identify it for diagnostics, then stops the Unity
-production path and guides the user to global Unity `2022.3.22f1`. Tuanjie project-format similarity
-does not authorize Bridge execution, VRChat SDK validation, building, or upload preparation.
-
-## Enforcement requirements
-
-- Migration closure is decided by local Unity Bridge verification; the current Orchestrator
-  reference implementation and its tests are not a rejection gate.
-- A production Orchestrator implementation must select only an exact production-target editor for
-  Bridge jobs.
-- Unity Bridge must validate its running `Application.unityVersion` before inspection or mutation.
-- Version mismatch leaves project files unchanged and returns a typed remediation path.
-- Migration always works on a backup or explicit copy and records source and target versions.
-- Build Records store the complete editor version used for every successful production run.
+- Migration operates on a backup or explicit copy and records source and target versions.
+- Inspect `ProjectVersion.txt` and executable metadata without rewriting either to spoof identity.
+- Bridge execution records the running `Application.unityVersion`; each supported operation
+  validates the version under its owning protocol.
+- Build Records retain the complete Editor version actually used.
+- Real project results identify which edition was tested. Installation and SDK workflow results
+  are separate observations.
 
 ## Document changelog
 
+- 2.0.1 (2026-10-02): align official-first acquisition and actual downloaded-version checks with the latest user ruling.
+- 2.0.0 (2026-10-02): accept the author's development f1/c1 pair, prefer global with China fallback,
+  and separate N1 admission from frozen inspection/project contracts.
 - 1.1.1 (2026-10-02): align the Installation route section with the owning deployment document
   (the original installer installs the Editor; the official CLI registers it) and fix the
   production-target direction reference; no matrix change.

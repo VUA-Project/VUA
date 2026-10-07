@@ -4,16 +4,22 @@
 use std::path::Path;
 
 pub(super) fn trusted_unity_executable(path: &Path) -> bool {
-    path.is_absolute() && path.is_file() && unity_signature(path)
+    path.is_absolute() && path.is_file() && unity_signature(path, false)
+}
+
+/// China publisher admission is specific to the pinned Editor installer. It does
+/// not grant that publisher authority over the standalone CLI or Hub bootstrap.
+pub(super) fn trusted_editor_installer(path: &Path, china: bool) -> bool {
+    path.is_absolute() && path.is_file() && unity_signature(path, china)
 }
 
 #[cfg(not(windows))]
-fn unity_signature(_path: &Path) -> bool {
+fn unity_signature(_path: &Path, _china: bool) -> bool {
     false
 }
 
 #[cfg(windows)]
-fn unity_signature(path: &Path) -> bool {
+fn unity_signature(path: &Path, china: bool) -> bool {
     use std::{mem::size_of, os::windows::ffi::OsStrExt, ptr};
     use windows_sys::Win32::Security::{
         Cryptography::{szOID_COMMON_NAME, CertGetNameStringW, CERT_NAME_ATTR_TYPE},
@@ -79,10 +85,14 @@ fn unity_signature(path: &Path) -> bool {
                         size > 1
                             && size < name.len() as u32
                             && String::from_utf16(&name[..size as usize - 1]).is_ok_and(|cn| {
-                                matches!(
-                                    cn.as_str(),
-                                    "Unity Technologies ApS" | "Unity Technologies SF"
-                                )
+                                if china {
+                                    cn == "优三缔科技（上海）有限公司"
+                                } else {
+                                    matches!(
+                                        cn.as_str(),
+                                        "Unity Technologies ApS" | "Unity Technologies SF"
+                                    )
+                                }
                             })
                     }
                 }

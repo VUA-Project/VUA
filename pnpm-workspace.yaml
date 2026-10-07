@@ -1,5 +1,8 @@
 packages:
   - apps/*
   - packages/*
+allowBuilds:
+  # Squirrel.Windows is not a ZIP/NSIS dependency; do not download its build helpers.
+  electron-winstaller: false
 minimumReleaseAgeExclude:
   - electron@44.1.1

@@ -23,3 +23,4 @@ pub use provider_host::{
 pub use provider_job::ProviderJobGuard;
 
 mod deployment_routes;
+mod network_routes;

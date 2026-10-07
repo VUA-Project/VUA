@@ -1,4 +1,6 @@
 import { isDeploymentCommandId, isDeploymentParams, type DeploymentPlanParams, type DeploymentExecuteParams, type DeploymentPlanResult, type DeploymentAccepted } from "./environment-deployment.js";
+import { isNetworkParams, type NetworkIntent, type NetworkResult } from "./environment-network.js";
+import { isWebsiteTestParams, type WebsiteTestParams, type WebsiteTestResult } from "./website-test.js";
 import { isDownloadEventV01 } from "./download-events.js";
 
 export const APPLICATION_CONTRACT_VERSION = "0.1" as const;
@@ -2713,6 +2715,8 @@ export interface DeploymentPlanQuery extends ApplicationRequestBaseV01 { readonl
 export interface DeploymentExecuteCommand extends ApplicationRequestBaseV01 { readonly kind: "command"; readonly method: "environment.executeDeployment"; readonly commandId: string; readonly params: DeploymentExecuteParams }
 
 export type ApplicationRequestV01 =
+  | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.checkNetwork"; readonly params: { readonly intent: NetworkIntent } })
+  | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.testWebsites"; readonly params: WebsiteTestParams })
   | DeploymentPlanQuery
   | DeploymentExecuteCommand
   | ApplicationSnapshotQueryV01
@@ -2863,6 +2867,8 @@ export interface DemoTaskStartedV01 {
 }
 
 export type ApplicationSuccessValueV01 =
+  | NetworkResult
+  | WebsiteTestResult
   | DeploymentPlanResult
   | DeploymentAccepted
   | ApplicationSnapshotV01
@@ -3070,6 +3076,14 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
     const keys = Object.keys(value.params);
     if (!keys.every((key) => key === "taskId" || key === "observedRevision") || !keys.includes("taskId")) return false;
     return value.params.observedRevision === undefined || isNonNegativeInteger(value.params.observedRevision);
+  }
+  if (value.method === "environment.checkNetwork") {
+    return value.kind === "query" && hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
+      && isNetworkParams(value.params);
+  }
+  if (value.method === "environment.testWebsites") {
+    return value.kind === "query" && hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
+      && isWebsiteTestParams(value.params);
   }
   if (value.method === "environment.planDeployment" || value.method === "environment.executeDeployment") {
     const execute = value.method === "environment.executeDeployment";

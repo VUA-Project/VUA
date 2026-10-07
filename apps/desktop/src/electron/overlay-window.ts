@@ -53,3 +53,45 @@ export function decideOverlayWindowAction(state: OverlayWindowState): OverlayWin
 export function overlayVisibilityAfterDecision(decision: OverlayWindowDecision): boolean {
   return decision !== "hide";
 }
+
+/* ---- 指南定位(首玩 B 切片 additive)---- */
+
+/** 定位词面长度上限(形状收窄的一部分,防异常载荷) */
+export const GUIDE_TARGET_MAX_LENGTH = 64;
+
+/**
+ * 指南定位载荷的形状收窄(纯函数,可测):
+ * - null/undefined → null(仅打开引导视图,渲染层恢复上次阅读位置);
+ * - 对象且 topic 为非空字符串、section 缺席或为字符串(均不超长)→ 词面载荷;
+ * - 其余一律 throw(与 "invalid overlay view" 同纪律:形状垃圾是调用方
+ *   缺陷,响亮失败;主题/分节词表回退不在此层——词表归渲染层引导模型)。
+ */
+export function parseGuideTargetPayload(
+  value: unknown,
+): { readonly topic: string; readonly section?: string } | null {
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "object" || Array.isArray(value)) throw new Error("invalid guide target");
+  const record = value as Record<string, unknown>;
+  const topic = record.topic;
+  const section = record.section;
+  if (
+    typeof topic !== "string" ||
+    topic.length === 0 ||
+    topic.length > GUIDE_TARGET_MAX_LENGTH ||
+    (section !== undefined && (typeof section !== "string" || section.length > GUIDE_TARGET_MAX_LENGTH))
+  ) {
+    throw new Error("invalid guide target");
+  }
+  return section === undefined ? { topic } : { topic, section };
+}
+
+/** 定位 → 加载查询段(新建窗口的首帧投递;两个词面均经 encodeURIComponent) */
+export function guideTargetQuery(
+  target: { readonly topic: string; readonly section?: string } | null,
+): string {
+  if (target === null) return "";
+  const topic = `&guideTopic=${encodeURIComponent(target.topic)}`;
+  return target.section === undefined
+    ? topic
+    : `${topic}&guideSection=${encodeURIComponent(target.section)}`;
+}

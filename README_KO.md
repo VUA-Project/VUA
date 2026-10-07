@@ -17,7 +17,7 @@
 
 첫 계정 안내는 내장 브라우저에서 공식 가입 페이지를 엽니다. 플레이 경로는 Steam과 VRChat, 제작 경로는 선택적으로 Unity와 BOOTH를 안내합니다. 가입, Steam 라이브러리 추가 및 공식 계정 연결은 사용자가 직접 수행합니다. 업로드에는 정식 VRChat 계정과 New User 이상 등급이 필요하지만, 자격을 얻기 전에도 로컬 Avatar 제작 준비를 진행할 수 있습니다.
 
-첫 선택적 외부 연결 대상은 VRCFaceTracking과 hyblocker OpenVR Space Calibrator입니다. VUA는 독립적으로 설치된 업스트림 앱을 감지하고 실행하며 해당 앱에서의 설정 과정을 안내할 예정입니다. 설치와 업데이트는 Steam 또는 상위 앱이 관리합니다.
+선택적 외부 연결은 추적, VR 오버레이, 수면 보조, 녹화 및 방송 도구를 대상으로 합니다. VUA는 독립적으로 설치된 앱을 감지하고 Steam 구매·설치 화면을 안내하며 앱을 실행할 예정입니다. 업데이트는 Steam 또는 업스트림 앱이 관리합니다. 추적 도구에는 설정 안내도 제공하며, PICO 시선 추적은 첫 플레이용 릴리스에 포함합니다. [대상 도구와 지원 범위](docs/development-outline.md#n2-external-gameplay-tools)를 참고하세요.
 
 ### 2. Avatar 제작
 
@@ -43,7 +43,7 @@
 
 ## 개발 진행 상황
 
-v0.6.0은 최신 소스 태그이며 아직 설치 가능한 결과물은 공개되지 않았습니다(유일한 GitHub Release인 v0.5.0에는 에셋이 없습니다). [N1–N7 개발 순서](docs/development-outline.md)에 따라 환경 설치, 지정된 두 도구, 복합 Avatar 제작, Recipe 재현, 소재 관리 점검과 재작업, 복구 및 스크린샷 사용자 가이드가 포함된 Beta 설치 프로그램을 개발합니다.
+v0.6.0은 최신 소스 태그이며 아직 설치 가능한 결과물은 공개되지 않았습니다(유일한 GitHub Release인 v0.5.0에는 에셋이 없습니다). [N1–N7 개발 순서](docs/development-outline.md)에 따라 환경 설치, 선정된 외부 플레이 보조 도구, 복합 Avatar 제작, Recipe 재현, 소재 관리 점검과 재작업, 복구 및 스크린샷 사용자 가이드가 포함된 Beta 설치 프로그램을 개발합니다.
 
 프로젝트는 앞으로도 오랫동안 Beta 상태를 유지할 것으로 예상합니다. 소개는 제품의 방향이며, 구현과 자동 테스트만으로 전체 실제 기기 흐름의 검증을 의미하지 않습니다. 실제 검증 상태는 [개발 순서](docs/development-outline.md)와 [릴리스 노트](docs/release/)에서 확인해 주세요.
 
@@ -63,7 +63,7 @@ v0.6.0은 최신 소스 태그이며 아직 설치 가능한 결과물은 공개
 
 ## 라이선스
 
-VUA는 [Apache-2.0](LICENSE)을 사용합니다. 첫 지원 예정 외부 연결 대상은 [VRCFaceTracking(Apache-2.0)](https://github.com/benaclejames/VRCFaceTracking/blob/master/LICENSE)과 [Space Calibrator(MIT 본체 및 별도 라이선스의 서드파티 구성 요소)](https://github.com/hyblocker/OpenVR-SpaceCalibrator/blob/develop/LICENSE)입니다. 저작권과 향후 재배포 조건은 [서드파티 고지](THIRD_PARTY_NOTICES.md)를 참조하세요.
+VUA는 [Apache-2.0](LICENSE)을 사용합니다. 외부 앱에는 각각의 라이선스가 적용되며, 여기에는 [VRCFaceTracking(Apache-2.0)](https://github.com/benaclejames/VRCFaceTracking/blob/master/LICENSE)과 [Space Calibrator(MIT 본체 및 별도 라이선스의 서드파티 구성 요소)](https://github.com/hyblocker/OpenVR-SpaceCalibrator/blob/develop/LICENSE)도 포함됩니다. 지원 예정인 모든 외부 연결, 저작권과 향후 재배포 조건은 [서드파티 고지](THIRD_PARTY_NOTICES.md)를 참조하세요.
 
 [NOTICE](NOTICE) · [상표 가이드](TRADEMARKS.md)
 

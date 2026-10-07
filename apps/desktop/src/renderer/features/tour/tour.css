@@ -1,0 +1,98 @@
+/* 应用导览样式(三类引导架构 §2):主窗口内的有序高亮——高透明遮罩、
+ * 实控件高亮环与指引卡。颜色/间距/圆角只消费语义 token;遮罩经
+ * color-mix 从画布色取透明度(高透明:页面保持可辨)。导览只在主窗口
+ * 内渲染,永不覆盖其他应用。 */
+
+.vua-tour {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  /* 根面透明:遮罩由高亮环的 box-shadow 反镂空承担;缺席态整面轻遮 */
+}
+
+.vua-tour[data-absent] {
+  background: color-mix(in srgb, var(--vua-bg-canvas) 55%, transparent);
+}
+
+/* 高亮环:box-shadow 向外铺满视口形成遮罩,环内即真实控件 */
+.vua-tour__highlight {
+  position: fixed;
+  border-radius: var(--vua-radius-control, 8px);
+  box-shadow: 0 0 0 200vmax color-mix(in srgb, var(--vua-bg-canvas) 62%, transparent);
+  outline: 2px solid var(--vua-accent, var(--vua-text-strong));
+  outline-offset: 2px;
+  pointer-events: none;
+  transition:
+    left 140ms ease-out,
+    top 140ms ease-out,
+    width 140ms ease-out,
+    height 140ms ease-out;
+}
+
+.vua-tour__card {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-2, 8px);
+  padding: var(--vua-space-4, 16px);
+  background: var(--vua-bg-panel, var(--vua-bg-canvas));
+  border: 1px solid var(--vua-border);
+  border-radius: var(--vua-radius-card, 10px);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--vua-bg-canvas) 60%, transparent);
+  color: var(--vua-text-strong);
+  font-family: var(--vua-font-family);
+  font-size: 14px;
+  outline: none;
+}
+
+.vua-tour__card:focus-visible {
+  outline: 2px solid var(--vua-accent, var(--vua-text-strong));
+}
+
+.vua-tour__counter {
+  margin: 0;
+  font-size: 0.82em;
+  color: var(--vua-text-secondary);
+}
+
+.vua-tour__title {
+  margin: 0;
+  font-size: 1.1em;
+  color: var(--vua-text-strong);
+}
+
+.vua-tour__body {
+  margin: 0;
+  color: var(--vua-text-secondary);
+  line-height: 1.55;
+}
+
+/* 缺席说明:诚实交代该入口为何不在,可读性优先(不指向不相关位置) */
+.vua-tour__absent {
+  margin: 0;
+  padding: var(--vua-space-2, 8px) var(--vua-space-3, 12px);
+  border-left: 3px solid var(--vua-border-strong, var(--vua-border));
+  border-radius: var(--vua-radius-control, 8px);
+  background: var(--vua-bg-elevated, transparent);
+  color: var(--vua-text-secondary);
+  font-size: 0.92em;
+}
+
+.vua-tour__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vua-space-2, 8px);
+  margin-top: var(--vua-space-1, 4px);
+}
+
+.vua-tour__nav {
+  display: flex;
+  gap: var(--vua-space-2, 8px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vua-tour__highlight {
+    transition: none;
+  }
+}

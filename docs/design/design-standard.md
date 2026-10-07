@@ -1,10 +1,11 @@
-# VUA design standard v0.7.23
+# VUA design standard v0.8.0
 
 
-> Document version: 0.7.23
+> Document version: 0.8.0
 > Status: Accepted
 > Scope: Electron desktop, desktop overlay, and VR overlay presentation  
-> Updated: 2026-10-01
+> Updated: 2026-10-05
+> Last conformance review: 2026-10-05 (guidance design/source alignment; three-context implementation pending)
 > Normative effect: Governs interaction, visual, and accessibility implementation;
 > does not expand product scope or replace versioned application contracts
 
@@ -78,12 +79,12 @@ are the content; chrome does not obscure them or recolor third-party brands as V
 
 The shell fixes two business tabs at the top — **Environment** and **Avatar creation** — with
 **Settings** pinned at the far right (a settings area, not a business goal) and **Guide** as a
-topbar entry that opens the pinned overlay window's guide view. The current shape comes from dated
-user rulings: the Command Center home page was retired on 2026-09-25 (its exclusive content was
-decorative; the default landing became Environment), and on 2026-09-26 the Tool Collection merged
-into Environment as its second sidebar group while the Game Guide module retired, its content
-moving to the overlay-hosted guide. Changing this top-level information architecture requires an
-explicit product-and-design decision; module count alone does not silently rewrite it.
+topbar entry with three clearly named destinations: the VUA app tour, preparation reader and
+VRChat game guide (user ruling, 2026-10-05). Contextual help opens the relevant destination and
+step directly; the ordinary reader remains available without a running game. These destinations
+do not add business tabs. The earlier home-page and Tool Collection changes remain in effect;
+Environment remains the default landing. The [guidance architecture](../architecture/guidance.md)
+owns window behavior, shared content and independent progress.
 
 Primary tabs retain the original slanted language: the visual shell uses `skewX(-12deg)` while the
 label is counter-skewed, and selected or pressed states read as physical engagement. The responsive
@@ -256,7 +257,7 @@ stable untilted cards.
 
 The module rules below are cited in order as §8.1 Command Center, §8.2 Environment,
 §8.3 Warehouse/acquisition, §8.4 Recipe, §8.5 Assembly, §8.6 Inspection/Release,
-§8.7 Projects/packages, §8.8 Overlay, and §8.9 Global shell — the numbering this document's
+§8.7 Projects/packages, §8.8 Guidance and overlays, and §8.9 Global shell — the numbering this document's
 changelog history already uses.
 
 - **Command Center:** a sidebar-free constant landing point and the first brand impression. The VUA
@@ -585,8 +586,16 @@ changelog history already uses.
   port code in detail, strictly distinguished from capability absence; capability absence
   (capability_missing) and engine absence (unavailable) are presented distinctly; repeated
   toggles claim no idempotence and refusals surface as refusals.
-- **Overlay:** stronger text contrast, fewer levels, larger targets, stable snapshots, and semantic
-  actions. No blur, complex background, or long lists; desktop fallback is always available.
+- **Guidance and overlays:** use a transparent highlight layer over actual VUA controls for the
+  app tour, an ordinary opaque reading window for preparation, and a compact translucent guide
+  associated with VRChat for in-game steps. The app tour supports ordered page changes and
+  back/next/skip/restart. The reader supports long-form content, resizing and keyboard reading.
+  The game guide has short instructions, readable controls and the following/transparency
+  preferences defined in [guidance architecture](../architecture/guidance.md). Do not apply its
+  transparency default to the reader or app-tour mask. All three use the same i18n/content
+  sources while preserving their separate progress; actual window and headset UI need human review.
+  Task/runtime overlays use stronger text contrast, fewer levels, larger targets, stable snapshots
+  and semantic actions. No blur, complex background or long lists; desktop fallback remains available.
 - **Global shell: boot splash and notification center:** the boot splash is the brand's first
   frame, never a loading-mask stand-in: the square column grid falling top-to-bottom and the
   central VUA letter frames in a purple-orange gradient stroke are the fixed ceremony. Exit is
@@ -644,7 +653,7 @@ A page is deliverable only when:
 8. fixtures do not enter production;
 9. 960×600, maximized, 125%/150% DPI, and long Chinese/Japanese/Korean/English strings retain key actions;
 10. the two business tabs (Environment, Avatar creation) with Settings pinned at the far right and
-    Guide as a topbar overlay entry (user rulings 2026-09-25/2026-09-26), the two-level responsive
+    Guide as a topbar entry for three contexts (user ruling 2026-10-05), the two-level responsive
     ladder (2026-09-25), slanted controls, and transparent
     overflow flyout pass mouse, keyboard, scaling, and reduced-motion checks; sidebar growth moves no
     neighbor (transform-only; the 2026-09-25 idle-small-type/activation ruling governs the sidebar's
@@ -658,7 +667,7 @@ A page is deliverable only when:
 
 The accepted scope covers the base character, two jurisdictions, tokens, component states, the
 two-business-tab shell (Environment and Avatar creation, with Settings pinned right and Guide as a
-topbar overlay entry — user rulings 2026-09-25/2026-09-26),
+topbar entry for three guidance contexts — user ruling 2026-10-05),
 slanted controls and overflow flyout, sidebar growth impression, task feedback, the five AMF stages as full
 capability coverage (presentation per the 0.7.19 user ruling: wizard-selected paths, inspection folded into
 production records), the WebGL scene direction (the nebula backdrop retired by the 2026-09-25 ruling), Recipe's three views, Release coverflow/pedestal, community-skin
@@ -671,6 +680,7 @@ direction.
 
 ## 12. Document changelog
 
+- **0.8.0 (2026-10-05)**: define three guidance presentations and their topbar/contextual entries while retaining the two-business-tab shell.
 - **0.7.23 (2026-10-01)**: status-quo alignment and reference repair — §0/§3/§10/§11 the retired
   five-tab shell becomes the current two-business-tab shell (Environment, Avatar creation) with
   Settings pinned right and Guide as a topbar overlay entry (user rulings 2026-09-25/2026-09-26);
@@ -777,58 +787,4 @@ direction.
   keep "装配"). The workshop page is untouched (§8.5 addendum awaits slice 2,
   0.7.16). EN mirror of the authoritative ZH.
 
-- **0.7.14 (2026-09-21)**: §8.6 addendum for handoff admission and the standalone open path (U19
-  user-ruling consumption slice) — the Release build-record handoff entry presents by a record-state
-  whitelist (succeeded/succeeded_with_warnings allowed with the warning presentation preserved;
-  failed/cancelled/rolled_back withheld with a discoverable reason plus diagnostics/recovery/
-  re-production entry chain; recovered withheld until the inspection and follow-up production steps;
-  missing/out-of-vocabulary states refused as "record cannot be confirmed"); the backend gate stays
-  the authority in the route admission order, the presentation bucket never pre-judges acceptance,
-  and direct rejections render the typed refusal copy; the standalone "Open in Unity to inspect or
-  fix" action is deliberately separate from the handoff button, never gated by the record state,
-  opening the editor is neither a recovery execution nor an upload permission, and honest absence
-  presents while the backend open entry is unwired (no fabricated capability). EN mirror synced with
-  the ZH authority.
-
-- **0.7.13 (2026-09-21)**: §8.7 addendum for repository lifecycle presentation (proposal
-  027-F4 desktop consumption) — inline enable/disable and refresh controls on subscription rows
-  gated on the packages.repoLifecycleOps capability fact row (degradation is not an error;
-  no fact no render); honest enable-wording ruling (the W25 ruling (c) of 2026-09-20: VUA-owned state,
-  disabled-not-hidden, shared settings never written, with the distinction from the
-  settings-face shared-semantics copy discipline spelled out); dual-family negotiation
-  discipline (a v0.1-family answer carries no enabled bit = the toggle control is not
-  rendered, never guessed); both refresh receipt arms are successes (cacheUpdated=false =
-  "already up to date" informational presentation, never an error); three-state presentation
-  distinction among typed refusals, capability absence, and engine absence. ZH source
-  updated; EN mirror synced.
-
-- **0.7.12 (2026-09-20)**: navigation rework and baked-turntable promotion (user ruling
-  2026-09-20; slice/production-nav-bake-preview merged into main by user ruling 2026-09-21).
-  The two parallel development lines each advanced their own 0.7.10/0.7.11 versions, colliding
-  with same-numbered content on the main side; this version collects both in sequence (registered
-  honestly, no history rewrite). §8.3/§8.4 navigation rework — "Material import" moves from a
-  dedicated tab into a content dialog inside the warehouse page; "Composing draft" moves from a
-  dedicated page into a content dialog inside the recipe page (wide panel, internal scroll,
-  Esc/backdrop close, closing unmounts the component and closes any in-flight embedded view);
-  the production sidebar drops the warehouse/workshop/packages group labels and becomes a flat
-  ungrouped list like every other module; inspection stays a standalone page (independent of
-  the workshop) as the inspection landing point of "assembly → inspection → SDK handoff".
-  §8.6 the Release baked-turntable direction is promoted to an accepted form — TurntablePlayer
-  is the accepted landed shape: it consumes unity-bridge v4 `build_preview` artifacts
-  (manifest v1 driving 60-frame 1024x1024 PNG canvas playback plus cover.png cover), with the
-  degradation path pinned (missing artifacts or read failures render the honest placeholder
-  copy, never a broken image or a fabricated thumbnail; static/off modes return to flat
-  horizontal scrolling and stable previews). EN mirror of the ZH authority.
-
-- **0.7.11 (2026-09-20)**: §8.7 addendum for template enumeration presentation (proposal
-  027-F5 desktop consumption) — the create block mounts the template dropdown gated on the
-  packages.templatesOps capability fact row (a ready enumeration replaces the manual input; the
-  default option = leave-empty backend default; the name projects verbatim, never a fabricated
-  label; the id passes as-is as the createProject template argument); fall-back discipline
-  (capability-row absence / an empty array = an honest zero-template answer [a fact, not an error]
-  / typed failures carrying the error code verbatim / unavailability all fall back to the manual
-  input plus leave-empty = backend default resolution, failures and absence strictly distinguished,
-  never folded into an empty listing); the §8.7 project-creation sentence "no fabricated template
-  dropdown" retires with the frozen word face now consumed. EN mirror in sync.
-
-- 0.7.10 and earlier: see git history.
+Earlier entries remain in Git history.

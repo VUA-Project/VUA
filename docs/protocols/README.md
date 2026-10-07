@@ -1,6 +1,6 @@
 # Protocol reading guide
 
-> Document version: 1.3.1
+> Document version: 1.4.0
 > Status: Accepted
 > Updated: 2026-10-02
 > Scope: Navigation and retention guidance; no wire-format changes
@@ -40,6 +40,7 @@ from the existence of one method. This is a navigation aid, not a second complet
 | Feature | Contract / method starting point | Implementation and test starting point | What this establishes |
 | --- | --- | --- | --- |
 | Environment presence | [Application contract](application-contract-v0.1.md), `environment.getSnapshot` | [Rust observations](../../crates/orchestrator/src/environment.rs) → [frontend port](../../apps/desktop/src/renderer/gateway/environment-port.ts) → [projection tests](../../apps/desktop/src/renderer/gateway/contract-projection.test.ts) | Existing inspection path; does not establish N1 automated deployment |
+| First-play network | [Network v0.1](environment-network-v0.1.md), `environment.checkNetwork` | [Use case](../../crates/orchestrator/src/network.rs) → [HTTPS adapter](../../crates/project-manager/src/network_probe.rs) → [consumer](../../apps/desktop/src/renderer/gateway/live-network-port.ts) | Candidate implementation: explicit per-service HTTPS checks and correctable region; separate from game/PICO LAN acceptance |
 | Purpose-driven deployment | [Deployment v0.1](environment-deployment-v0.1.md), `environment.planDeployment` / `environment.executeDeployment` | [Core policy/use case](../../crates/orchestrator/src/deployment.rs) → [Windows adapter](../../crates/project-manager/src/deployment_adapter.rs) → [consumer tests](../../apps/desktop/src/renderer/gateway/electron-gateway.test.ts) | Candidate executable slice with synthetic tests; real installer/project/device and UI acceptance pending |
 | Account guide | [Accepted minimal state](../architecture/evolution.md#account-guidance-alongside-deployment) | Reuse the existing isolated desktop browser; define exact guide methods and consumer tests with its implementation | Contract to design; deployment does not imply account registration/verification |
 | N2 external tools | [External-connection responsibilities](../architecture/integrations-and-overlays.md#external-integration-modes) | [Adapter ownership](../architecture/system.md#current-code-layout), then tool-specific discovery/launch code and tests in the implementation slice | Accepted scope; runtime support and any new contract remain to be established |
@@ -66,6 +67,8 @@ retirement, then update the registry and links.
 For upstream-driven changes, follow the [third-party compatibility and licensing policy](../release/versioning.md#third-party-changes-and-compatibility).
 
 ## Document changelog
+
+- 1.4.0 (2026-10-03): add the implemented first-play network query and its code routes.
 
 - 1.3.1 (2026-10-02): index inspection-queries/inspection-evidence in the Materials/production row; disambiguate the packages-repos-catalog / packages-repo-catalog / packages-repos labels (v0.1 combined base spec vs per-repository inventory vs v0.2 increment).
 - 1.3.0 (2026-09-30): route the executable Candidate N1 deployment family separately from pending account guidance.

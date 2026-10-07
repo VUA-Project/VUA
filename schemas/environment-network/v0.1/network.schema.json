@@ -1,0 +1,432 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vua-project.github.io/schemas/environment-network/v0.1/network.schema.json",
+  "$defs": {
+    "intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "route",
+        "region"
+      ],
+      "properties": {
+        "route": {
+          "enum": [
+            "desktop_play",
+            "pico_pcvr"
+          ]
+        },
+        "region": {
+          "enum": [
+            "auto",
+            "china_mainland",
+            "other"
+          ]
+        }
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "status",
+        "elapsedMs",
+        "httpStatus"
+      ],
+      "properties": {
+        "target": {
+          "enum": [
+            "steam_store",
+            "steam_community",
+            "steam_download",
+            "vrchat_web",
+            "pico_connect"
+          ]
+        },
+        "status": {
+          "enum": [
+            "reachable",
+            "http_error",
+            "redirected",
+            "timeout",
+            "connection_failed",
+            "probe_error"
+          ]
+        },
+        "elapsedMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "httpStatus": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 200,
+          "maximum": 599
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "reachable"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "httpStatus": {
+                "type": "integer",
+                "minimum": 200,
+                "maximum": 299
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "redirected"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "httpStatus": {
+                "type": "integer",
+                "minimum": 300,
+                "maximum": 399
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "http_error"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "httpStatus": {
+                "type": "integer",
+                "minimum": 400,
+                "maximum": 599
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "timeout",
+                  "connection_failed",
+                  "probe_error"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "httpStatus": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "intent",
+        "detectedRegion",
+        "effectiveRegion",
+        "capturedAt",
+        "durationMs",
+        "results"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "0.1"
+        },
+        "intent": {
+          "$ref": "#/$defs/intent"
+        },
+        "detectedRegion": {
+          "enum": [
+            "china_mainland",
+            "other",
+            "unknown"
+          ]
+        },
+        "effectiveRegion": {
+          "enum": [
+            "china_mainland",
+            "other",
+            "unknown"
+          ]
+        },
+        "capturedAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$"
+        },
+        "durationMs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/observation"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "intent": {
+                "properties": {
+                  "route": {
+                    "const": "desktop_play"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "results": {
+                "minItems": 4,
+                "maxItems": 4,
+                "prefixItems": [
+                  {
+                    "properties": {
+                      "target": {
+                        "const": "steam_store"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "target": {
+                        "const": "steam_community"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "target": {
+                        "const": "steam_download"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "target": {
+                        "const": "vrchat_web"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "intent": {
+                "properties": {
+                  "route": {
+                    "const": "pico_pcvr"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "results": {
+                "minItems": 5,
+                "maxItems": 5,
+                "prefixItems": [
+                  {
+                    "properties": {
+                      "target": {
+                        "const": "steam_store"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "target": {
+                        "const": "steam_community"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "target": {
+                        "const": "steam_download"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "target": {
+                        "const": "vrchat_web"
+                      }
+                    }
+                  },
+                  {
+                    "properties": {
+                      "target": {
+                        "const": "pico_connect"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "intent": {
+                "properties": {
+                  "region": {
+                    "const": "china_mainland"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "detectedRegion": {
+                "const": "unknown"
+              },
+              "effectiveRegion": {
+                "const": "china_mainland"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "intent": {
+                "properties": {
+                  "region": {
+                    "const": "other"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "detectedRegion": {
+                "const": "unknown"
+              },
+              "effectiveRegion": {
+                "const": "other"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "intent": {
+                "properties": {
+                  "region": {
+                    "const": "auto"
+                  }
+                }
+              },
+              "detectedRegion": {
+                "const": "china_mainland"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "effectiveRegion": {
+                "const": "china_mainland"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "intent": {
+                "properties": {
+                  "region": {
+                    "const": "auto"
+                  }
+                }
+              },
+              "detectedRegion": {
+                "const": "other"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "effectiveRegion": {
+                "const": "other"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "intent": {
+                "properties": {
+                  "region": {
+                    "const": "auto"
+                  }
+                }
+              },
+              "detectedRegion": {
+                "const": "unknown"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "effectiveRegion": {
+                "const": "unknown"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/intent"
+    },
+    {
+      "$ref": "#/$defs/report"
+    }
+  ]
+}

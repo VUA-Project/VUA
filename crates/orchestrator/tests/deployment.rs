@@ -18,6 +18,26 @@ fn intent(purposes: Vec<DeploymentPurpose>) -> DeploymentIntent {
         use_mirrors: true,
     }
 }
+
+#[test]
+fn development_admission_accepts_only_the_declared_pair_and_keeps_global_first() {
+    for version in ["2022.3.22f1", "2022.3.22f1c1"] {
+        assert!(accepted_development_editor(version));
+    }
+    for version in [
+        "2022.3.22f1c2",
+        "2022.3.23f1",
+        "2022.3.22f1c1-extra",
+        "2022.3.22f1 ",
+    ] {
+        assert!(!accepted_development_editor(version));
+    }
+    let policy = EditorDownloadPolicy::new(DownloadRegion::ChinaMainland, true);
+    assert_eq!(
+        policy.editor_editions,
+        [EditorEdition::Global, EditorEdition::China]
+    );
+}
 fn fact(component: &str, presence: DeploymentPresence) -> DeploymentObservation {
     DeploymentObservation {
         component: component.into(),
@@ -93,9 +113,18 @@ impl DeploymentAdapter for FakeAdapter {
         _intent: &DeploymentIntent,
         action: DeploymentAction,
         confirmed: &DeploymentInstaller,
+        report: &mut DeploymentReporter<'_>,
     ) -> Result<(), &'static str> {
         assert_eq!(self.installer.lock().unwrap().as_ref(), Some(confirmed));
         self.installs.fetch_add(1, Ordering::SeqCst);
+        report(DeploymentActivity {
+            completed_bytes: Some(1024),
+            total_bytes: Some(2048),
+            ..DeploymentActivity::from_source(
+                DeploymentPhase::Downloading,
+                EditorDownloadSource::Nounitycn,
+            )
+        })?;
         if let Some((entered, release)) = &self.boundary {
             entered.send(()).unwrap();
             release
@@ -108,6 +137,19 @@ impl DeploymentAdapter for FakeAdapter {
             return Err("vua.deployment.install_failed");
         }
         if self.hub_fallback && action == DeploymentAction::InstallEditor {
+            report(DeploymentActivity {
+                editor_version: Some(vua_orchestrator::PRODUCTION_TARGET),
+                cause: Some("vua.deployment.editor_regional_redirect"),
+                ..DeploymentActivity::from_source(
+                    DeploymentPhase::SourceFailed,
+                    EditorDownloadSource::Nounitycn,
+                )
+            })?;
+            report(DeploymentActivity {
+                editor_version: Some(CHINA_EDITOR_TARGET),
+                cause: Some("vua.deployment.install_failed"),
+                ..DeploymentActivity::new(DeploymentPhase::InstallationFailed)
+            })?;
             return Err("vua.deployment.hub_fallback_required");
         }
         let component = match action {
@@ -221,13 +263,13 @@ fn source_priority_and_mirror_preference_are_visible_and_bound_to_consent() {
     assert_eq!(
         mainland.download_policy.as_ref().unwrap().sources,
         [
-            EditorDownloadSource::Nounitycn,
-            EditorDownloadSource::Official
+            EditorDownloadSource::Official,
+            EditorDownloadSource::Nounitycn
         ]
     );
     assert_eq!(
         mainland.steps[1].official_url.as_deref(),
-        Some(UNITY_EDITOR_SOURCE)
+        Some(UNITY_OFFICIAL_EDITOR_SOURCE)
     );
     for region in [DownloadRegion::Other, DownloadRegion::Unknown] {
         let plan =
@@ -357,9 +399,32 @@ fn exhausted_download_sources_handoff_to_hub_and_replay_does_not_retry() {
         .unwrap();
     assert_eq!(result["outcome"], "manual_required");
     assert_eq!(result["handoff"], "unity_hub");
+    assert_eq!(result["sourceFailures"][0]["source"], "nounitycn");
+    assert_eq!(result["sourceFailures"][0]["editorVersion"], "2022.3.22f1");
+    assert_eq!(
+        result["installationFailures"][0]["editorVersion"],
+        CHINA_EDITOR_TARGET
+    );
+    assert_eq!(
+        result["installationFailures"][0]["cause"],
+        "vua.deployment.install_failed"
+    );
+    assert_eq!(
+        result["sourceFailures"][0]["cause"],
+        "vua.deployment.editor_regional_redirect"
+    );
     assert_eq!(result["handoffUrl"], UNITY_HUB_INSTALL_LINK);
     assert_eq!(result["prerequisitesReady"], false);
     assert_eq!(result["functionalVerification"], "not_run");
+    let events = store.events_after(&receipt.task_id, 0).unwrap();
+    let download = events
+        .iter()
+        .find(|e| e.payload["params"]["phase"] == "downloading")
+        .unwrap();
+    assert_eq!(download.payload["completed"], 1);
+    assert_eq!(download.payload["total"], 3);
+    assert_eq!(download.payload["params"]["completedBytes"], 1024);
+    assert_eq!(download.payload["params"]["totalBytes"], 2048);
     assert_eq!(result["nextStep"]["component"], "unity_hub");
     // Android installation is not attempted after an Editor download handoff.
     assert_eq!(adapter.installs.load(Ordering::SeqCst), 1);

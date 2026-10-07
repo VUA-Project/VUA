@@ -3,7 +3,7 @@
 import {
   isDeploymentAccepted,
   isDeploymentPlanResult,
-  type DeploymentPlan,
+  readDeploymentProgress,
   type TaskSnapshotV01,
 } from "@vua/contracts";
 import { strings } from "../i18n/index.ts";
@@ -76,16 +76,8 @@ export function createLiveDeploymentPort(client: GatewayClient): DeploymentPort 
     subscribe(taskId, callback) {
       return client.subscribe(event => {
         if (event.kind !== "task.progressed" || event.taskId !== taskId) return;
-        const params = event.payload.params;
-        if (params?.operation !== "environment.executeDeployment" || typeof params.component !== "string"
-          || !Object.hasOwn(strings.deployment.components, params.component)
-          || typeof params.action !== "string" || !Object.hasOwn(strings.deployment.actions, params.action)
-          || (params.phase !== "started" && params.phase !== "verified")) return;
-        callback({
-          component: params.component,
-          action: params.action as DeploymentPlan["steps"][number]["action"],
-          phase: params.phase,
-        });
+        const progress = readDeploymentProgress(event.payload.params);
+        if (progress !== null) callback(progress);
       });
     },
   };

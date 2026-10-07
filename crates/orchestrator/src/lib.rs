@@ -20,6 +20,7 @@ mod contracts;
 mod editor_targets;
 mod editor_selection;
 mod environment;
+pub mod network;
 mod filesystem;
 mod journal;
 mod material_types;

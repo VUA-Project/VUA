@@ -202,6 +202,9 @@ export class MockOrchestratorProviderV01 implements OrchestratorProviderV01 {
       }
       case "task.requestCancellation":
         return this.#requestCancellation(request);
+      case "environment.checkNetwork":
+      case "environment.testWebsites":
+        return this.#failure(request, this.#error("vua.network.unavailable", "unavailable", "errors.network.failed", request.correlationId, false, false));
       case "environment.planDeployment":
       case "environment.executeDeployment":
         return this.#failure(request, this.#error("vua.deployment.unavailable", "unavailable", "errors.deployment.failed", request.correlationId, false, false));

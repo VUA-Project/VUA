@@ -12,6 +12,7 @@ pub mod eac_terminate;
 pub mod eac_verify;
 pub mod editor_verify;
 pub mod environment_managers;
+pub mod network_probe;
 pub mod import_copy;
 pub mod project_inspection;
 pub mod project_lock;

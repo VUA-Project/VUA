@@ -1,4 +1,6 @@
-import type { DeploymentIntent, DeploymentPlan, TaskSnapshotV01 } from "@vua/contracts";
+import type { DeploymentIntent, DeploymentPlan, DeploymentProgress, TaskSnapshotV01 } from "@vua/contracts";
+import type { NetworkIntent, NetworkReport } from "@vua/contracts";
+import type { WebsiteObservation } from "@vua/contracts";
 import type { CheckZone, DeployerView, VersionTrack } from "../features/deployer/deployer-model.ts";
 import type { FixPlanV1 } from "../features/deployer/fix-plan-model.ts";
 import type { CapabilityReport, Unsubscribe } from "./types.ts";
@@ -29,10 +31,11 @@ export interface DeploymentPort {
   status(taskId: string): Promise<TaskSnapshotV01>;
   cancel(taskId: string, revision: number): Promise<void>;
   /** Live step facts; task.get remains authoritative for final/cancellation/recovery state. */
-  subscribe(taskId: string, callback: (step: { component: string; action: DeploymentPlan["steps"][number]["action"]; phase: "started" | "verified" }) => void): Unsubscribe;
+  subscribe(taskId: string, callback: (step: DeploymentProgress) => void): Unsubscribe;
 }
 
 export interface EnvironmentPort {
+  readonly network?: NetworkPort;
   readonly deployment?: DeploymentPort;
   /** 只读快照:渲染前拉取;订阅推送到达前不得把本地缓存当事实来源 */
   snapshot(): Promise<EnvironmentView>;
@@ -53,4 +56,12 @@ export interface EnvironmentPort {
    */
   planFix(checkId: string): Promise<FixPlanResult>;
   capability(): Promise<CapabilityReport>;
+}
+
+/** Explicit HTTPS diagnostics, independent of software readiness and the legacy TCP check. */
+export interface NetworkPort {
+  websiteCapability(): Promise<CapabilityReport>;
+  testWebsites(urls: readonly string[]): Promise<readonly WebsiteObservation[]>;
+  capability(): Promise<CapabilityReport>;
+  check(intent: NetworkIntent): Promise<NetworkReport>;
 }

@@ -1,0 +1,65 @@
+name: Windows ZIP preview
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'apps/desktop/electron-builder.yml'
+      - 'apps/desktop/packaging/**'
+      - 'apps/desktop/scripts/build-electron.mjs'
+      - 'apps/desktop/scripts/build-windows-provider.mjs'
+      - 'apps/desktop/scripts/package-windows.mjs'
+      - 'apps/desktop/scripts/smoke-packaged.ps1'
+      - 'apps/desktop/src/electron/**'
+      - 'apps/desktop/package.json'
+      - 'packages/orchestrator-provider/**'
+      - 'packages/contracts/**'
+      - 'crates/**'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/windows-zip.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-zip-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@1.97.1
+      - uses: Swatinem/rust-cache@v2
+      - run: pnpm install --frozen-lockfile
+      - name: Build unsigned ZIP (no publication)
+        run: pnpm --filter @vua/desktop package:win
+      - name: Test standalone ZIP with isolated data
+        run: pnpm --filter @vua/desktop smoke:packaged
+      - name: Upload tested preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: VUA-windows-x64-unsigned-preview
+          path: |
+            apps/desktop/out/*-preview.zip
+            apps/desktop/out/packaged-smoke.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Upload failed smoke summary
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: VUA-zip-failure
+          path: apps/desktop/out/packaged-smoke.json
+          if-no-files-found: ignore
+          retention-days: 7

@@ -56,7 +56,7 @@ export {
   type WorkflowRunState,
   type WorkflowStage,
 } from "./workflow.ts";
-export type { EnvironmentPort, EnvironmentView } from "./environment-port.ts";
+export type { EnvironmentPort, EnvironmentView, NetworkPort } from "./environment-port.ts";
 export { CURRENT_RECIPE_ID } from "./model-production-port.ts";
 export {
   buildRecordDisplayStatuses,

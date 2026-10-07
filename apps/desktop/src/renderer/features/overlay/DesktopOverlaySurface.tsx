@@ -28,10 +28,10 @@ import { formatDateTime } from "../../i18n/index.ts";
  * 诚实四态:首帧骨架 / 失败+重试 / 缺席或空态 / 正常;关闭永远可用
  * (后端不可达时退化 nativeWindow?.close())。
  */
-import { useCallback, useEffect, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { Icon } from "@vua/design-system";
 import { overlayPort } from "./overlay-port-instance.ts";
-import { GuideOverlayView } from "./GuideOverlayView.tsx";
+import { GuideOverlayView, shouldClearGuideRequest, type GuideRequest } from "./GuideOverlayView.tsx";
 import {
   isOverlayView,
   parseOverlayView,
@@ -98,6 +98,11 @@ export function DesktopOverlaySurface() {
   const [view, setView] = useState<OverlayView>(() =>
     parseOverlayView(new URLSearchParams(window.location.search).get("view")),
   );
+  // 指南定位请求(首玩 B 切片):Main 的 guide-target 事件经本面暂存并
+  // 转发给 GuideOverlayView——本面常驻,GuideOverlayView 的挂载时序不影响
+  // 定位到达(先发 set-view 再发 guide-target 的两连发安全)
+  const [guideRequest, setGuideRequest] = useState<GuideRequest | null>(null);
+  const guideRequestNonce = useRef(0);
 
   useEffect(() => {
     const events = window.vua?.window.overlayViewEvents;
@@ -105,6 +110,23 @@ export function DesktopOverlaySurface() {
     return events.subscribe((next) => {
       if (isOverlayView(next)) setView(next);
     });
+  }, []);
+
+  useEffect(() => {
+    const events = window.vua?.window.guideTargetEvents;
+    if (!events) return;
+    return events.subscribe((target) => {
+      setView("guide");
+      guideRequestNonce.current += 1;
+      setGuideRequest({ target, nonce: guideRequestNonce.current });
+    });
+  }, []);
+
+  // 定位请求应用回执:只清除已被应用的那一条(之后到达的新请求保留)
+  const ackGuideRequest = useCallback((nonce: number) => {
+    setGuideRequest((current) =>
+      shouldClearGuideRequest(current, nonce) ? null : current,
+    );
   }, []);
 
   const loadSnapshot = useCallback((onFailure: () => void) => {
@@ -173,6 +195,20 @@ export function DesktopOverlaySurface() {
     loadSnapshot(() => setLoadFailed(true));
   }, [loadSnapshot]);
 
+  /** 收起(首玩 B 切片):隐藏覆盖层不销毁,保留窗口与阅读状态;
+   *  无 preload 宿主(浏览器预览)幂等无动作 */
+  const collapseSurface = useCallback(() => {
+    const hide = window.vua?.window.hideOverlay;
+    if (hide !== undefined) void hide().catch(() => {});
+  }, []);
+
+  /** 返回主窗口(首玩 B 切片):用户明确动作,允许切换焦点;
+   *  无 preload 宿主幂等无动作 */
+  const returnToMainWindow = useCallback(() => {
+    const focusMain = window.vua?.window.focusMainWindow;
+    if (focusMain !== undefined) void focusMain().catch(() => {});
+  }, []);
+
   const model = snapshot === null ? null : overlayViewModel(snapshot, "desktop");
 
   const renderActionsRow = (actions: readonly OverlayActionView[]) => (
@@ -212,6 +248,26 @@ export function DesktopOverlaySurface() {
         {import.meta.env.DEV && view === "status" ? (
           <Badge tone="warning">{strings.common.fixtureBadge}</Badge>
         ) : null}
+        {/* 首玩 B 切片:明确的收起(隐藏不销毁)与返回主窗口(允许切换焦点);
+            关闭 chrome 语义不变(关窗不取消安装、不停止游戏) */}
+        <button
+          type="button"
+          className="vua-overlay__chrome-button"
+          aria-label={copy.collapse}
+          title={copy.collapse}
+          onClick={collapseSurface}
+        >
+          <Icon name="minimize" size={16} />
+        </button>
+        <button
+          type="button"
+          className="vua-overlay__chrome-button"
+          aria-label={copy.returnToMain}
+          title={copy.returnToMain}
+          onClick={returnToMainWindow}
+        >
+          <Icon name="home" size={16} />
+        </button>
         <button
           type="button"
           className="vua-overlay__chrome-button vua-overlay__chrome-button--close"
@@ -247,7 +303,7 @@ export function DesktopOverlaySurface() {
 
       <main className="vua-overlay__body">
         {view === "guide" ? (
-          <GuideOverlayView />
+          <GuideOverlayView guideRequest={guideRequest} onGuideRequestApplied={ackGuideRequest} />
         ) : loadFailed ? (
           <>
             <EmptyState title={copy.loadErrorTitle} description={copy.loadErrorBody} />

@@ -52,7 +52,7 @@ fn detect_network_region() -> Option<DownloadRegion> {
     })
 }
 
-fn parse_region(trace: &str) -> Option<DownloadRegion> {
+pub(super) fn parse_region(trace: &str) -> Option<DownloadRegion> {
     let country = trace.lines().find_map(|line| line.strip_prefix("loc="))?;
     if country.len() != 2 || !country.bytes().all(|c| c.is_ascii_uppercase()) {
         return None;

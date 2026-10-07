@@ -12,6 +12,84 @@ import type { Strings } from "./strings.en.ts";
  *   仅 gateway fixture 可达,生产构建被 Tree-shaking 剔除)。
  */
 export const strings: Strings = {
+  websiteTests: {
+    title: "网站测试", test: "测试", testAll: "测试全部", testing: "测试中…",
+    add: "添加网站", edit: "编辑网站", editSite: "编辑 {name}", testSite: "测试 {name}",
+    name: "名称", url: "网站地址", save: "保存", cancel: "取消", remove: "移除",
+    milliseconds: "{ms} ms", httpStatus: "HTTP {code}", resultDetail: "{status} · {ms} ms",
+    invalid: "请输入名称和不重复的 HTTPS 地址，地址不能含登录信息或片段标记。",
+    empty: "点击右上角 + 添加网站。", unavailable: "网站测试暂不可用，可以继续安装软件。",
+    storageFailed: "修改本次有效，但未能保存。",
+    help: "连接帮助", detectRegion: "识别地区",
+    scope: "显示网站响应时间，不是游戏延迟或下载速度。仅在点击后测试，不携带账号 Cookie。",
+    statuses: { timeout: "超时", connection_failed: "失败", probe_error: "不可用", http_error: "HTTP 错误", redirected: "重定向", reachable: "已连接" },
+  },
+  network: {
+    lagTitle: "能进入游戏，但远方房间很卡？",
+    lagRegion: "先在 VRChat 内查看房间实例的服务器地区，对比一个更接近用户和同伴所在地的实例，并查看游戏内的延迟。网页检测正常不代表跨地区房间的延迟低。",
+    lagPerformance: "如果表现为画面卡顿，还要对比游戏帧率。使用 PICO 串流时，再单独检查 PICO Connect 的 USB 或局域网 Wi-Fi 连接；这些与房间服务器的互联网延迟是不同的问题。",
+    regionUse: "网络使用地区",
+    uuQualifier: "此推荐适用于在中国大陆连接网络的用户。",
+    "title": "检查游玩网络",
+    "description": "安装前分项检查 Steam 和 VRChat 的服务入口，再根据结果处理连接问题。",
+    "options": "检测选项",
+    "route": "游玩方式",
+    "routes": {
+      "desktop_play": "桌面游玩",
+      "pico_pcvr": "PICO 串流"
+    },
+    "region": "网络地区",
+    "autoRegion": "自动识别",
+    "regions": {
+      "china_mainland": "中国大陆",
+      "other": "中国大陆以外",
+      "unknown": "未能识别"
+    },
+    "privacy": "检测会访问下列服务，不登录账号。自动识别地区还会访问 Cloudflare，仅使用国家分类，不保存 IP 地址。",
+    "check": "检测网络",
+    "recheck": "重新检测",
+    "continue": "继续安装",
+    "continued": "可以继续下方的软件安装，随时展开网络检测。",
+    "reopen": "展开网络检测",
+    "running": "正在检查各服务入口… 已用 {seconds} 秒，每项检测均设有超时。",
+    "failed": "本次检测未能完成。可以重试，也可以继续安装，在游戏中验证连接。",
+    "summary": "{total} 个服务入口中，{count} 个响应正常。",
+    "checkedAt": "检测时间：{time}",
+    "regionHint": "此结果反映网络出口；如果与当前配置的网络地区不同，可以手动修改。",
+    "targets": {
+      "steam_store": "Steam 注册与商店",
+      "steam_community": "Steam 社区",
+      "steam_download": "Steam 安装包下载",
+      "vrchat_web": "VRChat 网页",
+      "pico_connect": "PICO Connect 下载页"
+    },
+    "statuses": {
+      "reachable": "响应正常",
+      "http_error": "已收到服务器响应，需进一步查看",
+      "redirected": "需要在浏览器确认跳转",
+      "timeout": "连接超时",
+      "connection_failed": "未能建立连接",
+      "probe_error": "检测暂不可用"
+    },
+    "responseTime": "收到响应头用时 {milliseconds} 毫秒",
+    "remedies": {
+      "http_error": "打开官方页面查看。访问限制、浏览器验证或服务异常都可能影响自动检测，此结果不代表整个网络断开。",
+      "redirected": "打开官方页面，在浏览器中完成跳转；网络调整后可重新检测。",
+      "timeout": "确认互联网连接后重试，也可以打开官方页面，对比浏览器是否能连接。",
+      "connection_failed": "先确认官方页面能否打开，必要时检查系统时间、当前代理或加速器，再重新检测。",
+      "probe_error": "请重试检测，期间可以继续安装软件。"
+    },
+    "openService": "打开官方页面",
+    "uuTitle": "中国大陆网络：网易 UU",
+    "uuSteps": "打开网易 UU，选择加速 VRChat，即可同时加速周边的 Steam 商店和 Oculus 商店，无需分别选择。完成后回到这里重新检测。",
+    "uuAffiliation": "VUA 与网易 UU 没有利益关系，服务由网易独立运营，使用条款及费用以其说明为准。",
+    "openUu": "打开网易 UU",
+    "uuRecheck": "已有的加速器可以继续使用。VUA 的检测请求与游戏可能采用不同线路，启用加速后还应在 VRChat 内验证登录和加载。",
+    "scope": "这里检测服务入口的可达性，不测量游戏延迟或下载速度。无论结果如何，都可以继续安装，并在游玩时验证游戏连接。",
+    "picoLocal": "PICO 的 USB 和 Wi-Fi 串流连接在 PICO Connect 中单独检查。互联网正常但头显无法连接时，请在那里检查线缆或局域网连接。",
+    guideCta: "查看 PICO 串流指南",
+    "linkFailed": "页面未能打开，请重试。"
+  },
   /** 术语本地注释(键必须与 terms.ts 的 TERMS 一一对应;空串 = 无注释,仅显示术语) */
   terms: {
     warehouse: "仓储",
@@ -273,8 +351,107 @@ demoTaskTitle: "演示任务",
     windowMinimize: "最小化",
     windowMaximize: "最大化/还原",
     windowClose: "关闭",
-    /** 顶栏覆盖层入口(2026-09-26 裁决):打开/聚焦置顶窗并切到引导视图 */
+    /** 顶栏覆盖层入口(2026-09-26 裁决):打开/聚焦置顶窗并切到引导视图。
+     *  三类引导裁决(2026-10-05):本入口打开准备阅读器(普通阅读窗口) */
     overlayGuide: "引导",
+    /** 准备阅读器窗口标题(任务栏/系统窗框) */
+    readerWindowTitle: "VUA 引导",
+    /** 顶栏游戏引导入口(三类引导裁决):打开小型透明游戏引导窗 */
+    gameGuide: "游戏引导",
+  },
+  /** 游戏引导(三类引导裁决 2026-10-05,guidance §4,手动版):在游戏画面
+   *  上一次只呈现一步。文案只复述已核对的引导事实;确认/跳过记录玩家
+   *  自己的阅读进度,绝不主张 VUA 检查或更改了游戏设置。 */
+  gameGuide: {
+    title: "游戏引导",
+    hide: "隐藏",
+    opacityLabel: "透明度",
+    confirm: "已了解",
+    skip: "跳过",
+    restart: "重新开始",
+    allDoneTitle: "全部步骤已完成",
+    allDone: "这里的进度只记录你自己读过哪些步骤,随时可以重看。VUA 没有检查、也没有更改任何游戏设置。",
+    steps: {
+      controls: {
+        title: "基础操作",
+        body: [
+          "桌面模式:W/A/S/D 移动,鼠标转视角,Esc 打开快捷菜单;按住 V 说话(默认按键说话)。",
+          "VR 模式:扳机键互动,侧握键抓取,摇杆移动/转向,菜单键打开游戏菜单。完整按键表见 VRChat 官方操作文档。",
+        ],
+      },
+      audio: {
+        title: "声音与麦克风",
+        body: [
+          "麦克风默认按键说话:按住 V 说话;HUD 上的麦克风图标带斜杠 = 已静音。",
+          "在设置的音频区选择麦克风设备、调节音量。别人听不到时,依次检查 Windows 录音设备、游戏内设备与静音状态。",
+        ],
+      },
+      personalSpace: {
+        title: "个人空间",
+        body: [
+          "安全设置里的 Personal Space(个人空间)会把进入你半径的玩家模型隐藏或变半透明——拥挤世界和陌生人多的场合建议开启。",
+          "它只改变你本地看到的画面,不会通知、也不会影响其他玩家。",
+        ],
+      },
+      untrustedUrls: {
+        title: "允许不受信任的 URL",
+        body: [
+          "Allow Untrusted URLs 默认关闭:关闭时,别人世界里的图片、视频等外部内容不会加载。",
+          "开启即表示你信任世界作者写入的外部地址;不确定时保持关闭,不影响普通游玩。",
+        ],
+      },
+      worlds: {
+        title: "找教程世界",
+        body: [
+          "打开主菜单 → Worlds(世界),按你要学的语言搜索教程世界(试试 “tutorial” 或语言名),加入人数多的房间跟着练。",
+          "按语言核对过的教程世界清单正在由作者实测整理;清单上线前,以上搜索路线就是诚实路径——这里不虚构世界编号。",
+        ],
+      },
+    },
+  },
+  /** 应用导览(三类引导裁决 2026-10-05,guidance §2):真实控件上的有序
+   *  高亮。步骤文案只说明"在哪里、是什么";控件缺席时如实交代前提。 */
+  tour: {
+    title: "VUA 功能导览",
+    stepsAria: "功能导览",
+    back: "上一步",
+    next: "下一步",
+    finish: "完成导览",
+    skip: "跳过导览",
+    /** 命令面板重播入口(导览状态独立于阅读器与安装状态) */
+    paletteEntry: "重播功能导览",
+    /** 步骤无特定缺席说明时的兜底文案 */
+    absentDefault: "这个入口当前没有显示。你可以继续导览,稍后再回来看。",
+    steps: {
+      route: {
+        title: "从这里选择目标",
+        body: "环境部署负责准备游玩 VRChat 所需的软件,模型生产负责 Avatar 的制作与装扮。先选一个目标即可开始,之后可在「设置 → 目标重选」随时调整。",
+      },
+      network: {
+        title: "网络检查在这里",
+        body: "单独测试 VRChat、Steam 或 GitHub，也可以测试全部网站。右上角 + 可添加网站，「连接帮助」中有地区建议。仅在点击后测试，不登录账号。",
+        absent: "选择环境部署目标后,网络检查会显示在这里。",
+      },
+      checks: {
+        title: "软件结论在这里",
+        body: "这里汇总对本机软件的真实检测结论:已就绪、缺失或需要处理。VUA 只如实报告——未经你确认不会改动系统。",
+        absent: "选择环境部署目标后,软件检查会显示在这里。",
+      },
+      plan: {
+        title: "安装前先审阅计划",
+        body: "选择用途并生成计划后,每个安装步骤都会先在这里列明再执行。游戏启动入口随后续安装步骤接入后出现在这里。",
+        absent: "选择环境部署目标后,安装计划会显示在这里。",
+      },
+      tasks: {
+        title: "任务进度在这里",
+        body: "进行中的安装与下载收在底部任务条;点顶栏「状态」可打开置顶状态卡。关闭或退出它们都不会取消任务。",
+        absent: "任务引擎就绪后,任务条会显示在这里。",
+      },
+      guide: {
+        title: "引导随时可达",
+        body: "点顶栏「引导」打开准备阅读器;部署页每个检查项旁的「查看操作指南」直达相关章节。本导览可随时在功能搜索(Ctrl+P)里重播。",
+      },
+    },
   },
   /** 首次目标引导(美术方案 v0.3.3 §2.2 / §4.3) */
   onboarding: {
@@ -327,14 +504,20 @@ demoTaskTitle: "演示任务",
     confirm: "进入 VUA",
   },
   deployment: {
+    editorEditionOrder: "优先全球版 2022.3.22f1，失败后尝试中国版 2022.3.22f1c1；两者均失败后使用 Unity Hub。",
+    phases: { started: "正在开始", resolving_source: "正在获取下载地址", downloading: "正在下载", verifying: "正在校验文件", installing: "正在安装", inspecting: "正在检查安装结果", registering: "正在注册编辑器", source_failed: "此下载来源失败", installation_failed: "此次安装失败", cache_rejected: "正在重新获取无效的缓存文件", verified: "已验证此项前置条件" },
+    transferred: "已处理数据",
+    elapsed: "已用时间",
+    installingHint: "安装程序正在后台运行，VUA 会等待并检查安装结果。Windows 可能弹出权限提示；取消请求将在本次安装步骤结束后生效。",
+    sourceFailures: "查看各次下载和安装详情",
     mirrorHeading: "Unity 下载来源",
     mirrorLabel: "允许使用镜像站",
-    mirrorHint: "大陆优先 NoUnityCN，其他地区优先官方。失败后尝试另一来源，再转 Unity Hub。关闭后只使用官方来源和 Hub。",
+    mirrorHint: "所有地区均优先使用 Unity 官方下载，下载后识别实际为全球版 f1 或中国版 c1。开启后，官方下载失败时可尝试 NoUnityCN 备用来源。",
     downloadRegion: "下载出口地区",
     downloadOrder: "下载顺序",
     downloadRegions: { china_mainland: "中国大陆", other: "中国大陆以外", unknown: "尚未确定" },
     downloadSources: { official: "Unity 官方", nounitycn: "NoUnityCN" },
-    hubFallback: "下载来源均未成功，使用 Unity Hub 安装 Unity 2022.3.22f1。",
+    hubFallback: "全球版和中国版自动部署均失败，请通过 Unity Hub 继续安装。",
     openHub: "在 Unity Hub 中安装此版本",
     getHub: "下载 Unity Hub",
     "title": "按用途部署环境",
@@ -355,6 +538,7 @@ demoTaskTitle: "演示任务",
     "working": "正在处理…",
     "execute": "确认此计划并执行",
     "official": "打开说明或下载来源",
+    guideCta: "查看操作指南",
     "consent": "自动步骤会将指定版本和组件安装到列出的位置，保留已有软件。登录、许可和提权由用户处理。取消在步骤安全边界生效，已完成的安装不自动回滚。",
     "actions": {
       "retain": "保留已有安装",
@@ -406,6 +590,7 @@ demoTaskTitle: "演示任务",
     }
   },
   deployer: {
+    guideCta: "查看操作指南",
     zones: {
       play: {
         title: "游玩环境",
@@ -795,55 +980,153 @@ rolled_back: "已回滚",
       actionUnavailable: "生产能力当前未连接,操作未发出。",
     },
   },
-  /** 游戏引导模块(v0.3.3 §5):G6 起五页接入教程会话,内容为早期占位草稿 */
+  /** 游戏引导模块(v0.3.3 §5):G6 起五页接入教程会话;首玩发行(ibis A 切片)
+   *  以当前官方上游说明为依据重写五主题内容,带 media 的分节必有四语言
+   *  caption,明示其为示意图、与真实软件截图区分 */
   guide: {
     topicsAria: "引导主题",
     /** 页内自制 SVG 示意图的替代文本(图本身无文字,键名经此处 i18n) */
     mediaAlt: {
       pcKeys: "PC 键盘示意图:高亮说话、聊天、表情轮盘键与空格键",
       vrController: "VR 手柄示意图:高亮扳机与握持区",
+      picoUsb: "PICO 4 Pro 头显经高亮 USB 数据线连接 PC 的示意图",
+      picoWifi: "PC 与 PICO 4 Pro 头显经同一路由器无线连接的示意图",
+      steamvrDesktop: "头显内 SteamVR 桌面视图示意图:视野中浮着桌面窗口,手柄射线指向窗口",
+      vrcftFlow: "眼追数据流示意图:从 PICO 头显经 PC 上的追踪软件流向模型眼睛",
     },
     pages: {
+      room: {
+        title: "房间与游玩空间",
+        intro: "先整理物理空间再装软件——一个安全舒适的空间,让之后的每一步都更省心。",
+        sections: [
+          {
+            id: "space",
+            title: "清出游玩空间",
+            paragraphs: [
+              "站立游玩建议留出约 2×2 米的空地;坐着或原地游玩可以更小。把散落的线缆、带硬角的椅子和易碎物品移出可及范围。",
+              "头显或 SteamVR 提示时认真设置游玩边界——共用房间里更要当心,孩子和宠物是最常见的意外访客。",
+            ],
+          },
+          {
+            id: "lighting",
+            title: "房间光线",
+            paragraphs: [
+              "头显靠摄像头识别房间:普通、均匀的室内光最合适。避免阳光直射游玩区域,也避免正后方强逆光。",
+              "头显的摄像头区域保持清洁、不要遮挡——镜头脏污或被覆盖会明显降低追踪质量。",
+            ],
+          },
+          {
+            id: "network",
+            title: "串流网络",
+            paragraphs: [
+              "PICO Wi-Fi 串流希望头显与电脑连在同一路由器上,优先 5 GHz 频段,路由器最好就在游玩房间或近旁。路由器与头显之间的墙体和家电都会明显拉低画质。",
+              "如果画面持续不稳定,USB 线连接是稳妥的替代——设备章节有具体的连接步骤。",
+            ],
+          },
+          {
+            id: "comfort",
+            title: "舒适与休息",
+            paragraphs: [
+              "调整头带让重量落在头顶而不是脸上;佩戴过松会让画面发虚,也更累脖子。",
+              "手边放杯水,按习惯定时休息——VR 的疲劳是悄悄累积的,前几次游玩宁短勿长。",
+            ],
+          },
+        ],
+      },
       start: {
         title: "开始游玩",
-        intro: "从安装到进入第一个世界的最短路径。",
+        intro: "从 Steam 账号到第一个世界——首次游玩的完整路径。",
         sections: [
           {
             id: "prepare",
             title: "开始前准备",
             paragraphs: [
-              "确认已登录 Steam，并检查网络连接。若无法连接，请参照网络故障排查指引。VRChat 本体免费。",
+              "位置:VUA 的环境部署页。先运行环境检测与网络检测;缺 Steam 或 VRChat 时,页面会给出官方安装路线。",
+              "桌面游玩只需要 Steam 与 VRChat,VRChat 免费。PICO 串流在此之上再加 SteamVR 与 PICO Connect。",
+              "若检测失败:网络检测会按服务分别报告,按建议处理后再重查。",
+            ],
+          },
+          {
+            id: "steam-account",
+            title: "Steam 账号(注册或登录)",
+            paragraphs: [
+              "位置:Steam 官网的「加入 Steam」注册页,或 Steam 客户端登录窗。新玩家用邮箱注册,并亲自完成邮箱验证与人机验证;已有账号直接登录。",
+              "应看到:登录后客户端内显示你的 Steam 昵称。",
+              "若失败:验证邮件可能在垃圾箱;注册页打不开通常是线路问题——先查垃圾箱,再回 VUA 网络检测按建议处理。",
+            ],
+          },
+          {
+            id: "install-vrchat",
+            title: "通过 Steam 安装 VRChat",
+            paragraphs: [
+              "位置:Steam 商店的 VRChat 页面。点「开始游戏」——VRChat 免费——Steam 会把它加入库并开始下载。",
+              "应看到:下载完成后,库中的 VRChat 出现绿色「开始游戏」按钮。",
+              "若失败:下载慢或卡住,可在 Steam 设置里更换下载地区或清理磁盘空间;报库文件夹错误就换一个安装位置。",
+            ],
+          },
+          {
+            id: "first-launch",
+            title: "首次启动与登录",
+            paragraphs: [
+              "位置:在 Steam 库中点 VRChat 的「开始游戏」。出现登录界面时,选择用 Steam 账号登录——开始游玩不需要另外注册。",
+              "应看到:加载完成后进入一个世界,此时可以移动(W/A/S/D)、可以按 Esc 打开快捷菜单。Home 可能是没有其他人的私人实例,这属正常——想见其他玩家,从菜单加入公开世界。",
+              "若失败:加载或登录转圈,通常是到 VRChat 服务器的线路不健康——重跑 VUA 网络检测;启动即闪退,先更新显卡驱动再重试。",
+              "可选:需要完整 VRChat 账号时,先用 Steam 登录游戏,打开主菜单 → 设置 →「Link Account」(关联账号)。选择「Upgrade to a VRChat Account」可升级当前平台账号,保留好友、收藏和其他数据;选择「Link to an Existing Account」可合并进已有 VRChat 账号。有 Creator Economy 或 Shop 购买记录的平台账号应选择升级,此时不能合并进已有账号。选好后按画面提示继续。",
             ],
           },
           {
             id: "first-steps",
-            title: "第一步做什么",
+            title: "进世界后的第一件事",
             paragraphs: [
-              "跟着本页教程走完三件事:进入默认世界、在镜子前挑一个免费模型、学会回家。",
+              "先学会三件事:在镜子前挑一个公共模型换上;按 Esc 打开快捷菜单,找到回 Home 世界的路;然后跟好友过传送门,或从菜单里挑另一个世界。",
             ],
           },
         ],
       },
       basics: {
         title: "基础操作",
-        intro: "菜单、按键与状态标识的速查。",
+        intro: "桌面模式的移动、菜单、声音与麦克风,附串流用的 VR 手柄速查。",
         sections: [
+          {
+            id: "movement",
+            title: "移动与视角(桌面)",
+            paragraphs: [
+              "W/A/S/D 移动,鼠标转视角,Shift 冲刺,空格在世界允许时跳跃,C 蹲下,Z 趴下。左键交互或拾取;按住右键显示交互光标。",
+            ],
+          },
           {
             id: "menu",
             title: "菜单在哪里",
-            paragraphs: ["Esc 快捷菜单覆盖绝大多数日常操作;设置类入口在大菜单里。"],
+            paragraphs: [
+              "Esc 打开快捷菜单——回出生点、设置与玩家列表都在这里,并可展开成主菜单(世界、模型与社交)。R 打开动作菜单,表情与眼追要用的 OSC 开关在那里。",
+            ],
           },
           {
             id: "keys-pc",
             title: "PC 按键速查",
             media: "pc-keys",
-            paragraphs: ["先记住说话、表情、跳跃三类按键,其余用到再查。"],
+            caption: "示意图,非游戏实拍:日常最常用的 PC 键——说话、聊天、菜单与跳跃。",
+            paragraphs: [
+              "先记住:按住 V 说话(默认按键发言),Y 打开聊天框,Esc 快捷菜单,空格跳跃。完整列表见 VRChat 官方按键文档。",
+            ],
+          },
+          {
+            id: "sound-mic",
+            title: "声音与麦克风",
+            paragraphs: [
+              "麦克风默认按键发言:按住 V 说话。注意 HUD 上的麦克风图标——带斜线就是静音中。",
+              "位置:设置的音频部分选择麦克风设备、调节音量。",
+              "若别人听不到你:按顺序查 Windows 默认录音设备、VRChat 内所选设备、以及是否静音。",
+            ],
           },
           {
             id: "keys-vr",
             title: "VR 手柄速查",
             media: "vr-controller",
-            paragraphs: ["开麦与跳跃最常用;抓取分前扳机与侧握键两种。"],
+            caption: "示意图,非游戏实拍:VR 手柄的扳机与握持区。",
+            paragraphs: [
+              "VR 中扳机交互、侧握键抓取;摇杆移动与转向,菜单键打开游戏内菜单。VRChat 官方没有 PICO 键位表——PICO 键位以 SteamVR 的控制器绑定设置为准。",
+            ],
           },
         ],
       },
@@ -854,23 +1137,38 @@ rolled_back: "已回滚",
           {
             id: "open-urls",
             title: "允许不受信任的网址",
-            paragraphs: ["不开这个开关,很多世界的视频、图片和音乐无法加载。"],
+            paragraphs: [
+              "位置:设置里的「舒适与安全」。「允许不受信任的网址」默认关闭;不开它,很多世界的视频、图片和音乐无法加载。",
+              "想播放世界媒体时再开启,并且只进可信世界与可信之人给的链接。",
+            ],
           },
           {
             id: "personal-space",
             title: "个人空间与传送门确认",
-            paragraphs: ["陌生人靠太近会自动隐藏;进入他人丢出的传送门前会有确认提示。"],
+            paragraphs: [
+              "个人空间在同一设置页,默认开启:靠得太近的模型会被自动隐藏;进入他人丢出的传送门前,总会有确认提示。",
+            ],
           },
           {
             id: "trust",
-            title: "信任等级与模型防护",
-            paragraphs: ["防护级别决定你能看到谁的模型与特效,遇到不适可一键隐藏对方。"],
+            title: "信任等级与护盾",
+            paragraphs: [
+              "快捷菜单打开时,名牌会显示信任等级(从 Visitor 到 Trusted User)。安全页的护盾级别决定各等级可见的模型与特效——默认的 Normal 就是不错的起点。",
+            ],
+          },
+          {
+            id: "mute-block",
+            title: "遇到不适:静音、隐藏与屏蔽",
+            paragraphs: [
+              "位置:打开快捷菜单,点选对方。可以静音其语音、只隐藏其模型,或彻底屏蔽该用户。",
+              "感觉不对劲时离开永远可以——从快捷菜单回出生点或 Home 世界。",
+            ],
           },
         ],
       },
       devices: {
         title: "设备提示",
-        intro: "PC、VR 与手机端的差异,以及让画面更顺手的设置。",
+        intro: "PICO 4 Pro 的 USB 与 Wi-Fi 串流、在头显里阅读本指南,以及可选眼追。",
         sections: [
           {
             id: "platforms",
@@ -878,30 +1176,95 @@ rolled_back: "已回滚",
             paragraphs: ["各平台同服游玩;模型与世界按平台标识兼容性,注意绿色可用标识。"],
           },
           {
-            id: "tracking",
-            title: "动捕与 IK",
-            paragraphs: ["没有追踪器时游戏用 IK 推算姿态,坐下偶尔穿模属正常现象。"],
+            id: "pico-prepare",
+            title: "串流前准备:要装什么",
+            paragraphs: [
+              "位置:PC 与头显。PC 上安装 SteamVR,并从 PICO 官网安装 PICO Connect。PICO 当前的要求是 Windows 10 22H2 或更高、8GB 内存、GTX 1060 6GB / RX 480 级别或更好的显卡。",
+              "头显上把 PICO OS 更新到最新——当前 PICO Connect 要求 PICO OS 5.11.2 或更高,眼追要求 5.9.0 或更高——并从 PICO 商店装好头显里的 PICO Connect 应用。头显激活本身走 PICO 官方流程。",
+              "若安装被拒:先查 Windows 版本与磁盘剩余空间,再从官网重新下载安装。",
+            ],
           },
           {
-            id: "performance",
-            title: "画面与性能",
-            paragraphs: ["卡顿优先调低模型显示数量与阴影;显存占用高的模型可限制显示。"],
+            id: "pico-usb",
+            title: "USB 串流:连接并开始玩",
+            media: "pico-usb",
+            caption: "示意图,非软件截图:PICO 4 Pro 经 USB 线连接 PC。",
+            paragraphs: [
+              "位置:PC 与头显之间。用支持数据传输的 USB-C 线——建议 USB 3;只能充电的线不行。",
+              "做什么:在头显里打开 PICO Connect,选择 USB 连接,按提示配对。连上后 SteamVR 启动,照旧从库里启动 VRChat。",
+              "应看到:SteamVR 状态窗报告头显与手柄就绪,头显内出现 SteamVR 场景。",
+              "若失败:认不到头显通常是线或接口——换一根线、换 PC 上的 USB 口,再重启 PICO Connect 与 SteamVR。",
+            ],
+          },
+          {
+            id: "pico-wifi",
+            title: "Wi-Fi 串流:连接并开始玩",
+            media: "pico-wifi",
+            caption: "示意图,非软件截图:PC 与头显经同一路由器的 Wi-Fi 相连。",
+            paragraphs: [
+              "连接前:PC 尽量用网线接路由器,头显连路由器的 5 GHz Wi-Fi,并待在路由器附近——两台设备必须在同一局域网。",
+              "做什么:在头显里打开 PICO Connect,选择你的电脑——当前版本会自动发现网络里的电脑——然后连接,并像 USB 一样启动 VRChat。",
+              "应看到:与 USB 串流相同的就绪状态。",
+              "若失败:一直搜不到电脑,通常是两个网络或防火墙拦了 PICO Connect——先确认这两点,再在防火墙放行该应用。画面糊或卡顿说明无线链路弱:靠近路由器、切到 5 GHz、或给 PC 接网线。",
+            ],
+          },
+          {
+            id: "headset-guide",
+            title: "在头显里阅读本指南",
+            media: "steamvr-desktop",
+            caption: "示意图,非软件截图:经 SteamVR 桌面视图阅读本指南。",
+            paragraphs: [
+              "位置:串流中的 SteamVR 面板。按手柄菜单键呼出面板——PICO 键位以 SteamVR 控制器绑定为准——选择桌面(Desktop)视图。",
+              "做什么:在桌面里找到 VUA 引导覆盖层,用手柄射线指向它、扳机当鼠标点击来滚动和切换主题;再按一次菜单键收起面板,回到游戏。",
+              "应看到:PC 桌面浮在视野中,本指南可阅读、可滚动。",
+              "说明:这是 SteamVR 的桌面视图,不是 VUA 的原生 VR 覆盖层。",
+              "若失败:呼不出面板说明 SteamVR 没在运行或键位不同——查 SteamVR 状态窗与控制器绑定;找不到指南窗口,先确认 PC 上覆盖层已打开。",
+            ],
+          },
+          {
+            id: "eye-tracking",
+            title: "可选:PICO 4 Pro 眼追",
+            media: "vrcft-flow",
+            caption: "示意图,非软件截图:眼动数据从头显经追踪软件流向你的模型。",
+            paragraphs: [
+              "这是可选项——跳过它不影响正常游玩。PICO 4 Pro 带有眼动与面部追踪摄像头,免费的 VRCFaceTracking(VRCFT)负责把数据转发给 VRChat。",
+              "头显:把 PICO OS 更新到 5.9.0 或更高,在设置的 LAB(实验室)页开启 Eye Tracking(眼动追踪)与 Lip Tracking(唇部追踪),并运行头显的眼动校准。",
+              "PC:从 Steam 安装 VRCFT,打开它的 Module Registry(模块注册表)页,安装「Pico4SAFTExtTrackingModule」。",
+              "上游当前的 PICO 说明:按 VRCFT 的 PICO 4 Pro 指南(docs.vrcft.io 的 Hardware → PICO → PICO 4 Pro 页),目前需要做一项临时修正——完全退出 PICO Connect,用记事本打开 %AppData%\\PICO Connect\\setting.json,把 faceTrackingTransferProtocol 改为 2、faceTrackingMode 改为 1,保存后重新启动 PICO Connect。这同时能避免麦克风使用时追踪中断;若该文档有更新,以文档为准。",
+              "顺序很关键:先用 PICO Connect 连上 PCVR 进入 SteamVR,再启动 VRCFT 并确认模块已初始化。",
+              "在 VRChat 里:按 R 打开动作菜单,进入 Options → OSC,把 OSC 打开。",
+              "应看到:合适的模型眼睛会跟随你的视线、同步你的眨眼。多数 Av3.0 模型自带基础眼动;完整面部表情需要 VRCFT 兼容模型。10 秒无数据后,VRChat 会回退到自动眨眼。",
+              "若失败:眼睛不动,按顺序查 OSC 开关、模块初始化与启动顺序;麦克风一开追踪就断,回到上面的 setting.json 修正;VRCFT 关不掉是已知上游问题,直接结束其进程。",
+            ],
+          },
+          {
+            id: "play-comfort",
+            title: "追踪、IK 与性能",
+            paragraphs: [
+              "没有额外追踪器时,游戏用 IK 推算姿态,坐下偶尔穿模属正常。",
+              "卡顿时先调低模型显示数量与阴影;占显存高的模型可以只对你隐藏。",
+            ],
           },
         ],
       },
       tutorials: {
-        title: "桌面/VR 教程",
-        intro: "同一份教程,桌面窗口与 VR 覆盖层同步进行。",
+        title: "指南阅读方式",
+        intro: "本指南在哪里,以及游玩中如何阅读——桌面上与头显里。",
         sections: [
           {
             id: "surfaces",
-            title: "双表面同步",
-            paragraphs: ["任意一侧翻页,另一侧即时跟随;关掉 VR 覆盖层会自动回落到桌面窗口。"],
+            title: "桌面引导覆盖层",
+            paragraphs: ["本指南在 VUA 的轻量覆盖层窗口里。随时从主窗口打开或收起;它不抢游戏焦点,关掉它也不会取消安装或停止 VRChat。"],
+          },
+          {
+            id: "headset",
+            title: "在头显里阅读",
+            paragraphs: ["PICO 路线下没有独立的 VUA VR 覆盖层——呼出 SteamVR 桌面视图,阅读同一个窗口即可。步骤见「设备提示」的「在头显里阅读本指南」。"],
           },
           {
             id: "accounts",
             title: "账号说明",
-            paragraphs: ["Steam 平台账号可以升级为 VRChat 账号或关联已有账号。请按官方账号升级说明操作，以保留好友和收藏。"],
+            paragraphs: ["两条账号路线都从游戏内开始:用 Steam 登录后,打开主菜单 → 设置 →「Link Account」。「Upgrade to a VRChat Account」升级当前账号并保留数据;「Link to an Existing Account」合并进已有 VRChat 账号。有 Creator Economy 或 Shop 购买记录时选择升级,不走合并。之后按画面提示操作。"],
           },
         ],
       },
@@ -1354,6 +1717,8 @@ rolled_back: "已回滚",
     cancelHint: "取消是请求语义:任务会在安全边界结束。",
     cancelArmedHint: "再按一次确认取消。",
     closeWindow: "关闭窗口",
+    collapse: "收起",
+    returnToMain: "返回主窗口",
     retry: "重试",
     loadErrorTitle: "暂时无法连接应用层",
     loadErrorBody: "覆盖层快照请求失败或超时。重试不会影响主窗口;关闭本窗口仅关闭覆盖层。",

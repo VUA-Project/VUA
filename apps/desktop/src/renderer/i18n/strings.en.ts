@@ -14,6 +14,84 @@
  *   (DEV-only, reachable only from gateway fixtures, tree-shaken in release).
  */
 export const strings = {
+  websiteTests: {
+    title: "Website tests", test: "Test", testAll: "Test all", testing: "Testing…",
+    add: "Add website", edit: "Edit website", editSite: "Edit {name}", testSite: "Test {name}",
+    name: "Name", url: "Website URL", save: "Save", cancel: "Cancel", remove: "Remove",
+    milliseconds: "{ms} ms", httpStatus: "HTTP {code}", resultDetail: "{status} · {ms} ms",
+    invalid: "Enter a name and a unique HTTPS URL without login information or a fragment.",
+    empty: "Add a website with the + button.", unavailable: "Website testing is currently unavailable. Software setup can continue.",
+    storageFailed: "Changes apply for this session but could not be saved.",
+    help: "Connection help", detectRegion: "Detect region",
+    scope: "Time to website response headers, not game ping or download speed. Tests run only when clicked, without account cookies.",
+    statuses: { timeout: "Timed out", connection_failed: "Failed", probe_error: "Unavailable", http_error: "HTTP error", redirected: "Redirect", reachable: "Connected" },
+  },
+  network: {
+    lagTitle: "Connected, but a distant instance feels slow?",
+    lagRegion: "Check the instance's server region in VRChat. Compare with an instance closer to you and your friends, and check the game's ping. A successful website check does not measure this cross-region delay.",
+    lagPerformance: "If the picture stutters, also compare the game's FPS. For PICO streaming, check PICO Connect's USB or local Wi-Fi connection separately. These are different from the instance's Internet latency.",
+    regionUse: "Where this network is used",
+    uuQualifier: "Use this recommendation when connecting from mainland China.",
+    "title": "Check the play network",
+    "description": "Check Steam and VRChat service entrances before setup, then follow the suggestions for any connection problems.",
+    "options": "Check options",
+    "route": "Play mode",
+    "routes": {
+      "desktop_play": "Desktop play",
+      "pico_pcvr": "PICO streaming"
+    },
+    "region": "Network region",
+    "autoRegion": "Detect automatically",
+    "regions": {
+      "china_mainland": "Mainland China",
+      "other": "Outside mainland China",
+      "unknown": "Not determined"
+    },
+    "privacy": "Checks contact the listed services without logging in. Automatic region detection also contacts Cloudflare; only the country category is used, and IP addresses are not saved.",
+    "check": "Check network",
+    "recheck": "Check again",
+    "continue": "Continue setup",
+    "continued": "Continue with software setup below. Network checks can be reopened at any time.",
+    "reopen": "Reopen network checks",
+    "running": "Checking service entrances… {seconds} s elapsed. Each check has a time limit.",
+    "failed": "The check could not finish. Try again, or continue setup and test the connection in the game.",
+    "summary": "{count} of {total} service entrances responded successfully.",
+    "checkedAt": "Checked at {time}",
+    "regionHint": "This describes the connection exit. Select the region manually if it differs from the network being set up.",
+    "targets": {
+      "steam_store": "Steam registration and store",
+      "steam_community": "Steam Community",
+      "steam_download": "Steam installer download",
+      "vrchat_web": "VRChat website",
+      "pico_connect": "PICO Connect download page"
+    },
+    "statuses": {
+      "reachable": "Responded successfully",
+      "http_error": "Server returned a response to review",
+      "redirected": "Redirect needs a browser check",
+      "timeout": "Timed out",
+      "connection_failed": "Connection not established",
+      "probe_error": "Check unavailable"
+    },
+    "responseTime": "Response headers in {milliseconds} ms",
+    "remedies": {
+      "http_error": "Open the service to check it in the browser. An access restriction, browser challenge or service error can affect this check; this response does not mean the whole network is offline.",
+      "redirected": "Open the official page to follow the redirect in the browser, then check again if the network changes.",
+      "timeout": "Check the Internet connection, then retry. Open the official page to compare the browser connection.",
+      "connection_failed": "Check whether the official page opens. If needed, check the system clock and current proxy or accelerator, then retry.",
+      "probe_error": "Retry the check. Software setup can continue while this check is unavailable."
+    },
+    "openService": "Open official page",
+    "uuTitle": "Mainland China: NetEase UU",
+    "uuSteps": "Open NetEase UU and select VRChat for acceleration. This also covers the surrounding Steam and Oculus stores; there is no need to select them separately. Then return here and check again.",
+    "uuAffiliation": "VUA has no financial relationship with NetEase UU. NetEase operates the service and sets its terms and any charges.",
+    "openUu": "Open NetEase UU",
+    "uuRecheck": "An existing accelerator can stay in use. These VUA requests and the game may use different routes; after enabling acceleration, also verify login and loading in VRChat.",
+    "scope": "These checks measure access to service entrances, not game latency or download speed. Setup can continue with any result; the game connection is verified when playing.",
+    "picoLocal": "PICO USB and Wi-Fi streaming are checked separately in PICO Connect. If Internet access works but the headset cannot connect, check the cable or local Wi-Fi connection there.",
+    guideCta: "View the PICO streaming guide",
+    "linkFailed": "The page could not be opened. Try again."
+  },
   terms: {
     warehouse: "Asset library",
     recipe: "Recipe",
@@ -274,8 +352,110 @@ demoTaskTitle: "Demo task",
     windowMaximize: "Maximize/Restore",
     windowClose: "Close",
     /** Topbar overlay entry (2026-09-26 ruling): open/focus the pinned window
-     *  on the guide view */
+     *  on the guide view. Three-context ruling (2026-10-05): this entry opens
+     *  the preparation reader (ordinary reading window) */
     overlayGuide: "Guide",
+    /** Preparation reader window title (taskbar / system frame) */
+    readerWindowTitle: "VUA Guide",
+    /** Topbar game-guide entry (three-context ruling): open the small
+     *  transparent game-guide window */
+    gameGuide: "Game guide",
+  },
+  /** Game guide (three-context ruling 2026-10-05, guidance §4, manual
+   *  edition): one short step at a time over the game window. Copy restates
+   *  verified guidance facts; confirm/skip records the player's own reading
+   *  progress and never claims a game setting was inspected or changed. */
+  gameGuide: {
+    title: "Game guide",
+    hide: "Hide",
+    opacityLabel: "Transparency",
+    confirm: "Got it",
+    skip: "Skip",
+    restart: "Start over",
+    allDoneTitle: "All steps done",
+    allDone: "This progress only records which steps you have read through; you can look again anytime. VUA has not inspected or changed any game setting.",
+    steps: {
+      controls: {
+        title: "Basic controls",
+        body: [
+          "Desktop: W/A/S/D moves, the mouse turns your view, Esc opens the Quick Menu, and holding V talks (push-to-talk by default).",
+          "VR: the trigger interacts, the side grip grabs, the thumbsticks move and turn, and the menu button opens the in-game menu. The full key list lives in VRChat's official controls documentation.",
+        ],
+      },
+      audio: {
+        title: "Sound and microphone",
+        body: [
+          "The microphone is push-to-talk by default: hold V to speak. A crossed-out mic icon on your HUD means muted.",
+          "Pick your microphone and volumes in the audio section of the settings. If others cannot hear you, check Windows' recording device, the device inside VRChat, and the mute state — in that order.",
+        ],
+      },
+      personalSpace: {
+        title: "Personal Space",
+        body: [
+          "Personal Space in the safety settings hides or fades avatars that come inside your radius — recommended in crowded worlds and around strangers.",
+          "It only changes what you see locally; other players are not notified or affected.",
+        ],
+      },
+      untrustedUrls: {
+        title: "Allow untrusted URLs",
+        body: [
+          "Allow Untrusted URLs is off by default: with it off, external images or videos written into a world do not load.",
+          "Turning it on means you trust the addresses a world's author embedded. When unsure, keep it off — ordinary play is unaffected.",
+        ],
+      },
+      worlds: {
+        title: "Finding tutorial worlds",
+        body: [
+          "Open the Main Menu → Worlds and search in the language you want to learn (try \"tutorial\" or the language's name), then join a populated room and follow along.",
+          "A language-checked tutorial-world list is being verified by the author; until it ships, this search route is the honest path — no invented world identifiers here.",
+        ],
+      },
+    },
+  },
+  /** In-app tour (three-context ruling 2026-10-05, guidance §2): ordered
+   *  highlights over real controls. Step copy states where a thing is and
+   *  what to expect; absent entries explain the prerequisite honestly. */
+  tour: {
+    title: "VUA tour",
+    stepsAria: "Guided tour",
+    back: "Back",
+    next: "Next",
+    finish: "Finish tour",
+    skip: "Skip tour",
+    /** Command palette restart entry (tour state separate from reader/install) */
+    paletteEntry: "Replay the VUA tour",
+    /** Fallback absent note when a step has no specific hint */
+    absentDefault: "This entry is not shown right now. You can continue the tour and come back later.",
+    steps: {
+      route: {
+        title: "This is where you choose",
+        body: "Environment setup prepares the software for playing VRChat; avatar production covers creating and dressing up your avatar. Choose a goal to start — you can change it anytime under Settings → Goal selection.",
+      },
+      network: {
+        title: "Network checks live here",
+        body: "Test VRChat, Steam or GitHub individually, or test all websites together. The + button adds a website. Connection help contains regional advice. Tests run only when clicked and never sign in.",
+        absent: "The network checks appear here once an environment deployment goal is selected.",
+      },
+      checks: {
+        title: "Software findings live here",
+        body: "This hero summarizes the real inspection of this machine: ready, missing or needing attention. VUA only reports — it never changes your system without your confirmation.",
+        absent: "The software inspection appears here once an environment deployment goal is selected.",
+      },
+      plan: {
+        title: "Review the plan before installing",
+        body: "After you pick purposes and generate a plan, every installation step is listed here for review before anything runs. A game launch entry will appear here as later install/launch steps land.",
+        absent: "The installation plan appears here once an environment deployment goal is selected.",
+      },
+      tasks: {
+        title: "Task progress lives here",
+        body: "Running installs and downloads gather in the bottom taskbar; the Status entry in the topbar opens a pinned status card. Closing or exiting either never cancels a task.",
+        absent: "The taskbar appears here once the task engine is ready.",
+      },
+      guide: {
+        title: "Guidance is always reachable",
+        body: "The Guide entry in the topbar opens the preparation reader; each check on the deployment page carries a \"View guide\" button that jumps to the matching section. Replay this tour anytime from the command palette (Ctrl+P).",
+      },
+    },
   },
   onboarding: {
     steps: {
@@ -331,14 +511,20 @@ demoTaskTitle: "Demo task",
     confirm: "Enter VUA",
   },
   deployment: {
+    editorEditionOrder: "Try global 2022.3.22f1, then China 2022.3.22f1c1; use Unity Hub if both fail.",
+    phases: { started: "Starting", resolving_source: "Finding the download", downloading: "Downloading", verifying: "Checking the file", installing: "Installing", inspecting: "Checking the installation", registering: "Registering the Editor", source_failed: "Download source failed", installation_failed: "Installation attempt failed", cache_rejected: "Replacing an invalid cached download", verified: "Prerequisite verified" },
+    transferred: "Data processed",
+    elapsed: "Elapsed time",
+    installingHint: "The installer is running in the background. VUA is waiting for it to finish; Windows may ask for permission. Cancellation takes effect after this installation step.",
+    sourceFailures: "Download and installation attempt details",
     mirrorHeading: "Unity download sources",
     mirrorLabel: "Allow mirror downloads",
-    mirrorHint: "Mainland China uses NoUnityCN first; other regions use Unity first. A failed source falls back to the other, then Unity Hub. Turning this off uses only Unity and Hub.",
+    mirrorHint: "Unity downloads are tried first in every region. The downloaded Editor is identified as global f1 or China c1. When enabled, NoUnityCN is a backup if the official download fails.",
     downloadRegion: "Download network",
     downloadOrder: "Download order",
     downloadRegions: { china_mainland: "Mainland China", other: "Outside mainland China", unknown: "Not determined" },
     downloadSources: { official: "Unity", nounitycn: "NoUnityCN" },
-    hubFallback: "Use Unity Hub to install Unity 2022.3.22f1 after the download sources fail.",
+    hubFallback: "Automatic deployment of both global and China Editor failed. Continue installation through Unity Hub.",
     openHub: "Install this version in Unity Hub",
     getHub: "Download Unity Hub",
     "title": "Deploy by purpose",
@@ -359,6 +545,7 @@ demoTaskTitle: "Demo task",
     "working": "Working…",
     "execute": "Confirm this plan and execute",
     "official": "Open instructions / download source",
+    guideCta: "View guide",
     "consent": "Automatic steps install the listed version/components at the listed location. Existing software is retained. Account sign-in, licenses and elevation stay with the user. Cancellation takes effect at safe step boundaries; completed installation is not rolled back.",
     "actions": {
       "retain": "Keep existing installation",
@@ -410,6 +597,7 @@ demoTaskTitle: "Demo task",
     }
   },
   deployer: {
+    guideCta: "View guide",
     zones: {
       play: {
         title: "Play Environment",
@@ -797,51 +985,148 @@ demoTaskTitle: "Demo task",
     mediaAlt: {
       pcKeys: "PC keyboard diagram highlighting the talk, chat, emoji wheel keys and spacebar",
       vrController: "VR controller diagram highlighting the trigger and grip areas",
+      picoUsb: "Diagram of a PICO 4 Pro headset linked to a PC by a highlighted USB cable",
+      picoWifi: "Diagram of a PC and a PICO 4 Pro headset both connected wirelessly to the same router",
+      steamvrDesktop:
+        "Diagram of the SteamVR desktop view inside the headset, with a desktop window floating in view and a controller ray pointing at it",
+      vrcftFlow:
+        "Diagram of eye-tracking data flowing from a PICO headset through tracking software on the PC to an avatar's eyes",
     },
     pages: {
+      room: {
+        title: "Room & Play Area",
+        intro:
+          "Prepare the physical space before the software — a safe, comfortable play area makes every later step easier.",
+        sections: [
+          {
+            id: "space",
+            title: "Clear your play space",
+            paragraphs: [
+              "Standing play wants roughly 2×2 m of clear floor; seated or in-place play works with less. Move loose cables, chairs with hard corners and anything fragile out of arm's reach.",
+              "Set the play boundary when the headset or SteamVR asks for it — take the boundary seriously in a shared room; children and pets are the usual surprise guests.",
+            ],
+          },
+          {
+            id: "lighting",
+            title: "Lighting the room",
+            paragraphs: [
+              "The headset tracks your room with cameras: even, ordinary indoor lighting works best. Avoid direct sunlight on the play area and strong backlight right behind you.",
+              "Keep the headset's camera areas clean and unobstructed — smudges or covers over them degrade tracking noticeably.",
+            ],
+          },
+          {
+            id: "network",
+            title: "Network for streaming",
+            paragraphs: [
+              "PICO streaming over Wi-Fi wants the headset and the PC on the same router, ideally on the 5 GHz band, with the router in or near the play room. Walls and appliances between the router and the headset cost image quality.",
+              "If the stream stays unstable, a USB cable is the steady fallback — the devices chapter covers the connection steps.",
+            ],
+          },
+          {
+            id: "comfort",
+            title: "Comfort and breaks",
+            paragraphs: [
+              "Adjust the head strap so the weight rests on the top of your head, not on your face; a loose fit blurs the view and tires the neck.",
+              "Keep water nearby and take short breaks regularly — VR fatigue builds quietly, and the first sessions should end before it does.",
+            ],
+          },
+        ],
+      },
       start: {
         title: "Getting Started",
-        intro: "The shortest path from install to your first world.",
+        intro: "From a Steam account to your first world — the full first-play path.",
         sections: [
           {
             id: "prepare",
             title: "Before you start",
             paragraphs: [
-              "Sign in to Steam and check your internet connection. If you cannot connect, follow the network troubleshooting guide. VRChat is free to play.",
+              "Where: VUA's environment pages. Run the environment and network checks there first; if Steam or VRChat is missing, they show the official install route.",
+              "Desktop play needs only Steam and VRChat, and VRChat is free. PICO streaming adds SteamVR and PICO Connect on top.",
+              "If a check fails: the network check reports each service separately — apply its suggested remedy and re-check before continuing.",
+            ],
+          },
+          {
+            id: "steam-account",
+            title: "A Steam account (register or sign in)",
+            paragraphs: [
+              "Where: the \"Join Steam\" page on the Steam website, or the Steam client's sign-in window. New players register with an email address and complete the email and human verification themselves; existing players simply sign in.",
+              "You should see: your Steam display name inside the client once signed in.",
+              "If it fails: verification mail can land in spam, and the sign-up page may not load over a bad route — check spam first, then return to VUA's network check and follow its remedy.",
+            ],
+          },
+          {
+            id: "install-vrchat",
+            title: "Install VRChat through Steam",
+            paragraphs: [
+              "Where: the VRChat page in the Steam store. Press \"Play Game\" — VRChat is free — and Steam adds it to your library and downloads it.",
+              "You should see: VRChat in your Steam library with a green \"Play\" button once the download finishes.",
+              "If it fails: slow or stuck downloads usually clear by changing the download region in Steam's settings or freeing disk space; a library-folder error means picking another install location.",
+            ],
+          },
+          {
+            id: "first-launch",
+            title: "First launch and login",
+            paragraphs: [
+              "Where: press \"Play\" on VRChat in your Steam library. On the login screen, choose to sign in with your Steam account — no separate registration is needed to start playing.",
+              "You should see: the game finish loading and drop you into a world where you can move (W/A/S/D) and open the Quick Menu (Esc). Home may be a private instance with nobody else around — that is normal; to meet other players, open the menu and join a public world.",
+              "If it fails: a stuck loading or login screen usually means an unhealthy route to VRChat's servers — re-run VUA's network check; a crash at launch calls for a GPU driver update and a retry.",
+              "Optional: for a full VRChat account, sign in to the game through Steam, then open Main Menu → Settings → Link Account. Choose \"Upgrade to a VRChat Account\" to upgrade the current platform account and keep its friends, favorites and other data, or \"Link to an Existing Account\" to merge into an account you already have. If the platform account has Creator Economy or Shop purchases, use the upgrade option; merging into an existing account is unavailable. Follow the instructions shown for the selected option.",
             ],
           },
           {
             id: "first-steps",
-            title: "What to do first",
+            title: "Your first minutes in a world",
             paragraphs: [
-              "Follow this page's tutorial through three things: enter the default world, pick a free avatar at a mirror, and learn how to go home.",
+              "Learn three things first: pick a public avatar at a mirror to change how you look; open the Quick Menu with Esc and find the way back to your Home world; then follow a friend through a portal or pick another world from the menu.",
             ],
           },
         ],
       },
       basics: {
         title: "Basic Controls",
-        intro: "A quick reference for menus, keys and status indicators.",
+        intro: "Desktop-mode movement, menus, sound and microphone, plus a VR controller reference for streaming.",
         sections: [
+          {
+            id: "movement",
+            title: "Move and look (desktop)",
+            paragraphs: [
+              "W/A/S/D moves, the mouse turns your view, Shift sprints, Space jumps where the world allows it, C crouches and Z goes prone. Left click interacts or picks things up; hold right click to show the interaction cursor.",
+            ],
+          },
           {
             id: "menu",
             title: "Where the menus are",
             paragraphs: [
-              "The Esc quick menu covers most daily actions; settings live in the main menu.",
+              "Esc opens the Quick Menu — respawn, settings and the player list live here, and it expands into the Main Menu for worlds, avatars and social features. R opens the Action Menu, home of expressions and the OSC toggle that eye tracking uses.",
             ],
           },
           {
             id: "keys-pc",
             title: "PC key reference",
             media: "pc-keys",
-            paragraphs: ["Remember talk, emote and jump keys first; look up the rest when needed."],
+            caption:
+              "Illustration, not a game screenshot: the everyday PC keys — talk, chat, menus and jump.",
+            paragraphs: [
+              "Learn these first: hold V to talk (push-to-talk by default), Y for the chatbox, Esc for the Quick Menu and Space to jump. The full list lives in VRChat's official controls documentation.",
+            ],
+          },
+          {
+            id: "sound-mic",
+            title: "Sound and microphone",
+            paragraphs: [
+              "The microphone is push-to-talk by default: hold V to speak. Watch the mic icon on your HUD — crossed out means muted.",
+              "Where: the audio section of the Settings picks the microphone device and adjusts volumes.",
+              "If others cannot hear you: check Windows' default recording device, the device selected inside VRChat, and that you are not muted — in that order.",
+            ],
           },
           {
             id: "keys-vr",
             title: "VR controller reference",
             media: "vr-controller",
+            caption:
+              "Illustration, not a game screenshot: a VR controller's trigger and grip areas.",
             paragraphs: [
-              "Mic and jump are most used; grabbing comes in front-trigger and side-grip variants.",
+              "In VR, the trigger interacts and the side grip grabs; thumbsticks move and turn, and the menu button opens the in-game menu. VRChat publishes no PICO button chart — PICO bindings come from SteamVR's controller settings.",
             ],
           },
         ],
@@ -854,28 +1139,37 @@ demoTaskTitle: "Demo task",
             id: "open-urls",
             title: "Allow untrusted URLs",
             paragraphs: [
-              "Without this toggle, many worlds' videos, images and music will fail to load.",
+              "Where: the Settings, under Comfort & Safety. \"Allow Untrusted URLs\" is off by default; without it, many worlds' videos, images and music will not load.",
+              "Turn it on when you want world media to play, and stick to links from worlds and people you trust.",
             ],
           },
           {
             id: "personal-space",
-            title: "Personal space & portal confirmation",
+            title: "Personal space and portal confirmation",
             paragraphs: [
-              "Strangers who get too close are hidden automatically; entering someone else's portal asks for confirmation first.",
+              "Personal Space lives on the same settings page and is on by default: avatars that press too close are hidden automatically, and entering someone else's portal always asks for your confirmation first.",
             ],
           },
           {
             id: "trust",
-            title: "Trust ranks & avatar shield",
+            title: "Trust ranks and the safety shield",
             paragraphs: [
-              "Shield levels decide whose avatars and effects you see; you can hide anyone with one click if uncomfortable.",
+              "Nameplates show trust ranks, from Visitor up to Trusted User, while the Quick Menu is open. The Safety page's shield levels decide whose avatars and effects you see per rank — the default Normal level is a good starting point.",
+            ],
+          },
+          {
+            id: "mute-block",
+            title: "If someone bothers you: mute, hide, block",
+            paragraphs: [
+              "Where: open the Quick Menu and select the player. You can mute their voice, hide just their avatar, or block the user entirely.",
+              "If a situation feels wrong, leaving is always fine — respawn or return to your Home world from the Quick Menu.",
             ],
           },
         ],
       },
       devices: {
         title: "Device Tips",
-        intro: "Differences between PC, VR and mobile, plus settings for a smoother picture.",
+        intro: "PICO 4 Pro streaming over USB or Wi-Fi, reading this guide inside the headset, and optional eye tracking.",
         sections: [
           {
             id: "platforms",
@@ -885,37 +1179,104 @@ demoTaskTitle: "Demo task",
             ],
           },
           {
-            id: "tracking",
-            title: "Tracking & IK",
+            id: "pico-prepare",
+            title: "Before streaming: what to install",
             paragraphs: [
-              "Without trackers the game estimates poses with IK; occasional clipping while sitting is normal.",
+              "Where: your PC and the headset. On the PC, install SteamVR and PICO Connect from the official PICO site. PICO's current requirements are Windows 10 22H2 or later, 8 GB of RAM, and a GTX 1060 6GB / RX 480 class GPU or better.",
+              "On the headset, update PICO OS to the latest version — current PICO Connect needs PICO OS 5.11.2 or later, and eye tracking needs 5.9.0 or later — and install the PICO Connect app from the PICO Store. Headset activation itself follows PICO's official flow.",
+              "If the installer refuses: check the Windows version and free disk space first, then reinstall from the official page.",
             ],
           },
           {
-            id: "performance",
-            title: "Graphics & performance",
+            id: "pico-usb",
+            title: "USB streaming: connect and play",
+            media: "pico-usb",
+            caption:
+              "Illustration, not a software screenshot: the PICO 4 Pro linked to the PC over a USB cable.",
             paragraphs: [
-              "For stutter, first lower avatar display count and shadows; VRAM-heavy avatars can be limited.",
+              "Where: between the PC and the headset. Use a USB-C cable that carries data — USB 3 recommended; a charge-only cable will not work.",
+              "Do: open PICO Connect in the headset, choose the USB connection, and follow the pairing prompt. Once connected, SteamVR starts; launch VRChat from your library as usual.",
+              "You should see: the SteamVR status window report the headset and controllers ready, and the SteamVR environment appear inside the headset.",
+              "If it fails: an undetected headset usually means the cable or the port — try another cable and a USB port directly on the PC, then restart PICO Connect and SteamVR.",
+            ],
+          },
+          {
+            id: "pico-wifi",
+            title: "Wi-Fi streaming: connect and play",
+            media: "pico-wifi",
+            caption:
+              "Illustration, not a software screenshot: the PC and the headset on the same router over Wi-Fi.",
+            paragraphs: [
+              "Before connecting: plug the PC into the router with Ethernet if you can, put the headset on the router's 5 GHz Wi-Fi, and stay near the router — both devices must be on the same local network.",
+              "Do: open PICO Connect in the headset and pick your PC — current versions discover PCs on the network automatically — then connect and start VRChat as with USB.",
+              "You should see: the same ready states as USB streaming.",
+              "If it fails: a PC that never appears usually means two different networks or a firewall blocking PICO Connect — confirm both, then let the app through the firewall. Blurry or stuttering video means a weak wireless path: move closer to the router, switch to the 5 GHz band, or wire the PC.",
+            ],
+          },
+          {
+            id: "headset-guide",
+            title: "Read this guide inside the headset",
+            media: "steamvr-desktop",
+            caption:
+              "Illustration, not a software screenshot: reading this guide through SteamVR's desktop view.",
+            paragraphs: [
+              "Where: the SteamVR dashboard while streaming. Press the controller's menu button to raise the dashboard — PICO bindings come from SteamVR's controller settings — and choose the Desktop view.",
+              "Do: find the VUA guide overlay on the desktop, point at it with the controller ray, and click with the trigger to scroll and switch topics. Press the menu button again to close the dashboard and return to the game.",
+              "You should see: your PC desktop floating in front of you, with this guide readable and scrollable.",
+              "Note: this is SteamVR's desktop view, not a native VUA VR overlay.",
+              "If it fails: no dashboard means SteamVR is not running or the binding differs — check the SteamVR status window and controller bindings; if you cannot find the guide window, confirm the overlay is open on the PC.",
+            ],
+          },
+          {
+            id: "eye-tracking",
+            title: "Optional: PICO 4 Pro eye tracking",
+            media: "vrcft-flow",
+            caption:
+              "Illustration, not a software screenshot: eye data flowing from the headset through the tracking software to your avatar.",
+            paragraphs: [
+              "This is optional — skipping it changes nothing about normal play. The PICO 4 Pro carries eye and face tracking cameras, and the free VRCFaceTracking (VRCFT) app relays them to VRChat.",
+              "Headset: update PICO OS to 5.9.0 or later, enable Eye Tracking and Lip Tracking under the LAB tab in Settings, and run the headset's eye-tracking calibration.",
+              "PC: install VRCFT from Steam, open its Module Registry tab, and install the \"Pico4SAFTExtTrackingModule\".",
+              "Upstream's current PICO note: VRCFT's PICO 4 Pro guide (docs.vrcft.io, under Hardware → PICO → PICO 4 Pro) currently asks for a temporary fix — quit PICO Connect completely, open %AppData%\\PICO Connect\\setting.json in a text editor, set faceTrackingTransferProtocol to 2 and faceTrackingMode to 1, save the file, then start PICO Connect again. The fix also keeps tracking alive while the microphone is in use; if the document says otherwise, follow the document.",
+              "Order matters: connect PCVR over PICO Connect and reach SteamVR first, then start VRCFT and confirm the module initializes.",
+              "In VRChat: open the Action Menu with R, go to Options, OSC, and turn OSC on.",
+              "You should see: a suitable avatar's eyes follow your gaze and mirror your blinks. Most Av3.0 avatars already support basic eye movement; full face expressions need a VRCFT-compatible avatar. After 10 seconds without data, VRChat falls back to automatic blinking.",
+              "If it fails: eyes not moving means checking, in order, the OSC toggle, the module's initialization and the startup order; tracking that dies when the microphone runs points back to the setting.json fix above; and if VRCFT will not close, that is a known upstream issue — end its process.",
+            ],
+          },
+          {
+            id: "play-comfort",
+            title: "Tracking, IK and performance",
+            paragraphs: [
+              "Without extra trackers the game estimates poses with IK, so occasional clipping while sitting is normal.",
+              "For stutter, first lower the avatar display count and shadows; VRAM-heavy avatars can be hidden for you alone.",
             ],
           },
         ],
       },
       tutorials: {
-        title: "Desktop/VR Tutorials",
-        intro: "The same tutorial runs in sync on the desktop window and the VR overlay.",
+        title: "Reading This Guide",
+        intro: "Where this guide lives, and how to read it while playing — on the desktop and inside the headset.",
         sections: [
           {
             id: "surfaces",
-            title: "Dual-surface sync",
+            title: "The desktop guide overlay",
             paragraphs: [
-              "Turn a page on either side and the other follows instantly; closing the VR overlay falls back to the desktop window.",
+              "This guide lives in VUA's lightweight overlay window. Open or hide it at any time from the main window; it never steals focus from the game, and closing it never cancels an installation or stops VRChat.",
+            ],
+          },
+          {
+            id: "headset",
+            title: "Reading in the headset",
+            paragraphs: [
+              "On the PICO path there is no separate VUA VR overlay — raise SteamVR's desktop view and read this same window there. The steps are in Device Tips, \"Read this guide inside the headset\".",
             ],
           },
           {
             id: "accounts",
             title: "About accounts",
             paragraphs: [
-              "You can upgrade a Steam platform account to a VRChat account or link it to an existing one. Follow the official account-upgrade instructions to keep friends and favorites.",
+              "Both account routes start in the game: sign in through Steam, then open Main Menu → Settings → Link Account. \"Upgrade to a VRChat Account\" upgrades the current account and keeps its data; \"Link to an Existing Account\" merges into an existing VRChat account. With Creator Economy or Shop purchases, choose the upgrade option instead of merging. Follow the on-screen instructions.",
             ],
           },
         ],
@@ -1355,6 +1716,8 @@ demoTaskTitle: "Demo task",
     cancelHint: "Cancellation is a request — the task stops at a safe boundary.",
     cancelArmedHint: "Tap again to confirm cancellation.",
     closeWindow: "Close window",
+    collapse: "Collapse",
+    returnToMain: "Return to main window",
     retry: "Retry",
     loadErrorTitle: "Cannot reach the app layer right now",
     loadErrorBody:

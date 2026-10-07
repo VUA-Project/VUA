@@ -34,16 +34,20 @@
   white-space: nowrap;
 }
 
-/* 占位字标:几何宽字形 + 中性金属渐变(text-strong → text-secondary),
- * 不随模块辖区变色,避免紫橙混用 */
+/* 正式字标(品牌候选 06「Level」,2026-10-07 用户裁决):随模块辖区变色——
+ * 环境部署紫、模型生产橙(填色经 --vua-accent 辖区别名),设置 = 三色混合
+ * (V 紫 / U 中性 / A 橙)。旧占位字标的"中性金属渐变不随模块变"随之退役。
+ * 品牌区 baseline 对齐面向文字;SVG 字标以 center 自对齐防偏移。 */
 .vua-shell__wordmark {
-  font: var(--vua-font-title);
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  background-image: linear-gradient(180deg, var(--vua-text-strong), var(--vua-text-secondary));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  display: grid;
+  place-items: center;
+  align-self: center;
+}
+
+.vua-shell__wordmark svg {
+  display: block;
+  width: 30px;
+  height: 30px;
 }
 
 /* ---- 顶部一级 Tabs(S-X-1):平行四边形卡片,选中=按下(深底+内阴影+下沉) ---- */

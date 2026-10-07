@@ -1,6 +1,6 @@
 # VUA system architecture
 
-> Document version: 2.1.3
+> Document version: 2.1.4
 > Status: Accepted
 > Scope: Current implementation and incremental code placement
 > Last conformance review: 2026-10-01 (source/layout review, not real-machine acceptance)
@@ -67,7 +67,7 @@ implementation with its tests when useful; a mass crate split is not a prerequis
 - Task infrastructure supplies durable state, progress, cancellation, waiting for user input and
   recovery inspection. Individual use cases decide their valid retry/compensation boundaries.
 - Overlays consume application services; they do not own workflows. Community-plugin execution
-  remains separately deferred. N2's two external tools are not a generic VUA plugin host.
+  remains separately deferred. N2's external-tool connections are not a generic VUA plugin host.
 
 The accepted [evolution direction](evolution.md) defines N1-first deployment and later reuse. It
 introduces no frozen wire fields, schema versions, persistence format, or automatic OS rollback.
@@ -129,12 +129,14 @@ state, which does not cross into the application contract. See [desktop browser 
 and [product scope](../product-boundary.md#account-onboarding-user-ruling-2026-09-30).
 The local guide stores no account credentials and makes no automatic account-verification claim.
 
-N2 connects to independent VRCFT and Space Calibrator installations. Existing local adapters
-discover and launch; upstream lifecycle ownership and the external-connection mode are owned by
+N2 connects to the independently installed applications in the accepted tool inventory. Reuse
+local discovery and supported launch paths; the shared Steam adapter, upstream lifecycle ownership
+and the external-connection mode are owned by
 [integration modes](integrations-and-overlays.md#external-integration-modes).
 
 ## Document changelog
 
+- 2.1.4 (2026-10-03): route all selected N2 applications to the shared external-connection architecture.
 - 2.1.3 (2026-10-02): record the removal of the collab-era registry checker (script and
   report-only CI); REGISTRY consistency now rests on the governance update rules alone.
 - 2.1.2 (2026-10-01): name the real renderer features (`features/onboarding`, `features/guide`)

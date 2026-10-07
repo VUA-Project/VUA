@@ -12,9 +12,9 @@ use std::{
     sync::Arc,
 };
 use vua_orchestrator::deployment::{
-    DeploymentAction, DeploymentAdapter, DeploymentInstaller, DeploymentIntent,
-    DeploymentObservation, DeploymentPresence, DeploymentPurpose, DownloadRegion,
-    EditorDownloadPolicy,
+    accepted_development_editor, DeploymentAction, DeploymentAdapter, DeploymentInstaller,
+    DeploymentIntent, DeploymentObservation, DeploymentPresence, DeploymentPurpose,
+    DeploymentReporter, DownloadRegion, EditorDownloadPolicy, CHINA_EDITOR_TARGET,
 };
 use vua_orchestrator::{
     EnvironmentEngine, EnvironmentPresence, EnvironmentRoots, ProcessRunner, StdProcessRunner,
@@ -68,31 +68,58 @@ impl WindowsDeploymentAdapter {
 }
 
 fn editor_observation(intent: &DeploymentIntent) -> DeploymentObservation {
-    let root = Path::new(&intent.editor_root).join(UNITY_VERSION);
-    let (presence, version) = if !root.exists() {
-        (DeploymentPresence::Missing, Some(UNITY_VERSION.into()))
-    } else {
-        match verify_editor_path_system(&root) {
-            EditorPathVerdict::Verified(v)
-                if v.classification == vua_orchestrator::EditorClass::ProductionTarget =>
-            {
-                (DeploymentPresence::Verified, Some(v.version))
+    // Prefer actual global identity, including a user installation whose directory
+    // name differs. Keep c1 as a usable fallback without hiding its version suffix.
+    let observations: Vec<_> = [UNITY_VERSION, CHINA_EDITOR_TARGET]
+        .iter()
+        .map(|version| {
+            let root = Path::new(&intent.editor_root).join(version);
+            let (presence, observed_version) = if !root.exists() {
+                (DeploymentPresence::Missing, Some((*version).to_owned()))
+            } else {
+                match verify_editor_path_system(&root) {
+                    EditorPathVerdict::Verified(v) => (
+                        if accepted_development_editor(&v.version) {
+                            DeploymentPresence::Verified
+                        } else {
+                            DeploymentPresence::Unsuitable
+                        },
+                        Some(v.version),
+                    ),
+                    EditorPathVerdict::Refused(_) => (DeploymentPresence::DetectionFailed, None),
+                }
+            };
+            DeploymentObservation {
+                component: "unity_editor".into(),
+                presence,
+                location: Some(root.to_string_lossy().into()),
+                version: observed_version,
             }
-            EditorPathVerdict::Verified(v) => (DeploymentPresence::Unsuitable, Some(v.version)),
-            EditorPathVerdict::Refused(_) => (DeploymentPresence::DetectionFailed, None),
+        })
+        .collect();
+    for version in [UNITY_VERSION, CHINA_EDITOR_TARGET] {
+        if let Some(found) = observations.iter().find(|o| {
+            o.presence == DeploymentPresence::Verified && o.version.as_deref() == Some(version)
+        }) {
+            return found.clone();
         }
-    };
-    DeploymentObservation {
-        component: "unity_editor".into(),
-        presence,
-        location: Some(root.to_string_lossy().into()),
-        version,
     }
+    observations
+        .into_iter()
+        .next()
+        .expect("global observation exists")
 }
 
-fn android_observation(intent: &DeploymentIntent, editor_ready: bool) -> DeploymentObservation {
-    let root = Path::new(&intent.editor_root)
-        .join(UNITY_VERSION)
+fn android_observation(
+    intent: &DeploymentIntent,
+    editor: &DeploymentObservation,
+) -> DeploymentObservation {
+    let root = Path::new(&intent.editor_root).join(UNITY_VERSION);
+    let root = editor
+        .location
+        .as_ref()
+        .map(PathBuf::from)
+        .unwrap_or(root)
         .join("Editor/Data/PlaybackEngines/AndroidPlayer");
     let found = [
         "SDK/platform-tools/adb.exe",
@@ -104,13 +131,13 @@ fn android_observation(intent: &DeploymentIntent, editor_ready: bool) -> Deploym
     .all(|p| root.join(p).is_file());
     DeploymentObservation {
         component: "android_modules".into(),
-        presence: if found && editor_ready {
+        presence: if found && editor.presence == DeploymentPresence::Verified {
             DeploymentPresence::Verified
         } else {
             DeploymentPresence::Missing
         },
         location: Some(root.to_string_lossy().into()),
-        version: Some(UNITY_VERSION.into()),
+        version: editor.version.clone(),
     }
 }
 
@@ -148,10 +175,7 @@ impl DeploymentAdapter for WindowsDeploymentAdapter {
             })
             .collect();
         let editor = editor_observation(intent);
-        facts.push(android_observation(
-            intent,
-            editor.presence == DeploymentPresence::Verified,
-        ));
+        facts.push(android_observation(intent, &editor));
         facts.push(editor);
         if intent.purposes.iter().any(|p| {
             matches!(
@@ -189,6 +213,7 @@ impl DeploymentAdapter for WindowsDeploymentAdapter {
         intent: &DeploymentIntent,
         action: DeploymentAction,
         confirmed: &DeploymentInstaller,
+        report: &mut DeploymentReporter<'_>,
     ) -> Result<(), &'static str> {
         intent.validate()?;
         let _machine_lease = InstallLease::acquire()?;
@@ -213,6 +238,7 @@ impl DeploymentAdapter for WindowsDeploymentAdapter {
             confirmed,
             &self.data_root,
             &EditorDownloadPolicy::new(self.region.detect(), intent.use_mirrors),
+            report,
         )?;
         let after = self.observe(intent);
         let component = if action == DeploymentAction::InstallEditor {
@@ -237,14 +263,15 @@ struct InstallLease(windows_sys::Win32::Foundation::HANDLE);
 #[cfg(windows)]
 impl InstallLease {
     fn acquire() -> Result<Self, &'static str> {
+        Self::acquire_named("Local\\VUA.EnvironmentDeployment.v01")
+    }
+
+    fn acquire_named(mutex_name: &str) -> Result<Self, &'static str> {
         use windows_sys::Win32::{
             Foundation::{WAIT_ABANDONED, WAIT_OBJECT_0},
             System::Threading::{CreateMutexW, ReleaseMutex, WaitForSingleObject},
         };
-        let name: Vec<u16> = "Local\\VUA.EnvironmentDeployment.v01"
-            .encode_utf16()
-            .chain(Some(0))
-            .collect();
+        let name: Vec<u16> = mutex_name.encode_utf16().chain(Some(0)).collect();
         // SAFETY: null default security; name is NUL-terminated and lives through creation.
         let handle = unsafe { CreateMutexW(std::ptr::null(), 0, name.as_ptr()) };
         if handle.is_null() {
@@ -320,11 +347,16 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn install_lock_refuses_another_thread_until_the_first_owner_releases() {
-        let held = InstallLease::acquire().unwrap();
-        assert!(std::thread::spawn(|| InstallLease::acquire().is_err())
-            .join()
-            .unwrap());
+        // Exercise the same OS lock without competing with an actual local installation.
+        let name = format!("Local\\VUA.DeploymentTest.{}", std::process::id());
+        let held = InstallLease::acquire_named(&name).unwrap();
+        let other_name = name.clone();
+        assert!(
+            std::thread::spawn(move || InstallLease::acquire_named(&other_name).is_err())
+                .join()
+                .unwrap()
+        );
         drop(held);
-        assert!(InstallLease::acquire().is_ok());
+        assert!(InstallLease::acquire_named(&name).is_ok());
     }
 }
