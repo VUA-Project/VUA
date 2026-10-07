@@ -2327,6 +2327,25 @@ impl BdlStore {
         Ok(())
     }
 
+    /// downloadable id → 商品(BDL 自有关联事实,采纳反查用):同一文件
+    /// 理论上只在一个商品名下捕获;多行时取最早捕获(确定性)
+    pub fn product_of_downloadable(
+        &self,
+        downloadable_id: i64,
+    ) -> Result<Option<String>, BdlStoreError> {
+        let connection = self.connection.lock().expect("SQLite connection poisoned");
+        let mut statement = connection.prepare(
+            "SELECT product_id FROM product_downloadables
+             WHERE downloadable_id = ?1
+             ORDER BY first_seen_at, downloadable_id
+             LIMIT 1",
+        )?;
+        let rows = statement
+            .query_map([downloadable_id], |row| row.get::<_, String>(0))?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(rows.into_iter().next())
+    }
+
     /// 商品的已记录下载文件(N5 静默下载的读取面):按首次见到顺序原样出线,
     /// 调用方决定全量或勾选;签名 CDN 地址永不在库,下载时现解析。
     pub fn downloadables_for_product(
