@@ -1,9 +1,9 @@
 # Guidance architecture: app tour, preparation reader and game guide
 
-> Document version: 1.1.0
+> Document version: 1.2.0
 > Status: Accepted
-> Updated: 2026-10-07
-> Last conformance review: 2026-10-07 (reader, tour and manual game guide source; automatic following pending)
+> Updated: 2026-10-08
+> Last conformance review: 2026-10-08 (reader, tour and game guide with automatic following; real-machine acceptance pending)
 > Scope: First play release guidance in Electron and React
 
 For people: VUA teaches three different activities in three appropriate places: using VUA,
@@ -11,9 +11,10 @@ preparing to play, and learning inside VRChat. The same instructions and illustr
 reused without giving every activity the same window behavior.
 
 For Agents: this is the accepted design from the author's 2026-10-05 ruling. The reader, app tour
-and manual game guide are implemented separately, with task status retaining its own entry.
-The game guide currently uses manual positioning and global always-on-top; implement the
-automatic following behavior below in the next slice. Product scope belongs to the
+and game guide are implemented separately, with task status retaining its own entry.
+The game guide implements the automatic window following specified below through the read-only
+game-window observation (`vua.game-window-observe/v0.1`); real-machine acceptance against an
+actual VRChat window remains in the delivery plan. Product scope belongs to the
 [product boundary](../product-boundary.md#first-play-release-user-ruling-2026-10-03), pass
 conditions to the [N sequence](../development-outline.md#first-play-release-acceptance), and
 implementation order/status to the [first play delivery plan](../development/first-play-delivery-plan.md).
@@ -161,5 +162,6 @@ The delivery plan names the outstanding code and real-machine checks.
 
 ## Document changelog
 
+- 1.2.0 (2026-10-08): record the delivered game-window observer and automatic guide following (game-window-observe v0.1); real-machine acceptance remains in the delivery plan.
 - 1.1.0 (2026-10-07): distinguish the delivered three presentations from the remaining game-window observer and automatic lifecycle.
 - 1.0.0 (2026-10-05): accept three guidance contexts, define their window/state responsibilities and map migration from completed A/B slices.

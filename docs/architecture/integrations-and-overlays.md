@@ -1,11 +1,11 @@
 # Core, plugin, external integration, and overlay architecture
 
 
-> Document version: 1.5.0
+> Document version: 1.6.0
 > Status: Accepted
 > Scope: Environment deployment, project management, integrated runtimes, plugin host, desktop/VR overlays
-> Updated: 2026-10-05
-> Last conformance review: 2026-10-05 (guidance responsibilities reviewed; three-context migration pending)
+> Updated: 2026-10-08
+> Last conformance review: 2026-10-08 (guidance overlay boundary; game-window observation implemented)
 > Normative effect: Yes
 
 ## Trust classes
@@ -134,7 +134,9 @@ The application core owns task and business state; local guide progress has its 
 The first play release uses the three contexts in [guidance architecture](guidance.md): an
 in-app VUA tour, a normal preparation reader and a guide associated with the Windows VRChat
 window. Reuse A/B content and navigation while separating presentation/lifecycle. Main observes
-ordinary Windows window state for game following; it does not interact with game internals.
+ordinary Windows window state for game following through the Provider's read-only
+`environment.observeGameWindow` query (`vua.game-window-observe/v0.1`); it does not interact
+with game internals.
 Validate the preparation reader through SteamVR's desktop view on PICO. A native VR overlay
 remains subsequent work; the design below constrains that later implementation and adds no N2 tool.
 
@@ -150,6 +152,7 @@ untrusted and cannot authorize local mutation.
 
 ## Document changelog
 
+- 1.6.0 (2026-10-08): record the implemented read-only game-window observation (game-window-observe v0.1) that backs Main's game-guide following.
 - 1.5.0 (2026-10-05): separate local guide progress from task snapshots and route three first-play guidance contexts to their owning architecture.
 - 1.4.0 (2026-10-03): define the shared Steam adapter for the expanded N2 inventory, local installation semantics and limited upstream-app lifecycle responsibilities.
 - 1.3.0 (2026-10-03): include lightweight desktop guidance and headset desktop-view validation in the first play release; retain native VR overlay as later work.
