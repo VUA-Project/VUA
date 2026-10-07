@@ -1,8 +1,9 @@
 # N-sequence architecture evolution
 
-> Document version: 1.5.1
+> Document version: 1.6.0
 > Status: Accepted
-> Updated: 2026-10-03
+> Updated: 2026-10-05
+> Last conformance review: 2026-10-05 (first-play source/evidence checkpoint; remaining paths tracked separately)
 > Scope: Incremental software and documentation structure for N1-N7
 > Normative effect: Accepted incremental direction; existing wire/storage contracts remain authoritative
 
@@ -14,10 +15,12 @@ N1 deployment path; do not make a repository-wide rewrite, new plugin framework,
 or full environment version manager a prerequisite for the first desktop/PICO play release.
 
 The [first play release acceptance](../development-outline.md#first-play-release-acceptance)
-is the current delivery slice. Package the existing desktop and supervised Provider first;
-then complete desktop play, PICO USB, PICO Wi-Fi, and targeted recovery/guidance. Retain creator
-and other-device code for subsequent delivery. Use one packaging layout for ZIP now and NSIS
-later; packaged processes resolve bundled resources instead of a developer checkout.
+is the current delivery slice. The [delivery plan](../development/first-play-delivery-plan.md)
+records the completed ZIP bootstrap, network, A/B guide and development-profile work. The next
+focus is [three guidance contexts](guidance.md), followed by completion of desktop/PICO play,
+optional eye tracking and targeted recovery/release checks. Retain creator and other-device
+code for subsequent delivery. Use one packaging layout for ZIP now and NSIS later; packaged
+processes resolve bundled resources instead of a developer checkout. N5 review stays separate.
 
 The [network onboarding architecture](network-onboarding.md) details the first-play HTTPS
 checks, mainland-only UU recommendation, correctable region and cross-region latency guidance.
@@ -31,7 +34,8 @@ when a measured dependency, build, packaging, or independent lifecycle problem j
 | Capability | Application responsibility | Existing implementation to reuse | Increment to build |
 | --- | --- | --- | --- |
 | Deploy environment (N1) | Turn goal + observations into actions; execute and verify them | Environment facts, project-manager adapters, task runtime, deployer UI | Purpose-based planner and actual install/configuration adapters |
-| Deploy tools (N2) | Discover/launch/guide exactly the two approved external tools | Existing discovery and supported launch paths | Thin status/setup adapters; Steam/upstream owns installation, updates and calibration |
+| Deploy tools (N2) | Discover/install/launch the accepted external-tool inventory; guide the two tracking tools | Existing discovery and supported launch paths | Shared Steam adapter and app metadata; PICO eye-tracking slice joins the first play release |
+| Guide first play | Explain VUA actions, preparation and in-game steps in their own contexts | A/B content, media, targets, reading recovery and desktop-window API | Normal reader, in-app tour and VRChat-window guide; independent presentation state |
 | Produce Avatar (N3) | Resolve materials, dependencies and objects; execute and hand off to SDK | AMF use cases, project creation/resolution, Bridge, records | Complex 1+2+6 path and fixes found by real runs |
 | Reproduce Recipe (N4) | Save, resolve, apply and compare supported intent | Recipe formats/use cases and production path | Measured gaps in reapply/conflicts/reproduction |
 | Manage materials (N5) | Audit, enumerate account materials, catalog, download selectively, import | Acquisition, BDL, Electron session/download transport | Only capabilities missing after audit; separate listing from file acquisition |
@@ -173,7 +177,7 @@ actual UI work. Splitting it is not required to implement N1.
    historical/non-current material. Preserve contract bodies and schema paths.
 3. Finalize the first deployment contract from one actual installer path; implement one complete
    inspect-plan-confirm-execute-verify flow in the existing owners.
-4. Reuse the flow for component additions and the two N2 adapters only when that reuse is real.
+4. Reuse the flow for component additions and the N2 Steam connections only when that reuse is real.
 5. Fix production/material gaps using N3/N5 evidence. Extract shared code when duplicated behavior
    or coupling warrants it, not because a diagram has an empty box.
 
@@ -190,6 +194,8 @@ installer choices above are not frozen interfaces; define them from the first ex
 
 ## Document changelog
 
+- 1.6.0 (2026-10-05): prioritize three guidance contexts on the completed first-play foundation and link the current delivery checkpoint.
+- 1.5.2 (2026-10-03): route the expanded N2 inventory to the shared Steam adapter and include the first-play PICO eye-tracking slice.
 - 1.5.1 (2026-10-03): route the implemented network slice to its owning architecture.
 
 - 1.5.0 (2026-10-03): prioritize packaged desktop/PICO play and retain creator work as subsequent delivery.

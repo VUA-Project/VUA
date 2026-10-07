@@ -1,9 +1,9 @@
 # VUA development sequence
 
-> Document version: 3.8.0
+> Document version: 3.10.0
 > Status: Accepted
-> Updated: 2026-10-03
-> Authority: User rulings of 2026-09-28 through 2026-10-03, including independent release numbering and the first play release
+> Updated: 2026-10-05
+> Authority: User rulings of 2026-09-28 through 2026-10-05, including independent release numbering and three first-play guidance contexts
 > Scope: N1-N7, real-machine deployment and real-material workflows, continuing Beta
 > Normative effect: Schedules accepted product work; product scope belongs to product-boundary.md
 
@@ -46,7 +46,7 @@ See [versioning](release/versioning.md).
 | Gate | User task | Status |
 | --- | --- | --- |
 | N1 | Deploy the software and settings needed to play or edit Avatars | Desktop/PICO play subset first; broader acceptance pending |
-| N2 | Connect to upstream VRCFaceTracking and hyblocker Space Calibrator | Planned; exactly these two acceptance targets |
+| N2 | Connect seven external gameplay tools through shared Steam discovery/install/launch | Planned; PICO eye-tracking slice advances into the first play release |
 | N3 | Produce a complex real-material Avatar and hand it to VRC SDK | Planned |
 | N4 | Save, share, and reproduce Recipes across real workflows | Planned |
 | N5 | Audit and redo old M4 material management, including BOOTH acquisition | Planned; capability audit required before rework |
@@ -112,6 +112,9 @@ The first release prioritizes the [bounded play scope](product-boundary.md#first
 Keep N1-N7 identifiers and select a product version at publication. Release the play subset
 with the necessary N6 recovery and N7 distribution work; broader N1 and N7 remain open.
 The following rows, rather than the creator rows below, define this release's acceptance.
+The [first play delivery plan](development/first-play-delivery-plan.md) tracks completed slices
+and remaining work. N5 retains its separate review/acceptance and may join the same release
+afterward; it does not add material-management prerequisites to these play cases.
 
 | Case | Natural-language pass condition |
 | --- | --- |
@@ -123,9 +126,13 @@ The following rows, rather than the creator rows below, define this release's ac
 | Desktop play | Launch VRChat in desktop mode, enter the game, and follow the guide for movement, menus, sound, microphone and basic safety settings. Installed files alone do not pass this row |
 | PICO USB | With PICO 4 Pro, follow cable setup and the official connection flow, enter VRChat in the headset, and verify image, head/hand tracking, controller interaction, sound and microphone |
 | PICO Wi-Fi | Repeat the headset play checks over Wi-Fi; explain the local-network prerequisites, and exercise a disconnect/reconnect without repeating the whole installation |
+| PICO eye tracking | On PICO 4 Pro, guide VRCFT Steam installation, its PICO module, headset eye-tracking calibration and VRChat OSC. Verify actual gaze and blinking on an existing suitable Avatar over both USB and Wi-Fi, including microphone use, reconnect and a later play session. Players may skip this option without blocking ordinary play; the release must exercise it |
 | Return/recovery | Repeat deployment without reinstalling satisfied components. Interrupt one download/install or user handoff, restart VUA, inspect the result and explicitly continue/retry. A later play session has a direct start path |
-| Desktop guide overlay | Open/hide/close the lightweight guide at any time, read instructions and illustrations for the relevant step, and return to the main app. Showing it does not steal focus; closing it does not cancel installation or stop a game. Guidance remains usable without AMF and is readable in all four initial locales |
-| Headset guide access | On the PICO test path, open SteamVR's desktop view, read/operate the desktop guide and return to play. Record this as desktop-view guidance, not a native VUA VR overlay |
+| VUA app tour | Inside VUA, follow ordered highlights on actual controls through route selection, checks, plan/progress and play/guide entries. Page changes, back/next, skip/exit and restart work; absent controls have an understandable next action. The transparent tour stays within VUA, keeps text readable and does not cancel a task when exited |
+| Preparation reader | Open a normal opaque, resizable window for room setup, equipment connection and reference instructions without requiring VRChat or AMF. It is not globally pinned. A help entry opens its section once; ordinary reopen restores reading. Manual scrolling wins over positioning, keyboard reading and illustrations work, and closing leaves tasks/game running |
+| VRChat game guide | With following enabled by default and transparency initially 50%, use a readable guide over the Windows VRChat game window. It follows movement/resize, hides on minimize or switching apps, restores without taking focus, stays usable when clicked and respects manual hide. Persist changed preferences. Follow controls/microphone and suggested Personal Space/Allow Untrusted URLs steps by confirmation or skip; use checked tutorial-world entries by learning language when available and local guidance otherwise |
+| Guidance separation | App-tour completion, preparation reading and game-guide progress do not overwrite one another. Shared four-language text/media remain consistent. Exercise absent-game, exit/relaunch, keyboard access and monitor/DPI changes; task-status access remains available during the migration |
+| Headset guide access | On the PICO test path, open SteamVR's desktop view, read/operate the preparation reader and return to play. Record this as desktop-view guidance, not a native VUA VR overlay |
 | Distribution | Include exact-build license notices, version/source identification, ZIP update/removal instructions, actual screenshots and known issues. Record signature status. Human UI review covers the guide and handoffs; remote build/smoke checks and physical headset tests retain their separate evidence |
 
 Use local uninstall/reinstall for the absent-software cases with the existing authorization and
@@ -185,41 +192,64 @@ account submissions require the user's actions. Record those steps as blocked/no
 VRChat web-information reading and experimental persistence follow the first usable delivery;
 they are not first-round blockers. N5 BOOTH account-library acceptance remains unchanged.
 
-## N2: exactly two gameplay tools
+## N2: external gameplay tools
 
-The acceptance set contains **both and only** these independently distributed tools:
+The accepted inventory contains these seven independent applications. All receive the shared
+connection below; only the two tracking tools have additional setup/hardware acceptance.
 
-1. [VRCFaceTracking](https://github.com/benaclejames/VRCFaceTracking): guide installation from
-   [Steam](https://store.steampowered.com/app/3329480/) and hardware-module/OSC (Open Sound
-   Control) setup in the upstream UI.
-2. [hyblocker/OpenVR-SpaceCalibrator](https://github.com/hyblocker/OpenVR-SpaceCalibrator): guide
-   [Steam installation](https://store.steampowered.com/app/3368750/), device selection and calibration
-   in its own UI, retaining the official application's functionality.
+| Application / official distribution | Steam App ID | Purpose | Additional acceptance / timing |
+| --- | --- | --- | --- |
+| [VRCFaceTracking](https://store.steampowered.com/app/3329480/) | 3329480 | Eye and face tracking | PICO 4 Pro eye tracking is part of the first play release; hardware-module/OSC setup |
+| [hyblocker OpenVR Space Calibrator](https://store.steampowered.com/app/3368750/) | 3368750 | Mixed-tracking space calibration | Device selection and actual calibration; after the first play release |
+| [OVR Overlay Translator](https://store.steampowered.com/app/4304620/) | 4304620 | In-VR translation overlay | Shared connection only; paid Steam application; after the first play release |
+| [OVR Advanced Settings](https://store.steampowered.com/app/1009850/) | 1009850 | SteamVR settings and utilities | Shared connection only; paid Steam distribution; after the first play release |
+| [OVR Toolkit](https://store.steampowered.com/app/1068820/) | 1068820 | Desktop windows inside VR | Shared connection only; paid Steam application; after the first play release |
+| [OyasumiVR](https://store.steampowered.com/app/2538150/) | 2538150 | VR sleep utilities | Shared connection only; free Steam application; after the first play release |
+| [LIV](https://store.steampowered.com/app/755540/) | 755540 | VR capture and streaming tools | Shared connection only; free Steam base application; after the first play release |
 
-Required hardware modules are not extra top-level tools. Other tools remain outside N2. Record
-the actual upstream release, install source, modules and device versions used in each local run;
-Steam's current release is not a fixed test version. The delivery path is guided Steam library
-addition and installation, followed by supported external invocation and status observation.
+Steam pricing/access descriptions are checked on 2026-10-03; show the current store offer rather
+than hardcoding a price. Required hardware modules are not extra top-level tools. Further additions
+need an explicit scope decision. Record the actual installed release/source for each run.
 
-| Function | Required behavior and observable acceptance for each tool |
+### Shared connection acceptance
+
+| Function | Natural-language pass condition for each application |
 | --- | --- |
-| Applicability | Explain the purpose, test hardware and prerequisites; neither tool becomes compulsory for ordinary play |
-| Discover/install | Detect a supported existing installation; otherwise open its official installation route. After the user installs through Steam/upstream, refresh detection. Opening the store is not installation success; unknown versions remain unknown |
-| Launch/status | Launch on explicit request through a supported route; distinguish missing, installed, running, detection failure and functional verification. A process alone proves only running |
-| Face setup | Guide the user to the required VRCFT hardware module, VRChat OSC setting and compatible Avatar; module installation remains in VRCFT. Verify real tracking/OSC output on the named device |
-| Mixed-space setup | Guide SteamVR prerequisites, reference/target device selection, sampling and applying calibration in Space Calibrator. Record an actual measured calibration; do not implement its internal overlay-to-driver IPC |
-| Missing capability | Missing hardware, unsupported versions, disconnects or unavailable status leave an explicit unknown/blocked result and manual route. Exercise reconnect without reporting fabricated tracking success |
-| Stop/update/remove | Guide the owning application's or Steam's supported stop/update/removal route and reinspect afterward; preserve unrelated play functionality and user configuration. VUA does not own upstream processes or force-terminate them as task children |
+| Discover | Find the app in the user's configured local Steam libraries, including a second library. Distinguish absent, installed, incomplete installation and detection failure; verify installation evidence rather than accepting an empty directory |
+| Purchase/install | Open the correct official store or Steam installation route on request. Steam handles purchase, ownership checks, library addition and downloading. Returning to VUA and refreshing shows the observed installed state; a store visit or launch request alone is not success |
+| Launch/status | Launch the installed app through a supported Steam entry on request, then report observed running state or an explicit failure/unknown result. Explain an absent Steam/SteamVR prerequisite. Repeated clicks do not repeatedly dispatch while the first request is pending |
+| Update/remove/reuse | Steam/upstream owns update and removal. Refresh after those actions or a library relocation; reuse an existing installation without reinstalling it. Closing VUA or its guide leaves the external app and game running |
+| Optional use | Explain the app's purpose and paid/free distribution, allow skipping it, and link to upstream help. Missing optional apps do not block ordinary play |
 
-Real functional evidence is still required for both targets. External connection reduces VUA's
-implementation burden, not the N2 real-hardware acceptance standard. Agents/scripts can collect
-non-UI evidence from permitted outputs; UI receives human review. Lack of hardware leaves the
-relevant case pending. No requirement to automate every calibration mode or rebuild upstream UI.
+Inventory means the **local installation inventory**, not a complete account-owned-games list.
+An uninstalled paid application has unknown ownership until Steam handles the request; VUA neither
+extracts Steam login sessions nor purchases software for the user. A test key is handled in Steam,
+not stored in VUA or committed as evidence.
 
-Later diagnostics may examine documented logs/configuration through a separately scoped adapter;
-automatic configuration edits, internal IPC and calibration control are not initial requirements.
-Any future copied source or bundled binary needs a new scope and distribution review under
-[third-party notices](../THIRD_PARTY_NOTICES.md).
+The five shared-connection-only entries require a real discovery/install-handoff/launch smoke for
+each application. They do not require individual usage tutorials, translation/capture pipelines,
+sleep automation, settings editors or exhaustive upstream feature tests. A running process means
+the app is running, not that its translation, recording or automation is configured successfully.
+LIV is classified under capture/streaming; this connection does not install a LIV SDK into VRChat.
+
+### Tracking-specific acceptance
+
+- **VRCFT:** guide its hardware-module installation in the upstream UI, headset switches/calibration,
+  VRChat OSC (Open Sound Control) and a suitable Avatar. The first play release exercises the PICO
+  eye-tracking row above. Native gaze/blinking can use a suitable existing Avatar; full facial
+  expressions require a face-tracking-compatible Avatar. Verify actual tracking/OSC output,
+  reconnect and microphone coexistence, not just successful module initialization. Follow the
+  [VRCFT PICO guide](https://docs.vrcft.io/docs/hardware/vr/pico/pico4pe) and
+  [native eye-tracking guidance](https://docs.vrcft.io/docs/intro/getting-started) against the tested
+  PICO Connect/module versions.
+- **Space Calibrator:** guide SteamVR prerequisites, reference/target device selection, sampling
+  and applying calibration in its own UI; record an actual measured calibration. Use its supported
+  external entry, not its internal overlay-to-driver IPC. Preserve upstream functionality.
+
+Missing hardware, unavailable status or unsupported versions leave a specific next step and the
+relevant real-hardware case pending. Agents/scripts can collect non-UI evidence; UI receives human
+review. Broader diagnostics/configuration automation follow a separately scoped adapter. Source or
+binary redistribution requires a separate review under [third-party notices](../THIRD_PARTY_NOTICES.md).
 
 ## N3: complex real-material Avatar production
 
@@ -338,7 +368,7 @@ under its acceptance rows above. NSIS and complete N7 acceptance remain separate
 | Deliverable | Required behavior and observable acceptance |
 | --- | --- |
 | Installer | Launch without a development checkout, developer commands, or hidden development-machine files |
-| Regression | Exercise supported deployment, both N2 tools, complex production, Recipe reproduction, and audited material workflows through the packaged build |
+| Regression | Exercise supported deployment, the N2 shared connections and their tracking-specific cases, complex production, Recipe reproduction, and audited material workflows through the packaged build |
 | Upgrade | Preserve or explicitly migrate material records, Recipes, settings and run history from a named earlier Beta |
 | UI review | A human can find the main entry points, understand states and complete tasks; fix misleading or stuck screens |
 | Known issues | List tested scope, remaining problems, workarounds, and next work; remain Beta with no production-safety promise |
@@ -381,7 +411,7 @@ create roles, or replace their plans on their behalf. Once revised plans are ava
 - Every task maps to an N gate/version and a concrete user action/result, with prerequisites,
   evidence method, current code to reuse, and deferred gaps.
 - Neither old M closure nor old post-v1 scheduling overrides the new sequence. N5 starts with audit.
-- N1 accounts are guided registration/library/linking only; N2 connects to exactly the two named upstream tools through Steam installation guidance and supported external invocation.
+- N1 accounts are guided registration/library/linking only; N2 uses the named Steam connections, with PICO eye tracking advanced into the first play release and individual setup guides limited to the tracking tools.
 - N3 has the full 1 + 2 + 6 simultaneous case, not a single outfit or simulated substitute.
 - N5 includes both BOOTH acquisition workflows; N7 includes the actual screenshot guide.
 - Local reinstall permission, OS claim limits, human UI review and automated non-UI acceptance
@@ -392,6 +422,8 @@ do not turn documentation completeness, speculative coverage, or idle agent acti
 
 ## Document changelog
 
+- 3.10.0 (2026-10-05): define observable acceptance for three guidance contexts, their independent state and the separate N5 co-release review.
+- 3.9.0 (2026-10-03): advance PICO eye tracking into first-play acceptance and define seven N2 Steam connections with shared inventory/install/launch acceptance and focused tracking guides.
 - 3.8.0 (2026-10-03): define first-play-release acceptance for desktop/PICO USB/Wi-Fi, guidance, recovery and standalone ZIP; move creator completion behind that release.
 - 3.7.0 (2026-10-02): admit the development f1/c1 pair for the first creator deployment path, with global preference and Hub fallback after both editions fail.
 
@@ -409,7 +441,5 @@ do not turn documentation completeness, speculative coverage, or idle agent acti
   circular Integration role wording; no acceptance change.
 - 3.4.0 (2026-09-30): decouple N stages from product versions while retaining every delivery outcome and acceptance requirement.
 - 3.3.1 (2026-09-30): state the selected external-tool delivery path directly.
-- 3.3.0 (2026-09-30): add four-platform guided account acceptance and define Steam installation guidance and upstream external-connection acceptance for N2.
-- 3.2.0 (2026-09-29): add human/Agent reading contexts without changing N acceptance or version mapping.
 
 Earlier entries remain in Git history.

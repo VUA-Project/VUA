@@ -1,11 +1,11 @@
 # Electron desktop and presentation architecture
 
 
-> Document version: 1.6.0
+> Document version: 1.7.1
 > Status: Accepted
 > Scope: `apps/desktop`, `packages/design-system`, frontend Gateway
-> Updated: 2026-10-03
-> Last conformance review: 2026-10-03 (packaged runtime/layout review; play acceptance remains separate)
+> Updated: 2026-10-07
+> Last conformance review: 2026-10-07 (reader, tour and manual game guide; window observer pending)
 > Normative effect: Yes
 
 ## Technology decision
@@ -114,6 +114,13 @@ Main-managed `WebContentsView` is the remote-content surface.
 
 ## Overlay always-on-top window
 
+The accepted [guidance architecture](guidance.md) separates an in-app tour, an ordinary
+preparation reader and a VRChat-window guide. React owns the in-app tour; Main owns the two
+window lifecycles and will own the game-window observer. Guide progress is local presentation state;
+business tasks remain authoritative in Orchestrator. The reader, tour and manual game guide reuse
+A/B content, targets and reading recovery; automatic following remains the next slice.
+
+The following describes the retained task-status overlay, not the ordinary reader's window flags.
 The desktop Overlay is a separate `BrowserWindow` inside the same Electron process (frameless,
 transparent, absent from the taskbar, pinned at the `screen-saver` level; shape parameters come from
 the overlay-window spike verification in `apps/desktop/scripts/spike-overlay.mjs`, mirrored by
@@ -126,9 +133,9 @@ isolated by the Electron process model — no separate Gateway connection instan
 (archived [proposal 017](../archive/2026-09-29/collab/proposals/017-overlay-surface.md) §4
 desktop statement, 2026-09-10).
 
-- Zero new event surface: application events broadcast to every locally-originated window by local
-  origin checks, and Overlay windows are naturally on that list; snapshots are read by on-demand
-  polling with no new subscribe/push semantics;
+- Business events broadcast to every locally-originated window by local origin checks, and
+  Overlay windows are naturally on that list. Business snapshots use the existing query path;
+  guide-target requests use their separate validated desktop-window event/acknowledgment path;
 - No Overlay session identity: actions submitted from Overlay go through the existing command face
   with the same acceptance path and nine-state discipline; the service side does not distinguish
   whether an action came from the main window or an Overlay window;
@@ -141,9 +148,10 @@ desktop statement, 2026-09-10).
   host (AGENTS architecture constraints; the consumption split follows proposal 017; see the
   Overlay boundary section in integrations-and-overlays.md), and Overlay failures never block the
   desktop mainline (standing delivery rule). `overlay.getSnapshot` is wired through Gateway and
-  Provider to the production projection. The first-play guide must work independently of that
-  projection; reuse the existing static guide content and window without requiring an AMF task.
-  Headset access initially uses SteamVR's desktop view, with its own real-device acceptance.
+  Provider to the production projection. Preserve task-status access while separating guides.
+  First-play guidance works independently of that projection. The preparation reader uses a
+  normal window; the game guide has adjustable transparency, with VRChat following still pending. Headset
+  access uses SteamVR's desktop view of the reader, with its own real-device acceptance.
 
 ## Standalone Windows packaging
 
@@ -190,6 +198,8 @@ redistribution review authorizes each bundled binary before a public release.
 
 ## Document changelog
 
+- 1.7.1 (2026-10-07): record separate guidance presentations and retain automatic following as unfinished work.
+- 1.7.0 (2026-10-05): route three guidance contexts to their owning design and distinguish the current combined overlay from its planned replacements.
 - 1.6.0 (2026-10-03): define standalone ZIP resources/data, the real packaged bootstrap check and the first-play overlay/release subset.
 - 1.5.0 (2026-10-02): describe model-first deployment, silent-install activity and device/service
   account handoffs using existing isolated browser and task surfaces.
@@ -214,5 +224,5 @@ redistribution review authorizes each bundled binary before a public release.
 - 1.2.0 (2026-09-12): added the "Overlay always-on-top window" section — Overlay window
   creation/pinning/show-hide and the formal entry shape (proposal 017 §4 desktop statement landed;
   desktop-domain advance slice); the wire read face is honestly declared as not yet connected.
-- 1.0.0 (2026-09-06): entered version management; header normalized and conformance-review date
-  added. Content reviewed against reality with no change.
+
+Earlier entries remain in Git history.

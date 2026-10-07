@@ -1,10 +1,10 @@
 # VUA product boundary
 
 
-> Document version: 2.8.1
+> Document version: 2.10.0
 > Status: Accepted
 > Scope: Entire VUA product
-> Updated: 2026-10-03
+> Updated: 2026-10-05
 > Normative effect: Yes
 
 ## Product definition
@@ -62,12 +62,13 @@ records.
    [Editor compatibility policy](compatibility/unity-editor.md). During development, global
    `2022.3.22f1` and China `2022.3.22f1c1` form the accepted pair; historical projects enter
    through the documented migration boundary. Existing frozen protocol migrations remain explicit.
-7. **Desktop overlay:** guidance, status, and runtime information through stable application
-   services. **VR overlay:** remains unscheduled outside the active
+7. **Guidance and desktop presentation:** an in-app VUA tour, an ordinary preparation reader,
+   and a guide associated with the VRChat game window; task/runtime status retains its own
+   application authority. **VR overlay:** remains unscheduled outside the active
    [N acceptance sequence](development-outline.md).
 8. **Integrated runtimes:** major optional native-feeling capabilities, including face tracking,
    motion tracking, and Avatar optimization, through managed or external-connection adapters.
-   The two tools named in the active delivery policy enter N2; other integrations remain unscheduled.
+   The tools named in the active delivery policy enter N2; other integrations remain unscheduled.
 9. **Community plugin interface:** a versioned protocol for optional enhancements and customization,
    with declared capabilities, lifecycle, tasks, permissions, and compatibility rules.
 
@@ -230,15 +231,24 @@ or PICO Connect streaming. It delivers the following bounded scope:
 - Guide launch, connection, basic controls, audio/microphone setup and the next play session.
   Prefer supported silent installation with visible progress and explicit user handoffs.
   Reuse installed software and recover interrupted work through inspection and explicit retry.
-- Include the existing lightweight desktop guidance overlay: current instructions, illustrations,
-  basic controls, hide/close and return to the main app. Guidance works independently of AMF.
-  Test reading that guidance through SteamVR's desktop view on the headset. A dedicated native
-  VR overlay is later work, not a requirement for this release.
+- Provide three guidance contexts (user ruling, 2026-10-05): a transparent, ordered tour over
+  VUA's own controls; a normal readable window for room/equipment preparation; and a transparent
+  guide over the Windows VRChat game window for controls/settings and available tutorial worlds.
+  The game guide defaults to following VRChat and 50% transparency. Reuse shared instructions
+  and illustrations, with independent progress for each context. Guidance works without AMF.
+  The [guidance architecture](architecture/guidance.md) owns presentation and window behavior.
+  Test the preparation reader through SteamVR's desktop view on the headset; a native VUA
+  VR overlay remains later work.
+- Include optional PICO 4 Pro eye tracking through independently installed VRCFaceTracking.
+  Guide Steam installation, the PICO hardware module, headset calibration and VRChat OSC;
+  verify gaze and blinking over USB and Wi-Fi, including reconnect and simultaneous microphone
+  use. Use an existing suitable Avatar; Avatar modification is not a prerequisite. This N2
+  slice is required release acceptance even though players can skip enabling eye tracking.
 
 PICO 4 Pro with both USB and Wi-Fi is the first hardware acceptance target. Record actual
 PICO OS, PICO Connect, SteamVR and game versions at test time. PICO precedes Quest so this
 release does not depend on resolving Quest's initial activation path. Other brands, alternative
-streaming tools, creator accounts, Unity/AMF and the N2 tools follow in later deliveries.
+streaming tools, creator accounts, Unity/AMF and the remaining N2 tools follow in later deliveries.
 Existing code and the wider N-stage scope are retained; this release does not close all of N1.
 
 Distribute a self-contained Windows x64 ZIP first. Advance the shared N7 packaging work and
@@ -247,6 +257,9 @@ Prepare exact-build third-party notices and SignPath Foundation application/inte
 development. Local unsigned previews are explicitly labeled; public signing status and remaining
 limitations are recorded at publication. No certificate application blocks implementation.
 Acceptance belongs to [the first play release rows](development-outline.md#first-play-release-acceptance).
+The [delivery plan](development/first-play-delivery-plan.md) records completed slices and the
+remaining work. N5 is reviewed separately when complete and can accompany this release after
+that review; its work is not part of the current first-play checklist or a play prerequisite.
 
 ### Subsequent device expansion
 
@@ -455,11 +468,16 @@ limitations.
 
 Scope rulings attached to the active sequence:
 
-- N2's external-tool scope is exactly the two tools named in the
-  [outline](development-outline.md#n2-exactly-two-gameplay-tools), connected as independently
-  installed external applications; the official applications retain their upstream features and
-  license terms, and upstream owns their lifecycle. Internal Space Calibrator driver IPC is not a
-  VUA integration contract. This grants no VRChat injection or generic plugin-host authority.
+- N2's external-tool scope is the seven applications listed in the
+  [outline](development-outline.md#n2-external-gameplay-tools). A common Steam connection provides
+  local installation inventory, official purchase/install handoff, launch and observed status.
+  VRCFT and Space Calibrator retain their specific setup and hardware acceptance; the five other
+  applications need no individual usage tutorial or automation of their internal features.
+  PICO eye tracking is advanced into the first play release; the remaining N2 work follows it.
+  Official applications retain their upstream features, licenses and lifecycle. A native VUA
+  entry means a built-in connector to the external app, not a bundled copy or a VUA plugin.
+  Internal Space Calibrator driver IPC is not a VUA integration contract. This grants no VRChat
+  injection or generic plugin-host authority.
 - [N5](development-outline.md#n5-audit-and-redo-material-management) BOOTH acquisition does not
   authorize purchasing, access bypass, or a project-operated asset server. Source sessions,
   orders, files and account catalogs remain local.
@@ -478,6 +496,9 @@ plugin execution and a marketplace still require their separately accepted secur
 
 ## Document changelog
 
+- 2.10.0 (2026-10-05): separate app, preparation and game guidance in the first play scope and retain N5 as an independently reviewed co-release.
+- 2.9.0 (2026-10-03): add PICO eye tracking to the first play release and expand N2 to seven external tools with shared Steam inventory/install/launch acceptance.
+
 - 2.8.1 (2026-10-03): limit the initial accelerator recommendation to NetEase UU per the author's ruling.
 
 - 2.8.0 (2026-10-03): bound the first play release to desktop/PICO onboarding, a desktop guide overlay and ZIP distribution; retain wider N1 work for later deliveries.
@@ -493,7 +514,5 @@ plugin execution and a marketplace still require their separately accepted secur
   the development outline; no scope change.
 - 2.4.0 (2026-10-01): select region-aware Unity/NoUnityCN source priority, a mirror switch and Hub fallback; authorize original-installer deployment with official CLI registration during N1 development.
 - 2.3.0 (2026-09-30): select official standalone Unity CLI installation with separate user licensing; Hub is optional.
-- 2.2.2 (2026-09-30): link the independent product-release numbering policy; N acceptance scope is unchanged.
-- 2.2.1 (2026-09-30): describe the selected Steam/external integration path directly.
 
 Earlier entries remain in Git history.

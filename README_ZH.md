@@ -16,7 +16,7 @@ VUA 帮助玩家部署游玩所需的软件与设置，并学习移动、菜单�
 
 首轮账号引导在内建浏览器中打开官方注册页面：游玩路线涉及 Steam 与 VRChat，创作者路线可选 Unity 与 BOOTH。注册、Steam 入库和官方账号绑定由用户亲手完成。上传指引说明完整 VRChat 账号及 New User 或更高等级的要求；尚未取得上传资格时，玩家仍可进行本地 Avatar 制作准备。
 
-首批两项可选外部连接为 VRCFaceTracking 与 hyblocker OpenVR Space Calibrator。计划由 VUA 检测、启动独立安装的上游软件，并引导用户在上游界面完成配置；安装与更新由 Steam 或上游负责。
+计划中的可选外部连接覆盖追踪、VR 覆盖层、睡眠辅助及录制直播工具。VUA 将检测独立安装的软件，提供 Steam 购买／安装入口并启动软件；更新由 Steam 或上游负责。追踪工具另提供配置引导，PICO 眼追纳入首次游玩发行范围。具体软件与支持程度见[工具清单](docs/development-outline.md#n2-external-gameplay-tools)。
 
 ### 2. Avatar 生产
 
@@ -42,7 +42,7 @@ VUA 从用户的目标和现有素材出发，展示计划、执行步骤与结�
 
 ## 开发进度说明
 
-v0.6.0 是当前最新的源代码标签；尚未发布任何可安装产物（唯一的 GitHub Release v0.5.0 不附带任何文件）。开发按 [N1–N7 序列](docs/development-outline.md) 推进：环境部署、两项指定游玩工具、复杂 Avatar 制作、Recipe 复现、经核查的素材管理重做、恢复，以及带截图的用户指南的 Beta 安装包。
+v0.6.0 是当前最新的源代码标签；尚未发布任何可安装产物（唯一的 GitHub Release v0.5.0 不附带任何文件）。开发按 [N1–N7 序列](docs/development-outline.md) 推进：环境部署、选定的外部游玩工具、复杂 Avatar 制作、Recipe 复现、经核查的素材管理重做、恢复，以及带截图的用户指南的 Beta 安装包。
 
 项目预期还将持续 Beta 状态很长一段时间。以上介绍表达产品方向，已有实现和自动化测试不代表完整真机流程已经通过；实际验收状态以[开发序列](docs/development-outline.md)和[发行记录](docs/release/)为准。
 
@@ -62,7 +62,7 @@ v0.6.0 是当前最新的源代码标签；尚未发布任何可安装产物（�
 
 ## 许可证
 
-VUA 采用 [Apache-2.0](LICENSE)。首批计划支持的外部连接包括 [VRCFaceTracking（Apache-2.0）](https://github.com/benaclejames/VRCFaceTracking/blob/master/LICENSE) 和 [Space Calibrator（MIT 主体及单独授权的第三方组件）](https://github.com/hyblocker/OpenVR-SpaceCalibrator/blob/develop/LICENSE)。上游归属及未来再分发条件见[第三方声明](THIRD_PARTY_NOTICES.md)。
+VUA 采用 [Apache-2.0](LICENSE)。外部软件保留各自许可证，包括 [VRCFaceTracking（Apache-2.0）](https://github.com/benaclejames/VRCFaceTracking/blob/master/LICENSE) 和 [Space Calibrator（MIT 主体及单独授权的第三方组件）](https://github.com/hyblocker/OpenVR-SpaceCalibrator/blob/develop/LICENSE)。首批计划支持的全部外部连接、上游归属及未来再分发条件见[第三方声明](THIRD_PARTY_NOTICES.md)。
 
 [NOTICE](NOTICE) · [商标指南](TRADEMARKS.md)
 

@@ -1,8 +1,8 @@
 # Documentation guide
 
-> Document version: 1.1.1
+> Document version: 1.2.1
 > Status: Accepted
-> Updated: 2026-10-03
+> Updated: 2026-10-07
 > Scope: Current documentation routes for ordinary single-line N-sequence development
 
 ## Choose your reading context
@@ -44,7 +44,7 @@ AGENTS.md and CONTRIBUTING; then follow one route below instead of reading the e
 | Player / end user | [Current delivery and limits](../README.md#current-delivery-and-starting-points) → [release evidence](release/v0.6.0.md) (Chinese) → [questions and bugs](../CONTRIBUTING.md#reporting-and-assets) | The available artifact and its limits are clear; planned N features are not assumed usable |
 | Human developer | [Contributor workflow](../CONTRIBUTING.md#develop-one-useful-slice) → [local setup and launch](../apps/desktop/README.md#development-commands) → the relevant task below | The app can be started and the checks relevant to the change are identified |
 | Frontend UI/UX Agent | [Product scope](product-boundary.md) + [N acceptance](development-outline.md#new-sequence) → [Desktop](architecture/desktop.md) → [interaction rules](design/design-standard.md#6-interaction-and-feedback) and [i18n/accessibility](design/design-standard.md#9-accessibility-internationalization-and-performance) | Required states, real Gateway data and human UI acceptance are identified; new account flows also read [account-guide browser](architecture/desktop.md#account-guide-browser) |
-| Environment business-logic Agent | [N1](development-outline.md#n1-purpose-driven-deployment) / [N2](development-outline.md#n2-exactly-two-gameplay-tools) → [deployment flow and code placement](architecture/evolution.md#deployment-architecture-first-slice) → [standalone Unity deployment](architecture/unity-deployment.md) → [external integrations](architecture/integrations-and-overlays.md#external-integration-modes) → [contract status](protocols/README.md#delivery-status-and-implementation-entry-points) | Detection, installation handoff, mutation ownership and missing contracts are distinguished |
+| Environment business-logic Agent | [N1](development-outline.md#n1-purpose-driven-deployment) / [N2](development-outline.md#n2-external-gameplay-tools) → [deployment flow and code placement](architecture/evolution.md#deployment-architecture-first-slice) → [standalone Unity deployment](architecture/unity-deployment.md) → [external integrations](architecture/integrations-and-overlays.md#external-integration-modes) → [contract status](protocols/README.md#delivery-status-and-implementation-entry-points) | Detection, installation handoff, mutation ownership and missing contracts are distinguished |
 | AMF business-logic Agent | [N3–N5 outcomes](development-outline.md#n3-complex-real-material-avatar-production) → [AMF/Unity](architecture/amf-unity.md) → [BDL](architecture/bdl.md) when acquisition is involved → [production contracts](protocols/README.md#delivery-status-and-implementation-entry-points) | The material → Recipe → production → SDK path, exact contract versions and real-material evidence are identified |
 | Frontend/backend integration Agent | [Dependency direction](architecture/system.md#dependency-and-state-boundaries) → [method registry](protocols/application-contract-v0.1.md#method-surface) → [contract-to-code route](protocols/README.md#delivery-status-and-implementation-entry-points) → relevant producer/consumer tests | The method, types, runtime capability, both ends and absent/error states agree |
 
@@ -52,11 +52,12 @@ AGENTS.md and CONTRIBUTING; then follow one route below instead of reading the e
 
 | Task | Read next | Add only when needed |
 | --- | --- | --- |
-| First desktop/PICO play release | [Accepted scope](product-boundary.md#first-play-release-user-ruling-2026-10-03), [release acceptance](development-outline.md#first-play-release-acceptance), [N1 implementation order](development/n1-delivery-plan.md#small-implementation-slices) | Standalone ZIP, desktop play, PICO USB/Wi-Fi, overlay guidance and focused recovery; creator/other-device work follows |
+| First desktop/PICO play release | [Accepted scope](product-boundary.md#first-play-release-user-ruling-2026-10-03), [release acceptance](development-outline.md#first-play-release-acceptance), [completed slices and remaining work](development/first-play-delivery-plan.md) | Three guidance presentations are implemented; automatic game following, desktop/PICO and eye-tracking completion, recovery and ZIP release remain; N5 is reviewed separately |
+| App tour / preparation reader / game guide | [Guidance architecture](architecture/guidance.md), [next implementation slices](development/first-play-delivery-plan.md#2-next-focus-deliver-the-three-guidance-contexts), [Desktop](architecture/desktop.md) | A/B reuse, context routing, independent state, VRChat-window following and transparency; UI rules remain in the design standard |
 | N1 deployment / N2 tools | [N1 delivery plan](development/n1-delivery-plan.md), [network checks and regional guidance](architecture/network-onboarding.md), [system map](architecture/system.md), [integration boundaries](architecture/integrations-and-overlays.md), [incremental evolution](architecture/evolution.md) | Device/model routes, installation activity, account/activation/network guide, Editor compatibility and relevant Gateway contract |
 | N3 production / N4 Recipe | [AMF and Unity](architecture/amf-unity.md), [Orchestrator](architecture/orchestrator.md) | Production/material/Recipe/SDK handoff contracts and real-run evidence |
 | N5 material audit/rework | [BDL](architecture/bdl.md), [AMF](architecture/amf-unity.md) | Current UI/Gateway/code/tests; account listing, selective download and import contracts |
-| UI changes | [Desktop](architecture/desktop.md), [design standard](design/design-standard.md) | Relevant feature and human UI acceptance |
+| UI changes | [Desktop](architecture/desktop.md), [design standard](design/design-standard.md) | [Guidance contexts](architecture/guidance.md) when changing guides; relevant feature and human UI acceptance |
 | Recovery | [Orchestrator](architecture/orchestrator.md) | Task store, operation-specific failure/retry format and tests |
 | Versions / N7 distribution | [Version policy](release/versioning.md), [N7 acceptance](development-outline.md#n7-beta-installer-regression-and-illustrated-user-guide) | Installer, actual-build screenshots and user-provided guide reference |
 | Contract change | [Protocol guide](protocols/README.md) | Specific schema and consumer tests; do not assume highest version replaces all older faces |
@@ -71,7 +72,7 @@ AGENTS.md and CONTRIBUTING; then follow one route below instead of reading the e
 | `protocols/`, repository `schemas/` | Exact wire/storage behavior, with active/coexisting/historical status |
 | `compatibility/` | Supported targets and evidence limits, not universal Windows guarantees |
 | `design/` | Current UI acceptance authority; refine relevant sections with actual UI work |
-| `development/` | Engineering and evidence rules for implementation work |
+| `development/` | Engineering/evidence rules and scoped implementation checkpoints/plans |
 | `decisions/` | Accepted decisions retained with historical rationale; supersede explicitly, never silently rewrite |
 | `release/` | Version policy and immutable historical Chinese release notes |
 | `tool-catalog/` | Core/plugin/external classification; a catalog entry is not implemented capability |
@@ -93,6 +94,9 @@ remain local. Registry and document changes ride with the feature, not a separat
 
 ## Document changelog
 
+- 1.2.1 (2026-10-07): route subsequent work from the delivered guidance checkpoint.
+- 1.2.0 (2026-10-05): add direct routes to the three-context guidance architecture and first-play delivery checkpoint, with N5 reviewed separately.
+- 1.1.2 (2026-10-03): update the N2 inventory route and include first-play PICO eye tracking.
 - 1.1.1 (2026-10-03): link the implemented network checks and regional guidance from N1 reading routes.
 
 - 1.1.0 (2026-10-03): add the bounded first-play-release reading route before the wider N1/N2 route.

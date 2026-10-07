@@ -1,11 +1,11 @@
 # Core, plugin, external integration, and overlay architecture
 
 
-> Document version: 1.3.0
+> Document version: 1.5.0
 > Status: Accepted
 > Scope: Environment deployment, project management, integrated runtimes, plugin host, desktop/VR overlays
-> Updated: 2026-10-03
-> Last conformance review: 2026-10-03 (overlay source review; headset usability pending)
+> Updated: 2026-10-05
+> Last conformance review: 2026-10-05 (guidance responsibilities reviewed; three-context migration pending)
 > Normative effect: Yes
 
 ## Trust classes
@@ -43,11 +43,24 @@ stable interface.
 Each mode reports capabilities independently. Recipes, local projects, and recovery retain native
 paths across external capability changes. The 2026-09-28 product ruling brings gameplay-tool setup
 into the active real-machine progression without changing these adapter or security boundaries.
-N2 uses **external connection only** for benaclejames/VRCFaceTracking and
-hyblocker/OpenVR-SpaceCalibrator. Official Steam/upstream installations own their updates, modules,
-drivers and removal. VUA guides Steam library addition/installation and uses supported external
-launch routes.
-Other tools remain outside N2; the development sequence owns functional acceptance.
+N2 uses **external connection only** for the
+[accepted Steam inventory](../development-outline.md#n2-external-gameplay-tools). Official
+Steam/upstream installations own purchases, library addition, downloads, updates, modules,
+drivers and removal. VUA supplies native discovery/install/launch entries. The development
+sequence owns the list, the first-play PICO eye-tracking slice and each application's acceptance.
+
+Implement a shared Steam adapter with per-app metadata (stable ID, Steam App ID, purpose,
+official store entry and observed executable/process identification). Reuse Steam library
+discovery and installation evidence; inspect all configured libraries and report incomplete or
+unreadable installations distinctly. Account ownership of an uninstalled app remains unknown;
+Steam handles that decision when the user follows the purchase/install entry. VUA reads no
+account-wide ownership database or credentials for this feature.
+
+An install or launch request enters a pending state until observation confirms its result; an
+accepted URI is not proof of a running app. Route fixed, registered App IDs through the trusted
+launcher and report unavailable Steam/SteamVR prerequisites. Metadata describes capabilities;
+avoid one separate workflow engine per tool. Versions and executable details come from the
+installed distribution, not guessed filenames presented as verified support.
 
 The Orchestrator coordinates discovery, installation handoff, launch and reinspection through
 small ports; local/Steam adapters return observed install/process facts and unsupported/unknown
@@ -59,6 +72,12 @@ VRCFT owns device modules, tracking and its OSC output. Space Calibrator owns de
 sampling, transforms and calibration UI. First adapters do not consume Space Calibrator's internal
 overlay/driver IPC or automatically rewrite either tool's private settings. Documented status/log
 diagnostics can be added later when a concrete need exists; unknown never means configured or working.
+
+OVR Overlay Translator, OVR Advanced Settings, OVR Toolkit, OyasumiVR and LIV use the shared
+connection only. Upstream owns translation, desktop capture, sleep automation, recording and
+their configuration; no individual tutorial or internal-feature automation is required. LIV
+is a capture/streaming application entry, not an SDK embedded into VRChat. External apps keep
+their accounts, API keys and optional VRChat integrations; VUA does not collect or forward them.
 
 Project-management, AMF-source, and overlay adapters
 use the same inward dependency direction but retain their own product ownership.
@@ -87,8 +106,9 @@ Unknown protocol or insufficient capability rejects loading. There is initially 
 or automatic execution of unknown plugins. Plugins run in the separate community host with the
 authority granted by their manifest. Process, Wasm, or trusted-native execution requires a separate security ADR.
 
-Community enhancements such as VR sleep brightness, live UI translation, voice changing, and VUA
-skins belong here only when they can remain capability-bounded and independently removable. A
+Future VUA-hosted extensions for sleep brightness, UI translation, voice changing and skins belong
+here only when they can remain capability-bounded and independently removable. The selected N2
+applications above remain external connections and do not require this community host. A
 catalog entry records its classification and evidence; release review grants distribution and trust.
 
 Catalog authors declare capabilities and behavior, not their own risk conclusion. Before release,
@@ -108,14 +128,15 @@ described as complete compatibility; unsafe writes become read-only, conversion 
 
 ## Overlay boundary
 
-Desktop and VR overlays consume the same versioned display snapshot and return semantic actions.
-The application core owns task and business state.
+Task/runtime status overlays consume versioned display snapshots and return semantic actions.
+The application core owns task and business state; local guide progress has its own state.
 
-The first play release includes the lightweight desktop guide overlay. Reuse the existing
-window and guide content, add the relevant current-step entry, and keep guidance independent
-of AMF availability. Validate reading/operating it through SteamVR's desktop view on PICO.
-This is desktop-view guidance; a native VR overlay remains subsequent work. The design below
-constrains that later implementation and does not add another N2 tool.
+The first play release uses the three contexts in [guidance architecture](guidance.md): an
+in-app VUA tour, a normal preparation reader and a guide associated with the Windows VRChat
+window. Reuse A/B content and navigation while separating presentation/lifecycle. Main observes
+ordinary Windows window state for game following; it does not interact with game internals.
+Validate the preparation reader through SteamVR's desktop view on PICO. A native VR overlay
+remains subsequent work; the design below constrains that later implementation and adds no N2 tool.
 
 The first native VR overlay path, after the first play release, is a separately built, explicitly started
 SteamVR Dashboard helper using public `IVROverlay`. It receives display snapshots and returns actions
@@ -129,6 +150,8 @@ untrusted and cannot authorize local mutation.
 
 ## Document changelog
 
+- 1.5.0 (2026-10-05): separate local guide progress from task snapshots and route three first-play guidance contexts to their owning architecture.
+- 1.4.0 (2026-10-03): define the shared Steam adapter for the expanded N2 inventory, local installation semantics and limited upstream-app lifecycle responsibilities.
 - 1.3.0 (2026-10-03): include lightweight desktop guidance and headset desktop-view validation in the first play release; retain native VR overlay as later work.
 - 1.2.1 (2026-09-30): state Steam library/install guidance and external invocation directly.
 

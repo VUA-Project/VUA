@@ -1,12 +1,12 @@
 # N1 delivery plan: from a device choice to a working environment
 
-> Document version: 1.4.0
+> Document version: 1.6.1
 > Status: Accepted
-> Updated: 2026-10-03
+> Updated: 2026-10-07
 > Scope: First play release, followed by the wider N1 device/creator routes
 
 For people: the first release prepares desktop VRChat play or PICO Connect streaming, including
-accounts, network advice and basic play guidance. Existing installations are reused. Other
+accounts, network advice, basic play guidance and optional PICO eye tracking. Existing installations are reused. Other
 headsets and Avatar editing follow in later releases.
 
 For Agents: implement the first unfinished usable path, run it, fix the observed failure and
@@ -17,7 +17,8 @@ own completion. This plan organizes delivery without replacing contracts or the 
 ## Intended experience
 
 For the first play release, follow the [accepted scope](../product-boundary.md#first-play-release-user-ruling-2026-10-03)
-and [observable acceptance](../development-outline.md#first-play-release-acceptance).
+and [observable acceptance](../development-outline.md#first-play-release-acceptance), then use the
+[current delivery checkpoint](first-play-delivery-plan.md) for completed slices and remaining work.
 The broader experience below remains the expansion direction; it is not a first-release checklist.
 
 1. Choose desktop play, headset play, PC Avatar editing or Quest Avatar editing; allow combinations.
@@ -174,39 +175,30 @@ the PC path works. Existing external-manager projects retain their read-only/cop
 
 ## Small implementation slices
 
-| Order | Concrete deliverable | First check |
-| --- | --- | --- |
-| 1 | Self-contained Windows x64 ZIP, packaged Provider paths and runtime smoke | Extract outside the checkout, load the real renderer and query the real bundled Provider with isolated test data |
-| 2 | Desktop play: relevant inspection, network advice, Steam account guide and Steam/VRChat install/launch | Complete the absent-software route into desktop play; reuse existing accounts/installations |
-| 3 | PICO Connect USB path and desktop guidance overlay | Install only the additional VR prerequisites, connect the headset and complete the USB/headset-guide acceptance rows |
-| 4 | PICO Connect Wi-Fi path | Complete wireless play and a disconnect/reconnect, with useful local-network diagnostics |
-| 5 | Recovery, four-language UI review, screenshots and release preparation | Exercise repeated runs/interruption, produce notices and instructions, and record the release acceptance rows |
-| Later | Creator installation/project work, other devices, N2 tools and broader N6/N7 | Follow their unchanged owning acceptance rows after the first play release |
+The [first play delivery plan](first-play-delivery-plan.md) owns the current task list. ZIP
+bootstrap, regional network checks, A/B guide content/navigation and development-profile
+isolation have landed. The [three guidance contexts](../architecture/guidance.md) now have an
+ordinary preparation reader, VUA app tour and manual VRChat game guide. Automatic game following
+remains outstanding; reuse the completed A/B behavior and new presentations.
 
-Prepare exact-build dependency/license inventory and SignPath application requirements alongside
-these slices. Use GitHub-hosted Windows builds for the future signing path. ZIP previews are
-explicitly unsigned until signing is configured. Do not publish an artifact merely because it
-passes the bootstrap smoke: the remaining play acceptance rows still apply.
+Finish the selected desktop/PICO install-and-play paths, optional PICO eye tracking, targeted
+recovery and the reviewed release artifact under that plan. The existing missing-software
+manual steps still need their Steam/PICO install and launch connections. Guidance content alone
+does not complete the physical USB/Wi-Fi/eye-tracking cases.
 
-Implementation checkpoint, 2026-10-03: the Windows ZIP bootstrap slice now builds the compiled
-desktop plus the real Provider, keeps user data outside the program directory and excludes
-workspace tests/mocks. The Provider uses a statically linked C runtime. Local ZIP checks passed
-for fresh launch in a Unicode/space path, moving/restarting with the same isolated profile, and
-explicit failure when the bundled backend is missing. Source changes passed 967 desktop tests,
-type/i18n/boundary checks and production fixture scanning. The reusable commands and generated
-report location are in the [desktop entry](../../apps/desktop/README.md#windows-zip-preview);
-the dated raw run is local at `_local_real_machine/n1-play-zip-2026-10-03.md`.
-This checkpoint exercises bootstrap, not software installation or physical-headset acceptance.
-The next slice is the desktop play row above; PICO USB/Wi-Fi and guide UI remain subsequent slices.
-
-The desktop overlay reuses the existing guide and window. Add a current-step entry and usable
-hide/return actions, keeping guide content independent of production state. Test SteamVR desktop
-view as the first headset access route; a new OpenVR overlay host follows this release.
+Creator installation/project work, other devices, remaining N2 tools and broader N6/N7 continue
+after the first play release under their owning acceptance rows. Packaging commands and preview
+artifact paths remain in the [desktop entry](../../apps/desktop/README.md#windows-zip-preview).
 
 These are delivery slices, not new release gates. Account/network work moves forward when it
 becomes the first blocker in a selected route. Retain the legacy `pico_pcvr` wire value while
 introducing a typed brand/model intent with its contract, Rust, TypeScript and consumer checks.
 UI wording changes do not silently rename a serialized enum.
+
+The first-play eye-tracking slice advances only VRCFT with PICO 4 Pro from N2. The
+[remaining Steam connections](../development-outline.md#n2-external-gameplay-tools) follow the
+release. The shared adapter can later add those applications through metadata and per-app smoke
+checks; do not add their individual usage tutorials to the first-play guide slice.
 
 ## WMR investigation after the first play release
 
@@ -222,15 +214,12 @@ and hardware acceptance remain later work.
 
 ## Integration with N5 development
 
-PR #60 supplies the N1 baseline on main. N5 rebases its own branch onto that baseline. Preserve
-both additions in export lists, capability arrays, Gateway interfaces, registry rows and locales.
-This task does not dispatch agents or rewrite N5's plan.
-
-N1's `provider_host.rs` changes concern environment-service construction, event subscription,
-shutdown blocking, request dispatch, capability generation and helper visibility. N5 catalog
-handlers occupy separate areas. Both change `served_capabilities`: retain deployment and
-catalog-sync entries. Use semantic anchors rather than historical line numbers. Resolve the
-combined Cargo dependency graph and inspect the lockfile rather than taking one side wholesale.
+N5 is reviewed separately on completion and can accompany the first play release afterward.
+Its implementation and remaining work are excluded from the current play checklist. Preserve
+both streams' additions to exports, capabilities, Gateway interfaces, registry rows and locales
+when reviewed changes are integrated. Resolve the combined dependency graph rather than taking
+one lockfile side wholesale. Keep per-checkout development profiles and run affected shared-build
+checks; the first-play task does not dispatch agents or rewrite N5's plan.
 
 ## Sources for adapter research
 
@@ -246,6 +235,9 @@ combined Cargo dependency graph and inspect the lockfile rather than taking one 
 
 ## Document changelog
 
+- 1.6.1 (2026-10-07): advance the checkpoint to the implemented reader, tour and manual game guide.
+- 1.6.0 (2026-10-05): route the updated first-play checkpoint and remaining work to its own plan, prioritize three guidance contexts and separate N5 review.
+- 1.5.0 (2026-10-03): add the PICO/VRCFT eye-tracking slice to the first play release and keep the expanded N2 Steam inventory after it.
 - 1.4.0 (2026-10-03): specify the implemented network slice, UU-only recommendation and per-service acceptance.
 
 - 1.3.0 (2026-10-03): prioritize standalone ZIP, desktop play, PICO USB/Wi-Fi and release recovery/guidance; retain creator and other-device work after the first play release.
