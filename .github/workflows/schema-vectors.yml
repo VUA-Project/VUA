@@ -51,6 +51,7 @@ jobs:
       #                       eac_probe / eac_allowlist_verify / eac_terminate (006 v0.1 x3)
       #                       import_copy                     (project-ops v0.1/v0.2)
       #                       project_inspection / project_queries / vua_identity (project-inspection v0.1/v0.2)
+      #                       game_window                     (game-window-observe v0.1)
       # - vua-provider-host:  m3_vectors                      (amf-production v0.2)
       #                       provider_frame_handshake        (provider-frame-v0.1)
       #                       warehouse_commands              (bdl-commands v0.1 + v0.4 consumer)
@@ -60,6 +61,7 @@ jobs:
       #                       task_snapshot_wire              (application-contract v0.1 / proposal 020)
       #                       editor_verify_wire              (editor-verify v0.1 DRAFT —
       #                        run for drift protection only; draft state does not imply freeze)
+      #                       game_window_wire                (game-window-observe v0.1 wire face)
       # - vua-unity-bridge:   material_intake                 (material-intake v0.1)
       #                       bridge_v2_vectors               (unity-bridge v2 frozen)
       #                       inspection_evidence_vectors     (inspection-evidence v0.1 DRAFT —
@@ -71,8 +73,8 @@ jobs:
       - name: vua-orchestrator
         run: cargo test -p vua-orchestrator --test assembly --test build_record --test contracts --test recipe --test recipe_v03 --test production_evidence --test vpm_spike_contract
       - name: vua-project-manager
-        run: cargo test -p vua-project-manager --test environment_managers --test editor_verify_wire --test eac_probe --test eac_allowlist_verify --test eac_terminate --test import_copy --test project_inspection --test project_queries --test vua_identity
+        run: cargo test -p vua-project-manager --test environment_managers --test editor_verify_wire --test eac_probe --test eac_allowlist_verify --test eac_terminate --test import_copy --test project_inspection --test project_queries --test vua_identity --test game_window
       - name: vua-provider-host
-        run: cargo test -p vua-provider-host --test m3_vectors --test provider_frame_handshake --test warehouse_commands --test catalog_queries --test production_use_case_vectors --test project_ops_wire --test task_snapshot_wire --test editor_verify_wire
+        run: cargo test -p vua-provider-host --test m3_vectors --test provider_frame_handshake --test warehouse_commands --test catalog_queries --test production_use_case_vectors --test project_ops_wire --test task_snapshot_wire --test editor_verify_wire --test game_window_wire
       - name: vua-unity-bridge
         run: cargo test -p vua-unity-bridge --test material_intake --test bridge_v2_vectors --test inspection_evidence_vectors

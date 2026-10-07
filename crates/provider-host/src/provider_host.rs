@@ -1358,6 +1358,9 @@ fn handle_application_request(state: &mut HostState, request: &Value) -> FrameOu
             state.environment.as_ref().map(|s| &s.network), request, request_id, correlation_id,
         );
     }
+    if method == "environment.observeGameWindow" {
+        return crate::game_window_routes::request(request, request_id, correlation_id);
+    }
     if matches!(method, "environment.planDeployment" | "environment.executeDeployment") {
         return crate::deployment_routes::request(state.environment.as_ref().map(|s| &s.deployment), method, request, request_id, correlation_id);
     }
@@ -1650,6 +1653,7 @@ fn served_capabilities(state: &HostState) -> Value {
         {"operationId": "environment.getSnapshot", "availability": "available"},
         {"operationId": "environment.checkNetwork", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
         {"operationId": "environment.testWebsites", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "environment.observeGameWindow", "availability": "available"},
         deployment_capability(state, "environment.planDeployment"),
         deployment_capability(state, "environment.executeDeployment"),
         {"operationId": "environment.verifyEditor", "availability": "available"},
