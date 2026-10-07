@@ -1,7 +1,9 @@
-/* 游戏引导小窗样式(三类引导架构 §4 手动版):
+/* 游戏引导小窗样式(三类引导架构 §4):
  * - 透明窗体:根透明,面板承担底色——透明度滑杆只调面板 opacity
  *   (缺省 50%),文字与控件同受其影响,是玩家在游戏画面上权衡可读性
  *   的自选折衷;
+ * - 跟随条:跟随开关 + 观察非 ready 时的诚实状态提示(缺席/等待/通道
+ *   缺席三态);标题栏是拖拽区,本条不参与拖拽;
  * - 拖拽条:标题栏整条可拖(frameless 小窗),交互元素显式 no-drag;
  * - 单步指引:计数 + 标题 + 少量段落 + 确认/跳过;颜色/间距只消费
  *   语义 token,与覆盖层同纪律。 */
@@ -82,6 +84,39 @@
 .vua-game-guide__chrome:hover {
   background: var(--vua-bg-elevated);
   color: var(--vua-text-strong);
+}
+
+/* 跟随条(§4 自动跟随):开关与诚实状态提示一行;标题栏是拖拽区,
+ * 本条不参与拖拽,交互元素天然可点 */
+.vua-game-guide__followbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px var(--vua-space-2, 8px);
+  padding: 6px var(--vua-space-3, 12px);
+  border-bottom: 1px solid var(--vua-border);
+  flex: none;
+}
+
+.vua-game-guide__follow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--vua-text-secondary);
+  font-size: 0.85em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.vua-game-guide__follow input[type="checkbox"] {
+  accent-color: var(--vua-accent);
+}
+
+.vua-game-guide__follow-status {
+  margin: 0;
+  font-size: 0.78em;
+  color: var(--vua-text-secondary);
+  line-height: 1.4;
 }
 
 .vua-game-guide__body {

@@ -366,6 +366,14 @@ demoTaskTitle: "演示任务",
     title: "游戏引导",
     hide: "隐藏",
     opacityLabel: "透明度",
+    /** 跟随 VRChat 窗口开关(guidance §4,缺省开启):渲染层持久化,
+     *  Main 强制执行 */
+    followLabel: "跟随 VRChat 窗口",
+    /** 跟随状态的诚实提示(仅观察非 ready 时呈现):游戏缺席、窗口未
+     *  就绪、观察通道不可用三态分立 */
+    followStatusAbsent: "未找到 VRChat 窗口——游戏运行后,引导会自动出现在游戏窗口旁。",
+    followStatusWaiting: "VRChat 正在启动——等待游戏窗口就绪。",
+    followStatusUnknown: "暂时读不到游戏窗口状态——自动跟随暂停,手动打开与隐藏不受影响。",
     confirm: "已了解",
     skip: "跳过",
     restart: "重新开始",

@@ -39,6 +39,10 @@ export const storageKeys = {
   /** 游戏引导呈现偏好(透明度 0.2–1,缺省 0.5 用户裁决):版本化
    *  GameGuidePresentationV1;与进度分键;读写同上 */
   gameGuidePresentation: "vua-game-guide-presentation",
+  /** 游戏引导跟随偏好(guidance §4,缺省 true 用户裁决):版本化
+   *  GameGuideFollowingV1 {v,enabled};渲染层只持久化与推送,Main 强制
+   *  执行;读写同上 */
+  gameGuideFollowing: "vua-game-guide-following",
   /** 高对比度(C-I18N):"auto" 跟随系统 forced-colors | "on" 始终开启;缺省 auto */
   hc: "vua-hc",
   /** 动态特效总开关(S-VFX-5,VR/省资源):"on" | "off";缺省 on */

@@ -1173,6 +1173,18 @@ export interface GameGuideWindowShowResultV1 {
   readonly visible: boolean;
 }
 
+/**
+ * 游戏引导跟随状态(game-guide follow 切片 additive)。following = 跟随开关
+ * 当前值;observation = 最近一次游戏窗口观察三态原样透传(ready ⇔ 窗口
+ * 事实在场),unknown = 观察通道未接线或查询失败的诚实缺席,绝不伪造 ready;
+ * gameForeground = 游戏窗口当前是否前台(自动显隐判定输入,呈现层不重判)。
+ */
+export interface GameGuideFollowStatusV1 {
+  readonly following: boolean;
+  readonly observation: "absent" | "waiting" | "ready" | "unknown";
+  readonly gameForeground: boolean;
+}
+
 export interface DesktopWindowApiV1 {
   minimize(): Promise<void>;
   toggleMaximize(): Promise<void>;
@@ -1226,6 +1238,14 @@ export interface DesktopWindowApiV1 {
   /** 隐藏游戏引导小窗(additive):渲染面显式动作(窗内按钮/Esc);隐藏不
    *  销毁——位置与进度保留,重开经 showGameGuide;窗口缺席幂等 */
   hideGameGuide(): Promise<GameGuideWindowShowResultV1>;
+  /** 开关游戏引导跟随(game-guide follow 切片 additive):开启后引导小窗
+   *  跟随游戏窗口观察自动显隐——自动显示永远 showInactive 不夺游戏焦点;
+   *  本会话内手动隐藏优先(当前游戏会话不再自动弹出,直至游戏会话结束
+   *  或重新开关) */
+  setGameGuideFollowing(following: boolean): Promise<void>;
+  /** 读取跟随状态(additive):Main 侧跟随开关 + 最近一次游戏窗口观察
+   *  (environment.observeGameWindow 同族三态 + unknown 诚实缺席) */
+  getGameGuideFollowStatus(): Promise<GameGuideFollowStatusV1>;
   /** 返回主窗口(additive):主窗口最小化则还原,随后显示并聚焦——仅响应
    *  用户明确动作(覆盖层「返回主窗口」),允许切换焦点 */
   focusMainWindow(): Promise<void>;

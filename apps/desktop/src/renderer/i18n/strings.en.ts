@@ -369,6 +369,15 @@ demoTaskTitle: "Demo task",
     title: "Game guide",
     hide: "Hide",
     opacityLabel: "Transparency",
+    /** Follow VRChat window toggle (guidance §4, default ON): the renderer
+     *  persists the choice, Main enforces it */
+    followLabel: "Follow VRChat window",
+    /** Honest follow-status hints, shown only while the observation is not
+     *  ready: the game is absent, its window is not up yet, or the
+     *  observation channel itself is unavailable */
+    followStatusAbsent: "VRChat window not found — the guide appears on its own once the game is running.",
+    followStatusWaiting: "VRChat is starting — waiting for the game window.",
+    followStatusUnknown: "Game window status is unavailable — automatic following is paused; manual controls still work.",
     confirm: "Got it",
     skip: "Skip",
     restart: "Start over",

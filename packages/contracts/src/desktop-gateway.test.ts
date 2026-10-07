@@ -36,6 +36,8 @@ describe("DesktopWindowApiV1 overlay faces (2026-09-26 additive: showOverlay + v
       readerTargetEvents: true,
       showGameGuide: true,
       hideGameGuide: true,
+      setGameGuideFollowing: true,
+      getGameGuideFollowStatus: true,
       focusMainWindow: true,
     };
     expect(Object.keys(apiShape)).toEqual([
@@ -52,6 +54,8 @@ describe("DesktopWindowApiV1 overlay faces (2026-09-26 additive: showOverlay + v
       "readerTargetEvents",
       "showGameGuide",
       "hideGameGuide",
+      "setGameGuideFollowing",
+      "getGameGuideFollowStatus",
       "focusMainWindow",
     ]);
   });

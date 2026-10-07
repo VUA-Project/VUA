@@ -1176,8 +1176,8 @@ function AppShell({
         >
           {strings.overlay.views.status}
         </button>
-        {/* 游戏引导小窗入口(三类引导 §4 手动版):透明置顶窗,打开不夺
-         *  焦点;隐藏不销毁,进度与透明度本地持久化 */}
+        {/* 游戏引导小窗入口(三类引导 §4):透明置顶窗,打开不夺
+         *  焦点;隐藏不销毁,进度/透明度/跟随偏好本地持久化 */}
         <button
           type="button"
           className="vua-shell__theme-toggle vua-caption"

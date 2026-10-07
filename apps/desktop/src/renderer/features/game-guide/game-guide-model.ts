@@ -1,5 +1,5 @@
 /**
- * 游戏引导模型(三类引导架构 §4 手动版:单步指引 + 确认/跳过进度)。
+ * 游戏引导模型(三类引导架构 §4:单步指引 + 确认/跳过进度 + 跟随偏好)。
  *
  * 纪律:
  * - 步表小型类型化(controls/audio/personalSpace/untrustedUrls/worlds),
@@ -11,7 +11,9 @@
  *   自己确认/跳过过哪些步骤,不是对游戏设置的检测或修改(guidance §4:
  *   "确认/跳过记录引导进度,不主张 VUA 检查或更改了游戏设置");
  * - 透明度是呈现偏好,默认 50%(用户裁决),范围钳 0.2–1,损坏/越界
- *   诚实回落默认,不猜。
+ *   诚实回落默认,不猜;
+ * - 跟随偏好(跟随 VRChat 窗口)默认开启(用户裁决),渲染层只持久化
+ *   与推送 Main,显隐/移动的强制执行在 Main;损坏/缺席诚实回落默认。
  */
 import { storageKeys } from "../../app/storage-keys.ts";
 
@@ -42,8 +44,16 @@ export interface GameGuidePresentationV1 {
   readonly opacity: number;
 }
 
+/** 持久化跟随偏好(guidance §4:跟随 VRChat 窗口,缺席 = true 用户裁决
+ *  缺省)。渲染层只持久化与推送;显隐/移动的强制执行在 Main */
+export interface GameGuideFollowingV1 {
+  readonly v: 1;
+  readonly enabled: boolean;
+}
+
 export const GAME_GUIDE_DEFAULT_OPACITY = 0.5;
 export const GAME_GUIDE_MIN_OPACITY = 0.2;
+export const GAME_GUIDE_DEFAULT_FOLLOWING = true;
 
 /** 步号钳回合法区间 */
 export function normalizeGameGuideStep(step: number): number {
@@ -165,5 +175,43 @@ export function saveGameGuideOpacity(opacity: number): void {
     );
   } catch {
     /* 存储不可用:透明度仅本次会话生效 */
+  }
+}
+
+/** 跟随偏好解析:形状完好(v=1 + enabled 布尔)→ 偏好;其余 → null
+ *  (调用方回落缺省 true,不猜) */
+export function parseGameGuideFollowing(raw: string | null | undefined): GameGuideFollowingV1 | null {
+  if (raw === null || raw === undefined) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
+    const record = parsed as Record<string, unknown>;
+    if (record.v !== 1) return null;
+    if (typeof record.enabled !== "boolean") return null;
+    return { v: 1, enabled: record.enabled };
+  } catch {
+    return null;
+  }
+}
+
+export function serializeGameGuideFollowing(following: GameGuideFollowingV1): string {
+  return JSON.stringify({ v: 1, enabled: following.enabled });
+}
+
+/** 读取跟随偏好(localStorage 不可用/损坏/缺席 → 缺省 true) */
+export function loadGameGuideFollowing(): GameGuideFollowingV1 {
+  try {
+    return parseGameGuideFollowing(localStorage.getItem(storageKeys.gameGuideFollowing))
+      ?? { v: 1, enabled: GAME_GUIDE_DEFAULT_FOLLOWING };
+  } catch {
+    return { v: 1, enabled: GAME_GUIDE_DEFAULT_FOLLOWING };
+  }
+}
+
+export function saveGameGuideFollowing(enabled: boolean): void {
+  try {
+    localStorage.setItem(storageKeys.gameGuideFollowing, serializeGameGuideFollowing({ v: 1, enabled }));
+  } catch {
+    /* 存储不可用:跟随偏好仅本次会话生效 */
   }
 }

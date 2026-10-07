@@ -4,15 +4,18 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
 import {
+  GAME_GUIDE_DEFAULT_FOLLOWING,
   GAME_GUIDE_DEFAULT_OPACITY,
   GAME_GUIDE_STEPS,
   decideGameGuideStep,
   gameGuideComplete,
   normalizeGameGuideOpacity,
   normalizeGameGuideStep,
+  parseGameGuideFollowing,
   parseGameGuidePresentation,
   parseGameGuideProgress,
   restartGameGuide,
+  serializeGameGuideFollowing,
   serializeGameGuidePresentation,
   serializeGameGuideProgress,
 } from "./game-guide-model.ts";
@@ -89,4 +92,18 @@ test("呈现偏好解析:透明度钳制;损坏/版本不符 → null", () => {
   assert.equal(parseGameGuidePresentation('{"v":2,"opacity":0.5}'), null);
   const presentation = { v: 1 as const, opacity: 0.6 };
   assert.deepEqual(parseGameGuidePresentation(serializeGameGuidePresentation(presentation)), presentation);
+});
+
+test("跟随偏好解析:合法载荷原样;垃圾/版本不符/非布尔 → null;缺省 true", () => {
+  assert.deepEqual(parseGameGuideFollowing('{"v":1,"enabled":false}'), { v: 1, enabled: false });
+  assert.deepEqual(parseGameGuideFollowing('{"v":1,"enabled":true}'), { v: 1, enabled: true });
+  assert.equal(parseGameGuideFollowing(null), null);
+  assert.equal(parseGameGuideFollowing("not-json"), null);
+  assert.equal(parseGameGuideFollowing('{"v":2,"enabled":true}'), null);
+  assert.equal(parseGameGuideFollowing('{"v":1,"enabled":"yes"}'), null);
+  assert.equal(parseGameGuideFollowing('{"v":1}'), null);
+  assert.equal(parseGameGuideFollowing("[true]"), null);
+  assert.equal(GAME_GUIDE_DEFAULT_FOLLOWING, true);
+  const following = { v: 1 as const, enabled: false };
+  assert.deepEqual(parseGameGuideFollowing(serializeGameGuideFollowing(following)), following);
 });
