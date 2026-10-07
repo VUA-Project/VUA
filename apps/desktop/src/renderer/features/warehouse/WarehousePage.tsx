@@ -550,9 +550,11 @@ export function WarehousePage({
   // 按商品删除受理回执(诚实短提示;各条目任务进度在通知中心呈现)
   const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
   const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
-  // 静默下载观察(人审 E18 修复):受理后轮询任务面,下载任务全部落定
-  // (自动采纳已入队)即刷新卡片墙并提示入库结果——用户看得到"下到哪了"
-  const [downloadWatching, setDownloadWatching] = useState(false);
+  // 静默下载观察(人审 E18 修复):受理后记住商品,下载任务静默 + 目录里
+  // 该商品已入库(自动采纳完成写 mappings)即刷新卡片墙并提示——用户看
+  // 得到"下到哪了"。不按采纳任务 id 判定:main 发起的采纳任务是时间戳
+  // id,渲染层无登记身份可认
+  const [downloadWatchProduct, setDownloadWatchProduct] = useState<string | null>(null);
   // 静默下载(N5):清单对话的打开意图 + 受理回执提示
   const [checklistProduct, setChecklistProduct] = useState<{
     productId: string;
@@ -733,9 +735,11 @@ export function WarehousePage({
     || status === "cancelled";
 
   useEffect(() => {
-    if (!downloadWatching) return;
+    if (downloadWatchProduct === null) return;
     let active = true;
+    let polls = 0;
     const timer = window.setInterval(() => {
+      polls += 1;
       void gateway.task
         .snapshot()
         .then((view) => {
@@ -743,13 +747,30 @@ export function WarehousePage({
           const downloading = view.tasks.some(
             (task) => task.id.startsWith("dl-") && !isTerminalTaskStatus(task.status),
           );
-          const adopting = view.tasks.some(
-            (task) => task.id.startsWith("task-wh-import-downloads-") && !isTerminalTaskStatus(task.status),
-          );
-          if (downloading || adopting) return;
-          setDownloadWatching(false);
-          setReloadKey((key) => key + 1);
-          setDownloadNotice(copy.cardMenu.downloadAdoptedHint);
+          if (downloading) return;
+          // 下载静默后查目录:该商品 importedArtifacts > 0 = 自动采纳落库
+          return catalogBrowser
+            .list()
+            .then((list) => {
+              if (!active) return;
+              const card =
+                list.kind === "results"
+                  ? list.items.find((item) => item.productId === downloadWatchProduct)
+                  : undefined;
+              if (card !== undefined && card.importedArtifacts > 0) {
+                window.clearInterval(timer);
+                setDownloadWatchProduct(null);
+                setReloadKey((key) => key + 1);
+                setDownloadNotice(copy.cardMenu.downloadAdoptedHint);
+              } else if (polls > 10) {
+                // ~25s 仍未入库:如实收口(失败详情在任务面/已完成下载)
+                window.clearInterval(timer);
+                setDownloadWatchProduct(null);
+                setReloadKey((key) => key + 1);
+                setDownloadNotice(copy.cardMenu.downloadFailedHint);
+              }
+            })
+            .catch(() => {});
         })
         .catch(() => {});
     }, 2500);
@@ -757,8 +778,8 @@ export function WarehousePage({
       active = false;
       window.clearInterval(timer);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 受理态驱动的一次性观察
-  }, [downloadWatching]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 受理商品驱动的一次性观察
+  }, [downloadWatchProduct]);
 
   // Esc 清空选区(菜单打开时先关菜单,选区保留——Esc 一次只收一层)
   useEffect(() => {
@@ -965,7 +986,7 @@ export function WarehousePage({
         return;
       }
       setDownloadNotice(format(copy.cardMenu.downloadQueuedHint, { count: outcome.accepted }));
-      setDownloadWatching(true);
+      setDownloadWatchProduct(productId);
     } catch {
       setDownloadNotice(copy.cardMenu.downloadFailedHint);
     }

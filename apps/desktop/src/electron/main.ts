@@ -1129,8 +1129,12 @@ async function createWindow(): Promise<void> {
     partitionSession: session.fromPartition("persist:vua-remote"),
     onProductSettled: (productId, downloadIds) => {
       if (downloadIds.length === 0 || provider === null) return;
-      void provider
-        .invoke({
+      // 事件入库是异步缓批投递(createDownloadEventSink at-least-once),
+      // 而本回调在 sink 的同步路径上先行到达——采纳可能跑在事件入库前,
+      // provider 会答 downloadNotCompleted(实机 2026-10-07 确诊)。对这一
+      // 时序型拒绝做有界退避重试,等事件可见后再采纳;其余错误如实落日志
+      const adopt = async (attempt: number): Promise<void> => {
+        const response = await provider!.invoke({
           contractVersion: APPLICATION_CONTRACT_VERSION,
           requestId: crypto.randomUUID(),
           correlationId: crypto.randomUUID(),
@@ -1138,20 +1142,23 @@ async function createWindow(): Promise<void> {
           method: "warehouse.importDownloads",
           commandId: crypto.randomUUID(),
           params: { downloadIds: [...downloadIds] },
-        })
-        .then((response) => {
-          if (!response.ok) {
-            process.stderr.write(`${JSON.stringify({
-              channel: "silent-download",
-              productId,
-              adoptError: response.error.code,
-            })}
-`);
-          }
-        })
-        .catch(() => {
-          /* 采纳失败如实留在已完成下载列表,用户可手动采纳 */
         });
+        if (response.ok) return;
+        const code = response.error.code;
+        if (code === "vua.warehouse.downloadNotCompleted" && attempt < 5) {
+          await new Promise((resolve) => setTimeout(resolve, 1_500));
+          return adopt(attempt + 1);
+        }
+        process.stderr.write(`${JSON.stringify({
+          channel: "silent-download",
+          productId,
+          adoptError: code,
+        })}
+`);
+      };
+      adopt(0).catch(() => {
+        /* 传输失败如实留在已完成下载列表,用户可手动采纳 */
+      });
     },
   });
 
