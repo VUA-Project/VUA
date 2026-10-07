@@ -1129,11 +1129,38 @@ async function createWindow(): Promise<void> {
     partitionSession: session.fromPartition("persist:vua-remote"),
     onProductSettled: (productId, downloadIds) => {
       if (downloadIds.length === 0 || provider === null) return;
-      // 事件入库是异步缓批投递(createDownloadEventSink at-least-once),
-      // 而本回调在 sink 的同步路径上先行到达——采纳可能跑在事件入库前,
-      // provider 会答 downloadNotCompleted(实机 2026-10-07 确诊)。对这一
-      // 时序型拒绝做有界退避重试,等事件可见后再采纳;其余错误如实落日志
-      const adopt = async (attempt: number): Promise<void> => {
+      // 采纳是任务化命令:受理即 ok,成败在任务执行层(实机 2026-10-07
+      // 两轮确诊)。且事件入库是异步缓批投递,任务可能仍跑在事件入库前,
+      // 执行器答 downloadNotCompleted——时序型失败,重发即愈。循环:
+      // 受理 → 轮询任务终态 → 时序型失败重发(有界),其余失败如实落日志
+      const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+      const pollTerminal = async (taskId: string): Promise<
+        { ok: true } | { ok: false; code: string } | { ok: false; code: "poll-timeout" }
+      > => {
+        for (let i = 0; i < 10; i += 1) {
+          await sleep(800);
+          const probe = await provider!.invoke({
+            contractVersion: APPLICATION_CONTRACT_VERSION,
+            requestId: crypto.randomUUID(),
+            correlationId: crypto.randomUUID(),
+            kind: "query",
+            method: "task.get",
+            params: { taskId },
+          });
+          if (!probe.ok) return { ok: false, code: probe.error.code };
+          const task = probe.value as { state?: unknown; error?: { code?: unknown } } | undefined;
+          const state = typeof task?.state === "string" ? task.state : null;
+          if (state === "succeeded" || state === "succeeded_with_warnings") {
+            return { ok: true };
+          }
+          if (state === "failed" || state === "cancelled") {
+            const code = typeof task?.error?.code === "string" ? task.error.code : "unknown";
+            return { ok: false, code };
+          }
+        }
+        return { ok: false, code: "poll-timeout" };
+      };
+      const adopt = async (round: number): Promise<void> => {
         const response = await provider!.invoke({
           contractVersion: APPLICATION_CONTRACT_VERSION,
           requestId: crypto.randomUUID(),
@@ -1143,17 +1170,20 @@ async function createWindow(): Promise<void> {
           commandId: crypto.randomUUID(),
           params: { downloadIds: [...downloadIds] },
         });
-        if (response.ok) return;
-        const code = response.error.code;
-        if (code === "vua.warehouse.downloadNotCompleted" && attempt < 5) {
-          await new Promise((resolve) => setTimeout(resolve, 1_500));
-          return adopt(attempt + 1);
+        if (!response.ok) {
+          process.stderr.write(`${JSON.stringify({ channel: "silent-download", productId, adoptError: response.error.code })}
+`);
+          return;
         }
-        process.stderr.write(`${JSON.stringify({
-          channel: "silent-download",
-          productId,
-          adoptError: code,
-        })}
+        const taskId = (response.value as { taskId?: unknown }).taskId;
+        if (typeof taskId !== "string") return;
+        const outcome = await pollTerminal(taskId);
+        if (outcome.ok) return;
+        if (outcome.code === "vua.warehouse.downloadNotCompleted" && round < 5) {
+          await sleep(1_000);
+          return adopt(round + 1);
+        }
+        process.stderr.write(`${JSON.stringify({ channel: "silent-download", productId, adoptError: outcome.code })}
 `);
       };
       adopt(0).catch(() => {
