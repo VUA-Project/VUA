@@ -1099,6 +1099,22 @@ async function createWindow(): Promise<void> {
       } else {
         process.stderr.write(`${JSON.stringify({ channel: "download-events", ...event })}\n`);
       }
+      // 静默下载落定回喂(人审 E18 修复 2026-10-06/07):终态事件按
+      // sourceUrl+urlChain 候选关联回编排器——重定向后 sourceUrl 是
+      // s*.booth.pm 签名地址,原始 downloadables 直链在链首;商品全落定
+      // 后自动发 warehouse.importDownloads(下载即入库)
+      if (
+        silentDownloadQueue !== null
+        && (event.kind === "download.completed"
+          || event.kind === "download.failed"
+          || event.kind === "download.cancelled")
+      ) {
+        silentDownloadQueue.notifySettled(
+          [event.sourceUrl, ...(event.urlChain ?? [])],
+          event.downloadId,
+          event.kind === "download.completed" ? "completed" : event.kind === "download.failed" ? "failed" : "cancelled",
+        );
+      }
     },
   };
   downloadPort = new DownloadPort({

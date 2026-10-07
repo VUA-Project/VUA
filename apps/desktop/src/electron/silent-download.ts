@@ -36,9 +36,11 @@ export interface SilentDownloadQueue {
   enqueue(productId: string, downloadableIds: readonly number[]): number;
   /** 队列中未发起的数量(诊断面) */
   pending(): number;
-  /** 下载事件汇回执:main 的 downloadSink 收到终态事件时按 sourceUrl 回喂,
-   *  借此把 downloadId 与 downloadableId 关联并推进商品落定 */
-  notifySettled(sourceUrl: string, downloadId: string, kind: "completed" | "failed" | "cancelled"): void;
+  /** 下载事件汇回执:main 的 downloadSink 收到终态事件时回喂。urls =
+   *  事件的 sourceUrl + urlChain 候选(实机 2026-10-07 确诊:重定向后
+   *  sourceUrl 是 s*.booth.pm 签名地址,原始 downloadables 直链只在
+   *  urlChain 链首)——命中任一候选即推进商品落定 */
+  notifySettled(urls: readonly string[], downloadId: string, kind: "completed" | "failed" | "cancelled"): void;
 }
 
 export function createSilentDownloadQueue(options: SilentDownloadQueueOptions): SilentDownloadQueue {
@@ -134,8 +136,10 @@ export function createSilentDownloadQueue(options: SilentDownloadQueueOptions): 
     pending() {
       return queue.length;
     },
-    notifySettled(sourceUrl, downloadId, kind) {
-      settle(sourceUrl, downloadId, kind === "completed");
+    notifySettled(urls, downloadId, kind) {
+      for (const url of urls) {
+        settle(url, downloadId, kind === "completed");
+      }
     },
   };
 }

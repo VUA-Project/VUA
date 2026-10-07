@@ -70,7 +70,7 @@ describe("createSilentDownloadQueue", () => {
 
 describe("product settle tracking (auto-adoption hook)", () => {
   it("fires onProductSettled with the completed download ids once all files settle", async () => {
-    const { session } = fakeSession();
+    const { session, initiated } = fakeSession();
     const settled: Array<{ productId: string; ids: string[] }> = [];
     const queue = createSilentDownloadQueue({
       partitionSession: session,
@@ -78,10 +78,11 @@ describe("product settle tracking (auto-adoption hook)", () => {
       ...noWait,
     });
     queue.enqueue("booth:6190761", [11, 22]);
-    await vi.waitFor(() => expect(settled).toHaveLength(0));
+    // 等两个文件都经 downloadURL 发起(inFlight 登记完成)再喂终态
+    await vi.waitFor(() => expect(initiated).toHaveLength(2));
     // 两个文件先后落定:11 成功,22 失败 → 只在最后一个落定时回调一次,携带成功批
-    queue.notifySettled("https://booth.pm/downloadables/11", "dl-1", "completed");
-    queue.notifySettled("https://booth.pm/downloadables/22", "dl-2", "failed");
+    queue.notifySettled(["https://booth.pm/downloadables/11"], "dl-1", "completed");
+    queue.notifySettled(["https://booth.pm/downloadables/22"], "dl-2", "failed");
     expect(settled).toEqual([{ productId: "booth:6190761", ids: ["dl-1"] }]);
   });
 
@@ -93,7 +94,29 @@ describe("product settle tracking (auto-adoption hook)", () => {
       onProductSettled: (productId) => settled.push(productId),
       ...noWait,
     });
-    queue.notifySettled("https://booth.pm/downloadables/999", "dl-x", "completed");
+    queue.notifySettled(["https://booth.pm/downloadables/999"], "dl-x", "completed");
     expect(settled).toHaveLength(0);
+  });
+
+  it("matches the ORIGINAL downloadables url through the redirect chain (2026-10-07)", async () => {
+    const { session, initiated } = fakeSession();
+    const settled: Array<{ productId: string; ids: string[] }> = [];
+    const queue = createSilentDownloadQueue({
+      partitionSession: session,
+      onProductSettled: (productId, ids) => settled.push({ productId, ids: [...ids] }),
+      ...noWait,
+    });
+    queue.enqueue("booth:4353376", [2934996]);
+    await vi.waitFor(() => expect(initiated).toHaveLength(1));
+    // 事件面只带重定向后的签名地址 + urlChain;命中链首直链才落定
+    queue.notifySettled(
+      [
+        "https://s6.booth.pm/3f709dc5/f/4353376/2934996/Charm_Crocs_ver1.00.zip?X-Amz-Expires=180",
+        "https://booth.pm/downloadables/2934996",
+      ],
+      "dl-9",
+      "completed",
+    );
+    expect(settled).toEqual([{ productId: "booth:4353376", ids: ["dl-9"] }]);
   });
 });

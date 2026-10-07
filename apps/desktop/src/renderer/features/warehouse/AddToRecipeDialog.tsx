@@ -4,7 +4,7 @@ import { ContentDialog } from "../../components/primitives/ContentDialog.tsx";
 import { Skeleton } from "../../components/primitives/Skeleton.tsx";
 import { useGateway } from "../../gateway/GatewayProvider.tsx";
 import type { RecipeAssetRef, RecipeDocument, RecipeListItem } from "../../gateway/recipe-port.ts";
-import { strings } from "../../i18n/index.ts";
+import { format, strings } from "../../i18n/index.ts";
 
 const copy = strings.warehouse.recipeDialog;
 
@@ -64,7 +64,15 @@ export function AddToRecipeDialog({
       await gateway.recipe.save(recipeId, updatedDoc, baseRevision);
       const parts: string[] = [];
       if (fresh.length > 0) parts.push(fresh.map((f) => f.displayName).join("、"));
-      if (skipped > 0) parts.push(`已含 ${skipped} 件`);
+      // 重复加入的反馈带配方现状(人审 2026-10-07:恒"已含 1 件"不表达
+      // 「你要加的早已在库里」);i18n 化随文案批,这里先走 format
+      if (skipped > 0) {
+        parts.push(
+          format(strings.warehouse.recipeDialog.alreadyInRecipe, {
+            count: existingAssets.length,
+          }),
+        );
+      }
       setFeedback(parts.length > 0 ? parts.join(" / ") : "全部已存在");
     } catch {
       setFeedback(strings.warehouse.states.loadFailedDescription);

@@ -1405,6 +1405,7 @@ rolled_back: "已回滚",
       noRecipes: "还没有配方 — 在下方新建",
       newRecipePlaceholder: "新配方名称",
       newRecipeCta: "创建并加入",
+      alreadyInRecipe: "已存在于配方(共 {count} 件)",
     },
     compatibleDialog: {
       title: "{name} 的适配依赖",
@@ -1530,6 +1531,7 @@ rolled_back: "已回滚",
       /** v0.3 增量:多版本商品的变体价(subproducts) */
       subproductsTitle: "版本与价格",
       subproductUnnamed: "未命名版本",
+      variantPurchasedBadge: "已购买",
       /** v0.3 增量:详情视频媒体(videoUrls) */
       videosTitle: "视频",
       openVideoFailed: "未能调用系统浏览器,请手动复制视频链接。",

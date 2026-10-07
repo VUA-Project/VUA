@@ -233,7 +233,8 @@ function WarehouseCard({
         ) : null}
         <div className="vua-warehouse-card__badges">
           {/* 在售是默认态不贴标;停售/未知/墓碑以中性灰文字徽标表达(§6.1) */}
-          {item.availability !== "available" ? (
+          {/* 未知 = 诚实缺席不渲染(人审 2026-10-07);仅停售等明确事实出徽标 */}
+          {item.availability !== "available" && item.availability !== "unknown" ? (
             <Badge tone="neutral">{copy.availability[item.availability]}</Badge>
           ) : null}
         {item.importedArtifacts > 0 ? (
@@ -310,7 +311,10 @@ function DetailContent({
         </div>
       </section>
       <div className="vua-warehouse-detail__badges">
-        <Badge tone="neutral">{copy.availability[product.availability]}</Badge>
+        {/* 未知 = 诚实缺席不渲染(人审 2026-10-07);仅明确事实出徽标 */}
+        {product.availability !== "available" && product.availability !== "unknown" ? (
+          <Badge tone="neutral">{copy.availability[product.availability]}</Badge>
+        ) : null}
         {/* Adult 徽标位必须显式(v0.3 仅显式 BOOTH Adult 徽标为真) */}
         {product.adult ? <Badge tone="neutral">{copy.detail.adultBadge}</Badge> : null}
         {/* BOOTH 展示分类原文:徽标呈现,不做翻译或推断 */}
@@ -389,10 +393,21 @@ function DetailContent({
             {product.subproducts.map((subproduct, index) => (
               <li key={subproduct.variationId ?? index}>
                 <span>
-                  {subproduct.name ?? subproduct.variationId ?? copy.detail.subproductUnnamed}
+                  {/* 无名变体继承商品标题(人审 2026-10-07:显示 BoothID 是
+                      泄内部身份,不是用户语义) */}
+                  {subproduct.name
+                    ?? product.title
+                    ?? copy.detail.subproductUnnamed}
                 </span>
                 <span className="vua-caption vua-text-secondary">{priceText(subproduct)}</span>
-                {subproduct.availability !== "available" ? (
+                {/* 变体购买事实(人审 2026-10-07):库同步携带的已购变体名
+                    与本行名一致 = 已购买;availability 未知不渲染(诚实缺席) */}
+                {product.variantName !== null
+                  && subproduct.name !== null
+                  && subproduct.name === product.variantName ? (
+                  <Badge tone="success">{copy.detail.variantPurchasedBadge}</Badge>
+                ) : null}
+                {subproduct.availability !== "available" && subproduct.availability !== "unknown" ? (
                   <Badge tone="neutral">{copy.availability[subproduct.availability]}</Badge>
                 ) : null}
               </li>
