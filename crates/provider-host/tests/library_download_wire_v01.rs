@@ -3,6 +3,7 @@
 use serde_json::{json, Value};
 use std::io::{BufReader, Cursor, Read, Write};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{mpsc, Arc, Mutex};
 use std::time::{Duration, Instant};
 use vua_bdl_store::{
@@ -189,9 +190,12 @@ struct World {
 }
 impl World {
     fn new() -> Self {
+        // Windows clock resolution can repeat under parallel tests.
+        static SERIAL: AtomicU64 = AtomicU64::new(0);
         let base = std::env::temp_dir().join(format!(
-            "vua-library-wire-{}-{}",
+            "vua-library-wire-{}-{}-{}",
             std::process::id(),
+            SERIAL.fetch_add(1, Ordering::Relaxed),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
