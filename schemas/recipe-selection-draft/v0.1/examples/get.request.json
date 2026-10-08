@@ -1,0 +1,7 @@
+{
+  "method": "recipeDraft.get",
+  "params": {
+    "schemaVersion": "0.1",
+    "draftId": "recipe-draft-synthetic"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "method": "library.removalPreview",
+  "params": {
+    "schemaVersion": "0.1",
+    "target": {
+      "kind": "product",
+      "id": "booth:90"
+    },
+    "copyIds": [
+      "cpy-original",
+      "cpy-original"
+    ]
+  }
+}

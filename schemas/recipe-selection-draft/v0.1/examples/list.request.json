@@ -1,0 +1,6 @@
+{
+  "method": "recipeDraft.list",
+  "params": {
+    "schemaVersion": "0.1"
+  }
+}

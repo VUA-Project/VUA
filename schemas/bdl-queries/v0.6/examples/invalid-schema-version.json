@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "0.4",
+  "operation": "dependencies.lookup",
+  "params": {
+    "name": "lilToon",
+    "limit": 50,
+    "offset": 0
+  }
+}

@@ -13,6 +13,7 @@ import { createLiveProjectOps } from "./project-ops-port.ts";
 import { createLiveModelProduction } from "./live-production-port.ts";
 import { createLiveProductionChainPort } from "./production-chain-port.ts";
 import { createLiveRecipeExportPort } from "./recipe-export-port.ts";
+import { createLiveRecipePort } from "./recipe-port.ts";
 import { createLiveDependenciesPort } from "./dependencies-port.ts";
 import { createLivePackages } from "./packages-live.ts";
 import { createLiveInspectionPort } from "../features/inspection/inspection-port-live.ts";
@@ -215,6 +216,7 @@ export function createElectronGateway(
     // 029 B 面环 4:配方导出 live 消费(recipe.exportProjectDraft 同步只读;
     // 实现域未接线 = vua.recipe_export.unavailable 诚实缺席)
     recipeExport: createLiveRecipeExportPort(client),
+    recipe: createLiveRecipePort(client),
     // bdl-queries v0.5 消费准备切片:依赖反查/观察列 live 消费(两方法只读;
     // 核心接线批升信封常量与路由臂前,provider 答类型化 unknown_method →
     // 缺席臂诚实缺席,控制不渲染,零伪造线索/建议)

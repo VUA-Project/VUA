@@ -1,0 +1,56 @@
+/* 窗口级登录浏览器(用户裁决 2026-10-05):导航条复用素材导入面板的
+ * .vua-import__browse-* 形制(import-page.css),本文件只承载窗口级宿主
+ * 差异(满宽、更高层级)与登录成功提示。 */
+
+.vua-login-browser__bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 44px; /* 与 Main 侧 REMOTE_VIEW_NAV_STRIP_PX 对齐(同批改动纪律) */
+  display: flex;
+  align-items: center;
+  gap: var(--vua-space-1, 4px);
+  padding: 0 var(--vua-space-2, 8px);
+  z-index: 1000; /* 同 import-page 浏览条层级:浮于一切应用内容之上 */
+  background: var(--vua-bg-panel, #1c1c22);
+  border-bottom: 1px solid var(--vua-border, rgba(255, 255, 255, 0.1));
+}
+
+/* 登录成功提示:钉在导航条右端(X 旁),倒计时 + 取消 */
+.vua-login-browser__toast {
+  position: absolute;
+  right: var(--vua-space-2, 8px);
+  top: calc(100% + var(--vua-space-2, 8px));
+  display: flex;
+  align-items: center;
+  gap: var(--vua-space-3, 12px);
+  padding: var(--vua-space-2, 8px) var(--vua-space-3, 12px);
+  border: 1px solid var(--vua-accent, #ff8c42);
+  border-radius: 8px;
+  background: var(--vua-bg-panel, #1c1c22);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 1001;
+}
+
+.vua-login-browser__toast-title {
+  font-weight: 600;
+}
+
+.vua-login-browser__toast-countdown {
+  color: var(--vua-text-secondary, rgba(255, 255, 255, 0.6));
+  font-variant-numeric: tabular-nums;
+}
+
+.vua-login-browser__toast-cancel {
+  border: 1px solid var(--vua-border, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  padding: 2px 10px;
+  cursor: pointer;
+}
+
+.vua-login-browser__toast-cancel:hover {
+  background: var(--vua-bg-hover, rgba(255, 255, 255, 0.06));
+}

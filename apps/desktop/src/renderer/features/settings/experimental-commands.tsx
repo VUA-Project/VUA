@@ -10,6 +10,7 @@ import {
 } from "../../gateway/index.ts";
 import { strings } from "../../i18n/index.ts";
 import { useDeleteOriginalsAfterGenerate, shouldResetDeleteFlag } from "../../app/delete-originals-flag.ts";
+import { useDownloadChecklist } from "../../app/download-checklist-flag.ts";
 import { commandErrorText, inferGlobalDefaultMode, type GlobalDefaultInference } from "../warehouse/acquire-model.ts";
 
 /**
@@ -40,6 +41,7 @@ export function ExperimentalCommands() {
   const gateway = useGateway();
   const acquire = useAcquireView();
   const [deleteFlag, setDeleteFlag] = useDeleteOriginalsAfterGenerate();
+  const [checklist, setChecklist] = useDownloadChecklist();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -108,6 +110,20 @@ export function ExperimentalCommands() {
           disabled={busy}
           label={copy.generateTitle}
           onToggle={() => writeGlobalMode(generateOn ? "use_original_unitypackage" : "generate_vpm")}
+        />
+      </section>
+
+      {/* 行 3:下载前弹清单(N5 静默下载,2026-10-05 用户裁决):off = Steam
+          式直下全部;on = 下载前弹文件勾选清单(默认全选) */}
+      <section className="vua-exp-card__row">
+        <div className="vua-exp-card__text">
+          <strong>{copy.downloadChecklistTitle}</strong>
+          <p className="vua-caption vua-text-secondary">{copy.downloadChecklistDesc}</p>
+        </div>
+        <Toggle
+          on={checklist}
+          label={copy.downloadChecklistTitle}
+          onToggle={() => setChecklist(!checklist)}
         />
       </section>
 

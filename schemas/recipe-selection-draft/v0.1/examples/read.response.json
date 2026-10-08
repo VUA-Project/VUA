@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "0.1",
+  "document": {
+    "schemaVersion": "0.1",
+    "kind": "selection_draft",
+    "draftId": "recipe-draft-synthetic",
+    "title": "Synthetic selection",
+    "createdAt": "2026-10-08T00:00:00.000Z",
+    "selections": [
+      {
+        "identity": "booth:901",
+        "displayName": "Synthetic Avatar",
+        "source": "cloud",
+        "variantName": null,
+        "shopName": "Synthetic Shop",
+        "warehouseItemId": null
+      },
+      {
+        "identity": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "displayName": "Synthetic manual.pdf",
+        "source": "local",
+        "variantName": null,
+        "shopName": null,
+        "warehouseItemId": "warehouse-synthetic"
+      }
+    ]
+  },
+  "revision": 1,
+  "updatedAt": "2026-10-08T00:00:00.000Z"
+}

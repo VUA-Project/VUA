@@ -36,6 +36,8 @@ describe("DesktopWindowApiV1 overlay faces (2026-09-26 additive: showOverlay + v
       readerTargetEvents: true,
       showGameGuide: true,
       hideGameGuide: true,
+      setGameGuideFollowing: true,
+      getGameGuideFollowStatus: true,
       focusMainWindow: true,
     };
     expect(Object.keys(apiShape)).toEqual([
@@ -52,6 +54,8 @@ describe("DesktopWindowApiV1 overlay faces (2026-09-26 additive: showOverlay + v
       "readerTargetEvents",
       "showGameGuide",
       "hideGameGuide",
+      "setGameGuideFollowing",
+      "getGameGuideFollowStatus",
       "focusMainWindow",
     ]);
   });
@@ -577,6 +581,7 @@ describe("gateway guard covers every declared method (regression: silent guard g
     "downloads.listCompleted": {},
     "dependencies.lookup": { name: "lilToon" },
     "dependencies.listByProduct": { productId: "booth:6584744" },
+    "catalog.productDownloadables": { productId: "booth:6190761" },
     "project.environmentManagers": {},
     "project.listProjects": {},
     "project.inspectProject": { projectPath: "C:/proj" },
@@ -585,6 +590,7 @@ describe("gateway guard covers every declared method (regression: silent guard g
     "warehouse.setArtifactMode": { warehouseItemId: "wh-entry-1", mode: null, commandId: "cmd-6" },
     "warehouse.generateVpm": { warehouseItemId: "wh-entry-1", commandId: "cmd-7" },
     "warehouse.deleteOriginals": { warehouseItemId: "wh-entry-1", commandId: "cmd-8" },
+    "warehouse.deleteOriginalsByProduct": { productId: "booth:6584744", commandId: "cmd-8b" },
     "warehouse.setGlobalDefaultMode": { mode: "generate_vpm", commandId: "cmd-9" },
     "warehouse.import": { sourceFolders: ["C:/material"], commandId: "cmd-10" },
     "warehouse.importDownloads": { downloadIds: ["dl-1"], commandId: "cmd-11" },

@@ -1,7 +1,7 @@
 # VUA product boundary
 
 
-> Document version: 2.11.0
+> Document version: 2.14.0
 > Status: Accepted
 > Scope: Entire VUA product
 > Updated: 2026-10-08
@@ -131,6 +131,23 @@ UGC-content responsibility; VUA still reports parse failures honestly and owns i
 and application errors. A reproducer re-acquires assets through their own BOOTH entitlement. A
 provenance statement grants no purchase rights, and VUA is not required to prove the local package
 is identical to the store original.
+
+**Managed library re-download (user ruling, 2026-10-07).** An already-downloaded product shows
+Re-download; the action replaces its managed file rather than storing another copy. The exact
+replacement and reference effects are owned by the [replacement ruling](decisions/library-download-replacement.md).
+This does not change unrelated local-import copies or silently rewrite frozen copy-in contracts.
+
+**Retained files and selection drafts (user ruling, 2026-10-08).** Library downloads retain all
+file formats, with production qualification evaluated separately under the replacement ruling.
+Library selections may be collected in [Recipe selection drafts](protocols/recipe-selection-draft-v0.1.md)
+while the intended Recipe design is unsettled. Drafts store references and remain separate from
+production Recipes; saving a selection does not establish production eligibility.
+
+**Local-file maintenance (user rulings, 2026-10-08).** Deleting selected managed files keeps
+catalog/copy records and saved Recipe/draft references, shows missing files and permits restore
+through re-download. Changed originals retain old generated VPM copies as superseded versions;
+the current original needs regeneration. Saved references are not rewritten automatically.
+The [maintenance ruling](decisions/library-file-maintenance.md) owns these behaviors.
 
 **BDL.** The existing base storage, asset identity, source correlation, and catalog capabilities
 are retained. Automatic compatibility-evidence collection is an experimental feature, off by
@@ -514,7 +531,10 @@ plugin execution and a marketplace still require their separately accepted secur
 
 ## Document changelog
 
-- 2.11.0 (2026-10-08): adopt the author's newcomer core-journey criterion for Ibis publication, allow clear manual handoffs and retain unfinished optional work without making it an independent release gate.
+- 2.14.0 (2026-10-08): adopt the author's newcomer core-journey criterion for Ibis publication, allow clear manual handoffs and retain unfinished optional work without making it an independent release gate.
+- 2.13.0 (2026-10-08): preserve records/references after local-file removal and retain superseded VPM output after changed managed originals; link the maintenance ruling.
+- 2.12.0 (2026-10-08): retain all downloaded formats with separate production qualification and allow provisional Recipe selection drafts without deciding the production format.
+- 2.11.0 (2026-10-07): record the user ruling that managed library re-downloads replace the existing selected file while preserving entry identity; link the owning replacement decision.
 - 2.10.0 (2026-10-05): separate app, preparation and game guidance in the first play scope and retain N5 as an independently reviewed co-release.
 - 2.9.0 (2026-10-03): add PICO eye tracking to the first play release and expand N2 to seven external tools with shared Steam inventory/install/launch acceptance.
 

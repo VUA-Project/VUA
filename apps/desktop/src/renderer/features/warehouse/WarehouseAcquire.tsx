@@ -74,7 +74,7 @@ function stateTone(state: WarehouseArtifactState) {
 
 /* ---- 工件卡片(与云端目录卡同形同交互;卡片 = 条目 × 工件) ---- */
 
-function ArtifactCard({
+export function ArtifactCard({
   card,
   selected,
   onOpen,
@@ -96,6 +96,7 @@ function ArtifactCard({
       role="listitem"
       tabIndex={0}
       onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           onOpen();
@@ -120,6 +121,7 @@ function ArtifactCard({
           <Badge tone={stateTone(artifact.state)}>{copy.verdict[artifact.state]}</Badge>
           <Badge tone="neutral">{copy.role[artifact.role]}</Badge>
         </div>
+        <Button variant="subtle" aria-label={cloudCopy.removeFiles.actions} aria-haspopup="menu" onClick={(event) => { event.stopPropagation(); onMenu(event); }}>⋯</Button>
       </div>
     </article>
   );
@@ -155,7 +157,7 @@ function commandErrorTextFor(error: {
   return commandErrorText(error, copy.commandErrors as Record<string, string>);
 }
 
-function EntryDetail({
+export function EntryDetail({
   entryId,
   globalDefault,
 }: {

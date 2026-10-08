@@ -1,0 +1,7 @@
+{
+  "native_product_id": "1000001",
+  "library_type": "bought",
+  "expect_persisted": true,
+  "expect_filter_bought": true,
+  "expect_filter_gifts": false
+}

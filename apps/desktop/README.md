@@ -3,7 +3,7 @@
 
 > Status: Accepted
 > Scope: Electron Main / Preload / Renderer, package scripts, and quality gates
-> Updated: 2026-10-04
+> Updated: 2026-10-08
 > Authority: development entry point; product boundary and contracts live in `docs/`
 
 ## Development commands
@@ -39,6 +39,7 @@ The development launcher does not rebuild the Rust Provider; repeat the build af
 | `pnpm --filter @vua/desktop smoke:download-port` | Download-port event normalization smoke against a local HTTP fixture, including policy denial and cancel/rebind (evidence under `_local_m4/<version>/`, not committed) |
 | `pnpm --filter @vua/desktop smoke:f4-deliverables` | Aggregates the remote-permissions, remote-content and download-port smokes and records their exit codes and evidence locations |
 | `pnpm --filter @vua/desktop smoke:production-review` | Production-page Chromium DOM regression with a synthetic Gateway; no production or remote services |
+| `pnpm --filter @vua/desktop smoke:library-maintenance` | Local-file selection, retained references, cancellation and same-request receipt recovery in Chromium; synthetic Gateway and isolated temporary profile only |
 | `pnpm --filter @vua/desktop smoke:import-dialog` | Material-import dialog Chromium DOM smoke with a synthetic Gateway; no production or remote services |
 | `pnpm --filter @vua/desktop smoke:resource-monitor` | Top-bar resource-monitor Chromium DOM smoke with a synthetic host; asserts zero window-blur listener leaks via CDP |
 | `pnpm --filter @vua/desktop preview:overlay` | Interactive overlay preview windows: desktop surface by default, `--vr` VR surface, `--both`, or offscreen `--capture` |

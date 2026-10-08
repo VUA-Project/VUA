@@ -205,6 +205,18 @@ export class MockOrchestratorProviderV01 implements OrchestratorProviderV01 {
       case "environment.checkNetwork":
       case "environment.testWebsites":
         return this.#failure(request, this.#error("vua.network.unavailable", "unavailable", "errors.network.failed", request.correlationId, false, false));
+      case "environment.observeGameWindow":
+        // game-guide follow 切片(桌面契约登记随同批):DEV 模拟面无 OS 窗口
+        // 枚举,诚实缺席——code/category/messageKey 三元与真实 provider-host
+        // 路由(game_window_routes)的 unavailable 分支同形,绝不伪造观察
+        return this.#failure(request, this.#error(
+          "vua.game_window.unavailable",
+          "unavailable",
+          "errors.gameWindow.unavailable",
+          request.correlationId,
+          true,
+          false,
+        ));
       case "environment.planDeployment":
       case "environment.executeDeployment":
         return this.#failure(request, this.#error("vua.deployment.unavailable", "unavailable", "errors.deployment.failed", request.correlationId, false, false));
@@ -362,6 +374,26 @@ export class MockOrchestratorProviderV01 implements OrchestratorProviderV01 {
           true,
           false,
         ));
+      case "catalog.ingestLibraryPage":
+        // 模拟 Provider 无 catalog-sync 投递域:诚实不可用(同 download.* 纪律,
+        // 绝不伪造落账回执)
+        return this.#failure(request, this.#error(
+          "vua.catalog.unavailable",
+          "unavailable",
+          "errors.catalog.unavailable",
+          request.correlationId,
+          true,
+          false,
+        ));
+      case "warehouse.deleteOriginalsByProduct":
+        return this.#failure(request, this.#error(
+          "vua.warehouse.unavailable",
+          "unavailable",
+          "errors.warehouse.unavailable",
+          request.correlationId,
+          true,
+          false,
+        ));
       case "download.ingest":
       case "download.retry":
         // 模拟 Provider 未配置下载域:诚实不可用(同 production.* 纪律)
@@ -390,6 +422,20 @@ export class MockOrchestratorProviderV01 implements OrchestratorProviderV01 {
         ));
       case "dependencies.lookup":
       case "dependencies.listByProduct":
+      // bdl-queries v0.7(N5 静默下载):同族诚实缺席纪律——mock 无 BDL
+      // 观察库,文件清单不伪造
+      case "catalog.productDownloadables":
+      case "catalog.beginLibrarySync":
+      case "catalog.finishLibrarySync":
+      case "catalog.librarySyncStatus":
+      case "library.beginDownload":
+      case "library.observeDownload":
+      case "library.downloadStatus":
+      case "library.list":
+      case "library.productFiles":
+      case "library.removalPreview": case "library.removeFiles": case "library.removalStatus":
+      case "recipeDraft.selectionStatus":
+      case "recipeDraft.list": case "recipeDraft.get": case "recipeDraft.save": case "recipeDraft.addSelection":
         // bdl-queries v0.5(030 §5.7 案 A,数据席第 168 批 FROZEN,桌面消费
         // 准备切片 2026-09-22 登记 TS 方法闭集时的穷尽性最小表态,业务路由
         // 归核心接线批):模拟 Provider 无 BDL 观察库,两方法恒答诚实缺席

@@ -1,0 +1,351 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ph-r.com/vua/schemas/bdl-queries/v0.7/query.schema.json",
+  "title": "VUA BDL read query v0.7",
+  "description": "Read-only catalog, warehouse, download and product-dependency queries served by AMF from the local BDL (docs/protocols/bdl-queries-v0.7). v0.7 adds ONE operation, additive over the frozen v0.6 eight and READ-ONLY: catalog.productDownloadables — the per-product file download list captured from the account library pages (BDL v0.4 product_downloadables; stable booth.pm/downloadables/{id} anchors, verbatim file labels). Serves the N5 silent-download checklist; results never carry paths or signed URLs (the signed CDN target is resolved at download time and never stored).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "operation",
+    "params"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "0.7"
+    },
+    "operation": {
+      "enum": [
+        "catalog.list",
+        "catalog.detail",
+        "catalog.status",
+        "warehouse.listEntries",
+        "warehouse.entryDetail",
+        "downloads.listCompleted",
+        "dependencies.lookup",
+        "dependencies.listByProduct",
+        "catalog.productDownloadables"
+      ]
+    },
+    "params": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "catalog.list"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "$ref": "#/$defs/catalogListParams"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "catalog.detail"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "$ref": "#/$defs/catalogDetailParams"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "catalog.status"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "$ref": "#/$defs/emptyParams"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "warehouse.listEntries"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "$ref": "#/$defs/emptyParams"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "warehouse.entryDetail"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "$ref": "#/$defs/warehouseEntryDetailParams"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "downloads.listCompleted"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "$ref": "#/$defs/emptyParams"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "dependencies.lookup"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "$ref": "#/$defs/dependenciesLookupParams"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "dependencies.listByProduct"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "$ref": "#/$defs/dependenciesListByProductParams"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "catalog.productDownloadables"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "params": {
+            "$ref": "#/$defs/productDownloadablesParams"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "emptyParams": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "catalogListParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The v0.2 query closed set. entityType / relationKind are deliberately absent — entity and relation storage belongs to BDL v2; their presence is a contract error, never a silently empty answer. Entries are ordered by productId ascending (identity-derived, deterministic pagination).",
+      "properties": {
+        "text": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "description": "Case-insensitive substring over title and productId; null or omitted = no filtering."
+        },
+        "availabilityStatus": {
+          "enum": [
+            "available",
+            "unavailable",
+            "unknown",
+            null
+          ],
+          "description": "Exact match against the derived stable enum (never the raw word); null or omitted = no filtering."
+        },
+        "libraryType": {
+          "enum": [
+            "bought",
+            "gifts",
+            "free_downloads",
+            null
+          ],
+          "description": "BDL v0.3: exact match against the stored account-library column; null or omitted = no filtering (rows with a NULL library match only unfiltered queries)."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 50,
+          "description": "Page size for the card wall."
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        }
+      }
+    },
+    "catalogDetailParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "productId"
+      ],
+      "properties": {
+        "productId": {
+          "type": "string",
+          "pattern": "^booth:[0-9]+$",
+          "description": "Namespaced corpus identity."
+        }
+      }
+    },
+    "warehouseEntryDetailParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "warehouseItemId"
+      ],
+      "properties": {
+        "warehouseItemId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "VUA-generated local identity, stable and never derived from display names."
+        }
+      }
+    },
+    "dependenciesLookupParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The v0.6 lookup closed set. Matching runs under the protocol's versioned matching rule table (v1 = case-insensitive EXACT over dep_name — ASCII case fold only; stored names stay verbatim; no substring, no fuzzy, no equivalence guessing). A package-form input that is not literally present as a dep_name returns an honest empty set — nominal-to-packageId identity is never guessed.",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The dependency nominal to look up, as the caller holds it. Matched per the versioned rule table; the input is never normalized into storage."
+        },
+        "depKind": {
+          "enum": [
+            "shader",
+            "tool_package",
+            "avatar_base",
+            "other",
+            null
+          ],
+          "description": "Optional filter riding the FROZEN BDL v0.2 dep_kind four-value closed set; null or omitted = no filtering. No fifth member exists — engine/SDK pins are stored as 'other' with the pin in version_hint."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 200,
+          "default": 50
+        },
+        "offset": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 0
+        }
+      }
+    },
+    "dependenciesListByProductParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "One product, all its dependency observations — the unfiltered clue face. No name/filter keys exist: client-supplied filters are contract errors, never silently empty answers. Unknown productId follows the catalog.detail absence semantics (the application-face not-found, never a fabricated empty answer).",
+      "required": [
+        "productId"
+      ],
+      "properties": {
+        "productId": {
+          "type": "string",
+          "pattern": "^booth:[0-9]+$",
+          "description": "Namespaced corpus identity."
+        }
+      }
+    },
+    "productDownloadablesParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "productId"
+      ],
+      "properties": {
+        "productId": {
+          "description": "VUA product identity (\"booth:<id>\")",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

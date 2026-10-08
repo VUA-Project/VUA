@@ -1,5 +1,5 @@
 //! W12 consumer tests: the catalog serving face (catalog.list/detail/status)
-//! against the frozen `schemas/bdl-queries/v0.5` vocabulary (v0.4 -> v0.5
+//! against the frozen `schemas/bdl-queries/v0.6` vocabulary (v0.4 -> v0.5
 //! ride-along: the additive rise leaves the six v0.4 methods identical).
 //!
 //! One end consumes the frozen vectors for real: positive request vectors
@@ -21,7 +21,7 @@ use vua_bdl_store::{
 /// The frozen v0.5 schemas (the CURRENT generation: the validators key on
 /// the word face the wire now serves).
 fn schema_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/bdl-queries/v0.5")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/bdl-queries/v0.6")
 }
 
 /// The frozen vector generation for the six v0.4 methods' examples: the
@@ -314,9 +314,131 @@ fn w12_status_is_unknown_until_the_pipeline_counter_exists() {
 
 #[test]
 fn w12_schema_version_constant_matches_the_frozen_vocabulary() {
-    // v0.5 is the current word list (the dependencies.lookup/listByProduct
-    // read faces landed additively); the envelope constant follows the
-    // frozen vocabulary.
-    assert_eq!(BDL_QUERIES_SCHEMA_VERSION, "0.5");
+    // v0.6 is the current word list (catalog.list libraryType filter +
+    // entries libraryType, additive over the frozen v0.5 face); the
+    // envelope constant follows the frozen vocabulary.
+    assert_eq!(BDL_QUERIES_SCHEMA_VERSION, "0.6");
     let _ = json!({"anchor": true});
+}
+
+#[test]
+fn bdl_v03_library_type_persists_and_filters() {
+    use vua_bdl_store::ProductObservationStatus;
+    let store = BdlStore::open_in_memory().unwrap();
+    let base = |id: &str, library: Option<&str>| vua_bdl_store::ProductObservation {
+        product_id: format!("booth:{id}"),
+        native_product_id: id.to_owned(),
+        library_type: library.map(str::to_owned),
+        variant_name: None,
+        source_url: format!("https://booth.pm/ja/items/{id}"),
+        final_url: None,
+        status: ProductObservationStatus::Complete,
+        source_locale: None,
+        source_category: None,
+        title: Some(format!("Item {id}")),
+        description: None,
+        age_restriction: None,
+        adult: false,
+        availability: None,
+        price_amount: None,
+        price_currency: None,
+        shop_name: None,
+        shop_url: None,
+        image_urls: vec![],
+        video_urls: vec![],
+        subproducts: vec![],
+        source_published_at: None,
+        content_hash: "sha256:0000000000000000000000000000000000000000000000000000000000000000".to_owned(),
+        observed_at: "2026-10-02T00:00:00.000Z".to_owned(),
+        run_id: None,
+        processor_version: "test".to_owned(),
+        missing_fields: vec![],
+    };
+    store.record_product_observation(&base("3001", Some("bought"))).unwrap();
+    store.record_product_observation(&base("3002", Some("gifts"))).unwrap();
+    store.record_product_observation(&base("3003", None)).unwrap();
+
+    let all = store.catalog_list(&CatalogListParams::default()).unwrap();
+    assert_eq!(all.total, 3);
+    let gifts = store
+        .catalog_list(&CatalogListParams { library_type: Some("gifts".into()), ..Default::default() })
+        .unwrap();
+    assert_eq!(gifts.total, 1);
+    assert_eq!(gifts.entries[0].product_id, "booth:3002");
+    assert_eq!(gifts.entries[0].library_type.as_deref(), Some("gifts"));
+    // NULL 行只在无筛选时可见
+    let bought = store
+        .catalog_list(&CatalogListParams { library_type: Some("bought".into()), ..Default::default() })
+        .unwrap();
+    assert_eq!(bought.total, 1);
+
+    // 词表外拒绝
+    let err = CatalogListParams::from_value(&serde_json::json!({"libraryType": "wishlist"}));
+    assert!(err.is_err());
+    // 观察面闭集拒绝
+    let mut bad = base("3004", Some("wishlist"));
+    assert!(store.record_product_observation(&bad).is_err());
+    bad.library_type = None;
+    assert!(store.record_product_observation(&bad).is_ok());
+}
+
+#[test]
+fn d2_imported_artifacts_count_rides_the_catalog_entries() {
+    use vua_bdl_store::ProductObservationStatus;
+    let store = BdlStore::open_in_memory().unwrap();
+    let obs = |id: &str| vua_bdl_store::ProductObservation {
+        product_id: format!("booth:{id}"),
+        native_product_id: id.to_owned(),
+        library_type: Some("bought".into()),
+        variant_name: None,
+        source_url: format!("https://booth.pm/ja/items/{id}"),
+        final_url: None,
+        status: ProductObservationStatus::Complete,
+        source_locale: None,
+        source_category: None,
+        title: Some(format!("D2 {id}")),
+        description: None,
+        age_restriction: None,
+        adult: false,
+        availability: None,
+        price_amount: None,
+        price_currency: None,
+        shop_name: None,
+        shop_url: None,
+        image_urls: vec![],
+        video_urls: vec![],
+        subproducts: vec![],
+        source_published_at: None,
+        content_hash: format!("sha256:{id:>064}").replace(' ', "0"),
+        observed_at: "2026-10-03T00:00:00.000Z".to_owned(),
+        run_id: None,
+        processor_version: "test".to_owned(),
+        missing_fields: vec![],
+    };
+    store.record_product_observation(&obs("4001")).unwrap();
+    store.record_product_observation(&obs("4002")).unwrap();
+
+    // 未关联:0(仅云端)
+    let list = store.catalog_list(&CatalogListParams::default()).unwrap();
+    let e: Vec<_> = list.entries.iter().map(|x| (x.product_id.as_str(), x.imported_artifacts)).collect();
+    assert!(e.contains(&("booth:4001", 0)));
+
+    // 关联一个工件 → importedArtifacts = 1
+    let item = store.create_warehouse_item("D2 artifact", "imported_material", "2026-10-03T00:00:00.000Z").unwrap();
+    let recording = store
+        .record_untrusted_artifact(&vua_bdl_store::NewLocalArtifact {
+            artifact_sha256: "sha256:d2aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_owned(),
+            size_bytes: 10,
+            suggested_file_name: Some("x.unitypackage".to_owned()),
+            download_id: None,
+            first_seen_at: "2026-10-03T00:00:00.000Z".to_owned(),
+        })
+        .unwrap();
+    let _ = store.record_artifact_copy(&item.warehouse_item_id, &recording.artifact.artifact_sha256, "x.unitypackage", "C:/x", vua_bdl_store::CopyRole::Original, "2026-10-03T00:00:00.000Z");
+    store.record_artifact_mapping(&recording.artifact.artifact_sha256, "booth:4001", None, Some("download_adoption"), "2026-10-03T00:00:00.000Z").unwrap();
+
+    let list2 = store.catalog_list(&CatalogListParams::default()).unwrap();
+    let m: std::collections::HashMap<_, _> = list2.entries.iter().map(|x| (x.product_id.as_str(), x.imported_artifacts)).collect();
+    assert_eq!(m["booth:4001"], 1, "correlated product counts its artifact");
+    assert_eq!(m["booth:4002"], 0, "uncorrelated stays cloud-only");
 }

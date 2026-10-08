@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ph-r.com/vua/schemas/catalog-sync/v0.1/response.schema.json",
+  "title": "VUA catalog-sync library-page result v0.1",
+  "description": "The success value of catalog.ingestLibraryPage (inside the application-contract envelope). Counts are facts of this page fold: parsedCount items were recognized, upsertedCount landed through the observation write face, rejectedItems names closed-set violations per item (never silently dropped), and nextPageUrl is the observed pagination continuation or null on the last page.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "sourceUrl",
+    "parsedCount",
+    "upsertedCount",
+    "rejectedItems",
+    "nextPageUrl"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "0.1" },
+    "sourceUrl": { "type": "string", "minLength": 1 },
+    "parsedCount": { "type": "integer", "minimum": 0 },
+    "upsertedCount": { "type": "integer", "minimum": 0 },
+    "rejectedItems": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["index", "code", "reason"],
+        "properties": {
+          "index": { "type": "integer", "minimum": 0 },
+          "code": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "nextPageUrl": { "type": ["string", "null"], "minLength": 1 }
+  }
+}

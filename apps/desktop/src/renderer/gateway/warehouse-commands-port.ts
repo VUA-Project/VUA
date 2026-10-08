@@ -39,6 +39,12 @@ export type WarehouseCommandOutcome =
   | { readonly ok: true; readonly global: WarehouseGlobalDefaultResult }
   | { readonly ok: true; readonly accepted: WarehouseMaintenanceAcceptance }
   | {
+      readonly ok: true;
+      /** 按商品删除受理(N5):逐条目 delete_originals 任务的受理计数事实,
+       * 非任务受理信封——各任务进度经任务面呈现 */
+      readonly deleted: { readonly productId: string; readonly deletedItemCount: number };
+    }
+  | {
       readonly ok: false;
       /** 协议稳定码(vua.warehouse.*)或传输面三态,原样透传 */
       readonly error:
@@ -70,6 +76,13 @@ export interface WarehouseCommandsPort {
    */
   deleteOriginals(warehouseItemId: string): Promise<WarehouseCommandOutcome>;
   /**
+   * 按商品删除本地原件(N5 收口,卡片墙右键动作):服务端反查该商品全部
+   * 仓储条目,逐条提交条目级 delete_originals(独立审计任务);回执为受理
+   * 计数事实,任务进度经任务面呈现。记录(book/catalog)保留,只有本地
+   * 原件文件被移除——「文件没有了直接从 booth 重新下」的用户裁决
+   */
+  deleteOriginalsByProduct(productId: string): Promise<WarehouseCommandOutcome>;
+  /**
    * 写全局默认产物模式(bdl-commands v0.2 两级选项的全局层;同步受理,
    * 回执为从 BDL 读回的持久事实,非回显;无 null——全局默认恒有值)
    */
@@ -79,7 +92,10 @@ export interface WarehouseCommandsPort {
    * 受理即导入任务身份;逐 folder 进度与条目落成经任务面/读面呈现;
    * 导入编排内的自动生成挂点在任务内(010 路径 A,服务端)
    */
-  importFolders(sourceFolders: readonly string[]): Promise<WarehouseCommandOutcome>;
+  importFolders(
+    sourceFolders: readonly string[],
+    options?: { readonly autoGenerate?: boolean },
+  ): Promise<WarehouseCommandOutcome>;
   /**
    * 采纳已完成下载为仓储条目(bdl-commands v0.4,IMP-3):只携带端口下载
    * 身份——暂存路径/大小/文件名是 BDL 下载事件日志的服务端事实,永不是

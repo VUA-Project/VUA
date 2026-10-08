@@ -1,11 +1,11 @@
 # Electron desktop and presentation architecture
 
 
-> Document version: 1.7.1
+> Document version: 1.8.0
 > Status: Accepted
 > Scope: `apps/desktop`, `packages/design-system`, frontend Gateway
-> Updated: 2026-10-07
-> Last conformance review: 2026-10-07 (reader, tour and manual game guide; window observer pending)
+> Updated: 2026-10-08
+> Last conformance review: 2026-10-08 (reader, tour and game guide; window observer and following implemented)
 > Normative effect: Yes
 
 ## Technology decision
@@ -116,9 +116,14 @@ Main-managed `WebContentsView` is the remote-content surface.
 
 The accepted [guidance architecture](guidance.md) separates an in-app tour, an ordinary
 preparation reader and a VRChat-window guide. React owns the in-app tour; Main owns the two
-window lifecycles and will own the game-window observer. Guide progress is local presentation state;
-business tasks remain authoritative in Orchestrator. The reader, tour and manual game guide reuse
-A/B content, targets and reading recovery; automatic following remains the next slice.
+window lifecycles and the game-window follow loop: a pure decision module driven by a 250 ms
+observation of the Provider's read-only `environment.observeGameWindow` query
+(`vua.game-window-observe/v0.1`), showing the guide without stealing focus and hiding it on
+game minimize/exit/app-switch, with a Main-enforced follow toggle. The renderer drives this
+through two `DesktopWindowApiV1` members (`setGameGuideFollowing`,
+`getGameGuideFollowStatus`). Guide progress is local presentation state;
+business tasks remain authoritative in Orchestrator. The reader, tour and game guide reuse
+A/B content, targets and reading recovery.
 
 The following describes the retained task-status overlay, not the ordinary reader's window flags.
 The desktop Overlay is a separate `BrowserWindow` inside the same Electron process (frameless,
@@ -150,7 +155,7 @@ desktop statement, 2026-09-10).
   desktop mainline (standing delivery rule). `overlay.getSnapshot` is wired through Gateway and
   Provider to the production projection. Preserve task-status access while separating guides.
   First-play guidance works independently of that projection. The preparation reader uses a
-  normal window; the game guide has adjustable transparency, with VRChat following still pending. Headset
+  normal window; the game guide has adjustable transparency and automatic VRChat-window following. Headset
   access uses SteamVR's desktop view of the reader, with its own real-device acceptance.
 
 ## Standalone Windows packaging
@@ -198,6 +203,9 @@ redistribution review authorizes each bundled binary before a public release.
 
 ## Document changelog
 
+- 1.8.0 (2026-10-08): record the implemented game-window follow loop in Main (game-window-observe
+  v0.1 observation, follow decision module, and the setGameGuideFollowing /
+  getGameGuideFollowStatus desktop API faces).
 - 1.7.1 (2026-10-07): record separate guidance presentations and retain automatic following as unfinished work.
 - 1.7.0 (2026-10-05): route three guidance contexts to their owning design and distinguish the current combined overlay from its planned replacements.
 - 1.6.0 (2026-10-03): define standalone ZIP resources/data, the real packaged bootstrap check and the first-play overlay/release subset.
@@ -216,13 +224,5 @@ redistribution review authorizes each bundled binary before a public release.
 - 1.3.0 (2026-09-30): specify isolated temporary account-guide pages and credential-free application state.
 
 - 1.2.2 (2026-09-28): remove obsolete mirror metadata and clarify current ownership where needed during the N documentation audit.
-
-- 1.2.1 (2026-09-28): erratum — two dangling M7 citations in the Overlay bullet replaced (the
-  consumption split now cites proposal 017 and the Overlay boundary section in
-  integrations-and-overlays.md; the gate-delivery parenthetical becomes a standing delivery
-  rule); no rule change.
-- 1.2.0 (2026-09-12): added the "Overlay always-on-top window" section — Overlay window
-  creation/pinning/show-hide and the formal entry shape (proposal 017 §4 desktop statement landed;
-  desktop-domain advance slice); the wire read face is honestly declared as not yet connected.
 
 Earlier entries remain in Git history.

@@ -39,9 +39,12 @@ jobs:
       #                       import_downloads_contract_v04   (bdl-commands v0.4)
       #                       import_contract_v03             (bdl-commands v0.3)
       #                       production_evidence_contract    (production-evidence v0.1)
+      #                       recipe_selection_drafts_v01     (selection-draft v0.1 baseline)
       # - vua-bdl-store:      catalog_serving                 (bdl-queries v0.3)
       #                       downloads_list_serving          (bdl-queries v0.4)
       #                       global_default_v02              (bdl-commands v0.2)
+      #                       product_downloadables           (BDL v0.3/v0.4 migrations)
+      #                       library_evidence_v05            (BDL v0.5 migration baseline)
       # - vua-orchestrator:   assembly, build_record, contracts,
       #                       recipe, recipe_v03, vpm_spike_contract
       #                       deployment                     (environment-deployment v0.1 Candidate)
@@ -52,6 +55,7 @@ jobs:
       #                       eac_probe / eac_allowlist_verify / eac_terminate (006 v0.1 x3)
       #                       import_copy                     (project-ops v0.1/v0.2)
       #                       project_inspection / project_queries / vua_identity (project-inspection v0.1/v0.2)
+      #                       game_window                     (game-window-observe v0.1)
       # - vua-provider-host:  m3_vectors                      (amf-production v0.2)
       #                       provider_frame_handshake        (provider-frame-v0.1)
       #                       warehouse_commands              (bdl-commands v0.1 + v0.4 consumer)
@@ -61,19 +65,23 @@ jobs:
       #                       task_snapshot_wire              (application-contract v0.1 / proposal 020)
       #                       editor_verify_wire              (editor-verify v0.1 DRAFT —
       #                        run for drift protection only; draft state does not imply freeze)
+      #                       game_window_wire                (game-window-observe v0.1 wire face)
+      #                       catalog_sync_wire_v01           (catalog-sync v0.1/v0.3)
+      #                       product_downloadables_wire_v07  (bdl-queries v0.7)
+      #                       library_download_wire_v01       (download/view/maintenance/draft baselines)
       # - vua-unity-bridge:   material_intake                 (material-intake v0.1)
       #                       bridge_v2_vectors               (unity-bridge v2 frozen)
       #                       inspection_evidence_vectors     (inspection-evidence v0.1 DRAFT —
       #                        run for drift protection only; draft state does not imply freeze)
       - name: vua-acquisition
-        run: cargo test -p vua-acquisition --test bdl_commands_contract --test import_downloads_contract_v04 --test import_contract_v03 --test production_evidence_contract
+        run: cargo test -p vua-acquisition --test bdl_commands_contract --test import_downloads_contract_v04 --test import_contract_v03 --test production_evidence_contract --test recipe_selection_drafts_v01
       - name: vua-bdl-store
-        run: cargo test -p vua-bdl-store --test catalog_serving --test downloads_list_serving --test global_default_v02
+        run: cargo test -p vua-bdl-store --test catalog_serving --test downloads_list_serving --test global_default_v02 --test product_downloadables --test library_evidence_v05
       - name: vua-orchestrator
         run: cargo test -p vua-orchestrator --test assembly --test build_record --test contracts --test recipe --test recipe_v03 --test production_evidence --test vpm_spike_contract --test deployment
       - name: vua-project-manager
-        run: cargo test -p vua-project-manager --test environment_managers --test editor_verify_wire --test eac_probe --test eac_allowlist_verify --test eac_terminate --test import_copy --test project_inspection --test project_queries --test vua_identity
+        run: cargo test -p vua-project-manager --test environment_managers --test editor_verify_wire --test eac_probe --test eac_allowlist_verify --test eac_terminate --test import_copy --test project_inspection --test project_queries --test vua_identity --test game_window
       - name: vua-provider-host
-        run: cargo test -p vua-provider-host --test m3_vectors --test provider_frame_handshake --test warehouse_commands --test catalog_queries --test production_use_case_vectors --test project_ops_wire --test task_snapshot_wire --test editor_verify_wire
+        run: cargo test -p vua-provider-host --test m3_vectors --test provider_frame_handshake --test warehouse_commands --test catalog_queries --test production_use_case_vectors --test project_ops_wire --test task_snapshot_wire --test editor_verify_wire --test game_window_wire --test catalog_sync_wire_v01 --test product_downloadables_wire_v07 --test library_download_wire_v01
       - name: vua-unity-bridge
         run: cargo test -p vua-unity-bridge --test material_intake --test bridge_v2_vectors --test inspection_evidence_vectors

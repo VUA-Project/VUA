@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "0.1",
+  "removalId": "library-removal-synthetic",
+  "target": {
+    "kind": "product",
+    "id": "booth:90"
+  },
+  "taskId": "task-synthetic",
+  "taskState": "succeeded_with_warnings",
+  "revision": 6,
+  "cancelRequested": false,
+  "recoveryDisposition": "none",
+  "state": "succeeded_with_warnings",
+  "files": [
+    {
+      "copyId": "cpy-original",
+      "entryId": "whi-synthetic",
+      "fileName": "original.zip",
+      "phase": "removed",
+      "errorCode": null
+    },
+    {
+      "copyId": "cpy-old-vpm",
+      "entryId": "whi-synthetic",
+      "fileName": "vpm/old.zip",
+      "phase": "failed",
+      "errorCode": "file_changed"
+    }
+  ]
+}

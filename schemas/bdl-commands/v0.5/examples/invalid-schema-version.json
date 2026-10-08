@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "0.3",
+  "operation": "warehouse.importDownloads",
+  "params": {
+    "downloadIds": [
+      "dl-01hexample0000000000000a"
+    ]
+  }
+}

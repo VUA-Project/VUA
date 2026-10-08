@@ -44,6 +44,10 @@ export const storageKeys = {
   /** 游戏引导呈现偏好(透明度 0.2–1,缺省 0.5 用户裁决):版本化
    *  GameGuidePresentationV1;与进度分键;读写同上 */
   gameGuidePresentation: "vua-game-guide-presentation",
+  /** 游戏引导跟随偏好(guidance §4,缺省 true 用户裁决):版本化
+   *  GameGuideFollowingV1 {v,enabled};渲染层只持久化与推送,Main 强制
+   *  执行;读写同上 */
+  gameGuideFollowing: "vua-game-guide-following",
   /** 高对比度(C-I18N):"auto" 跟随系统 forced-colors | "on" 始终开启;缺省 auto */
   hc: "vua-hc",
   /** 动态特效总开关(S-VFX-5,VR/省资源):"on" | "off";缺省 on */
@@ -58,6 +62,9 @@ export const storageKeys = {
    *  deleteOriginals,协议面随 proposal 008 裁决;开启仅记录意图,不触发任何
    *  服务端行为 */
   deleteOriginalsAfterGenerate: "vua-delete-originals-after-generate",
+  /** 「下载前弹清单」(N5 静默下载,2026-10-05):"on" | "off";缺省 off
+   *  (Steam 式直下全部);on = 右键下载先弹文件勾选清单(默认全选) */
+  downloadChecklist: "vua-download-checklist",
   /** 开发模式 per-port 连接目标(018,裁决 13;DEV-only):sessionStorage,
    *  JSON 形态 { [DevPortId]: "live" | "fixture" };解析/校验见
    *  app/dev-port-selection.ts,生产构建恒无此键消费 */

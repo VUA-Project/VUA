@@ -1,7 +1,15 @@
 import { isDeploymentCommandId, isDeploymentParams, type DeploymentPlanParams, type DeploymentExecuteParams, type DeploymentPlanResult, type DeploymentAccepted } from "./environment-deployment.js";
 import { isNetworkParams, type NetworkIntent, type NetworkResult } from "./environment-network.js";
 import { isWebsiteTestParams, type WebsiteTestParams, type WebsiteTestResult } from "./website-test.js";
+import { type GameWindowObservationResultV1 } from "./game-window.js";
 import { isDownloadEventV01 } from "./download-events.js";
+import { isCatalogSyncPageRequestV01, type CatalogSyncPageRequestV01 } from "./catalog-sync.js";
+import { isCatalogSyncParamsV03, type CatalogSyncBeginV03, type CatalogSyncPageV03, type CatalogSyncFinishV03, type CatalogSyncStatusV03 } from "./catalog-sync-v03.js";
+import { isLibraryDownloadParamsV01, type LibraryDownloadBeginV01, type LibraryDownloadObservationV01, type LibraryDownloadStatusV01 } from "./library-download-v01.js";
+import { isLibraryViewParamsV01, type LibraryListParamsV01, type LibraryProductFilesParamsV01, type LibraryListV01, type LibraryProductFilesV01 } from "./library-view-v01.js";
+import { isRecipeDraftParamsV01, type RecipeDraftListParamsV01, type RecipeDraftGetParamsV01, type RecipeDraftSaveParamsV01, type RecipeDraftAddParamsV01, type RecipeDraftListV01, type RecipeDraftReadV01 } from "./recipe-selection-draft-v01.js";
+import { isLibraryMaintenanceParamsV01, type LibraryRemovalPreviewParamsV01, type LibraryRemoveFilesParamsV01, type LibraryRemovalStatusParamsV01, type LibraryRemovalPreviewV01, type LibraryRemovalSnapshotV01 } from "./library-maintenance-v01.js";
+import type { RecipeDraftSelectionStatusV01 } from "./recipe-selection-draft-v01.js";
 
 export const APPLICATION_CONTRACT_VERSION = "0.1" as const;
 
@@ -372,6 +380,8 @@ export interface CatalogListQueryV03 extends ApplicationRequestBaseV01 {
     readonly text?: string | null;
     /** 对派生稳定枚举精确匹配;缺省或 null 不过滤 */
     readonly availabilityStatus?: CatalogAvailabilityStatusV03 | null;
+    /** bdl-queries v0.6/BDL v0.3:按账号库类型精确匹配;缺省或 null 不过滤 */
+    readonly libraryType?: "bought" | "gifts" | "free_downloads" | null;
     /** 1–200,默认 50 */
     readonly limit?: number;
     /** ≥ 0,默认 0 */
@@ -1670,6 +1680,33 @@ export interface DependenciesListByProductQueryV05 extends ApplicationRequestBas
   };
 }
 
+/** bdl-queries v0.7(N5 静默下载):单商品已捕获文件清单查询。数据来自
+ *  BDL v0.4 product_downloadables(库页同步时的稳定直链捕获);已知商品
+ *  零捕获 = 诚实空集(下载流再补抓),未知商品 = not-found 事实 */
+export interface CatalogProductDownloadablesQueryV07 extends ApplicationRequestBaseV01 {
+  readonly kind: "query";
+  readonly method: "catalog.productDownloadables";
+  readonly params: {
+    readonly productId: string;
+  };
+}
+
+/** v0.7 wire 信封(同 021 先例):外层 const "0.7" + operation 字面量 */
+export interface CatalogProductDownloadablesResultV07 {
+  readonly schemaVersion: "0.7";
+  readonly operation: "catalog.productDownloadables";
+  readonly result: {
+    readonly productId: string;
+    /** 行序 = (first_seen_at, downloadable_id) 升序(捕获序,确定性) */
+    readonly items: readonly {
+      /** BOOTH 稳定逐文件 id(downloadables/{id} 数字) */
+      readonly downloadableId: number;
+      /** 库页原样文件名;空串 = 页面未示名(诚实缺席) */
+      readonly fileName: string;
+    }[];
+  };
+}
+
 /** bdl-queries v0.5 冻结 wire 信封(021 先例对齐):外层三键闭集(schemaVersion
  *  const "0.5" + operation 字面量),内层 result 才是结果本体;平铺消费即类型
  *  错误。total:0 + matches:[] = 「无匹配名义」(按当前规则表),绝不渲染成
@@ -1929,6 +1966,54 @@ export interface DownloadIntentEventV03 {
   };
 }
 
+// ---- catalog-sync(账号库同步页投递;词表见 catalog-sync v0.1 冻结面) ----
+
+/** Main → AMF 单页归档投递(账号库同步读取器,N5 S1):HTML 原样进、逐项
+ *  观察落账出;请求零 Cookie/凭据(会话留在 Electron 分区会话内) */
+export interface CatalogIngestLibraryPageCommandV01 extends ApplicationRequestBaseV01 {
+  readonly kind: "command";
+  readonly method: "catalog.ingestLibraryPage";
+  readonly commandId: string;
+  readonly params: CatalogSyncPageRequestV01 | CatalogSyncPageV03;
+}
+
+export type CatalogSyncControlCommandV03 = ApplicationRequestBaseV01 & { readonly kind: "command"; readonly commandId: string } & (
+  | { readonly method: "catalog.beginLibrarySync"; readonly params: CatalogSyncBeginV03 }
+  | { readonly method: "catalog.finishLibrarySync"; readonly params: CatalogSyncFinishV03 }
+);
+
+export interface CatalogSyncStatusQueryV03 extends ApplicationRequestBaseV01 {
+  readonly kind: "query";
+  readonly method: "catalog.librarySyncStatus";
+  readonly params: CatalogSyncStatusV03;
+}
+export type LibraryDownloadCommandV01 = ApplicationRequestBaseV01 & { readonly kind: "command"; readonly commandId: string } & (
+  | { readonly method: "library.beginDownload"; readonly params: LibraryDownloadBeginV01 }
+  | { readonly method: "library.observeDownload"; readonly params: LibraryDownloadObservationV01 }
+);
+export interface LibraryDownloadQueryV01 extends ApplicationRequestBaseV01 {
+  readonly kind: "query"; readonly method: "library.downloadStatus"; readonly params: LibraryDownloadStatusV01;
+}
+export type LibraryViewQueryV01 = ApplicationRequestBaseV01 & { readonly kind: "query" } & (
+  | { readonly method: "library.list"; readonly params: LibraryListParamsV01 }
+  | { readonly method: "library.productFiles"; readonly params: LibraryProductFilesParamsV01 }
+);
+export type RecipeDraftQueryV01 = ApplicationRequestBaseV01 & { readonly kind: "query" } & (
+  | { readonly method: "recipeDraft.list"; readonly params: RecipeDraftListParamsV01 }
+  | { readonly method: "recipeDraft.get" | "recipeDraft.selectionStatus"; readonly params: RecipeDraftGetParamsV01 }
+);
+export type LibraryMaintenanceQueryV01 = ApplicationRequestBaseV01 & { readonly kind: "query" } & (
+  | { readonly method: "library.removalPreview"; readonly params: LibraryRemovalPreviewParamsV01 }
+  | { readonly method: "library.removalStatus"; readonly params: LibraryRemovalStatusParamsV01 }
+);
+export interface LibraryMaintenanceCommandV01 extends ApplicationRequestBaseV01 {
+  readonly kind: "command"; readonly method: "library.removeFiles"; readonly commandId: string; readonly params: LibraryRemoveFilesParamsV01;
+}
+export type RecipeDraftCommandV01 = ApplicationRequestBaseV01 & { readonly kind: "command"; readonly commandId: string } & (
+  | { readonly method: "recipeDraft.save"; readonly params: RecipeDraftSaveParamsV01 }
+  | { readonly method: "recipeDraft.addSelection"; readonly params: RecipeDraftAddParamsV01 }
+);
+
 // ---- warehouse 写命令(bdl-commands v0.1 冻结业务词表的 TS 面,proposal 005;
 //      wire 信封 schemaVersion/operation 由应用契约 response 层承载,镜像按
 //      既有惯例剥除;稳定错误码词表见 docs/protocols/bdl-commands-v0.1.md) ----
@@ -2012,6 +2097,13 @@ export interface WarehouseDeleteOriginalsCommandV01 extends ApplicationRequestBa
   readonly commandId: string;
   readonly params: { readonly warehouseItemId: string };
 }
+
+export interface WarehouseDeleteByProductCommandV05 extends ApplicationRequestBaseV01 {
+  readonly kind: "command";
+  readonly method: "warehouse.deleteOriginalsByProduct";
+  readonly commandId: string;
+  readonly params: { readonly productId: string };
+}
 /** 全局默认产物模式写命令(bdl-commands v0.2 全局层,W14/W15):同步写 BDL
  *  bdl_meta;无 null——全局默认恒有值,缺/null/词表外 = 参数违反 */
 export interface WarehouseSetGlobalDefaultModeCommandV02 extends ApplicationRequestBaseV01 {
@@ -2027,7 +2119,11 @@ export interface WarehouseImportCommandV03 extends ApplicationRequestBaseV01 {
   readonly kind: "command";
   readonly method: "warehouse.import";
   readonly commandId: string;
-  readonly params: { readonly sourceFolders: readonly string[] };
+  readonly params: {
+    readonly sourceFolders: readonly string[];
+    /** N5 实验选项:导入完成后自动制成 VPM 包再入库(设置-实验性门控) */
+    readonly autoGenerate?: boolean;
+  };
 }
 
 /** warehouse.importDownloads 下载采纳命令(bdl-commands v0.4,IMP-3):只携
@@ -2717,6 +2813,7 @@ export interface DeploymentExecuteCommand extends ApplicationRequestBaseV01 { re
 export type ApplicationRequestV01 =
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.checkNetwork"; readonly params: { readonly intent: NetworkIntent } })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.testWebsites"; readonly params: WebsiteTestParams })
+  | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.observeGameWindow"; readonly params: Readonly<Record<string, never>> })
   | DeploymentPlanQuery
   | DeploymentExecuteCommand
   | ApplicationSnapshotQueryV01
@@ -2735,6 +2832,14 @@ export type ApplicationRequestV01 =
   | CatalogListQueryV03
   | CatalogDetailQueryV03
   | CatalogStatusQueryV03
+  | CatalogIngestLibraryPageCommandV01
+  | CatalogSyncControlCommandV03
+  | CatalogSyncStatusQueryV03
+  | LibraryDownloadCommandV01
+  | LibraryDownloadQueryV01
+  | LibraryViewQueryV01
+  | LibraryMaintenanceQueryV01 | LibraryMaintenanceCommandV01
+  | RecipeDraftQueryV01 | RecipeDraftCommandV01
   | WarehouseListEntriesQueryV03
   | WarehouseEntryDetailQueryV03
   | DownloadsListCompletedQueryV04
@@ -2784,11 +2889,13 @@ export type ApplicationRequestV01 =
   | JobExecuteCommandV02
   | WarehouseGenerateVpmCommandV01
   | WarehouseDeleteOriginalsCommandV01
+  | WarehouseDeleteByProductCommandV05
   | ReleaseOpenForHandoffCommandV02
   | ReleaseOpenForInspectionCommandV02
   | RecipeExportProjectDraftQueryV01
   | DependenciesLookupQueryV05
-  | DependenciesListByProductQueryV05;
+  | DependenciesListByProductQueryV05
+  | CatalogProductDownloadablesQueryV07;
 
 export interface TaskListSnapshotV01 {
   readonly contractVersion: ApplicationContractVersion;
@@ -2869,6 +2976,10 @@ export interface DemoTaskStartedV01 {
 export type ApplicationSuccessValueV01 =
   | NetworkResult
   | WebsiteTestResult
+  | GameWindowObservationResultV1
+  | LibraryListV01 | LibraryProductFilesV01
+  | RecipeDraftListV01 | RecipeDraftReadV01
+  | LibraryRemovalPreviewV01 | LibraryRemovalSnapshotV01 | RecipeDraftSelectionStatusV01
   | DeploymentPlanResult
   | DeploymentAccepted
   | ApplicationSnapshotV01
@@ -3085,6 +3196,10 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
     return value.kind === "query" && hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
       && isWebsiteTestParams(value.params);
   }
+  if (value.kind === "query" && value.method === "environment.observeGameWindow") {
+    return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
+      && hasExactKeys(value.params, []);
+  }
   if (value.method === "environment.planDeployment" || value.method === "environment.executeDeployment") {
     const execute = value.method === "environment.executeDeployment";
     return value.kind === (execute ? "command" : "query")
@@ -3174,11 +3289,15 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
   if (value.kind === "query" && value.method === "catalog.list") {
     if (!hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])) return false;
     const listParams = value.params as CatalogListQueryV03["params"];
-    if (!Object.keys(listParams).every((key) => key === "text" || key === "availabilityStatus" || key === "limit" || key === "offset")) {
+    if (!Object.keys(listParams).every((key) => key === "text" || key === "availabilityStatus" || key === "libraryType" || key === "limit" || key === "offset")) {
       return false;
     }
     if (listParams.text !== undefined && listParams.text !== null
       && (typeof listParams.text !== "string" || listParams.text.length < 1)) return false;
+    if (listParams.libraryType !== undefined && listParams.libraryType !== null
+      && !(["bought", "gifts", "free_downloads"] as readonly string[]).includes(listParams.libraryType)) {
+      return false;
+    }
     if (listParams.availabilityStatus !== undefined && listParams.availabilityStatus !== null
       && !(["available", "unavailable", "unknown"] as readonly string[]).includes(listParams.availabilityStatus)) {
       return false;
@@ -3241,6 +3360,14 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
   // listByProduct params 单键闭集 {productId}(catalog.detail 同 pattern);
   // 无 name/过滤键——客户端过滤 = 契约错误(负例向量钉死),绝不静默空答
   if (value.kind === "query" && value.method === "dependencies.listByProduct") {
+    return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
+      && hasExactKeys(value.params, ["productId"])
+      && typeof value.params.productId === "string"
+      && /^booth:[0-9]+$/.test(value.params.productId);
+  }
+  // bdl-queries v0.7(N5 静默下载):params 闭集 = {productId}(booth 身份
+  // 形态,同 listByProduct;无过滤键)
+  if (value.kind === "query" && value.method === "catalog.productDownloadables") {
     return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
       && hasExactKeys(value.params, ["productId"])
       && typeof value.params.productId === "string"
@@ -3523,6 +3650,47 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
     if (ingestParams.schemaVersion !== "0.1" || !Array.isArray(ingestParams.events)) return false;
     return ingestParams.events.every((event) => isDownloadEventV01(event));
   }
+  if (value.kind === "command" && value.method === "catalog.ingestLibraryPage") {
+    if (!hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "commandId", "params"])
+      || !isIdentifier(value.commandId)) {
+      return false;
+    }
+    const ingestPageParams = value.params as Record<string, unknown>;
+    if (ingestPageParams.schemaVersion === "0.3") return isCatalogSyncParamsV03(value.method, value.params);
+    const ingestPageKeys = ["schemaVersion", "sourceUrl", "html", "fetchedAt"];
+    if (ingestPageParams.pageNumber !== undefined) ingestPageKeys.push("pageNumber");
+    if (ingestPageParams.runId !== undefined) ingestPageKeys.push("runId");
+    if (ingestPageParams.libraryType !== undefined) ingestPageKeys.push("libraryType");
+    return hasExactKeys(ingestPageParams, ingestPageKeys) && isCatalogSyncPageRequestV01(value.params);
+  }
+  if (value.kind === "command" && (value.method === "catalog.beginLibrarySync" || value.method === "catalog.finishLibrarySync")) {
+    return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "commandId", "params"])
+      && isIdentifier(value.commandId) && isCatalogSyncParamsV03(value.method, value.params);
+  }
+  if (typeof value.method === "string" && value.method.startsWith("recipeDraft.")) {
+    const query = value.method === "recipeDraft.list" || value.method === "recipeDraft.get" || value.method === "recipeDraft.selectionStatus";
+    return value.kind === (query ? "query" : "command") && hasExactKeys(value, query ? ["contractVersion", "requestId", "correlationId", "kind", "method", "params"] : ["contractVersion", "requestId", "correlationId", "kind", "method", "params", "commandId"])
+      && (query || isIdentifier(value.commandId)) && isRecipeDraftParamsV01(value.method, value.params);
+  }
+  if (value.method === "library.removalPreview" || value.method === "library.removeFiles" || value.method === "library.removalStatus") {
+    const query = value.method !== "library.removeFiles";
+    return value.kind === (query ? "query" : "command") && hasExactKeys(value, query ? ["contractVersion", "requestId", "correlationId", "kind", "method", "params"] : ["contractVersion", "requestId", "correlationId", "kind", "method", "params", "commandId"])
+      && (query || isIdentifier(value.commandId)) && isLibraryMaintenanceParamsV01(value.method, value.params);
+  }
+  if (value.method === "library.list" || value.method === "library.productFiles") {
+    return value.kind === "query" && hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
+      && isLibraryViewParamsV01(value.method, value.params);
+  }
+  if (value.method === "library.beginDownload" || value.method === "library.observeDownload" || value.method === "library.downloadStatus") {
+    const query = value.method === "library.downloadStatus";
+    return value.kind === (query ? "query" : "command")
+      && hasExactKeys(value, query ? ["contractVersion", "requestId", "correlationId", "kind", "method", "params"] : ["contractVersion", "requestId", "correlationId", "kind", "method", "commandId", "params"])
+      && (query || isIdentifier(value.commandId)) && isLibraryDownloadParamsV01(value.method, value.params);
+  }
+  if (value.kind === "query" && value.method === "catalog.librarySyncStatus") {
+    return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
+      && isCatalogSyncParamsV03(value.method, value.params);
+  }
   if (value.kind === "command" && value.method === "download.retry") {
     return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "commandId", "params"])
       && isIdentifier(value.commandId)
@@ -3538,6 +3706,12 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
       && (value.params.mode === null
         || value.params.mode === "use_original_unitypackage"
         || value.params.mode === "generate_vpm");
+  }
+  if (value.kind === "command" && value.method === "warehouse.deleteOriginalsByProduct") {
+    return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "commandId", "params"])
+      && isIdentifier(value.commandId)
+      && hasExactKeys(value.params, ["productId"])
+      && isIdentifier(value.params.productId);
   }
   if (value.kind === "command" && value.method === "warehouse.deleteOriginals") {
     return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "commandId", "params"])
@@ -3566,11 +3740,15 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
       && (value.params.mode === "use_original_unitypackage"
         || value.params.mode === "generate_vpm");
   }
-  // bdl-commands v0.3 导入(W19):params 闭集 = sourceFolders,非空字符串数组
+  // bdl-commands v0.3 导入(W19)+ v0.5 可选 autoGenerate(N5 实验选项):
+  // params 闭集 = sourceFolders ± autoGenerate(boolean),非空字符串数组
   if (value.kind === "command" && value.method === "warehouse.import") {
-    return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "commandId", "params"])
-      && isIdentifier(value.commandId)
-      && hasExactKeys(value.params, ["sourceFolders"])
+    if (!hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "commandId", "params"])
+      || !isIdentifier(value.commandId)) return false;
+    const keys = Object.keys(value.params).sort();
+    return (keys.length === 1 || (keys.length === 2 && keys.includes("autoGenerate")))
+      && keys.includes("sourceFolders")
+      && (value.params.autoGenerate === undefined || typeof value.params.autoGenerate === "boolean")
       && Array.isArray(value.params.sourceFolders)
       && value.params.sourceFolders.length > 0
       && value.params.sourceFolders.every(

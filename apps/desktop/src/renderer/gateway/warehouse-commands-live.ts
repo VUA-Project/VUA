@@ -147,6 +147,30 @@ export function createWarehouseCommands(client: GatewayClient): WarehouseCommand
       });
       return response.ok ? narrowAcceptance(response.value) : outcomeFromClientError(response.error);
     },
+    // N5 收口:按商品删除本地原件。回执是 bdl-commands 计数信封(非任务
+    // 受理信封)——不登记任务身份,各条目任务在任务中心以诚实类型词呈现
+    deleteOriginalsByProduct: async (productId) => {
+      const response = await client.invoke({
+        schemaVersion: 1,
+        requestId: crypto.randomUUID(),
+        method: "warehouse.deleteOriginalsByProduct",
+        params: { productId, commandId: `whcmd-${crypto.randomUUID()}` },
+      });
+      if (!response.ok) return outcomeFromClientError(response.error);
+      const envelope = asRecord(response.value);
+      if (envelope === null || envelope.operation !== "warehouse.deleteOriginalsByProduct") {
+        return { ok: false, error: { kind: "unavailable" } };
+      }
+      const result = asRecord(envelope.result);
+      const deletedProductId = result === null ? null : asString(result.productId);
+      if (deletedProductId !== productId || typeof result?.deletedItemCount !== "number") {
+        return { ok: false, error: { kind: "unavailable" } };
+      }
+      return {
+        ok: true,
+        deleted: { productId: deletedProductId, deletedItemCount: result.deletedItemCount },
+      };
+    },
     // W14 v0.2 全局层(W15 重做:设置页全局开关的写面)
     setGlobalDefaultMode: async (mode) => {
       const response = await client.invoke({
@@ -158,12 +182,17 @@ export function createWarehouseCommands(client: GatewayClient): WarehouseCommand
       return response.ok ? narrowGlobalDefault(response.value) : outcomeFromClientError(response.error);
     },
     // W19 批量导入(bdl-commands v0.3):受理即导入任务身份;进度经任务面
-    importFolders: async (sourceFolders) => {
+    importFolders: async (sourceFolders, options) => {
       const response = await client.invoke({
         schemaVersion: 1,
         requestId: crypto.randomUUID(),
         method: "warehouse.import",
-        params: { sourceFolders: [...sourceFolders], commandId: `whcmd-${crypto.randomUUID()}` },
+        params: {
+          sourceFolders: [...sourceFolders],
+          commandId: `whcmd-${crypto.randomUUID()}`,
+          // N5 实验选项(设置-实验性门控):导入后自动制成 VPM 包再入库
+          ...(options?.autoGenerate === true ? { autoGenerate: true } : {}),
+        },
       });
       return response.ok
         ? acceptWithIdentity(response.value, {

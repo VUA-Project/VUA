@@ -588,12 +588,25 @@ impl<'a> DownloadEventConsumer<'a> {
                 value: download_id.to_string(),
             })
         })?;
+        // started 事件的 source_url 是采纳关联的来源之一(N5 D2:机缘
+        // 关联,不做任何爬取);重定向链头是原始请求地址(静默下载的
+        // downloadables/{id} 直链只在链上)
+        let source_url = history
+            .first()
+            .map(|event| event.source_url.clone())
+            .unwrap_or_default();
+        let source_url_chain = history
+            .first()
+            .and_then(|event| event.url_chain.clone())
+            .unwrap_or_default();
         Ok(Some(StagingCompletion {
             staging_token: staging_token_for(download_id, &completed.occurred_at),
             download_id: download_id.to_string(),
             stored_path,
             reported_size_bytes,
             suggested_file_name: completed.suggested_file_name.clone(),
+            source_url,
+            source_url_chain,
         }))
     }
 }
@@ -607,6 +620,14 @@ pub struct StagingCompletion {
     pub stored_path: String,
     pub reported_size_bytes: u64,
     pub suggested_file_name: Option<String>,
+    /// The delivery's origin URL (from the started event) — the adopter's
+    /// basis for opportunistic catalog correlation (booth item id). After a
+    /// redirect this is the SIGNED CDN address; the original request URL
+    /// (e.g. booth.pm/downloadables/{id}) survives only in the chain.
+    pub source_url: String,
+    /// The started event's redirect chain (head = the original request
+    /// URL); empty when the port saw no redirects.
+    pub source_url_chain: Vec<String>,
 }
 
 fn staging_token_for(download_id: &str, occurred_at: &str) -> String {

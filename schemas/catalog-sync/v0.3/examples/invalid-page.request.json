@@ -1,0 +1,12 @@
+{
+  "method": "catalog.ingestLibraryPage",
+  "params": {
+    "schemaVersion": "0.3",
+    "runId": "catalog-sync-synthetic",
+    "libraryType": "bought",
+    "pageNumber": 0,
+    "sourceUrl": "https://accounts.booth.pm/library?page=1",
+    "html": "<html><body><a href=\"https://synthetic.booth.pm/items/901\"><img src=\"https://example.invalid/901.jpg\"></a><a href=\"https://synthetic.booth.pm/items/901\">Synthetic material</a></body></html>",
+    "fetchedAt": "2026-10-07T00:00:00Z"
+  }
+}

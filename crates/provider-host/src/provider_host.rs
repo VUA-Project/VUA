@@ -196,6 +196,9 @@ struct WarehouseServices {
     /// task authority: existing nonterminal tasks register for explicit
     /// Inspect/recovery and are never resumed implicitly.
     runtime: TaskRuntime,
+    library_downloads: Arc<vua_acquisition::library_download::LibraryDownloadService>,
+    library_maintenance: vua_acquisition::library_maintenance::LibraryMaintenance,
+    selection_drafts: vua_acquisition::recipe_selection_drafts::RecipeSelectionDrafts,
 }
 
 /// Project-domain write-command wiring (proposal 014, `project.import-copy`):
@@ -829,15 +832,25 @@ pub fn run_provider_host_full(
                 Arc::new(SystemClock),
                 Arc::new(NanosTaskIdGenerator::default()),
             )
-            .map(|runtime| {
-                Arc::new(WarehouseServices {
+            .and_then(|runtime| {
+                let staging_root = config.warehouse_root.parent().unwrap_or(&config.warehouse_root).join("downloads-staging");
+                let library_downloads = Arc::new(vua_acquisition::library_download::LibraryDownloadService::new(
+                    store.clone(), config.bdl.clone(), runtime.clone(), config.warehouse_root.clone(), staging_root,
+                )?);
+                let draft_root=config.warehouse_root.parent().unwrap_or(&config.warehouse_root).join("recipe-selection-drafts");
+                let library_maintenance = vua_acquisition::library_maintenance::LibraryMaintenance::new(
+                    store.clone(),config.bdl.clone(),runtime.clone(),config.warehouse_root.clone(),library_downloads.clone());
+                Ok(Arc::new(WarehouseServices {
                     bdl: config.bdl,
                     warehouse_root: config.warehouse_root,
                     global_default: config.global_default,
                     executor: config.executor,
                     dependencies_queries: config.dependencies_queries,
                     runtime,
-                })
+                    library_downloads,
+                    library_maintenance,
+                    selection_drafts: vua_acquisition::recipe_selection_drafts::RecipeSelectionDrafts::new(draft_root),
+                }))
             })
         })
         .transpose()?;
@@ -943,11 +956,13 @@ pub fn run_provider_host_full(
         if let Some(environment) = &state.environment { driven_runtimes.push(environment.deployment.runtime.clone()); }
         for runtime in driven_runtimes {
             let sink = sink.clone();
+            let library_downloads = state.warehouse.as_ref().map(|warehouse| Arc::downgrade(&warehouse.library_downloads));
             // Register before dispatch starts: even a short deployment/manual handoff must
             // publish acceptance and progress without a subscriber-thread startup race.
             let receiver = runtime.subscribe();
             std::thread::spawn(move || {
                 for event in receiver {
+                    let parent_id = event.correlation_id.clone();
                     let stored = StoredTaskEvent {
                         task_id: event.task_id,
                         revision: event.revision,
@@ -960,6 +975,9 @@ pub fn run_provider_host_full(
                     sink.lock()
                         .expect("runtime events poisoned")
                         .push(stored);
+                    if let Some(downloads) = library_downloads.as_ref().and_then(|downloads| downloads.upgrade()) {
+                        let _ = downloads.reconcile(&parent_id, |event| sink.lock().expect("runtime events poisoned").push(event));
+                    }
                 }
             });
         }
@@ -1291,6 +1309,9 @@ fn handle_application_request(state: &mut HostState, request: &Value) -> FrameOu
     if method.starts_with("catalog.") {
         return catalog_request(state, method, request, request_id, correlation_id);
     }
+    if method.starts_with("library.") {
+        return library_download_request(state, method, request, request_id, correlation_id);
+    }
     if method.starts_with("dependencies.") {
         // bdl-queries v0.5 (proposal 030 §5.7 case A): its own method
         // prefix inside the bdl-queries family — the route arms reuse the
@@ -1299,6 +1320,9 @@ fn handle_application_request(state: &mut HostState, request: &Value) -> FrameOu
     }
     if method.starts_with("downloads.") {
         return downloads_query_request(state, method, request, request_id, correlation_id);
+    }
+    if method.starts_with("recipeDraft.") {
+        return recipe_selection_draft_request(state,method,request,request_id,correlation_id);
     }
     if method.starts_with("recipe.") {
         // Proposal 029 B-face loop 2: the export face is its own word-row
@@ -1357,6 +1381,9 @@ fn handle_application_request(state: &mut HostState, request: &Value) -> FrameOu
         return crate::network_routes::request(
             state.environment.as_ref().map(|s| &s.network), request, request_id, correlation_id,
         );
+    }
+    if method == "environment.observeGameWindow" {
+        return crate::game_window_routes::request(request, request_id, correlation_id);
     }
     if matches!(method, "environment.planDeployment" | "environment.executeDeployment") {
         return crate::deployment_routes::request(state.environment.as_ref().map(|s| &s.deployment), method, request, request_id, correlation_id);
@@ -1650,6 +1677,7 @@ fn served_capabilities(state: &HostState) -> Value {
         {"operationId": "environment.getSnapshot", "availability": "available"},
         {"operationId": "environment.checkNetwork", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
         {"operationId": "environment.testWebsites", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "environment.observeGameWindow", "availability": "available"},
         deployment_capability(state, "environment.planDeployment"),
         deployment_capability(state, "environment.executeDeployment"),
         {"operationId": "environment.verifyEditor", "availability": "available"},
@@ -1667,6 +1695,30 @@ fn served_capabilities(state: &HostState) -> Value {
             "operationId": "dependencies.queries",
             "availability": dependencies_queries_availability,
         },
+        {
+            "operationId": "catalog.ingestLibraryPage",
+            "availability": if state.warehouse.is_some() {
+                "available"
+            } else {
+                "unavailable"
+            },
+        },
+        {"operationId": "catalog.beginLibrarySync", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "catalog.finishLibrarySync", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "catalog.librarySyncStatus", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.beginDownload", "availability": if state.warehouse.is_some() && state.downloads.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.observeDownload", "availability": if state.warehouse.is_some() && state.downloads.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.downloadStatus", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.list", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.removalPreview", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.removeFiles", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.removalStatus", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "recipeDraft.selectionStatus", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.productFiles", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "recipeDraft.list", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "recipeDraft.get", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "recipeDraft.save", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "recipeDraft.addSelection", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "project.import-copy", "availability": project_ops_availability},
         {"operationId": "project.setNote", "availability": project_ops_availability},
         {"operationId": "packages.query", "availability": packages_availability},
@@ -1866,6 +1918,9 @@ fn handle_cancellation(
     // accepted the request — a request rejected by idempotency or revision
     // validation must not cancel anything as a side effect.
     if matches!(cancellation, IdempotentCancellation::Applied { .. }) {
+        if let Some(warehouse) = &state.warehouse {
+            let _ = warehouse.library_downloads.cancel_child(task_id, |event| publish_task_event(state, Some(event)));
+        }
         if let Some(services) = &state.production {
             if let Some(token) =
                 services.running.lock().expect("running poisoned").get(task_id)
@@ -2067,7 +2122,60 @@ fn warehouse_request(
         "warehouse.setGlobalDefaultMode" => {
             warehouse_set_global_default_mode(warehouse, request, request_id, correlation_id)
         }
-        "warehouse.generateVpm" | "warehouse.deleteOriginals" => {
+        "warehouse.generateVpm" => {
+            warehouse_submit_task(warehouse, method, request, request_id, correlation_id)
+        }
+        // N5 收口(卡片右键「删除本地文件」):按商品反查全部仓储条目,逐条
+        // 提交条目级 delete_originals(独立审计任务,服务端守卫照常);回执是
+        // 受理计数事实,非任务受理信封——各任务进度经任务面呈现
+        "warehouse.deleteOriginalsByProduct" => {
+            let product_id = match request.pointer("/params/productId").and_then(Value::as_str) {
+                Some(id) if !id.is_empty() => id.to_owned(),
+                _ => return warehouse_invalid_params(request_id, correlation_id),
+            };
+            let item_ids = match warehouse.bdl.warehouse_item_ids_for_product(&product_id) {
+                Ok(ids) => ids,
+                Err(_) => return warehouse_store_failed(request_id, correlation_id),
+            };
+            if item_ids.is_empty() {
+                return FrameOutcome::Response(application_error(
+                    request_id,
+                    correlation_id,
+                    "vua.warehouse.entry_not_found",
+                    "errors.warehouse.entryNotFound",
+                    "validation",
+                ));
+            }
+            let mut submitted = 0u64;
+            for item_id in &item_ids {
+                let spec = vua_acquisition::warehouse_maintenance::DeleteOriginalsTaskSpec {
+                    correlation_id: correlation_id.to_owned(),
+                    warehouse_item_id: item_id.clone(),
+                    global_default: warehouse.global_default,
+                };
+                match vua_acquisition::warehouse_maintenance::submit_delete_originals(
+                    &warehouse.runtime,
+                    warehouse.bdl.clone(),
+                    spec,
+                    None,
+                ) {
+                    Ok(_) => submitted += 1,
+                    Err(_) => continue,
+                }
+            }
+            FrameOutcome::Response(application_success(
+                request_id,
+                json!({
+                    "schemaVersion": BDL_COMMANDS_SCHEMA_VERSION,
+                    "operation": "warehouse.deleteOriginalsByProduct",
+                    "result": {
+                        "productId": product_id,
+                        "deletedItemCount": submitted,
+                    },
+                }),
+            ))
+        }
+        "warehouse.deleteOriginals" => {
             warehouse_submit_task(warehouse, method, request, request_id, correlation_id)
         }
         "warehouse.import" => {
@@ -2278,7 +2386,7 @@ fn warehouse_set_artifact_mode(
 /// default and the M5 batch import keep their shapes; v0.4 adds
 /// `warehouse.importDownloads` — the M6 download-adoption task, IMP-3 /
 /// user ruling U7-3).
-const BDL_COMMANDS_SCHEMA_VERSION: &str = "0.4";
+const BDL_COMMANDS_SCHEMA_VERSION: &str = "0.5";
 
 /// project-ops v0.2 is the frozen write-command face `project.import-copy`
 /// and `project.setNote` travel as (proposal 014, arbitrated 2026-09-09;
@@ -2551,10 +2659,15 @@ fn run_local_resolution(
                 // back to the original copy - the fallback is honest
                 // (fallbackUsed on the plan), never invented.
                 let original = detail.artifacts.iter().find(|fact| fact.role.name() == "original");
-                let clean_vpm = detail.artifacts.iter().find(|fact| {
-                    fact.role.name() == "generated_vpm"
+                let mut clean_vpm = None;
+                for fact in &detail.artifacts {
+                    if fact.role.name() == "generated_vpm"
                         && matches!(fact.state, ArtifactInspectionVerdict::Clean)
-                });
+                        && !store.generated_copy_is_superseded(warehouse_item_id,&fact.artifact_sha256)
+                            .map_err(|error|bdl_store_failed(correlation_id,&error))? {
+                        clean_vpm = Some(fact); break;
+                    }
+                }
                 let chosen = match detail.effective_artifact_mode {
                     vua_bdl_store::ArtifactMode::GenerateVpm => clean_vpm
                         .map(|fact| (fact, false))
@@ -5319,6 +5432,57 @@ fn handoff_editor_candidates(
     }
 }
 
+fn recipe_selection_draft_request(state: &HostState, method: &str, request: &Value, request_id: &str, correlation_id: &str) -> FrameOutcome {
+    let Some(warehouse)=&state.warehouse else { return FrameOutcome::Response(application_error(request_id,correlation_id,"vua.recipe_draft.unavailable","errors.recipe.draftFailed","unavailable")); };
+    let expected_kind=if matches!(method,"recipeDraft.list"|"recipeDraft.get"|"recipeDraft.selectionStatus") { "query" } else { "command" };
+    if request["kind"]!=expected_kind { return FrameOutcome::Response(application_error(request_id,correlation_id,"vua.recipe_draft.invalid_params","errors.recipe.draftFailed","validation")); }
+    let params = request.get("params").cloned().unwrap_or(Value::Null);
+    let result = if method == "recipeDraft.selectionStatus" {
+        vua_acquisition::library_maintenance::draft_selection_status(&warehouse.bdl,&warehouse.warehouse_root,&warehouse.selection_drafts,params).map_err(|error|vua_acquisition::recipe_selection_drafts::DraftError(error.0))
+    } else { warehouse.selection_drafts.apply(method,params) };
+    match result {
+        Ok(value)=>FrameOutcome::Response(application_success(request_id,value)),
+        Err(error)=>FrameOutcome::Response(application_error(request_id,correlation_id,&format!("vua.recipe_draft.{}",error.0),"errors.recipe.draftFailed",if error.0=="store_failed" {"internal"} else {"validation"})),
+    }
+}
+
+fn library_download_request(state: &HostState, method: &str, request: &Value, request_id: &str, correlation_id: &str) -> FrameOutcome {
+    let Some(warehouse) = &state.warehouse else {
+        return FrameOutcome::Response(application_error(request_id, correlation_id, "vua.library.unavailable", "errors.library.downloadFailed", "unavailable"));
+    };
+    if matches!(method,"library.removalPreview"|"library.removeFiles"|"library.removalStatus") {
+        if request["kind"] != if method == "library.removeFiles" {"command"} else {"query"} {
+            return FrameOutcome::Response(application_error(request_id,correlation_id,"vua.library.invalid_params","errors.library.removalFailed","validation"));
+        }
+        let result = warehouse.library_maintenance.apply(method,request.get("params").cloned().unwrap_or(Value::Null),&warehouse.selection_drafts,state.use_cases.as_ref().map(|services|services.recipes.as_ref()));
+        return FrameOutcome::Response(match result {
+            Ok(value) => application_success(request_id,value),
+            Err(error) => application_error(request_id,correlation_id,&format!("vua.library.{}",error.0),"errors.library.removalFailed",match error.0 { "store_failed"|"reference_read_failed"=>"internal", "preview_changed"|"file_busy"|"removal_conflict"=>"conflict", _=>"validation" }),
+        });
+    }
+    if method == "library.list" || method == "library.productFiles" {
+        if request["kind"] != "query" {
+            return FrameOutcome::Response(application_error(request_id, correlation_id, "vua.library.invalid_params", "errors.library.downloadFailed", "validation"));
+        }
+        let params = request.get("params").cloned().unwrap_or(Value::Null);
+        let result = if method == "library.list" {
+            vua_acquisition::library_view::list(&warehouse.bdl, &warehouse.warehouse_root, warehouse.global_default, &warehouse.library_downloads, params)
+        } else { vua_acquisition::library_view::product_files(&warehouse.bdl, &warehouse.warehouse_root, params) };
+        return FrameOutcome::Response(match result {
+            Ok(value) => application_success(request_id, value),
+            Err(error) => application_error(request_id, correlation_id, &format!("vua.library.{}",error.0), "errors.library.downloadFailed", if error.0 == "store_failed" { "internal" } else { "validation" }),
+        });
+    }
+    let expected_kind = if method == "library.downloadStatus" { "query" } else { "command" };
+    if request["kind"] != expected_kind || (method != "library.downloadStatus" && state.downloads.is_none()) {
+        return FrameOutcome::Response(application_error(request_id, correlation_id, "vua.library.invalid_params", "errors.library.downloadFailed", "validation"));
+    }
+    match warehouse.library_downloads.apply(method, request.get("params").cloned().unwrap_or(Value::Null), |event| publish_task_event(state, Some(event))) {
+        Ok(value) => FrameOutcome::Response(application_success(request_id, value)),
+        Err(error) => FrameOutcome::Response(application_error(request_id, correlation_id, &format!("vua.library.{}", error.0), "errors.library.downloadFailed", if error.0 == "store_failed" { "internal" } else { "validation" })),
+    }
+}
+
 fn catalog_request(
     state: &HostState,
     method: &str,
@@ -5336,9 +5500,20 @@ fn catalog_request(
         ));
     };
     match method {
+        "catalog.beginLibrarySync" | "catalog.finishLibrarySync" | "catalog.librarySyncStatus" => {
+            catalog_sync_run_request(state, warehouse, method, request, request_id, correlation_id)
+        }
+        "catalog.ingestLibraryPage" => {
+            catalog_ingest_library_page(state, warehouse, request, request_id, correlation_id)
+        }
         "catalog.list" => catalog_list(warehouse, request, request_id, correlation_id),
         "catalog.detail" => catalog_detail(warehouse, request, request_id, correlation_id),
         "catalog.status" => catalog_status(warehouse, request, request_id, correlation_id),
+        // bdl-queries v0.7(N5 静默下载):单商品已捕获文件清单,弹清单与
+        // 下载编排的数据源;结果不带路径、不带签名地址
+        "catalog.productDownloadables" => {
+            catalog_product_downloadables(warehouse, request, request_id, correlation_id)
+        }
         _ => FrameOutcome::Response(application_error(
             request_id,
             correlation_id,
@@ -5361,6 +5536,76 @@ fn bdl_query_success(request_id: &str, operation: &str, result: Value) -> FrameO
             "result": result,
         }),
     ))
+}
+
+/// bdl-queries v0.7 envelope (N5 silent download): the one-operation family
+/// carrying `catalog.productDownloadables`; versioned apart from the frozen
+/// v0.6 stamp above by the family's own const.
+fn bdl_query_success_v07(request_id: &str, operation: &str, result: Value) -> FrameOutcome {
+    FrameOutcome::Response(application_success(
+        request_id,
+        json!({
+            "schemaVersion": "0.7",
+            "operation": operation,
+            "result": result,
+        }),
+    ))
+}
+
+/// bdl-queries v0.7 `catalog.productDownloadables`: the captured per-file
+/// download list for one product (BDL v0.4 product_downloadables), in
+/// (first_seen_at, downloadable_id) order. Params closed set {productId};
+/// unknown product = the family's not-found error, never a fabricated
+/// empty list — an empty capture on a known product IS an honest empty
+/// set (the download flow then re-captures from a fresh library fetch).
+fn catalog_product_downloadables(
+    warehouse: Arc<WarehouseServices>,
+    request: &Value,
+    request_id: &str,
+    correlation_id: &str,
+) -> FrameOutcome {
+    let product_id = match request.get("params") {
+        Some(Value::Object(params)) if params.keys().all(|key| key == "productId") => params
+            .get("productId")
+            .and_then(Value::as_str)
+            .map(str::to_owned)
+            .filter(|id| !id.is_empty()),
+        _ => None,
+    };
+    let Some(product_id) = product_id else {
+        return catalog_invalid_params(request_id, correlation_id);
+    };
+    let known = match warehouse.bdl.catalog_detail(&product_id) {
+        Ok(Some(_)) => true,
+        // Miss/tombstone: not-found fact (same ruling as catalog.detail)
+        Ok(None) => {
+            return FrameOutcome::Response(application_error(
+                request_id,
+                correlation_id,
+                "vua.catalog.product_not_found",
+                "errors.catalog.productNotFound",
+                "validation",
+            ))
+        }
+        Err(_) => return catalog_store_failed(request_id, correlation_id),
+    };
+    debug_assert!(known);
+    match warehouse.bdl.downloadables_for_product(&product_id) {
+        Ok(files) => {
+            let items: Vec<Value> = files
+                .into_iter()
+                .map(|(downloadable_id, file_name)| {
+                    json!({ "downloadableId": downloadable_id, "fileName": file_name })
+                })
+                .collect();
+            bdl_query_success_v07(
+                request_id,
+                "catalog.productDownloadables",
+                json!({ "productId": product_id, "items": items }),
+            )
+        }
+        Err(_) => catalog_store_failed(request_id, correlation_id),
+    }
 }
 
 /// The `downloads.*` read face (bdl-queries v0.4): the adoptable
@@ -5722,6 +5967,547 @@ fn catalog_store_failed(request_id: &str, correlation_id: &str) -> FrameOutcome 
     ))
 }
 
+/// Catalog-sync v0.1 (N5 S1): one archived account-library page, shipped by
+/// the Electron partition-session reader, parsed and folded into the BDL
+/// products table through the W17 observation write face. Upsert semantics
+/// make page replays safe (same-content overwrite, never a second row);
+/// per-item write-face violations are reported as rejected items, never
+/// silently dropped. Task orchestration (nine-state sync task, cancellation)
+/// rides with the Electron reader slice; this face is the ledger's ingest.
+fn catalog_ingest_library_page(
+    state: &HostState,
+    warehouse: Arc<WarehouseServices>,
+    request: &Value,
+    request_id: &str,
+    correlation_id: &str,
+) -> FrameOutcome {
+    if request.pointer("/params/schemaVersion").and_then(Value::as_str) == Some("0.3") {
+        return catalog_sync_run_request(state, warehouse, "catalog.ingestLibraryPage", request, request_id, correlation_id);
+    }
+    // v0.2 增补可选 libraryType;v0.1 请求(无该字段)继续接受
+    const CATALOG_SYNC_SCHEMA_VERSIONS: [&str; 2] = ["0.1", "0.2"];
+    let request_schema_version = request.pointer("/params/schemaVersion").and_then(Value::as_str);
+    if !request_schema_version.is_some_and(|version| {
+        CATALOG_SYNC_SCHEMA_VERSIONS.contains(&version)
+    }) {
+        return FrameOutcome::Response(application_error(
+            request_id,
+            correlation_id,
+            "vua.catalog.unsupported_schema",
+            "errors.catalog.unsupportedSchema",
+            "validation",
+        ));
+    }
+    let non_empty = |pointer: &str| {
+        request
+            .pointer(pointer)
+            .and_then(Value::as_str)
+            .filter(|value| !value.is_empty())
+    };
+    let (Some(html), Some(source_url), Some(fetched_at)) = (
+        non_empty("/params/html"),
+        non_empty("/params/sourceUrl"),
+        non_empty("/params/fetchedAt"),
+    ) else {
+        return catalog_invalid_params(request_id, correlation_id);
+    };
+    let run_id = non_empty("/params/runId");
+    // BDL v0.3: 库类型闭集(bought|gifts|free_downloads);缺省 None(如 v0.1 请求)
+    let library_type = match request.pointer("/params/libraryType").and_then(Value::as_str) {
+        None => None,
+        Some("") => None,
+        Some(raw) if matches!(raw, "bought" | "gifts" | "free_downloads") => Some(raw),
+        Some(_) => {
+            return catalog_invalid_params(request_id, correlation_id);
+        }
+    };
+
+    // 商品详情页富化(N5 D2 增强,2026-10-03):#items[data-product-id] 是
+    // 商品页的独有根——用既有的 booth_extraction 全量语法(变体/画廊/
+    // 描述/品牌)构建观察,library_type 保留现有行的值(观察是全量覆盖,
+    // 商品页不知道库类型,不带会清空已分类行)。
+    if vua_acquisition::library_page::is_product_page(html) {
+        let observation = match product_page_observation(html, library_type, warehouse.as_ref()) {
+            Ok(observation) => observation,
+            Err(_) => {
+                return FrameOutcome::Response(application_error(
+                    request_id,
+                    correlation_id,
+                    "vua.catalog.not_a_library_page",
+                    "errors.catalog.notALibraryPage",
+                    "validation",
+                ));
+            }
+        };
+        // 依赖链接提取:描述区 booth 商品链接 → dependency_observations
+        let dep_hash = vua_acquisition::library_page::page_content_hash(html);
+        extract_description_dependencies(html, &observation.product_id, &dep_hash, &warehouse.bdl);
+        if warehouse.bdl.record_product_observation(&observation).is_err() {
+            return FrameOutcome::Response(application_error(
+                request_id,
+                correlation_id,
+                "vua.catalog.store_failed",
+                "errors.catalog.storeFailed",
+                "internal",
+            ));
+        };
+        return FrameOutcome::Response(application_success(
+            request_id,
+            json!({
+                "schemaVersion": request_schema_version.unwrap_or("0.1"),
+                "sourceUrl": source_url,
+                "parsedCount": 1,
+                "upsertedCount": 1,
+                "rejectedItems": [],
+                "nextPageUrl": null,
+            }),
+        ));
+    }
+    let page = match vua_acquisition::library_page::extract_library_page(html) {
+        Ok(page) => page,
+        Err(_) => {
+            return FrameOutcome::Response(application_error(
+                request_id,
+                correlation_id,
+                "vua.catalog.not_a_library_page",
+                "errors.catalog.notALibraryPage",
+                "validation",
+            ));
+        }
+    };
+
+    let page_hash = vua_acquisition::library_page::page_content_hash(html);
+    let mut upserted = 0u64;
+    let mut rejected = Vec::new();
+    for (index, item) in page.items.iter().enumerate() {
+        let observation = vua_acquisition::library_page::library_item_to_observation(
+            item,
+            &page_hash,
+            fetched_at,
+            run_id,
+            library_type,
+        );
+        match warehouse.bdl.record_product_observation(&observation) {
+            Ok(_) => {
+                upserted += 1;
+                // N5 静默下载捕获(BDL v0.4):同页逐文件直链观察,行内锚点由
+                // 库页解析器提取。商品观察刚落库,FK 天然满足;捕获失败如实
+                // 计入 rejected —— 缺位由下载期的补抓兜底,不阻塞目录同步
+                if !item.downloadables.is_empty() {
+                    let product_id = format!("booth:{}", item.native_product_id);
+                    let rows: Vec<(i64, String)> = item
+                        .downloadables
+                        .iter()
+                        .filter_map(|(id, label)| {
+                            id.parse::<i64>().ok().map(|parsed| (parsed, label.clone()))
+                        })
+                        .collect();
+                    if let Err(error) = warehouse.bdl.upsert_product_downloadables(
+                        &product_id,
+                        &rows,
+                        fetched_at,
+                        run_id,
+                        library_type,
+                    ) {
+                        rejected.push(json!({
+                            "index": index,
+                            "code": "vua.catalog.downloadables_capture_failed",
+                            "reason": error.to_string(),
+                        }));
+                    }
+                }
+            }
+            Err(error) => rejected.push(json!({
+                "index": index,
+                "code": "vua.catalog.invalid_observation",
+                "reason": error.to_string(),
+            })),
+        }
+    }
+
+    // Nine-state task folding, keyed on the run id (the Electron reader
+    // always sends one). Progress payloads carry per-page facts; the
+    // observed last page completes the run (rejected items complete as
+    // succeeded-with-warnings). A mid-run abort leaves the task
+    // non-terminal — restart recovery surfaces it as inspect-required,
+    // never silent continuation. Task-store failure fails the request
+    // loudly (at-least-once replay is safe: upserts are idempotent).
+    if let Some(run_id) = run_id {
+        if let Err(_error) = fold_catalog_sync_task(
+            state,
+            &CatalogSyncFold {
+                run_id,
+                fetched_at,
+                page_number: request
+                    .pointer("/params/pageNumber")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(1),
+                parsed: page.items.len() as u64,
+                upserted,
+                rejected: rejected.len() as u64,
+                next_page_url: page.next_page_url.as_deref(),
+            },
+        ) {
+            return FrameOutcome::Response(application_error(
+                request_id,
+                correlation_id,
+                "vua.catalog.store_failed",
+                "errors.catalog.storeFailed",
+                "internal",
+            ));
+        }
+    }
+
+    FrameOutcome::Response(application_success(
+        request_id,
+        json!({
+            "schemaVersion": request_schema_version.unwrap_or("0.1"),
+            "sourceUrl": source_url,
+            "parsedCount": page.items.len(),
+            "upsertedCount": upserted,
+            "rejectedItems": rejected,
+            "nextPageUrl": page.next_page_url,
+        }),
+    ))
+}
+
+/// The acquisition use case owns run decisions; the host only dispatches and publishes.
+fn catalog_sync_run_request(
+    state: &HostState,
+    warehouse: Arc<WarehouseServices>,
+    method: &str,
+    request: &Value,
+    request_id: &str,
+    correlation_id: &str,
+) -> FrameOutcome {
+    let expected_kind = if method == "catalog.librarySyncStatus" { "query" } else { "command" };
+    if request["kind"] != expected_kind { return catalog_invalid_params(request_id, correlation_id); }
+    let params = request.get("params").cloned().unwrap_or(Value::Null);
+    let recovered = params.get("runId").and_then(Value::as_str)
+        .is_some_and(|id| state.recovered_nonterminal_tasks.contains(id));
+    match vua_acquisition::catalog_sync::apply_catalog_sync(
+        &state.store, &warehouse.bdl, method, params, &now_rfc3339(), recovered,
+        |event| publish_task_event(state, Some(event)),
+    ) {
+        Ok(value) => FrameOutcome::Response(application_success(request_id, value)),
+        Err(error) => FrameOutcome::Response(application_error(
+            request_id, correlation_id, &format!("vua.catalog.{}", error.0),
+            "errors.catalog.syncFailed", if error.0 == "store_failed" { "internal" } else { "validation" },
+        )),
+    }
+}
+
+/// 商品详情页 → 全量 ProductObservation(既有 booth_extraction 语法,
+/// orchestrator 冻结面)。库类型透传参数(缺省时保留现有行的值)。
+fn product_page_observation(
+    html: &str,
+    library_type_override: Option<&str>,
+    warehouse: &WarehouseServices,
+) -> Result<vua_bdl_store::bdl_store::ProductObservation, Box<dyn std::error::Error>> {
+    use vua_orchestrator::booth_extraction::extract_product_page;
+    let extracted = extract_product_page(html)?;
+    let native_product_id = extracted.native_product_id.clone();
+    // 库类型:参数优先;否则读现有行
+    let library_type = match library_type_override {
+        Some(raw) => Some(raw.to_owned()),
+        None => warehouse.bdl.library_type_of(&native_product_id),
+    };
+    let subproducts = extracted
+        .subproducts
+        .iter()
+        .map(|sub| vua_bdl_store::bdl_store::SubproductObservation {
+            variation_id: sub.variation_id.clone(),
+            name: sub.name.clone(),
+            price_amount: sub.price_amount.clone(),
+            price_currency: sub.price_currency.clone(),
+            availability: Some(sub.availability.clone()),
+        })
+        .collect();
+    let page_hash = vua_acquisition::library_page::page_content_hash(html);
+    Ok(vua_bdl_store::bdl_store::ProductObservation {
+        product_id: format!("booth:{native_product_id}"),
+        native_product_id,
+        library_type,
+        variant_name: None,
+        source_url: format!("https://booth.pm/en/items/{}", extract_product_page(html)?.native_product_id),
+        final_url: None,
+        status: vua_bdl_store::bdl_store::ProductObservationStatus::Complete,
+        source_locale: None,
+        source_category: extracted.source_category,
+        title: extracted.title,
+        description: extracted.body_text,
+        age_restriction: None,
+        adult: extracted.adult,
+        availability: extracted.availability,
+        price_amount: extracted.price_amount,
+        price_currency: extracted.price_currency,
+        shop_name: extracted.shop_name,
+        shop_url: extracted.shop_url,
+        image_urls: extracted.image_urls,
+        video_urls: extracted.video_urls,
+        subproducts,
+        source_published_at: extracted.published_date_raw,
+        content_hash: page_hash,
+        observed_at: chrono_now_rfc3339(),
+        run_id: None,
+        processor_version: "catalog-sync/0.2-product".to_owned(),
+        missing_fields: extracted.missing_fields.into_iter().map(str::to_owned).collect(),
+    })
+}
+
+/// 商品页描述区依赖链接提取(N5 D2,2026-10-04 用户方向):
+/// 提取 booth.pm/items/ 链接 → 分类 dep_kind → 写 dependency_observations。
+/// 链接是结构化信号(作者显式声明的引用),不做正文猜名字。
+/// 分类:标题含 Shader/シェーダー → shader;已知 shader 名 → shader;
+/// 其余 → other(诚实不猜 avatar/shader 归属)。
+fn extract_description_dependencies(
+    html: &str,
+    source_product_id: &str,
+    page_hash: &str,
+    store: &std::sync::Arc<vua_bdl_store::BdlStore>,
+) {
+    use vua_bdl_store::bdl_store::{
+        DependencyResolutionEvidence, NewDependencyObservation,
+    };
+    use vua_bdl_store::dependency_extract::{DEP_KIND_SHADER, DEP_KIND_OTHER};
+
+    let mut seen = std::collections::HashSet::new();
+    let bytes = html.as_bytes();
+    let mut pos = 0;
+    while let Some(href_start) = html[pos..].find("href=\"") {
+        let abs_start = pos + href_start + 6;
+        if abs_start >= bytes.len() { break; }
+        let Some(href_len) = html[abs_start..].find('"') else { break };
+        let href = &html[abs_start..abs_start + href_len];
+        pos = abs_start + href_len;
+        if !href.contains("booth.pm") || !href.contains("/items/") { continue; }
+        // extract native id from /items/{digits}
+        let Some(id_start) = href.find("/items/") else { continue };
+        let tail = &href[id_start + 7..];
+        let id_end = tail.find(|c: char| !c.is_ascii_digit()).unwrap_or(tail.len());
+        if id_end == 0 { continue; }
+        let native_id = &tail[..id_end];
+        // extract link text: find > after this href, up to </a>
+        let Some(gt) = html[pos..].find('>') else { continue };
+        let text_start = pos + gt + 1;
+        let Some(close) = html[text_start..].find("</a>") else { continue };
+        let raw_text = &html[text_start..text_start + close];
+        // strip HTML tags
+        let text = raw_text
+            .replace(['<', '>'], " ")
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ");
+        if text.is_empty() { continue; }
+        let target_product_id = format!("booth:{native_id}");
+        if target_product_id == source_product_id || !seen.insert(target_product_id.clone()) { continue; }
+        let lowered = text.to_lowercase();
+        let is_shader = lowered.contains("shader")
+            || lowered.contains("liltoon")
+            || lowered.contains("poiyomi");
+        let dep_kind = if is_shader { DEP_KIND_SHADER } else { DEP_KIND_OTHER };
+        let in_catalog = store.catalog_detail(&target_product_id).ok().flatten().is_some();
+        let evidence = vec![DependencyResolutionEvidence {
+            link_text: text.clone(),
+            link_url: href.to_owned(),
+            span: "description_link".to_owned(),
+            note: None,
+        }];
+        let observation = NewDependencyObservation {
+            product_id: source_product_id.to_owned(),
+            dep_kind: dep_kind.to_owned(),
+            dep_name: text.clone(),
+            raw_quote: href.to_owned(),
+            source_span: "description_link".to_owned(),
+            version_hint: None,
+            resolved_ref_product_id: if in_catalog { Some(target_product_id.clone()) } else { None },
+            resolution_evidence: if in_catalog { evidence } else { Vec::new() },
+            extraction_method: "description_link".to_owned(),
+            extracted_by: "catalog-sync/0.2-product-deps".to_owned(),
+            observed_at: chrono_now_rfc3339(),
+            processor_version: "catalog-sync/0.2-product-deps".to_owned(),
+            content_hash: Some(page_hash.to_owned()),
+            run_id: None,
+        };
+        let _ = store.record_dependency_observation(&observation);
+    }
+}
+
+
+
+fn chrono_now_rfc3339() -> String {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| {
+            let secs = d.as_secs();
+            let millis = d.subsec_millis();
+            // 简易 RFC3339(UTC):观察时间只需可比较的稳定格式
+            let days = secs / 86400;
+            let (y, mo, da) = civil_from_days(days as i64);
+            format!("{y:04}-{mo:02}-{da:02}T{:02}:{:02}:{:02}.{millis:03}Z",
+                (secs % 86400) / 3600, (secs % 3600) / 60, secs % 60)
+        })
+        .unwrap_or_else(|_| "1970-01-01T00:00:00.000Z".to_owned())
+}
+
+fn civil_from_days(z: i64) -> (i64, u32, u32) {
+    let z = z + 719468;
+    let era = if z >= 0 { z } else { z - 146096 } / 146097;
+    let doe = (z - era * 146097) as u64;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let y = yoe as i64 + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 } as u32;
+    (if m <= 2 { y + 1 } else { y }, m, d)
+}
+
+/// 任务事件发布:帧循环内同步变更的任务事件不会自动成为出站事件帧
+/// (只有 runtime 订阅线程转发的事件进 runtime_events 队列)。目录同步
+/// 折叠在帧循环内执行,必须显式发布其事件,否则渲染层 task.subscribe
+/// 永不触发重取——通知中心冻结在挂载快照(真机 2026-10-02 确诊)。
+fn publish_task_event(state: &HostState, event: Option<StoredTaskEvent>) {
+    if let Some(event) = event {
+        state
+            .runtime_events
+            .lock()
+            .expect("runtime events poisoned")
+            .push(event);
+    }
+}
+
+struct CatalogSyncFold<'a> {
+    run_id: &'a str,
+    fetched_at: &'a str,
+    page_number: u64,
+    parsed: u64,
+    upserted: u64,
+    rejected: u64,
+    next_page_url: Option<&'a str>,
+}
+
+/// Catalog-sync run → nine-state task. Accept-then-run on the first page,
+/// per-page progress, completion on the observed last page. Terminal tasks
+/// are never re-mutated (a replayed last page of a finished run is a
+/// no-op). Payload facts are per-page; `pages` carries the ordinal, so the
+/// completion result names the run's total page count honestly.
+fn fold_catalog_sync_task(
+    state: &HostState,
+    fold: &CatalogSyncFold<'_>,
+) -> Result<(), SqliteStoreError> {
+    let summary = || {
+        json!({
+            "pages": fold.page_number,
+            "pageParsedCount": fold.parsed,
+            "pageUpsertedCount": fold.upserted,
+            "pageRejectedCount": fold.rejected,
+            "nextPageUrl": fold.next_page_url,
+        })
+    };
+    let task_id = fold.run_id.to_owned();
+    if state.store.task(&task_id)?.is_none() {
+        // 新运行的首页:终结同前缀的陈旧中断任务(真机 2026-10-02 缺陷:
+        // 运行失败/中断的任务没有运行方驱动,永不到达终态,通知中心按
+        // 设计不可清除非终态通知——用户被不朽通知卡死)。重同步即恢复,
+        // 被取代如实写入 result,不伪装成失败。best-effort:单条终结失败
+        // 不阻断本页折叠,下次同步重试清扫。
+        for task in state.store.tasks()? {
+            if task.task_id == task_id
+                || !task.task_id.starts_with("catalog-sync-")
+                || task.state.is_terminal()
+            {
+                continue;
+            }
+            if let Ok(event) = state.store.mutate_task(
+                &task.task_id,
+                task.revision,
+                fold.fetched_at,
+                TaskMutation::Complete {
+                    state: TaskState::Cancelled,
+                    error: None,
+                    result: Some(json!({
+                        "reason": "superseded_by_resync",
+                        "supersededBy": fold.run_id,
+                    })),
+                },
+            ) {
+                publish_task_event(state, event);
+            }
+        }
+        let (_, event) = state.store.accept_task(&NewTask {
+            task_id: task_id.clone(),
+            correlation_id: fold.run_id.to_owned(),
+            occurred_at: fold.fetched_at.to_owned(),
+        })?;
+        publish_task_event(state, Some(event));
+    }
+    let Some(task) = state.store.task(&task_id)? else {
+        return Ok(());
+    };
+    if task.state.is_terminal() {
+        return Ok(());
+    }
+    if task.state == TaskState::Queued {
+        // Walk both steps like the download fold: a page already ingested
+        // means the run is already transferring (Queued → Preparing →
+        // Running, idempotently for redeliveries).
+        let event = state.store.mutate_task(
+            &task_id,
+            task.revision,
+            fold.fetched_at,
+            TaskMutation::Transition {
+                state: TaskState::Preparing,
+                payload: summary(),
+            },
+        )?;
+        publish_task_event(state, event);
+        if let Some(task) = state.store.task(&task_id)? {
+            let event = state.store.mutate_task(
+                &task_id,
+                task.revision,
+                fold.fetched_at,
+                TaskMutation::Transition {
+                    state: TaskState::Running,
+                    payload: summary(),
+                },
+            )?;
+            publish_task_event(state, event);
+        }
+    } else {
+        let event = state.store.mutate_task(
+            &task_id,
+            task.revision,
+            fold.fetched_at,
+            TaskMutation::Progress {
+                payload: summary(),
+            },
+        )?;
+        publish_task_event(state, event);
+    }
+    if fold.next_page_url.is_none() {
+        let Some(task) = state.store.task(&task_id)? else {
+            return Ok(());
+        };
+        let event = state.store.mutate_task(
+            &task_id,
+            task.revision,
+            fold.fetched_at,
+            TaskMutation::Complete {
+                state: if fold.rejected > 0 {
+                    TaskState::SucceededWithWarnings
+                } else {
+                    TaskState::Succeeded
+                },
+                error: None,
+                result: Some(summary()),
+            },
+        )?;
+        publish_task_event(state, event);
+    }
+    Ok(())
+}
+
 fn catalog_list(
     warehouse: Arc<WarehouseServices>,
     request: &Value,
@@ -5825,7 +6611,11 @@ fn warehouse_import_submit(
     correlation_id: &str,
 ) -> FrameOutcome {
     let source_folders = match request.get("params") {
-        Some(Value::Object(params)) if params.keys().all(|key| key == "sourceFolders") => {
+        Some(Value::Object(params))
+            if params
+                .keys()
+                .all(|key| key == "sourceFolders" || key == "autoGenerate") =>
+        {
             match params.get("sourceFolders") {
                 Some(Value::Array(folders)) if !folders.is_empty() => folders
                     .iter()
@@ -5844,18 +6634,42 @@ fn warehouse_import_submit(
     let Some(source_folders) = source_folders else {
         return warehouse_invalid_params(request_id, correlation_id);
     };
-    let accepted = vua_acquisition::submit_warehouse_import(
-        &warehouse.runtime,
+    // N5 实验选项(用户方向 2026-10-02):autoGenerate=true 时导入完成每个
+    // 文件夹后自动制成 VPM 包再入库。实验门控在渲染层(UI 只在设置-实验
+    // 性开时显示该选项);此处在执行侧注入既有的 AutoGenerateSpec 管道。
+    let auto_generate = match request.pointer("/params/autoGenerate") {
+        None | Some(Value::Null) | Some(Value::Bool(false)) => None,
+        Some(Value::Bool(true)) => {
+            let executor = warehouse.executor.clone();
+            match executor {
+                Some(executor) => Some(vua_acquisition::AutoGenerateSpec {
+                    env_initial: warehouse.global_default,
+                    executor,
+                }),
+                None => {
+                    return FrameOutcome::Response(application_error(
+                        request_id,
+                        correlation_id,
+                        "vua.warehouse.unavailable",
+                        "errors.warehouse.unavailable",
+                        "unavailable",
+                    ));
+                }
+            }
+        }
+        Some(_) => return warehouse_invalid_params(request_id, correlation_id),
+    };
+    let accepted = vua_acquisition::submit_warehouse_import_auto(
+        warehouse.runtime.clone(),
         warehouse.bdl.clone(),
         Arc::new(SystemClock),
         vua_acquisition::WarehouseImportTaskSpec {
             correlation_id: correlation_id.to_owned(),
             source_folders,
             warehouse_root: warehouse.warehouse_root.clone(),
-            // The wire import face imports only; the auto-generation
-            // injection lands with the core orchestration follow-up (010).
-            auto_generate: None,
+            auto_generate: auto_generate.clone(),
         },
+        auto_generate,
         None,
     );
     match accepted {
@@ -8566,7 +9380,35 @@ fn download_ingest(
                     }));
                 }
             }
-            Ok(IngestOutcome::Duplicate { .. }) => duplicates += 1,
+            Ok(IngestOutcome::Duplicate { .. }) => {
+                duplicates += 1;
+                // BDL and the task journal are separate stores. A previous
+                // journal failure must remain repairable after BDL deduplication.
+                let repaired = downloads.bdl.download_events(&event.download_id)
+                    .map_err(|_| "delivery_history_unavailable".to_owned())
+                    .and_then(|history| {
+                        let attempt: Vec<_> = history.into_iter()
+                            .filter(|stored| stored.attempt == event.attempt).collect();
+                        let latest_progress = attempt.iter().rposition(|stored| stored.kind == vua_bdl_store::download_events::DownloadEventKind::Progress);
+                        for (position, stored) in attempt.into_iter().enumerate() {
+                            if stored.kind == vua_bdl_store::download_events::DownloadEventKind::Progress && latest_progress != Some(position) { continue; }
+                            let normalized = DownloadEventV01 {
+                                schema_version: vua_bdl_store::download_events::DOWNLOAD_EVENT_SCHEMA_VERSION.into(),
+                                kind: stored.kind, download_id: stored.download_id, attempt: stored.attempt,
+                                source_url: stored.source_url, initiated_from_page_url: stored.initiated_from_page_url,
+                                url_chain: stored.url_chain, suggested_file_name: stored.suggested_file_name,
+                                stored_path: stored.stored_path, expected_bytes: stored.expected_bytes,
+                                received_bytes: stored.received_bytes, resumable: stored.resumable,
+                                failure_kind: stored.failure_kind, occurred_at: stored.occurred_at,
+                            };
+                            fold_download_task(state, &normalized).map_err(|_| "task_journal_unavailable".to_owned())?;
+                        }
+                        Ok(())
+                    });
+                if let Err(reason) = repaired {
+                    rejected.push(json!({ "index": index, "code": "vua.download.store_failed", "reason": reason }));
+                }
+            }
             Err(error) => rejected.push(json!({
                 "index": index,
                 "code": consumer_error_code(&error),
@@ -8595,55 +9437,40 @@ fn fold_download_task(
 ) -> Result<(), SqliteStoreError> {
     let task_id = format!("dl-{}-a{}", event.download_id, event.attempt);
     let occurred_at = event.occurred_at.as_str();
+    use vua_bdl_store::download_events::DownloadEventKind;
+    if matches!(event.kind, DownloadEventKind::Started | DownloadEventKind::Completed | DownloadEventKind::Failed | DownloadEventKind::Cancelled)
+        && state.store.task(&task_id)?.is_none()
+    {
+        let (_, accepted) = state.store.accept_task(&NewTask {
+            task_id: task_id.clone(), correlation_id: event.download_id.clone(), occurred_at: occurred_at.to_owned(),
+        })?;
+        publish_task_event(state, Some(accepted));
+    }
+    // A policy denial can terminate before the port emits Started. The task
+    // still records execution through the frozen nine-state transition table.
+    if matches!(event.kind, DownloadEventKind::Started | DownloadEventKind::Completed | DownloadEventKind::Failed) {
+        for (from, to) in [(TaskState::Queued, TaskState::Preparing), (TaskState::Preparing, TaskState::Running)] {
+            if let Some(task) = state.store.task(&task_id)? {
+                if task.state == from {
+                    let changed = state.store.mutate_task(&task_id, task.revision, occurred_at, TaskMutation::Transition {
+                        state: to, payload: json!({ "receivedBytes": event.received_bytes, "expectedBytes": event.expected_bytes }),
+                    })?;
+                    publish_task_event(state, changed);
+                }
+            }
+        }
+    }
     match event.kind {
         vua_bdl_store::download_events::DownloadEventKind::Started => {
-            if state.store.task(&task_id)?.is_none() {
-                state.store.accept_task(&NewTask {
-                    task_id: task_id.clone(),
-                    correlation_id: event.download_id.clone(),
-                    occurred_at: occurred_at.to_owned(),
-                })?;
-            }
-            // The nine-state machine walks Queued -> Preparing -> Running;
-            // a started download is already transferring, so it walks both
-            // steps immediately (idempotently for redeliveries).
-            let payload = || {
-                json!({
-                    "receivedBytes": event.received_bytes,
-                    "expectedBytes": event.expected_bytes,
-                })
-            };
-            if let Some(task) = state.store.task(&task_id)? {
-                if task.state == TaskState::Queued {
-                    state.store.mutate_task(
-                        &task_id,
-                        task.revision,
-                        occurred_at,
-                        TaskMutation::Transition {
-                            state: TaskState::Preparing,
-                            payload: payload(),
-                        },
-                    )?;
-                }
-            }
-            if let Some(task) = state.store.task(&task_id)? {
-                if task.state == TaskState::Preparing {
-                    state.store.mutate_task(
-                        &task_id,
-                        task.revision,
-                        occurred_at,
-                        TaskMutation::Transition {
-                            state: TaskState::Running,
-                            payload: payload(),
-                        },
-                    )?;
-                }
-            }
         }
         vua_bdl_store::download_events::DownloadEventKind::Progress => {
             if let Some(task) = state.store.task(&task_id)? {
                 if task.state == TaskState::Running {
-                    state.store.mutate_task(
+                    let latest = state.store.events_after(&task_id, 0)?.into_iter().last();
+                    if latest.is_some_and(|stored| stored.payload["receivedBytes"] == json!(event.received_bytes) && stored.payload["expectedBytes"] == json!(event.expected_bytes)) {
+                        return Ok(());
+                    }
+                    let event = state.store.mutate_task(
                         &task_id,
                         task.revision,
                         occurred_at,
@@ -8654,6 +9481,7 @@ fn fold_download_task(
                             }),
                         },
                     )?;
+                    publish_task_event(state, event);
                 }
             }
         }
@@ -8714,7 +9542,7 @@ fn complete_download_task(
 ) -> Result<(), SqliteStoreError> {
     if let Some(task) = state.store.task(task_id)? {
         if !task.state.is_terminal() {
-            state.store.mutate_task(
+            let event = state.store.mutate_task(
                 task_id,
                 task.revision,
                 occurred_at,
@@ -8724,6 +9552,10 @@ fn complete_download_task(
                     result: None,
                 },
             )?;
+            // 通知中心可见性(人审 2026-10-06 确诊):下载任务的每个状态
+            // 推进都必须发布实时事件——不发布则渲染层只在下一次全量快照
+            // 才看到任务,而短下载届时已终态被默认过滤,用户全程不可见
+            publish_task_event(state, event);
         }
     }
     Ok(())

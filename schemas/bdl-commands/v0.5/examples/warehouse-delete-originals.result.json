@@ -1,0 +1,6 @@
+{
+  "schemaVersion": "0.5",
+  "operation": "warehouse.deleteOriginals",
+  "taskId": "task-01hexample0000000000000d",
+  "correlationId": "corr-delete-originals-example"
+}

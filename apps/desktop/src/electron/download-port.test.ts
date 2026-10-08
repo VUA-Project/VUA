@@ -4,6 +4,7 @@ import path from "node:path";
 import { EventEmitter } from "node:events";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DownloadPort, type DownloadEventSink } from "./download-port.js";
+import { createSilentDownloadQueue } from "./silent-download.js";
 import { isDownloadEventV01, type DownloadEventV01 } from "@vua/contracts";
 
 /**
@@ -83,7 +84,7 @@ describe("download port (F4-3)", () => {
   let events: DownloadEventV01[];
   let downloadURLs: string[];
 
-  function createPort(overrides: { allowedOrigins?: readonly string[]; progressIntervalMs?: number } = {}): DownloadPort {
+  function createPort(overrides: { allowedOrigins?: readonly string[]; progressIntervalMs?: number; isAwaitingLibraryRequest?: (url: string) => boolean } = {}): DownloadPort {
     const sink: DownloadEventSink = {
       emit: (event) => {
         expect(isDownloadEventV01(event)).toBe(true);
@@ -97,6 +98,7 @@ describe("download port (F4-3)", () => {
       sink,
       now: () => "2026-09-06T00:00:00.000Z",
       ...(overrides.progressIntervalMs === undefined ? {} : { progressIntervalMs: overrides.progressIntervalMs }),
+      ...(overrides.isAwaitingLibraryRequest === undefined ? {} : { isAwaitingLibraryRequest: overrides.isAwaitingLibraryRequest }),
     });
   }
 
@@ -162,6 +164,60 @@ describe("download port (F4-3)", () => {
       receivedBytes: 600,
       failureKind: null,
     });
+  });
+
+  it("admits a selected native redirect once and retries through the original BOOTH request", () => {
+    const original = "https://booth.pm/downloadables/901";
+    const final = "https://files.example.test/synthetic.zip";
+    const partitionSession = { downloadURL: (url: string) => downloadURLs.push(url) };
+    const queue = createSilentDownloadQueue({
+      partitionSession, observe: async () => undefined, abandon: () => undefined, minIntervalMs: 0,
+    });
+    const port = new DownloadPort({
+      stagingRoot, partitionSession: partitionSession as never, allowedOrigins: ["https://booth.pm"],
+      isAwaitingLibraryRequest: (url) => queue.isAwaitingNative(url),
+      sink: { emit: (event) => { expect(isDownloadEventV01(event)).toBe(true); events.push(event); queue.notifyTransport(event); } },
+    });
+    try {
+      queue.enqueue({ batchId: "library-download-native", productId: "booth:90", downloadableIds: [901] });
+      const first = new FakeDownloadItem(final, { chain: [original, final] });
+      const preventDefault = vi.fn();
+      port.handleWillDownload({ preventDefault }, first as never, first.getWebContents() as never);
+      expect(preventDefault).not.toHaveBeenCalled();
+      const started = events[0]!;
+      expect(started).toMatchObject({ kind: "download.started", sourceUrl: final, urlChain: [original, final] });
+      expect(queue.isAwaitingNative(original)).toBe(false);
+
+      const unrelated = new FakeDownloadItem(final, { chain: [original, final] });
+      port.handleWillDownload({ preventDefault }, unrelated as never, unrelated.getWebContents() as never);
+      expect(preventDefault).toHaveBeenCalledOnce();
+      expect(unrelated.savePath).toBe("");
+
+      port.applyIntent(started.downloadId, "retry");
+      expect(downloadURLs).toEqual([original, original]);
+      const retriedFinal = "https://files.example.test/new-signed-delivery.zip";
+      const retried = new FakeDownloadItem(retriedFinal, { chain: [original, retriedFinal] });
+      port.handleWillDownload({ preventDefault: vi.fn() }, retried as never, retried.getWebContents() as never);
+      expect(events.at(-1)).toMatchObject({ kind: "download.started", downloadId: started.downloadId, attempt: 2, sourceUrl: retriedFinal });
+    } finally { queue.dispose(); }
+  });
+
+  it.each([
+    ["unselected", ["https://booth.pm/downloadables/902", "https://files.example.test/file"], false],
+    ["original appears only in the middle", ["https://other.example.test/start", "https://booth.pm/downloadables/901", "https://files.example.test/file"], true],
+    ["wrong chain end", ["https://booth.pm/downloadables/901", "https://files.example.test/other"], true],
+    ["insecure hop", ["https://booth.pm/downloadables/901", "http://files.example.test/intermediate", "https://files.example.test/file"], true],
+    ["user information", ["https://booth.pm/downloadables/901", "https://user:password@files.example.test/file", "https://files.example.test/file"], true],
+    ["fragment", ["https://booth.pm/downloadables/901", "https://files.example.test/file#fragment", "https://files.example.test/file"], true],
+    ["altered original", ["https://booth.pm/downloadables/901?extra=1", "https://files.example.test/file"], true],
+  ] as const)("refuses a library redirect with %s", (_label, chain, admitted) => {
+    const port = createPort({ isAwaitingLibraryRequest: () => admitted });
+    const item = new FakeDownloadItem("https://files.example.test/file", { chain: [...chain] });
+    const preventDefault = vi.fn();
+    port.handleWillDownload({ preventDefault }, item as never, item.getWebContents() as never);
+    expect(preventDefault).toHaveBeenCalledOnce();
+    expect(item.savePath).toBe("");
+    expect(events[0]).toMatchObject({ kind: "download.failed", failureKind: "policy", storedPath: null });
   });
 
   it("reports unknown size as null, never inflated to 0", () => {
@@ -248,9 +304,21 @@ describe("download port (F4-3)", () => {
 
     expect(firstPath).not.toBe(secondPath);
     expect(firstPath.endsWith("closet.unitypackage")).toBe(true);
-    // 消歧名 = 原名 + downloadId 短码 + 扩展名
-    expect(secondPath).toMatch(/closet-[0-9a-f]{6}\.unitypackage$/);
+    expect(secondPath.endsWith("closet.unitypackage")).toBe(true);
     expect(secondPath).not.toBe(firstPath);
+  });
+
+  it("does not reuse a completed delivery path after library consumption", () => {
+    const port = createPort();
+    const first = new FakeDownloadItem("https://booth.pm/download/6");
+    port.handleWillDownload({ preventDefault: vi.fn() }, first as never, first.getWebContents() as never);
+    const oldPath = first.savePath;
+    writeFileSync(oldPath, "consumed delivery");
+    rmSync(oldPath);
+    const next = new FakeDownloadItem("https://booth.pm/download/7");
+    port.handleWillDownload({ preventDefault: vi.fn() }, next as never, next.getWebContents() as never);
+    expect(next.savePath).not.toBe(oldPath);
+    expect(existsSync(oldPath)).toBe(false);
   });
 
   it("throttles progress events by interval", () => {

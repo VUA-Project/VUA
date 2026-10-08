@@ -59,6 +59,7 @@ function assembleDevGateway(
     // 029 B 面环 4:配方导出同观察事实纪律(草稿不模拟)——恒 live 基线,
     // 无宿主时诚实缺席;转正走既有保存链,开发切档不产生演示草稿
     recipeExport: live.recipeExport,
+    recipe: live.recipe,
     // bdl-queries v0.5 消费准备切片:依赖反查/观察列同观察事实纪律(线索/
     // 建议不模拟)——恒 live 基线,无宿主时诚实缺席;开发切档不产生演示
     // 依赖事实(消费页面候 U18 终裁后切片)

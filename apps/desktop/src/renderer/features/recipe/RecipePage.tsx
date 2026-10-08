@@ -70,6 +70,7 @@ import { ContentDialog } from "../../components/primitives/ContentDialog.tsx";
 import { ComposePage } from "../compose/ComposePage.tsx";
 import { ProductionChainSection } from "../compose/ProductionChainSection.tsx";
 import { RecipeDocumentEditSection } from "./RecipeDocumentEditSection.tsx";
+import { RecipeDraftLibrary } from "./RecipeDraftLibrary.tsx";
 import { RecipeProjectDraftExport } from "./RecipeProjectDraftExport.tsx";
 import { productionChainRecipeSelectedAction } from "../../app/production-chain-store.ts";
 import {
@@ -1028,6 +1029,8 @@ export function RecipePage() {
           </Button>
         </div>
       </section>
+
+      <RecipeDraftLibrary />
 
       <Card>
         <RecipeLibrarySection

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": "0.6",
+  "operation": "dependencies.lookup",
+  "result": {
+    "total": 2,
+    "matches": [
+      {
+        "productId": "booth:6584744",
+        "productTitle": "オリジナル3Dモデル ~ネコチヤン~",
+        "availabilityRaw": "https://schema.org/InStock",
+        "availabilityStatus": "available",
+        "depKind": "shader",
+        "depName": "liltoon",
+        "versionHint": "2.3.2~",
+        "rawQuote": "・liltoon 2.3.2~",
+        "sourceSpan": "body",
+        "extractionMethod": "explicit_heading",
+        "resolvedProductId": "booth:3087170",
+        "advisory": {
+          "installSource": "booth_page",
+          "confidence": "strong"
+        }
+      },
+      {
+        "productId": "booth:8179865",
+        "productTitle": "【liltoon】機能盛り沢山！リアルなでさわシェーダー…【JP/EN】",
+        "availabilityRaw": null,
+        "availabilityStatus": "unknown",
+        "depKind": "shader",
+        "depName": "lilToon",
+        "versionHint": null,
+        "rawQuote": "本ギミックはlilToonのカスタムパラメータとして作動します。",
+        "sourceSpan": "body",
+        "extractionMethod": "prose",
+        "resolvedProductId": null,
+        "advisory": null
+      }
+    ]
+  }
+}

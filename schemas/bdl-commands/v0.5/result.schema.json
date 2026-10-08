@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ph-r.com/vua/schemas/bdl-commands/v0.5/result.schema.json",
+  "title": "VUA BDL warehouse command result v0.4",
+  "description": "Acceptance payloads for the BDL warehouse commands (docs/protocols/bdl-commands-v0.4), discriminated by operation. setArtifactMode applies synchronously and reports the entry's resulting effective mode (read back from the store: override ?? global default). setGlobalDefaultMode applies synchronously and reports the persisted global default (read back from BDL, never echoed from the request). generateVpm and deleteOriginals submit audited maintenance tasks and return a task acceptance; their Done payloads (generation receipt with the package id and archive identity; deletion audit with the deleted paths and the kept generated artifact identity) travel the application-contract task surface. warehouse.import submits one batch-import task and returns a task acceptance; its Done payload (per-folder reports with the created entry identities) travels the application-contract task surface. warehouse.importDownloads (new in v0.4) submits one download-adoption task and returns a task acceptance; its Done payload (per-download reports with the created downloaded_material entry identities) travels the application-contract task surface. Failures are application errors with stable vua.warehouse.* codes and never appear in this schema.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "operation",
+        "warehouseItemId",
+        "effectiveMode"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "0.5" },
+        "operation": { "const": "warehouse.setArtifactMode" },
+        "warehouseItemId": { "type": "string", "minLength": 1 },
+        "effectiveMode": {
+          "enum": ["use_original_unitypackage", "generate_vpm"]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "operation",
+        "globalDefaultMode"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "0.5" },
+        "operation": { "const": "warehouse.setGlobalDefaultMode" },
+        "globalDefaultMode": {
+          "enum": ["use_original_unitypackage", "generate_vpm"]
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "operation",
+        "taskId",
+        "correlationId"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "0.5" },
+        "operation": { "const": "warehouse.generateVpm" },
+        "taskId": { "type": "string", "minLength": 1 },
+        "correlationId": { "type": "string", "minLength": 1 },
+        "importCorrelationId": {
+          "description": "Echoed only when the request carried it (import-orchestrated generation): the audit-chain link back to the source import task.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "operation",
+        "taskId",
+        "correlationId"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "0.5" },
+        "operation": { "const": "warehouse.deleteOriginals" },
+        "taskId": { "type": "string", "minLength": 1 },
+        "correlationId": { "type": "string", "minLength": 1 }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "operation",
+        "taskId",
+        "correlationId"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "0.5" },
+        "operation": { "const": "warehouse.import" },
+        "taskId": { "type": "string", "minLength": 1 },
+        "correlationId": { "type": "string", "minLength": 1 }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "operation",
+        "taskId",
+        "correlationId"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "0.5" },
+        "operation": { "const": "warehouse.importDownloads" },
+        "taskId": { "type": "string", "minLength": 1 },
+        "correlationId": { "type": "string", "minLength": 1 }
+      }
+    }
+  ]
+}

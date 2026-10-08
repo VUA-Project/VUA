@@ -92,9 +92,15 @@ The storage-side `record_product_observation` operation in `crates/bdl-store` wr
 observed product facts. Its presence does not establish a working account-library acquisition
 pipeline; N5 must trace and exercise that caller path. The existing write-face semantics are:
 
-- **Upsert**: one observation = one row of latest facts (`INSERT … ON CONFLICT DO UPDATE`,
-  full-column overwrite); replaying the same observation is safe (same-content overwrite,
-  never a second row). The API offers no delete — a row changes only through a newer
+- **Upsert** (2026-10-03 semantics revision, real-machine): one observation merges by
+  informativeness (`INSERT … ON CONFLICT DO UPDATE`); replaying the same observation is safe
+  (same-content merge, never a second row). Scalar facts overwrite only when the new
+  observation carries a value — NULL means "not observed by this source" and never erases a
+  known fact (a library-row re-sync no longer wipes product-page enrichment). Serialized
+  evidence lists (images/videos/subproducts) keep the longer list — a coarse library
+  thumbnail never replaces a full gallery, and an empty list never beats a non-empty one.
+  Status, content hash, timestamps, processor version and the gap list always reflect the
+  latest observation. The API offers no delete — a row changes only through a newer
   observation; tombstones (`status: missing`, the 404/410 keepsakes) are legal observation
   results, are never physically deleted, and are never served as catalog cards.
 - **Bookkeeping counter**: every successful write increments
@@ -169,3 +175,6 @@ experimental and off by default. No runtime acceptance is asserted by this sourc
 - 1.0.0 (2026-09-06): entered version management; the "pending" closing section rewritten as the
   landing status (`schemas/bdl/v0.1` and the bdl-queries query contract v0.3 landed with B4); the
   header status updated to accepted to match reality.
+
+- 1.3.0 (2026-10-03): observation write face merges by informativeness — NULL preserves known
+  facts, longer evidence lists win; library re-syncs no longer erase product-page enrichment.

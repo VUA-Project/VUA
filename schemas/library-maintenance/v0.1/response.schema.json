@@ -1,0 +1,503 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vua.local/schemas/library-maintenance/v0.1/response.schema.json",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "target",
+        "previewHash",
+        "files",
+        "references",
+        "referenceCoverage",
+        "unresolvedRecipeAssets"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "0.1"
+        },
+        "target": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "id"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "product"
+                },
+                "id": {
+                  "type": "string",
+                  "pattern": "^booth:[0-9]+$"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "id"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "entry"
+                },
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+                }
+              }
+            }
+          ]
+        },
+        "previewHash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "files": {
+          "type": "array",
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "copyId",
+              "entryId",
+              "fileName",
+              "role",
+              "artifactSha256",
+              "sizeBytes",
+              "presence",
+              "superseded"
+            ],
+            "properties": {
+              "copyId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+              },
+              "entryId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+              },
+              "fileName": {
+                "type": "string",
+                "minLength": 1
+              },
+              "role": {
+                "enum": [
+                  "original",
+                  "generated_vpm"
+                ]
+              },
+              "artifactSha256": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "sizeBytes": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "presence": {
+                "enum": [
+                  "present",
+                  "missing",
+                  "changed",
+                  "unreadable"
+                ]
+              },
+              "superseded": {
+                "type": "boolean"
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "superseded": {
+                      "const": true
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "role": {
+                      "const": "generated_vpm"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "id",
+              "title",
+              "revision",
+              "copyIds",
+              "missingAfterRemoval"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "draft",
+                  "recipe"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+              },
+              "title": {
+                "type": "string"
+              },
+              "revision": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "copyIds": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+                }
+              },
+              "missingAfterRemoval": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "referenceCoverage": {
+          "enum": [
+            "drafts_only",
+            "drafts_and_recipes"
+          ]
+        },
+        "unresolvedRecipeAssets": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "removalId",
+        "target",
+        "taskId",
+        "taskState",
+        "revision",
+        "cancelRequested",
+        "recoveryDisposition",
+        "state",
+        "files"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "0.1"
+        },
+        "removalId": {
+          "type": "string",
+          "pattern": "^library-removal-[A-Za-z0-9_.:-]{1,100}$"
+        },
+        "target": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "id"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "product"
+                },
+                "id": {
+                  "type": "string",
+                  "pattern": "^booth:[0-9]+$"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "id"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "entry"
+                },
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+                }
+              }
+            }
+          ]
+        },
+        "taskId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+        },
+        "taskState": {
+          "enum": [
+            "queued",
+            "preparing",
+            "running",
+            "waiting_for_input",
+            "paused",
+            "succeeded",
+            "succeeded_with_warnings",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "cancelRequested": {
+          "type": "boolean"
+        },
+        "recoveryDisposition": {
+          "enum": [
+            "none",
+            "inspect_required"
+          ]
+        },
+        "state": {
+          "enum": [
+            "running",
+            "succeeded",
+            "succeeded_with_warnings",
+            "failed",
+            "cancelled",
+            "unconfirmed"
+          ]
+        },
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 200,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "copyId",
+              "entryId",
+              "fileName",
+              "phase",
+              "errorCode"
+            ],
+            "properties": {
+              "copyId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+              },
+              "entryId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+              },
+              "fileName": {
+                "type": "string",
+                "minLength": 1
+              },
+              "phase": {
+                "enum": [
+                  "pending",
+                  "removed",
+                  "already_missing",
+                  "failed"
+                ]
+              },
+              "errorCode": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "phase": {
+                      "const": "failed"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "errorCode": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "errorCode": {
+                      "type": "null"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "taskState": {
+                "const": "succeeded"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "succeeded"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "taskState": {
+                "const": "succeeded_with_warnings"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "succeeded_with_warnings"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "taskState": {
+                "const": "failed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "failed"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "taskState": {
+                "const": "cancelled"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "cancelled"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "taskState": {
+                "enum": [
+                  "queued",
+                  "preparing",
+                  "running",
+                  "waiting_for_input",
+                  "paused"
+                ]
+              }
+            }
+          },
+          "then": {
+            "if": {
+              "properties": {
+                "recoveryDisposition": {
+                  "const": "inspect_required"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "state": {
+                  "const": "unconfirmed"
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "state": {
+                  "const": "running"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "succeeded"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "files": {
+                "items": {
+                  "properties": {
+                    "phase": {
+                      "enum": [
+                        "removed",
+                        "already_missing"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

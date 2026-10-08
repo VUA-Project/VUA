@@ -84,6 +84,7 @@ function createEmptyWarehouseCommands(): WarehouseCommandsPort {
     setArtifactMode: () => Promise.resolve(unavailableOutcome),
     generateVpm: () => Promise.resolve(unavailableOutcome),
     deleteOriginals: () => Promise.resolve(unavailableOutcome),
+    deleteOriginalsByProduct: () => Promise.resolve(unavailableOutcome),
     setGlobalDefaultMode: () => Promise.resolve(unavailableOutcome),
     importFolders: () => Promise.resolve(unavailableOutcome),
     importDownloads: () => Promise.resolve(unavailableOutcome),
@@ -219,6 +220,8 @@ export function createEmptyCatalogBrowser(): CatalogBrowserPort {
     list: () => Promise.resolve(catalogListView),
     detail: () => Promise.resolve(catalogDetailView),
     status: () => Promise.resolve<CatalogStatus>({ health: "unknown" }),
+    // v0.7 文件清单:not-connected 恒 absent(诚实缺席,不伪造空清单)
+    productDownloadables: () => Promise.resolve({ kind: "absent" }),
     capability: () =>
       Promise.resolve<CapabilityReport>({ state: "unavailable", detailKey: "catalogMissing" }),
   };
@@ -239,6 +242,11 @@ export function emptyGateway(initialGoals: StoredGoalsV1 | null = null): VuaGate
     productionChain: createUnavailableProductionChainPort(),
     // 029 B 面环 4:配方导出 not-run 诚实缺席(不伪造草稿)
     recipeExport: createUnavailableRecipeExportPort(),
+  recipe: {
+    list: () => Promise.resolve([]),
+    get: () => Promise.resolve(null),
+    save: () => Promise.reject(new Error("not connected")),
+  },
     // bdl-queries v0.5 消费准备切片:依赖反查/观察列 not-run 诚实缺席
     // (不伪造线索/建议;缺席臂 = 能力缺席控制不渲染先例)
     dependencies: createUnavailableDependenciesPort(),

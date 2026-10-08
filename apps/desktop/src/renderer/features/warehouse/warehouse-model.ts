@@ -55,6 +55,29 @@ export function hasActiveFilter(state: WarehouseQueryState): boolean {
   );
 }
 
+/**
+ * 目录空态卡推导(N5 S1):目录为空且未加筛选时,按登录线索决定空卡形态——
+ * "none" = 登录引导卡;"stored"/"unknown"/未探测 = 同步引导卡(探测失败不
+ * 冒充事实,同步按钮照常可用);其余情形(hidden)保持原通用空态。
+ */
+export type CatalogEmptyCard =
+  | { kind: "hidden" }
+  | { kind: "sign-in" }
+  | { kind: "sync-available" };
+
+export function catalogEmptyCard(input: {
+  readonly remoteBrowser: boolean;
+  readonly signInHint: "stored" | "none" | "unknown" | null;
+  readonly filtered: boolean;
+  readonly catalogEmpty: boolean;
+}): CatalogEmptyCard {
+  if (!input.remoteBrowser || !input.catalogEmpty || input.filtered) {
+    return { kind: "hidden" };
+  }
+  return input.signInHint === "none" ? { kind: "sign-in" } : { kind: "sync-available" };
+}
+
+
 /** 价格展示归类:金额为 "0" 视为免费;缺价格单列,不猜测为 0 */
 export type PriceKind = "free" | "priced" | "none";
 

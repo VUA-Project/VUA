@@ -1,0 +1,17 @@
+{
+  "method": "library.removeFiles",
+  "params": {
+    "schemaVersion": "0.1",
+    "removalId": "library-removal-synthetic",
+    "target": {
+      "kind": "product",
+      "id": "booth:90"
+    },
+    "copyIds": [
+      "cpy-original",
+      "cpy-old-vpm"
+    ],
+    "previewHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "storedPath": "C:\\Synthetic\\foreign.zip"
+  }
+}

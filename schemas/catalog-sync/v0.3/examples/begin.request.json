@@ -1,0 +1,12 @@
+{
+  "method": "catalog.beginLibrarySync",
+  "params": {
+    "schemaVersion": "0.3",
+    "runId": "catalog-sync-synthetic",
+    "libraryTypes": [
+      "bought",
+      "gifts",
+      "free_downloads"
+    ]
+  }
+}

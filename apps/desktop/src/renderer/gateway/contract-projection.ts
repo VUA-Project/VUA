@@ -65,9 +65,16 @@ export function projectTaskItem(task: TaskSnapshotV01): TaskItem {
     status: projectTaskState(task.state),
     originPage: identity?.originPage ?? "warehouse",
     cancellable: !task.cancellationRequested && !isTerminalTaskStateV01(task.state),
+    ...(identity?.notifyOnComplete === true ? { notifyOnComplete: true } : {}),
     ...(task.error === undefined ? {} : { errorText: task.error.code }),
-    // 重启恢复(M2):遗留非终态任务如实标注,前端不得当作仍在执行
-    ...(task.recoveryDisposition === "inspect_required" ? { errorText: "inspect_required" } : {}),
+    // 重启恢复(M2):遗留非终态任务如实标注,前端不得当作仍在执行。
+    // 处置只对非终态有意义——终态(含被重同步取代的 cancelled)按其终态
+    // 呈现,不再盖"请先检查中断的任务"文案(真机 2026-10-02:取消后的
+    // 孤儿任务仍显示检查提示,通知永不清除的观感由此而来)
+    ...(task.recoveryDisposition === "inspect_required" &&
+      !isTerminalTaskStateV01(task.state)
+      ? { errorText: "inspect_required" }
+      : {}),
   };
 }
 
