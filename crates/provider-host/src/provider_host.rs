@@ -1724,6 +1724,8 @@ fn served_capabilities(state: &HostState) -> Value {
         {"operationId": "library.removalPreview", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "library.removeFiles", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "library.removalStatus", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.pendingRemovals", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.resolveRemoval", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "recipeDraft.selectionStatus", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "library.productFiles", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "recipeDraft.list", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
@@ -5473,8 +5475,8 @@ fn library_download_request(state: &HostState, method: &str, request: &Value, re
         }
         return library_import_submit(warehouse.clone(), request, request_id, correlation_id);
     }
-    if matches!(method,"library.removalPreview"|"library.removeFiles"|"library.removalStatus") {
-        if request["kind"] != if method == "library.removeFiles" {"command"} else {"query"} {
+    if matches!(method,"library.removalPreview"|"library.removeFiles"|"library.removalStatus"|"library.pendingRemovals"|"library.resolveRemoval") {
+        if request["kind"] != if method == "library.removeFiles" || method == "library.resolveRemoval" {"command"} else {"query"} {
             return FrameOutcome::Response(application_error(request_id,correlation_id,"vua.library.invalid_params","errors.library.removalFailed","validation"));
         }
         let result = warehouse.library_maintenance.apply(method,request.get("params").cloned().unwrap_or(Value::Null),&warehouse.selection_drafts,state.use_cases.as_ref().map(|services|services.recipes.as_ref()));

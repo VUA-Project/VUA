@@ -211,6 +211,10 @@ function toApplicationRequest(
       return { ...base, kind: "query", method: request.method, params: request.params };
     case "library.removalStatus":
       return { ...base, kind: "query", method: request.method, params: request.params };
+    case "library.pendingRemovals":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "library.resolveRemoval":
+      return { ...base, kind: "command", commandId: request.requestId, method: request.method, params: request.params };
     case "library.removeFiles":
       return { ...base, kind: "command", commandId: request.params.removalId, method: request.method, params: request.params };
     case "library.importFolders": {

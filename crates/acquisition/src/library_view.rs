@@ -314,6 +314,24 @@ pub fn list(
     )
 }
 
+/// Current visible product scope, including verified local copies and ZIP members.
+/// This is a read projection; it does not manufacture persisted source mappings.
+pub(crate) fn product_copy_ids(bdl: &BdlStore, root: &Path, downloads: &LibraryDownloadService, product_id: &str) -> Result<std::collections::HashSet<String>, LibraryDownloadError> {
+    let removed = bdl.removed_local_entries()?;
+    let entries: Vec<_> = bdl.warehouse_entry_cards(ArtifactMode::UseOriginalUnitypackage)?.into_iter().filter(|entry| !removed.contains(&entry.warehouse_item_id)).collect();
+    let copies: Vec<_> = bdl.library_copy_evidence()?.into_iter().filter(|copy| !removed.contains(&copy.copy.warehouse_item_id)).collect();
+    let products = bdl.library_product_summaries()?;
+    let explicit: HashMap<_, _> = bdl.library_entry_metadata_all()?.into_iter().filter_map(|m| m.product_id.map(|id| (m.entry_id, id))).collect();
+    let mut managed = HashMap::new();
+    for id in copies.iter().filter_map(|copy| copy.downloadable_id.or(copy.archive_downloadable_id)) {
+        if let Some(product) = bdl.product_of_downloadable(id)? { managed.insert(id, product); }
+    }
+    let mut presences = copies.iter().map(|copy| (copy.copy.copy_id.clone(), presence(root, copy))).collect();
+    let checks = downloads.library_content_checks.lock().expect("library checks poisoned");
+    let grouping = crate::library_reconcile::group(&entries, &products, &copies, &managed, &mut presences, &checks, &explicit);
+    Ok(grouping.assignments.into_iter().filter_map(|(copy, products)| products.contains(product_id).then_some(copy)).collect())
+}
+
 pub fn product_files(
     bdl: &BdlStore,
     root: &Path,

@@ -75,8 +75,8 @@ Current owners, versions and statuses only. [Governance](meta/documentation-gove
 | schemas/library-intake/v0.1 | 0.1 | Implementation baseline | AMF | 2026-10-09 |
 | docs/protocols/library-intake-v0.1.md | 0.1 | Implementation baseline | AMF | 2026-10-09 |
 | schemas/bdl/v0.6 | 0.6 | Implementation baseline | Data | 2026-10-09 |
-| schemas/library-maintenance/v0.1 | 0.1 | Implementation baseline | AMF | 2026-10-08 |
-| docs/protocols/library-maintenance-v0.1.md | 0.1.0 | Implementation baseline | AMF | 2026-10-08 |
+| schemas/library-maintenance/v0.1 | 0.1 | Implementation baseline | AMF | 2026-10-09 |
+| docs/protocols/library-maintenance-v0.1.md | 0.2.0 | Implementation baseline | AMF | 2026-10-09 |
 | schemas/recipe-selection-draft/v0.1 | 0.1 | Implementation baseline | AMF | 2026-10-08 |
 | docs/protocols/recipe-selection-draft-v0.1.md | 0.1 | Implementation baseline | AMF | 2026-10-08 |
 | schemas/bdl/v0.5 | 0.5 | Implementation baseline | Data | 2026-10-08 |
@@ -144,7 +144,7 @@ Current owners, versions and statuses only. [Governance](meta/documentation-gove
 | docs/development/engineering-rules.md | 1.0.0 | Accepted | Integration | 2026-09-29 |
 | docs/architecture/unity-deployment.md | 2.3.0 | Accepted | Environment | 2026-10-02 |
 | docs/development/n5-capability-audit.md | 1.0.0 | Draft | Data | 2026-10-02 |
-| docs/development/n5-rework-plan.md | 1.11.0 | Accepted | AMF | 2026-10-09 |
+| docs/development/n5-rework-plan.md | 1.12.0 | Accepted | AMF | 2026-10-09 |
 | docs/README.md | 1.2.1 | Accepted | Integration | 2026-10-07 |
 | docs/development/n1-delivery-plan.md | 1.6.1 | Accepted | Environment | 2026-10-07 |
 | docs/development/first-play-delivery-plan.md | 1.2.0 | Accepted | Integration | 2026-10-08 |

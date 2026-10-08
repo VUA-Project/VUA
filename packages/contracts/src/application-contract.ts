@@ -12,6 +12,7 @@ import { isLibraryRemoveLocalEntriesV01, type LibraryRemoveLocalEntriesV01, type
 import { isLibraryViewParamsV01, type LibraryListParamsV01, type LibraryProductFilesParamsV01, type LibraryListV01, type LibraryProductFilesV01 } from "./library-view-v01.js";
 import { isRecipeDraftParamsV01, type RecipeDraftListParamsV01, type RecipeDraftGetParamsV01, type RecipeDraftSaveParamsV01, type RecipeDraftAddParamsV01, type RecipeDraftListV01, type RecipeDraftReadV01 } from "./recipe-selection-draft-v01.js";
 import { isLibraryMaintenanceParamsV01, type LibraryRemovalPreviewParamsV01, type LibraryRemoveFilesParamsV01, type LibraryRemovalStatusParamsV01, type LibraryRemovalPreviewV01, type LibraryRemovalSnapshotV01 } from "./library-maintenance-v01.js";
+import type { LibraryPendingRemovalsParamsV01, LibraryPendingRemovalsV01, LibraryResolveRemovalParamsV01 } from "./library-maintenance-v01.js";
 import type { RecipeDraftSelectionStatusV01 } from "./recipe-selection-draft-v01.js";
 
 export const APPLICATION_CONTRACT_VERSION = "0.1" as const;
@@ -2008,10 +2009,12 @@ export type RecipeDraftQueryV01 = ApplicationRequestBaseV01 & { readonly kind: "
 export type LibraryMaintenanceQueryV01 = ApplicationRequestBaseV01 & { readonly kind: "query" } & (
   | { readonly method: "library.removalPreview"; readonly params: LibraryRemovalPreviewParamsV01 }
   | { readonly method: "library.removalStatus"; readonly params: LibraryRemovalStatusParamsV01 }
+  | { readonly method: "library.pendingRemovals"; readonly params: LibraryPendingRemovalsParamsV01 }
 );
-export interface LibraryMaintenanceCommandV01 extends ApplicationRequestBaseV01 {
-  readonly kind: "command"; readonly method: "library.removeFiles"; readonly commandId: string; readonly params: LibraryRemoveFilesParamsV01;
-}
+export type LibraryMaintenanceCommandV01 = ApplicationRequestBaseV01 & { readonly kind: "command"; readonly commandId: string } & (
+  | { readonly method: "library.removeFiles"; readonly params: LibraryRemoveFilesParamsV01 }
+  | { readonly method: "library.resolveRemoval"; readonly params: LibraryResolveRemovalParamsV01 }
+);
 export interface LibraryImportCommandV01 extends ApplicationRequestBaseV01 {
   readonly kind: "command"; readonly method: "library.importFolders"; readonly commandId: string; readonly params: LibraryImportParamsV01;
 }
@@ -2993,6 +2996,7 @@ export type ApplicationSuccessValueV01 =
   | LibraryListV01 | LibraryProductFilesV01
   | RecipeDraftListV01 | RecipeDraftReadV01
   | LibraryRemovalPreviewV01 | LibraryRemovalSnapshotV01 | RecipeDraftSelectionStatusV01
+  | LibraryPendingRemovalsV01
   | DeploymentPlanResult
   | DeploymentAccepted
   | ApplicationSnapshotV01
@@ -3698,8 +3702,8 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
   if (value.method === "library.removeLocalEntries") {
     return value.kind === "command" && isIdentifier(value.commandId) && isLibraryRemoveLocalEntriesV01(value.params);
   }
-  if (value.method === "library.removalPreview" || value.method === "library.removeFiles" || value.method === "library.removalStatus") {
-    const query = value.method !== "library.removeFiles";
+  if (value.method === "library.removalPreview" || value.method === "library.removeFiles" || value.method === "library.removalStatus" || value.method === "library.pendingRemovals" || value.method === "library.resolveRemoval") {
+    const query = value.method !== "library.removeFiles" && value.method !== "library.resolveRemoval";
     return value.kind === (query ? "query" : "command") && hasExactKeys(value, query ? ["contractVersion", "requestId", "correlationId", "kind", "method", "params"] : ["contractVersion", "requestId", "correlationId", "kind", "method", "params", "commandId"])
       && (query || isIdentifier(value.commandId)) && isLibraryMaintenanceParamsV01(value.method, value.params);
   }

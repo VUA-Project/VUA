@@ -86,6 +86,45 @@ fn vector(name: &str) -> Value {
 }
 
 #[test]
+fn interrupted_removal_wire_discovers_and_resolves_without_deleting_the_file() {
+    let world = World::new();
+    let mut host = Host::new(&world.base, world.bdl.clone());
+    host.batch("inspect-original", &[901]);
+    world.delivery(901, "dl-inspect-original", b"synthetic original");
+    host.observe("inspect-original", 901, "dl-inspect-original"); host.wait("inspect-original", &world.tasks);
+    let stored = world.bdl.managed_library_file(901).unwrap().unwrap();
+    let target = json!({"kind":"product","id":"booth:90"});
+    let preview = host.call("library.removalPreview", json!({"schemaVersion":"0.1","target":target}));
+    assert_eq!(preview["ok"], true, "{preview}");
+    let remove = json!({"schemaVersion":"0.1","removalId":"library-removal-before-restart","target":target,"copyIds":[stored.copy_id],"previewHash":preview["value"]["previewHash"]});
+    let mut file = preview["value"]["files"][0].clone();
+    file["storedPath"] = json!(stored.stored_path); file["productIds"] = json!(["booth:90"]);
+    let plan = json!({"request":remove,"files":[file]});
+    drop(host);
+    world.tasks.accept_idempotent_task("library.removeFiles","library-removal-before-restart",&plan.to_string(),&vua_orchestrator::NewTask {
+        task_id:"task-wire-interrupted-removal".into(),correlation_id:"library-removal-before-restart".into(),occurred_at:"t".into()
+    },&json!({"schemaVersion":"0.1","taskId":"task-wire-interrupted-removal","acceptedRevision":1,"initialState":"queued"})).unwrap();
+    let mut host = Host::new(&world.base, world.bdl.clone());
+    let pending = host.call("library.pendingRemovals", json!({"schemaVersion":"0.1","target":target}));
+    assert_eq!(pending["value"]["items"][0]["state"], "unconfirmed");
+    let params = json!({"schemaVersion":"0.1","removalId":"library-removal-before-restart","observedRevision":1});
+    let resolved = host.call("library.resolveRemoval", params.clone());
+    assert_eq!(resolved["ok"], true, "{resolved}");
+    assert_eq!(resolved["value"]["inspectionResolved"], true);
+    assert_eq!(resolved["value"]["files"][0]["phase"], "kept");
+    assert_eq!(resolved["value"]["taskState"], "cancelled");
+    let schema: Value = serde_json::from_slice(&std::fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/library-maintenance/v0.1/response.schema.json")).unwrap()).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert!(validator.is_valid(&pending["value"]));
+    assert!(validator.is_valid(&resolved["value"]));
+    assert_eq!(host.call("library.resolveRemoval", params)["value"], resolved["value"]);
+    assert_eq!(std::fs::read(&stored.stored_path).unwrap(), b"synthetic original");
+    assert!(host.call("library.pendingRemovals", json!({"schemaVersion":"0.1","target":target}))["value"]["items"].as_array().unwrap().is_empty());
+    assert_eq!(host.batch("unblocked", &[901])["ok"], true);
+    assert_eq!(host.call("library.observeDownload", json!({"schemaVersion":"0.1","batchId":"library-download-unblocked","downloadableId":901,"outcome":"initiation_failed"}))["ok"], true);
+}
+
+#[test]
 fn metadata_wire_has_atomic_replay_and_persistent_local_only_edits() {
     let world = World::new();
     let entry = world.bdl.create_warehouse_item("Local folder", "imported_material", "t").unwrap();
@@ -230,6 +269,7 @@ impl Host {
                 | "recipeDraft.selectionStatus"
                 | "library.removalPreview"
                 | "library.removalStatus"
+                | "library.pendingRemovals"
                 | "app.snapshot"
         );
         let mut request = json!({"contractVersion":"0.1","requestId":id,"correlationId":id,"kind":if query {"query"} else {"command"},"method":method,"params":params});

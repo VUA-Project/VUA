@@ -197,6 +197,80 @@
       }
     },
     {
+      "$ref": "#/$defs/removalSnapshot"
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "target",
+        "items"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "0.1"
+        },
+        "target": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "id"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "product"
+                },
+                "id": {
+                  "type": "string",
+                  "pattern": "^booth:[0-9]+$"
+                }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "kind",
+                "id"
+              ],
+              "properties": {
+                "kind": {
+                  "const": "entry"
+                },
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+                }
+              }
+            }
+          ]
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/removalSnapshot"
+              },
+              {
+                "properties": {
+                  "state": {
+                    "const": "unconfirmed"
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "removalSnapshot": {
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -330,7 +404,9 @@
                   "pending",
                   "removed",
                   "already_missing",
-                  "failed"
+                  "failed",
+                  "kept",
+                  "missing_after_inspection"
                 ]
               },
               "errorCode": {
@@ -367,6 +443,9 @@
               }
             ]
           }
+        },
+        "inspectionResolved": {
+          "const": true
         }
       },
       "allOf": [
@@ -496,8 +575,61 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "required": [
+              "inspectionResolved"
+            ]
+          },
+          "then": {
+            "properties": {
+              "state": {
+                "const": "cancelled"
+              },
+              "taskState": {
+                "const": "cancelled"
+              },
+              "recoveryDisposition": {
+                "const": "none"
+              },
+              "files": {
+                "items": {
+                  "properties": {
+                    "phase": {
+                      "enum": [
+                        "removed",
+                        "already_missing",
+                        "failed",
+                        "kept",
+                        "missing_after_inspection"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "files": {
+                "items": {
+                  "properties": {
+                    "phase": {
+                      "enum": [
+                        "pending",
+                        "removed",
+                        "already_missing",
+                        "failed"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
         }
       ]
     }
-  ]
+  }
 }

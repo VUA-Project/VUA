@@ -21,6 +21,7 @@ import { isLibraryRemoveLocalEntriesV01, type LibraryRemoveLocalEntriesV01 } fro
 import { isLibraryViewParamsV01, type LibraryListParamsV01, type LibraryProductFilesParamsV01 } from "./library-view-v01.js";
 import { isRecipeDraftParamsV01, type RecipeDraftListParamsV01, type RecipeDraftGetParamsV01, type RecipeDraftSaveParamsV01, type RecipeDraftAddParamsV01 } from "./recipe-selection-draft-v01.js";
 import { isLibraryMaintenanceParamsV01, type LibraryRemovalPreviewParamsV01, type LibraryRemoveFilesParamsV01, type LibraryRemovalStatusParamsV01 } from "./library-maintenance-v01.js";
+import type { LibraryPendingRemovalsParamsV01, LibraryResolveRemovalParamsV01 } from "./library-maintenance-v01.js";
 
 export const DESKTOP_GATEWAY_VERSION = 1 as const;
 export const DESKTOP_GATEWAY_MAX_REQUEST_BYTES = 64 * 1024;
@@ -245,10 +246,12 @@ export type LibraryMaintenanceQueryRequestV1 = {
 } & (
   | { readonly method: "library.removalPreview"; readonly params: LibraryRemovalPreviewParamsV01 }
   | { readonly method: "library.removalStatus"; readonly params: LibraryRemovalStatusParamsV01 }
+  | { readonly method: "library.pendingRemovals"; readonly params: LibraryPendingRemovalsParamsV01 }
 );
-export interface LibraryMaintenanceCommandRequestV1 {
-  readonly schemaVersion: 1; readonly requestId: string; readonly method: "library.removeFiles"; readonly params: LibraryRemoveFilesParamsV01;
-}
+export type LibraryMaintenanceCommandRequestV1 = { readonly schemaVersion: 1; readonly requestId: string } & (
+  | { readonly method: "library.removeFiles"; readonly params: LibraryRemoveFilesParamsV01 }
+  | { readonly method: "library.resolveRemoval"; readonly params: LibraryResolveRemovalParamsV01 }
+);
 export interface LibraryImportRequestV1 {
   readonly schemaVersion: 1; readonly requestId: string; readonly method: "library.importFolders";
   readonly params: LibraryImportParamsV01 & { readonly commandId: string };
@@ -1092,6 +1095,8 @@ export const DESKTOP_GATEWAY_METHOD_KINDS = {
   "library.updateEntryMetadata": "command",
   "library.removeLocalEntries": "command",
   "library.removalStatus": "query",
+  "library.pendingRemovals": "query",
+  "library.resolveRemoval": "command",
   "recipeDraft.list": "query",
   "recipeDraft.get": "query",
   "recipeDraft.selectionStatus": "query",
@@ -1895,7 +1900,7 @@ export function isDesktopGatewayRequestV1(value: unknown): value is DesktopGatew
     case "library.list":
     case "library.productFiles":
       return hasExactKeys(value, REQUEST_KEYS) && isLibraryViewParamsV01(value.method, value.params);
-    case "library.removalPreview": case "library.removeFiles": case "library.removalStatus":
+    case "library.removalPreview": case "library.removeFiles": case "library.removalStatus": case "library.pendingRemovals": case "library.resolveRemoval":
       return hasExactKeys(value, REQUEST_KEYS) && isLibraryMaintenanceParamsV01(value.method, value.params);
     case "recipeDraft.list": case "recipeDraft.get": case "recipeDraft.save": case "recipeDraft.addSelection": case "recipeDraft.selectionStatus":
       return hasExactKeys(value, REQUEST_KEYS) && isRecipeDraftParamsV01(value.method, value.params);

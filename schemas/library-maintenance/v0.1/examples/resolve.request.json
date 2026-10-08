@@ -1,0 +1,8 @@
+{
+  "method": "library.resolveRemoval",
+  "params": {
+    "schemaVersion": "0.1",
+    "removalId": "library-removal-synthetic",
+    "observedRevision": 6
+  }
+}

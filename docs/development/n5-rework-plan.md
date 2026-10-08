@@ -1,6 +1,6 @@
 # N5 rework plan — unified library and acquisition producers
 
-> Document version: 1.11.0
+> Document version: 1.12.0
 > Status: Accepted
 > Scope: Implementation direction for the N5 material-management rework, within the accepted N5 scope
 > Updated: 2026-10-09
@@ -267,7 +267,11 @@ These rulings reduce implementation scope, not the real-account/material and hum
 required by the N sequence. [Local record removal](../protocols/library-records-v0.1.md) now
 removes complete imports, including merged copies, with atomic receipt replay and retained files/
 references/account products. Targeted BDL, acquisition, wire, contract and typed-port checks passed.
-Interrupted file-removal resolution and the new settings still need implementation;
+Interrupted file removal now has explicit discovery, metadata inspection and durable closure:
+remaining files are retained, absence does not become a claimed deletion, and a fresh deletion
+needs a new preview/selection. ZIP members and verified migrated files are selectable from their
+product card. Acquisition/wire/contract/typed-port and 26 Chromium interaction checks passed;
+real-material and human review remain pending. The dependency settings still need implementation;
 neither the existing lookup port nor this plan establishes a finished reverse-lookup interaction.
 
 ### Content revisions and VPM regeneration proposal — deferred after N5
@@ -396,6 +400,8 @@ D6 parser relocation remains later cleanup, not a prerequisite for usable mainte
 
 ## Document changelog
 
+- 1.12.0 (2026-10-09): complete explicit interrupted-removal inspection/closure and include ZIP members and verified local files in product deletion previews.
+
 - 1.11.0 (2026-10-09): implement local-only import-record removal with durable receipts and retained files/references/account ownership.
 
 - 1.10.0 (2026-10-09): add minimal official/manual local source editing with atomic metadata receipts, private thumbnail caching and source-constrained content grouping.
@@ -409,8 +415,6 @@ D6 parser relocation remains later cleanup, not a prerequisite for usable mainte
 - 1.4.0 (2026-10-08): record the sequential takeover baseline, replacement/retention and draft rulings, independent library facts and remaining acceptance gaps.
 
 
-- 1.2.0 (2026-10-02): user direction — merge the two warehouse tracks into one library
-  page with a cloud/local filter; layout rework rides S3.
 
 - 1.3.0 (2026-10-03): VPM import experimental option + D2 v1 (adoption correlation +
   importedArtifacts aggregate); full D2 aggregation still pending.
