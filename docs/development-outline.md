@@ -1,9 +1,9 @@
 # VUA development sequence
 
-> Document version: 3.12.0
+> Document version: 3.13.0
 > Status: Accepted
-> Updated: 2026-10-08
-> Authority: User rulings of 2026-09-28 through 2026-10-08, including independent release numbering, three first-play guidance contexts and the reduced N5 migration/source scope
+> Updated: 2026-10-09
+> Authority: User rulings of 2026-09-28 through 2026-10-09, including independent release numbering, three first-play guidance contexts and the reduced N5 closure scope
 > Scope: N1-N7, real-machine deployment and real-material workflows, continuing Beta
 > Normative effect: Schedules accepted product work; product scope belongs to product-boundary.md
 
@@ -330,12 +330,12 @@ Do not assume an upstream API or scraping approach before capability investigati
 
 | User task | Required behavior and observable acceptance |
 | --- | --- |
-| Understand intake | Distinguish successful, duplicate, unsupported, and failed items; partial success is visible |
+| Understand intake | Retain ordinary local files and their relative layout, including intact ZIPs and companion files; distinguish successful, duplicate, unsupported production input and failed items; partial success is visible. First production intake accepts UnityPackage only; ZIP extraction and companion-file editing are not N5 requirements |
 | Find material | Search by name and supported filters; sync attempts to reconcile migrated local entries with account products, merges only verified equal content, and keeps different or unverified content in separate cards even with identical names/images |
 | Maintain files | Show associated local files and missing status; restore missing BOOTH-managed files through explicit re-download and report unavailable upstream content; a dedicated relink feature is not required under the 2026-10-08 ruling |
-| Maintain provenance | Local use need not start with a BOOTH ID; retrieve official metadata from a user-supplied ID/page, offer third-party search or minimal manual supplementation when unavailable, and retain source associations under the product boundary |
+| Maintain provenance | Local use need not start with a BOOTH ID; reuse official metadata retrieval from a user-supplied ID/page, expose only name and thumbnail for manual supplementation, and retain source associations under the product boundary. Third-party search is deferred |
 | Distinguish content | Same-name different-content material is distinguishable and never silently overwritten; Recipe/VPM revision selection and regeneration are deferred |
-| Manage relationships | Persist and display author-description link clues with their source evidence; distinguish unconfirmed clues from confirmations; exhaustive inference and missing-link corner cases are later work |
+| Manage relationships | Persist author-description link clues with their source evidence; gate dependency display/reverse lookup in settings and explain accuracy limits when enabled. Distinguish unconfirmed clues from confirmations and empty evidence from an absence of dependencies; exhaustive inference and missing-link corner cases are later work |
 | Remove/clean | Allow local-import record removal separately from file deletion, with reference effects explained; account-product hiding is later work |
 
 The missing-file and provenance refinements are owned by the
@@ -430,23 +430,17 @@ do not turn documentation completeness, speculative coverage, or idle agent acti
 
 ## Document changelog
 
+- 3.13.0 (2026-10-09): narrow N5 closure to intact local-file retention, official/minimal manual provenance and optional bounded dependency presentation; defer third-party search.
 - 3.12.0 (2026-10-08): accept migration reconciliation, limit record removal to local imports and dependency discovery to persisted link clues, and move Recipe/VPM and production-loop acceptance after N5.
 - 3.11.0 (2026-10-08): apply the user's N5 missing-file/source refinements, clarify dependency evidence limits and retain production integration as linked pending acceptance.
 - 3.10.0 (2026-10-05): define observable acceptance for three guidance contexts, their independent state and the separate N5 co-release review.
 - 3.9.0 (2026-10-03): advance PICO eye tracking into first-play acceptance and define seven N2 Steam connections with shared inventory/install/launch acceptance and focused tracking guides.
 - 3.8.0 (2026-10-03): define first-play-release acceptance for desktop/PICO USB/Wi-Fi, guidance, recovery and standalone ZIP; move creator completion behind that release.
 - 3.7.0 (2026-10-02): admit the development f1/c1 pair for the first creator deployment path, with global preference and Hub fallback after both editions fail.
-
 - 3.6.0 (2026-10-02): expand N1 acceptance to model-first official routes, installation activity,
   device/service accounts and regional activation/connectivity; record the WMR investigation exception.
-
 - 3.5.1 (2026-10-02): describe the N1 first local path as following the standalone deployment
   route owned by the architecture document instead of restating its install mechanism (the
   original installer installs the Editor; the official CLI registers it), absorbing the 3.4.1
   wording hygiene; no acceptance change.
 - 3.5.0 (2026-09-30): make the official standalone CLI the first N1 Editor route, preserving license and real-project acceptance.
-- 3.4.1 (2026-10-01): rename the sequence table's status column, date the current-workstation
-  inventory claim and note its mutation by deployment work, replace the N5 audit "where possible"
-  hedge with blocked-with-reason recording, expand first-use jargon (MA/OSC/VPM/BDL), and fix the
-  circular Integration role wording; no acceptance change.
-Earlier entries remain in Git history.

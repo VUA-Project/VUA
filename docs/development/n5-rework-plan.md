@@ -1,10 +1,10 @@
 # N5 rework plan — unified library and acquisition producers
 
-> Document version: 1.7.0
+> Document version: 1.8.0
 > Status: Accepted
 > Scope: Implementation direction for the N5 material-management rework, within the accepted N5 scope
-> Updated: 2026-10-08
-> Authority: User direction of 2026-10-02 approving this plan's approach after the capability audit, with migration reconciliation and N5 scope refinements of 2026-10-08;
+> Updated: 2026-10-09
+> Authority: User direction of 2026-10-02 approving this plan's approach after the capability audit, with migration reconciliation and N5 closure refinements of 2026-10-08 through 2026-10-09;
 > acceptance remains owned by the [N sequence](../development-outline.md), scope by the
 > [product boundary](../product-boundary.md). Input evidence: [capability audit](n5-capability-audit.md).
 
@@ -231,6 +231,25 @@ Human UI and real-material acceptance remain open under the N sequence.
 The migration, source and reduced N5 scope above are user rulings. The VPM discussion below is
 retained as a deferred proposal; it is not a N5 prerequisite or a frozen contract.
 
+### First closure refinement (2026-10-09)
+
+- Retain all ordinary local files in their relative layout. Keep ZIPs intact; automatic extraction
+  and purpose classification for PSD/FBX/images/instructions are not required. First production
+  intake accepts UnityPackage only. The current local folder importer still uses its older
+  UnityPackage/ZIP retention allowlist; this remains an implementation gap, not a completed change.
+- Reuse the existing official product-page reader for a supplied BOOTH ID/URL. Manual metadata is
+  limited to name and thumbnail. Third-party search is deferred, rather than an N5 prerequisite.
+- Keep local-import record removal distinct from file deletion, and complete explicit inspection
+  resolution for interrupted file removal. These remain required usable maintenance paths.
+- Add optional dependency display/reverse lookup settings with an accuracy explanation when enabled.
+  The existing observation dialog and query ports are retained. Correct misleading compatibility
+  labels and empty-evidence wording; no universal inference, image classifier or new metadata
+  aggregation system is needed for this closure.
+
+These rulings reduce implementation scope, not the real-account/material and human-UI evidence
+required by the N sequence. Source/record maintenance and the new settings still need implementation;
+neither the existing lookup port nor this plan establishes a finished reverse-lookup interaction.
+
 ### Content revisions and VPM regeneration proposal — deferred after N5
 
 Keep three identities separate: an author's optional version label, the inspected local source
@@ -357,6 +376,7 @@ D6 parser relocation remains later cleanup, not a prerequisite for usable mainte
 
 ## Document changelog
 
+- 1.8.0 (2026-10-09): record the reduced first-closure intake/provenance/dependency scope and third-party-search deferral, with implementation gaps kept explicit.
 - 1.7.0 (2026-10-08): apply the reduced N5 scope, persist bounded dependency clues and add verified migration reconciliation with independent cards and background checks.
 - 1.6.0 (2026-10-08): apply missing-file/source user refinements and record concrete VPM regeneration, dependency evidence, record-removal and production-integration discussion proposals.
 - 1.5.0 (2026-10-08): implement selected-file removal and retained generated-version facts, record remaining regeneration/Recipe choices and reconcile PR #61.
