@@ -256,6 +256,7 @@ pub(crate) fn group(
     for copy in copies {
         let managed_product = copy
             .downloadable_id
+            .or(copy.archive_downloadable_id)
             .and_then(|id| managed_products.get(&id))
             .filter(|id| product_ids.contains(id.as_str()));
         let ids: HashSet<_> = if let Some(id) = managed_product {
@@ -274,7 +275,7 @@ pub(crate) fn group(
         }
         assignments.insert(copy.copy.copy_id.clone(), ids.clone());
         if copy.copy.role == CopyRole::Original {
-            if let Some(id) = managed_product {
+            if let Some(id) = managed_product.filter(|_| copy.downloadable_id.is_some() || copy.archive_current) {
                 let id = id.clone();
                 reference_hashes
                     .entry(id.clone())

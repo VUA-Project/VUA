@@ -12,6 +12,67 @@ use vua_bdl_store::{
 use vua_orchestrator::SqliteTaskStore;
 use vua_provider_host::{run_provider_host_with_services, DownloadConfig, WarehouseConfig};
 
+fn zip_bytes(files: &[(&str, &[u8])]) -> Vec<u8> {
+    let mut archive = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    for (name, bytes) in files {
+        archive.start_file(*name, zip::write::SimpleFileOptions::default()).unwrap();
+        archive.write_all(bytes).unwrap();
+    }
+    archive.finish().unwrap().into_inner()
+}
+
+#[test]
+fn library_intake_wire_keeps_files_expands_zip_and_replays_without_duplicate_entries() {
+    let world = World::new();
+    let source = world.base.join("migrated-source");
+    std::fs::create_dir(&source).unwrap();
+    std::fs::write(source.join("texture.psd"), b"synthetic psd").unwrap();
+    std::fs::write(source.join("README"), b"synthetic instructions").unwrap();
+    let archive = zip_bytes(&[("sub/Avatar.unitypackage", b"synthetic UnityPackage"), ("sub/preview.jpg", b"synthetic image")]);
+    std::fs::write(source.join("package.zip"), &archive).unwrap();
+    let params = json!({"schemaVersion":"0.1","sourceFolders":[source]});
+    let mut host = Host::new(&world.base, world.bdl.clone());
+    let accepted = host.call_command("library.importFolders", params.clone(), Some("import-replay"));
+    assert_eq!(accepted["ok"], true, "{accepted}");
+    let response_schema: Value = serde_json::from_slice(&std::fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/library-intake/v0.1/response.schema.json")).unwrap()).unwrap();
+    assert!(jsonschema::validator_for(&response_schema).unwrap().is_valid(&accepted["value"]));
+    let again = host.call_command("library.importFolders", params, Some("import-replay"));
+    assert_eq!(again["value"]["taskId"], accepted["value"]["taskId"]);
+    let task_id = accepted["value"]["taskId"].as_str().unwrap();
+    let start = Instant::now();
+    loop {
+        let task = world.tasks.task(task_id).unwrap().unwrap();
+        if task.state.is_terminal() { assert_eq!(task.state, vua_orchestrator::TaskState::Succeeded); break; }
+        assert!(start.elapsed() < Duration::from_secs(10));
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    assert_eq!(world.bdl.warehouse_entry_cards(ArtifactMode::UseOriginalUnitypackage).unwrap().len(), 1);
+    assert_eq!(world.bdl.library_copy_evidence().unwrap().len(), 5);
+    assert_eq!(std::fs::read(source.join("package.zip")).unwrap(), archive);
+    let view = host.call("library.list", json!({"schemaVersion":"0.1","source":"local"}));
+    assert_eq!(view["value"]["items"][0]["storage"]["presentCopies"], 5);
+    for invalid in [json!({"schemaVersion":"0.1","sourceFolders":[]}), json!({"schemaVersion":"0.1","sourceFolders":["relative"]}), json!({"schemaVersion":"0.1","sourceFolders":[source],"unknown":true})] {
+        assert_eq!(host.call("library.importFolders", invalid)["ok"], false);
+    }
+}
+
+#[test]
+fn managed_zip_download_wire_exposes_members_and_original_separately() {
+    let world = World::new();
+    let mut host = Host::new(&world.base, world.bdl.clone());
+    let archive = zip_bytes(&[("Avatar.unitypackage", b"synthetic UnityPackage"), ("PSD/texture.psd", b"synthetic psd")]);
+    assert_eq!(host.batch("zip", &[902])["ok"], true);
+    world.delivery_named(902, "dl-zip", &archive, "bundle.zip");
+    assert_eq!(host.observe("zip", 902, "dl-zip")["ok"], true);
+    assert_eq!(host.wait("zip", &world.tasks)["state"], "succeeded");
+    let parent = world.bdl.managed_library_file(902).unwrap().unwrap();
+    assert_eq!(std::fs::read(parent.stored_path).unwrap(), archive);
+    assert_eq!(world.bdl.archive_members(&parent.copy_id).unwrap().len(), 2);
+    let view = host.call("library.list", json!({"schemaVersion":"0.1"}));
+    assert_eq!(view["value"]["items"][0]["storage"]["presentCopies"], 3);
+    assert_eq!(view["value"]["items"][0]["storage"]["productionQualification"], "not_evaluated");
+}
+
 fn vector(name: &str) -> Value {
     serde_json::from_slice(
         &std::fs::read(
@@ -101,6 +162,9 @@ impl Host {
             .collect()
     }
     fn call(&mut self, method: &str, params: Value) -> Value {
+        self.call_command(method, params, None)
+    }
+    fn call_command(&mut self, method: &str, params: Value, command_id: Option<&str>) -> Value {
         self.sequence += 1;
         let id = format!("request-{}", self.sequence);
         let query = matches!(
@@ -117,7 +181,7 @@ impl Host {
         );
         let mut request = json!({"contractVersion":"0.1","requestId":id,"correlationId":id,"kind":if query {"query"} else {"command"},"method":method,"params":params});
         if !query {
-            request["commandId"] = json!(id);
+            request["commandId"] = json!(command_id.unwrap_or(&id));
         }
         let frame = json!({"frameVersion":"0.1","frameId":id,"kind":"request","payload":request});
         self.sender
@@ -243,6 +307,9 @@ impl World {
         }
     }
     fn delivery(&self, id: i64, delivery: &str, content: &[u8]) {
+        self.delivery_named(id, delivery, content, "synthetic.pdf");
+    }
+    fn delivery_named(&self, id: i64, delivery: &str, content: &[u8], name: &str) {
         let root = self.base.join("downloads-staging");
         std::fs::create_dir_all(&root).unwrap();
         let file = root.join(delivery);
@@ -257,7 +324,7 @@ impl World {
                     source_url: format!("https://booth.pm/downloadables/{id}"),
                     initiated_from_page_url: None,
                     url_chain: None,
-                    suggested_file_name: Some("synthetic.pdf".into()),
+                    suggested_file_name: Some(name.into()),
                     stored_path: if kind == DownloadEventKind::Completed {
                         Some(file.to_string_lossy().into())
                     } else {

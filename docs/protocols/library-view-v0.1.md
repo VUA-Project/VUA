@@ -1,8 +1,8 @@
 # Unified library view v0.1
 
-> Document version: 0.2
+> Document version: 0.3
 > Status: Implementation baseline
-> Updated: 2026-10-08
+> Updated: 2026-10-09
 > Maintainer: AMF
 
 This acquisition read face joins account products, source memberships, current physical copies
@@ -63,6 +63,13 @@ These optional fields extend this unfrozen baseline; frozen catalog/warehouse be
 
 ## Independent facts
 
+Optional `storage.unexpandedArchives` counts registered ZIP copies without a confirmed current
+expansion. It is independent of physical presence and is included in the attention filter. Local
+intake and BOOTH downloads persist expansion results through [library intake v0.1](library-intake-v0.1.md).
+Current account archive/member lineage establishes member reference fingerprints for migration
+reconciliation; stale parent content cannot supply current references. ZIP expansion grants no
+production qualification.
+
 `storage` carries `storedCopies`, `presentCopies`, `missingCopies`, `changedCopies` and
 `unreadableCopies`; the four presence counts sum to the registered count. Its state is derived
 in this order: zero registered → `cloud_only`; any unreadable → `unreadable`; any changed →
@@ -113,6 +120,8 @@ idempotency and restart proof reuse. Real-account, real-material and human UI ac
 remain `not_run` for this takeover baseline and are owned by N5.
 
 ## Document changelog
+
+- 0.3 (2026-10-09): include managed ZIP member references and optional unresolved-expansion counts, independently of file presence and production qualification.
 
 - 0.2 (2026-10-08): extend the unfrozen baseline with independent source/content cards, per-card file scopes and background content-verification proofs.
 - 0.1 (2026-10-08): define the joined library read face with independent storage, operation and production-qualification facts.

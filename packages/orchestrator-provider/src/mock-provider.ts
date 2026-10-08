@@ -432,6 +432,7 @@ export class MockOrchestratorProviderV01 implements OrchestratorProviderV01 {
       case "library.observeDownload":
       case "library.downloadStatus":
       case "library.list":
+      case "library.importFolders":
       case "library.productFiles":
       case "library.removalPreview": case "library.removeFiles": case "library.removalStatus":
       case "recipeDraft.selectionStatus":

@@ -11,6 +11,7 @@ export interface LibraryStorageFacts {
   readonly changedCopies: number; readonly unreadableCopies: number;
   readonly supersededGeneratedCopies: number; readonly currentGeneratedCopies: number;
   readonly productionQualification: "not_evaluated";
+  readonly unexpandedArchives?: number;
 }
 export interface LibraryCardFacts {
   readonly storage: LibraryStorageFacts;

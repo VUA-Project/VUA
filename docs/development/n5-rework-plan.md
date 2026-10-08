@@ -1,6 +1,6 @@
 # N5 rework plan — unified library and acquisition producers
 
-> Document version: 1.8.0
+> Document version: 1.9.0
 > Status: Accepted
 > Scope: Implementation direction for the N5 material-management rework, within the accepted N5 scope
 > Updated: 2026-10-09
@@ -233,10 +233,18 @@ retained as a deferred proposal; it is not a N5 prerequisite or a frozen contrac
 
 ### First closure refinement (2026-10-09)
 
-- Retain all ordinary local files in their relative layout. Keep ZIPs intact; automatic extraction
-  and purpose classification for PSD/FBX/images/instructions are not required. First production
-  intake accepts UnityPackage only. The current local folder importer still uses its older
-  UnityPackage/ZIP retention allowlist; this remains an implementation gap, not a completed change.
+The ordinary-file/ZIP intake slice passed synthetic acquisition tests (90), BDL unit tests (32),
+library wire tests (10), frozen warehouse command regressions (31), workspace `pnpm check`
+(199 contract, 48 provider and 1105 desktop tests, type/build/boundary/i18n/contrast/leak checks),
+and Clippy for acquisition/BDL/provider-host with warnings denied. These checks use generated
+ZIPs and synthetic files. Real BOOTH archives, large migration sets and human UI acceptance
+remain pending; this is implementation evidence, not N5 closure.
+
+- Retain all ordinary local files in their relative layout. Following the clarified ZIP ruling,
+  keep original archives and automatically extract local/downloaded ZIPs with member directories
+  preserved. Do not classify PSD/FBX/images/instructions by purpose. First production intake accepts
+  UnityPackage only. [Library intake v0.1](../protocols/library-intake-v0.1.md) defines the successor
+  command and bounded expansion; the frozen warehouse import keeps its previous policy.
 - Reuse the existing official product-page reader for a supplied BOOTH ID/URL. Manual metadata is
   limited to name and thumbnail. Third-party search is deferred, rather than an N5 prerequisite.
 - Keep local-import record removal distinct from file deletion, and complete explicit inspection
@@ -375,6 +383,8 @@ real BOOTH/Unity runs and human UI acceptance remain unrun for this takeover imp
 D6 parser relocation remains later cleanup, not a prerequisite for usable maintenance.
 
 ## Document changelog
+
+- 1.9.0 (2026-10-09): implement ordinary-file intake and ZIP expansion, retain archive/member lineage and extraction issues, and use current official member fingerprints in migration reconciliation. Synthetic verification is separate from real-material/human acceptance.
 
 - 1.8.0 (2026-10-09): record the reduced first-closure intake/provenance/dependency scope and third-party-search deferral, with implementation gaps kept explicit.
 - 1.7.0 (2026-10-08): apply the reduced N5 scope, persist bounded dependency clues and add verified migration reconciliation with independent cards and background checks.

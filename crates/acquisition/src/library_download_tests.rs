@@ -31,6 +31,72 @@ fn library_view(w: &World, query: Value) -> Value {
     .unwrap()
 }
 
+fn zip_bytes(files: &[(&str, &[u8])]) -> Vec<u8> {
+    use std::io::Write;
+    let mut archive = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+    for (name, bytes) in files {
+        archive.start_file(*name, zip::write::SimpleFileOptions::default()).unwrap();
+        archive.write_all(bytes).unwrap();
+    }
+    archive.finish().unwrap().into_inner()
+}
+
+#[test]
+fn downloaded_zip_members_reconcile_with_migrated_files_and_refresh_on_redownload() {
+    let w = World::new();
+    let imported = w.import_local("Migrated folder", &[("Avatar.unitypackage", b"old avatar")]);
+    let old_zip = zip_bytes(&[("Avatar.unitypackage", b"old avatar"), ("texture.psd", b"psd"), ("old-guide.txt", b"guide")]);
+    w.begin("zip-first", &[902]);
+    w.delivery(902, "dl-zip-first", &old_zip, "bundle.ZIP");
+    w.observe("zip-first", 902, "settled", Some("dl-zip-first")).unwrap();
+    assert_eq!(w.wait("zip-first")["state"], "succeeded");
+    let parent = w.bdl.managed_library_file(902).unwrap().unwrap();
+    let prior = w.bdl.archive_members(&parent.copy_id).unwrap();
+    assert_eq!(prior.len(), 3);
+    assert!(w.bdl.library_copy_evidence().unwrap().iter().filter(|c| c.archive_downloadable_id == Some(902)).all(|c| c.archive_current));
+    w.verify_sources("zip-members");
+    let merged = library_view(&w, json!({"schemaVersion":"0.1"}));
+    assert_eq!(merged["total"], 1, "{merged}");
+    assert_eq!(merged["items"][0]["storage"]["presentCopies"], 5);
+    let new_zip = zip_bytes(&[("Avatar.unitypackage", b"new avatar"), ("texture.psd", b"psd"), ("new-guide.txt", b"new guide")]);
+    w.begin("zip-refresh", &[902]);
+    w.delivery(902, "dl-zip-refresh", &new_zip, "bundle.ZIP");
+    w.observe("zip-refresh", 902, "settled", Some("dl-zip-refresh")).unwrap();
+    assert_eq!(w.wait("zip-refresh")["state"], "succeeded");
+    assert_eq!(w.bdl.managed_library_file(902).unwrap().unwrap().copy_id, parent.copy_id);
+    assert_eq!(std::fs::read(&parent.stored_path).unwrap(), new_zip);
+    let current = w.bdl.archive_members(&parent.copy_id).unwrap();
+    let old_avatar = prior.iter().find(|m| m.member_path == "Avatar.unitypackage").unwrap();
+    let avatar = current.iter().find(|m| m.member_path == "Avatar.unitypackage").unwrap();
+    assert_eq!(avatar.copy_id, old_avatar.copy_id);
+    assert_eq!(std::fs::read(&avatar.stored_path).unwrap(), b"new avatar");
+    let old_guide = current.iter().find(|m| m.member_path == "old-guide.txt").unwrap();
+    assert!(!PathBuf::from(&old_guide.stored_path).exists());
+    let evidence = w.bdl.library_copy_evidence().unwrap();
+    assert!(!evidence.iter().find(|c| c.copy.copy_id == old_guide.copy_id).unwrap().archive_current);
+    if let Some(task) = w.service.reconcile_library_sources("zip-updated-members").unwrap() { w.wait_task(&task); }
+    let separate = library_view(&w, json!({"schemaVersion":"0.1"}));
+    assert_eq!(separate["total"], 2, "old local bytes must remain independent: {separate}");
+    assert!(separate["items"].as_array().unwrap().iter().any(|r| r["entry"]["warehouseItemId"] == imported.warehouse_item_id));
+}
+
+#[test]
+fn invalid_downloaded_zip_retains_original_and_exposes_expansion_issue_after_restart() {
+    let w = World::new();
+    w.begin("zip-invalid", &[902]);
+    w.delivery(902, "dl-invalid-zip", b"not a zip", "bundle.zip");
+    w.observe("zip-invalid", 902, "settled", Some("dl-invalid-zip")).unwrap();
+    let result = w.wait("zip-invalid");
+    assert_eq!(result["state"], "succeeded_with_warnings");
+    assert_eq!(result["files"][0]["phase"], "stored");
+    assert_eq!(result["files"][0]["errorCode"], "vua.library.zip_invalid");
+    let parent = w.bdl.managed_library_file(902).unwrap().unwrap();
+    assert_eq!(std::fs::read(parent.stored_path).unwrap(), b"not a zip");
+    assert_eq!(library_view(&w, json!({"schemaVersion":"0.1","state":"attention"}))["items"][0]["storage"]["unexpandedArchives"], 1);
+    let reopened = BdlStore::open(w.base.join("bdl.db")).unwrap();
+    assert_eq!(reopened.library_copy_evidence().unwrap()[0].archive_expansion_state.as_deref(), Some("failed"));
+}
+
 #[test]
 fn library_presence_counts_current_copies_and_keeps_failed_redownload_separate() {
     let w = World::new();
@@ -759,13 +825,13 @@ fn external_change_refuses_replacement() {
 fn missing_bound_file_is_restored_without_adding_a_copy() {
     let w = World::new();
     w.begin("first", &[901]);
-    w.delivery(901, "dl-old", b"old", "file.zip");
+    w.delivery(901, "dl-old", b"old", "file.psd");
     w.observe("first", 901, "settled", Some("dl-old")).unwrap();
     w.wait("first");
     let old = w.bdl.managed_library_file(901).unwrap().unwrap();
     std::fs::remove_file(&old.stored_path).unwrap();
     w.begin("missing", &[901]);
-    w.delivery(901, "dl-new", b"replacement", "file.zip");
+    w.delivery(901, "dl-new", b"replacement", "file.psd");
     w.observe("missing", 901, "settled", Some("dl-new"))
         .unwrap();
     assert_eq!(w.wait("missing")["state"], "succeeded");

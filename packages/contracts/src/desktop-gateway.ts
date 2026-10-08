@@ -15,6 +15,7 @@ import type {
 
 import { isCatalogSyncParamsV03, type CatalogSyncStatusV03 } from "./catalog-sync-v03.js";
 import { isLibraryDownloadParamsV01, type LibraryDownloadStatusV01 } from "./library-download-v01.js";
+import { isLibraryImportParamsV01, type LibraryImportParamsV01 } from "./library-intake-v01.js";
 import { isLibraryViewParamsV01, type LibraryListParamsV01, type LibraryProductFilesParamsV01 } from "./library-view-v01.js";
 import { isRecipeDraftParamsV01, type RecipeDraftListParamsV01, type RecipeDraftGetParamsV01, type RecipeDraftSaveParamsV01, type RecipeDraftAddParamsV01 } from "./recipe-selection-draft-v01.js";
 import { isLibraryMaintenanceParamsV01, type LibraryRemovalPreviewParamsV01, type LibraryRemoveFilesParamsV01, type LibraryRemovalStatusParamsV01 } from "./library-maintenance-v01.js";
@@ -245,6 +246,10 @@ export type LibraryMaintenanceQueryRequestV1 = {
 );
 export interface LibraryMaintenanceCommandRequestV1 {
   readonly schemaVersion: 1; readonly requestId: string; readonly method: "library.removeFiles"; readonly params: LibraryRemoveFilesParamsV01;
+}
+export interface LibraryImportRequestV1 {
+  readonly schemaVersion: 1; readonly requestId: string; readonly method: "library.importFolders";
+  readonly params: LibraryImportParamsV01 & { readonly commandId: string };
 }
 export type RecipeDraftCommandRequestV1 = { readonly schemaVersion: 1; readonly requestId: string } & (
   | { readonly method: "recipeDraft.save"; readonly params: RecipeDraftSaveParamsV01 }
@@ -989,6 +994,7 @@ export type DesktopGatewayRequestV1 =
   | LibraryDownloadStatusRequestV1
   | LibraryViewRequestV1
   | LibraryMaintenanceQueryRequestV1 | LibraryMaintenanceCommandRequestV1
+  | LibraryImportRequestV1
   | RecipeDraftQueryRequestV1 | RecipeDraftCommandRequestV1
   | CatalogDetailRequestV1
   | CatalogStatusRequestV1
@@ -1073,6 +1079,7 @@ export const DESKTOP_GATEWAY_METHOD_KINDS = {
   "library.productFiles": "query",
   "library.removalPreview": "query",
   "library.removeFiles": "command",
+  "library.importFolders": "command",
   "library.removalStatus": "query",
   "recipeDraft.list": "query",
   "recipeDraft.get": "query",
@@ -1855,6 +1862,11 @@ export function isDesktopGatewayRequestV1(value: unknown): value is DesktopGatew
       return hasExactKeys(value, REQUEST_KEYS) && isCatalogSyncParamsV03(value.method, value.params);
     case "library.downloadStatus":
       return hasExactKeys(value, REQUEST_KEYS) && isLibraryDownloadParamsV01(value.method, value.params);
+    case "library.importFolders": {
+      if (!hasExactKeys(value, REQUEST_KEYS)) return false;
+      const { commandId, ...params } = value.params as Record<string, unknown>;
+      return isIdentifier(commandId) && isLibraryImportParamsV01(params);
+    }
     case "library.list":
     case "library.productFiles":
       return hasExactKeys(value, REQUEST_KEYS) && isLibraryViewParamsV01(value.method, value.params);

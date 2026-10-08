@@ -6,6 +6,9 @@ pub struct LibraryCopyEvidence {
     pub size_bytes: u64,
     pub product_ids: Vec<String>,
     pub downloadable_id: Option<i64>,
+    pub archive_downloadable_id: Option<i64>,
+    pub archive_current: bool,
+    pub archive_expansion_state: Option<String>,
     pub superseded: bool,
 }
 
@@ -41,7 +44,10 @@ impl BdlStore {
             "SELECT c.copy_id,c.warehouse_item_id,c.artifact_sha256,c.relative_path,c.stored_path,c.role,c.created_at,a.size_bytes,
                     (SELECT json_group_array(m.product_id) FROM artifact_mappings m WHERE m.artifact_sha256=c.artifact_sha256),
                     (SELECT downloadable_id FROM managed_library_files f WHERE f.copy_id=c.copy_id),
-                    EXISTS(SELECT 1 FROM superseded_generated_copies s WHERE s.copy_id=c.copy_id)
+                    EXISTS(SELECT 1 FROM superseded_generated_copies s WHERE s.copy_id=c.copy_id),
+                    (SELECT f.downloadable_id FROM archive_members m JOIN managed_library_files f ON f.copy_id=m.parent_copy_id WHERE m.copy_id=c.copy_id),
+                    EXISTS(SELECT 1 FROM archive_members m JOIN artifact_copies p ON p.copy_id=m.parent_copy_id WHERE m.copy_id=c.copy_id AND m.parent_sha256=p.artifact_sha256),
+                    (SELECT state FROM archive_expansions e WHERE e.parent_copy_id=c.copy_id AND e.parent_sha256=c.artifact_sha256)
              FROM artifact_copies c JOIN local_artifacts a ON a.artifact_sha256=c.artifact_sha256 ORDER BY c.created_at,c.copy_id")?;
         let mut copies = Vec::new();
         let mut rows = statement.query([])?;
@@ -75,6 +81,9 @@ impl BdlStore {
                 product_ids: serde_json::from_str(&product_ids)?,
                 downloadable_id: row.get(9)?,
                 superseded: row.get(10)?,
+                archive_downloadable_id: row.get(11)?,
+                archive_current: row.get(12)?,
+                archive_expansion_state: row.get(13)?,
             });
         }
         // Generated packages belong to the same managed entry as its originals.

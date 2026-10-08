@@ -86,9 +86,13 @@ fn storage(copies: &[&LibraryCopyEvidence], presences: &HashMap<String, &'static
                 && presences[&copy.copy.copy_id] == "present"
         })
         .count();
-    json!({"state":state,"storedCopies":copies.len(),"presentCopies":present,"missingCopies":missing,
+    let mut facts = json!({"state":state,"storedCopies":copies.len(),"presentCopies":present,"missingCopies":missing,
         "changedCopies":changed,"unreadableCopies":unreadable,"supersededGeneratedCopies":superseded,
-        "currentGeneratedCopies":current_generated,"productionQualification":"not_evaluated"})
+        "currentGeneratedCopies":current_generated,"productionQualification":"not_evaluated"});
+    let unexpanded = copies.iter().filter(|copy| crate::zip_intake::is_zip(&copy.copy.relative_path)
+        && copy.archive_expansion_state.as_deref() != Some("expanded")).count();
+    if unexpanded > 0 { facts["unexpandedArchives"] = json!(unexpanded); }
+    facts
 }
 
 pub fn list(
@@ -248,6 +252,7 @@ pub fn list(
                         && ["failed", "succeeded_with_warnings"]
                             .contains(&row["operation"]["state"].as_str().unwrap_or(""))
                     || row["operation"]["recoveryDisposition"] == "inspect_required"
+                    || row["storage"]["unexpandedArchives"].as_u64().unwrap_or(0) > 0
             }
         };
         let id = if product {

@@ -213,6 +213,10 @@ function toApplicationRequest(
       return { ...base, kind: "query", method: request.method, params: request.params };
     case "library.removeFiles":
       return { ...base, kind: "command", commandId: request.params.removalId, method: request.method, params: request.params };
+    case "library.importFolders": {
+      const { commandId, ...params } = request.params;
+      return { ...base, kind: "command", commandId, method: request.method, params };
+    }
     case "recipeDraft.list":
       return { ...base, kind: "query", method: request.method, params: request.params };
     case "recipeDraft.get": case "recipeDraft.selectionStatus":

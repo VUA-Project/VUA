@@ -18,6 +18,7 @@ pub use bdl_store::{
     DependencyResolutionEvidence, EventAppendence, NewDependencyObservation,
     NewLocalArtifact, ManagedLibraryFile, ManagedLibraryDelivery, LibraryCopyEvidence, ProductObservation, ProductObservationStatus, StoredArtifact,
     StoredArtifactCopy, StoredDependencyObservation, StoredDownloadEvent,
+    ArchiveMember, StoredArchiveMember,
     StoredWarehouseItem, SubproductObservation, WarehouseArtifactFact,
     WarehouseArtifactRef, WarehouseEntryCard, WarehouseEntryDetail, WAREHOUSE_ITEM_KINDS,
     BDL_FORMAT_VERSION,

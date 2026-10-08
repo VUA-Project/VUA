@@ -15,6 +15,7 @@ export interface LibraryStorageV01 {
   readonly changedCopies: number; readonly unreadableCopies: number;
   readonly supersededGeneratedCopies: number; readonly currentGeneratedCopies: number;
   readonly productionQualification: "not_evaluated";
+  readonly unexpandedArchives?: number;
 }
 export interface LibraryProductV01 {
   readonly productId: string; readonly title: string | null; readonly libraryType: "bought" | "gifts" | "free_downloads" | null;
@@ -66,9 +67,10 @@ export function isLibraryViewParamsV01(method: string, v: unknown): boolean {
     && (v.offset === undefined || integer(v.offset));
 }
 export function isLibraryStorageV01(v: unknown): v is LibraryStorageV01 {
-  if (!record(v) || !exact(v, ["state", "storedCopies", "presentCopies", "missingCopies", "changedCopies", "unreadableCopies", "supersededGeneratedCopies", "currentGeneratedCopies", "productionQualification"])
+  if (!record(v) || !exact(v, ["state", "storedCopies", "presentCopies", "missingCopies", "changedCopies", "unreadableCopies", "supersededGeneratedCopies", "currentGeneratedCopies", "productionQualification"], ["unexpandedArchives"])
     || !words(v.state, ["cloud_only", "present", "partial", "missing", "changed", "unreadable"]) || v.productionQualification !== "not_evaluated"
     || ![v.storedCopies, v.presentCopies, v.missingCopies, v.changedCopies, v.unreadableCopies, v.supersededGeneratedCopies, v.currentGeneratedCopies].every(integer)
+    || ('unexpandedArchives' in v && (!integer(v.unexpandedArchives) || v.unexpandedArchives > Number(v.storedCopies)))
     || Number(v.supersededGeneratedCopies) + Number(v.currentGeneratedCopies) > Number(v.storedCopies) || Number(v.currentGeneratedCopies) > Number(v.presentCopies)) return false;
   const expected = v.storedCopies === 0 ? "cloud_only" : Number(v.unreadableCopies) > 0 ? "unreadable"
     : Number(v.changedCopies) > 0 ? "changed" : v.presentCopies === v.storedCopies ? "present" : v.presentCopies === 0 ? "missing" : "partial";

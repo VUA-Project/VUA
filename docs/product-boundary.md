@@ -1,7 +1,7 @@
 # VUA product boundary
 
 
-> Document version: 2.16.0
+> Document version: 2.17.0
 > Status: Accepted
 > Scope: Entire VUA product
 > Updated: 2026-10-09
@@ -178,8 +178,9 @@ subject to that design. Existing file-retention and reference-preservation rulin
 this deferral neither erases old generated output nor retargets existing references.
 
 **First N5 closure limits (user ruling, 2026-10-09).** Local batch intake retains all ordinary
-files in their relative layout without interpreting their purpose. ZIP archives remain intact;
-automatic ZIP extraction is not required. PSD, FBX, PNG, JPG, instructions and other companion
+files in their relative layout without interpreting their purpose. Keep original ZIP archives and
+automatically extract them into managed storage, preserving member directories and companion files.
+ZIP storage and extraction outcomes remain distinct. PSD, FBX, PNG, JPG, instructions and other companion
 files stay in the library. The first production intake accepts UnityPackage only; classification,
 image editing and direct FBX/PSD integration are outside this N5 pass. Retention does not establish
 production qualification, and existing format/content checks still apply at production intake.
@@ -554,6 +555,8 @@ plugin execution and a marketplace still require their separately accepted secur
 
 ## Document changelog
 
+- 2.17.0 (2026-10-09): require managed ZIP extraction for local imports and BOOTH downloads while preserving original archives and separate production qualification.
+
 - 2.16.0 (2026-10-09): bound N5 closure to intact local-file retention, UnityPackage production intake, official lookup/minimal manual metadata and optional dependency clues; defer third-party search.
 - 2.15.0 (2026-10-08): add content-based migration reconciliation and narrow N5 to local record removal and persisted link clues; defer final Recipe/VPM and production-loop work.
 - 2.14.0 (2026-10-08): replace the missing-file relink requirement with explicit BOOTH re-download and record official-ID, third-party and manual source-supplementation routes.
@@ -563,4 +566,3 @@ plugin execution and a marketplace still require their separately accepted secur
 - 2.10.0 (2026-10-05): separate app, preparation and game guidance in the first play scope and retain N5 as an independently reviewed co-release.
 - 2.9.0 (2026-10-03): add PICO eye tracking to the first play release and expand N2 to seven external tools with shared Steam inventory/install/launch acceptance.
 - 2.8.1 (2026-10-03): limit the initial accelerator recommendation to NetEase UU per the author's ruling.
-- 2.8.0 (2026-10-03): bound the first play release to desktop/PICO onboarding, a desktop guide overlay and ZIP distribution; retain wider N1 work for later deliveries.

@@ -21,9 +21,9 @@ beforeEach(() => {
 });
 
 describe("live warehouse command port task identity registration", () => {
-  it("registers the import identity when warehouse.import acceptance arrives", async () => {
+  it("registers the import identity when the library intake acceptance arrives", async () => {
     const port = createWarehouseCommands(
-      clientReplying({ taskId: "task-178984402495255500-0001", correlationId: "corr-task-1" }),
+      clientReplying({ schemaVersion: "0.1", operation: "library.importFolders", taskId: "task-178984402495255500-0001", correlationId: "corr-task-1" }),
     );
     const outcome = await port.importFolders(["C:/avatars/Meiyun"]);
     expect(outcome.ok).toBe(true);

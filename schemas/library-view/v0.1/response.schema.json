@@ -492,6 +492,11 @@
         "productionQualification": {
           "const": "not_evaluated"
         },
+        "unexpandedArchives": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
         "supersededGeneratedCopies": {
           "type": "integer",
           "minimum": 0,

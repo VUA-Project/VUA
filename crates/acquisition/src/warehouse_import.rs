@@ -22,6 +22,8 @@ use vua_bdl_store::bdl_store::{
 };
 use vua_orchestrator::Clock;
 use serde::Serialize;
+use sha2::{Digest, Sha256};
+use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use vua_unity_bridge::MaterialExecutor;
@@ -44,6 +46,7 @@ pub enum ImportError {
         expected: u64,
         actual: u64,
     },
+    Cancelled,
 }
 
 impl From<BdlStoreError> for ImportError {
@@ -62,6 +65,7 @@ impl std::fmt::Display for ImportError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Store(error) => write!(formatter, "{error}"),
+            Self::Cancelled => write!(formatter, "import cancelled"),
             Self::Io(error) => write!(formatter, "warehouse import failed: {error}"),
             Self::UnnamedSource(path) => {
                 write!(formatter, "source folder {} has no name for the entry", path.display())
@@ -106,6 +110,8 @@ pub struct WarehouseImportReport {
     pub entry: WarehouseEntryDetail,
     pub imported: Vec<ImportedArtifact>,
     pub skipped: Vec<SkippedSourceFile>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub expansions: Vec<crate::zip_intake::ExpansionReport>,
 }
 
 pub struct WarehouseImporter<'a> {
@@ -147,6 +153,14 @@ impl<'a> WarehouseImporter<'a> {
     /// acceptable file in at its relative path, inspect the copies, and
     /// record the physical copy rows. Originals stay untouched.
     pub fn import_folder(&self, source_folder: &Path) -> Result<WarehouseImportReport, ImportError> {
+        self.import_folder_inner(source_folder, false, &|| false, &|_, _| {})
+    }
+
+    pub fn import_folder_all(&self, source_folder: &Path, cancelled: &dyn Fn() -> bool, progress: &dyn Fn(usize, u64)) -> Result<WarehouseImportReport, ImportError> {
+        self.import_folder_inner(source_folder, true, cancelled, progress)
+    }
+
+    fn import_folder_inner(&self, source_folder: &Path, retain_all: bool, cancelled: &dyn Fn() -> bool, progress: &dyn Fn(usize, u64)) -> Result<WarehouseImportReport, ImportError> {
         let display_name = source_folder
             .file_name()
             .and_then(|name| name.to_str())
@@ -167,19 +181,24 @@ impl<'a> WarehouseImporter<'a> {
         std::fs::create_dir_all(&entry_folder)?;
 
         let mut sources = Vec::new();
-        collect_files(source_folder, source_folder, &mut sources)?;
+        let mut skipped = Vec::new();
+        collect_files(source_folder, source_folder, &mut sources, &mut skipped, cancelled)?;
         sources.sort_by(|a, b| a.0.cmp(&b.0));
 
         let mut imported = Vec::new();
-        let mut skipped = Vec::new();
+        let mut expansions = Vec::new();
         for (relative_path, source_path) in sources {
+            if cancelled() { return Err(ImportError::Cancelled); }
             let size_bytes = std::fs::metadata(&source_path)?.len();
             let suggested_file_name = source_path
                 .file_name()
                 .and_then(|name| name.to_str())
                 .map(str::to_string);
-            if let Some(reason) =
+            if let Some(reason) = if retain_all {
+                (size_bytes > self.policy.max_bytes).then(|| format!("size {size_bytes} exceeds the allowed maximum {}", self.policy.max_bytes))
+            } else {
                 mechanical_rejection(&self.policy, suggested_file_name.as_deref(), &source_path, size_bytes)
+            }
             {
                 skipped.push(SkippedSourceFile {
                     relative_path,
@@ -193,7 +212,37 @@ impl<'a> WarehouseImporter<'a> {
             if let Some(parent) = destination.parent() {
                 std::fs::create_dir_all(parent)?;
             }
-            std::fs::copy(&source_path, &destination)?;
+            let identity = if retain_all {
+                let mut input = std::fs::File::open(&source_path)?;
+                let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_nanos();
+                let prepared = destination.parent().expect("destination parent").join(format!(".vua-import-{stamp:x}"));
+                let result = (|| -> Result<String, ImportError> {
+                    let mut output = std::fs::OpenOptions::new().write(true).create_new(true).open(&prepared)?;
+                    let mut hash = Sha256::new();
+                    let mut buffer = vec![0; 1024 * 1024];
+                    let mut copied = 0u64;
+                    loop {
+                        if cancelled() { return Err(ImportError::Cancelled); }
+                        let count = input.read(&mut buffer)?;
+                        if count == 0 { break; }
+                        copied += count as u64;
+                        if copied > size_bytes { return Err(ImportError::CopySizeMismatch { relative_path: relative_path.clone(), expected: size_bytes, actual: copied }); }
+                        output.write_all(&buffer[..count])?;
+                        hash.update(&buffer[..count]);
+                        if copied / (16 * 1024 * 1024) != (copied - count as u64) / (16 * 1024 * 1024) { progress(imported.len(), copied); }
+                    }
+                    output.sync_all()?;
+                    drop(output);
+                    if copied != size_bytes { return Err(ImportError::CopySizeMismatch { relative_path: relative_path.clone(), expected: size_bytes, actual: copied }); }
+                    std::fs::rename(&prepared, &destination)?;
+                    Ok(format!("sha256:{}", hex_lower(&hash.finalize())))
+                })();
+                if result.is_err() { let _ = std::fs::remove_file(&prepared); }
+                result?
+            } else {
+                std::fs::copy(&source_path, &destination)?;
+                format!("sha256:{}", hex_lower(&sha256_file(&destination)?))
+            };
             let copied_size = std::fs::metadata(&destination)?.len();
             if copied_size != size_bytes {
                 return Err(ImportError::CopySizeMismatch {
@@ -203,7 +252,6 @@ impl<'a> WarehouseImporter<'a> {
                 });
             }
 
-            let identity = format!("sha256:{}", hex_lower(&sha256_file(&destination)?));
             let recording = self.store.record_untrusted_artifact(&NewLocalArtifact {
                 artifact_sha256: identity.clone(),
                 size_bytes,
@@ -219,7 +267,7 @@ impl<'a> WarehouseImporter<'a> {
                     None,
                 )?;
             }
-            self.store.record_artifact_copy(
+            let copy = self.store.record_artifact_copy(
                 &item.warehouse_item_id,
                 &identity,
                 &relative_path,
@@ -227,11 +275,15 @@ impl<'a> WarehouseImporter<'a> {
                 CopyRole::Original,
                 &now,
             )?;
+            if retain_all && crate::zip_intake::is_zip(&relative_path) {
+                expansions.push(crate::zip_intake::expand(self.store, &self.warehouse_root, &copy, &now, cancelled, progress));
+            }
             imported.push(ImportedArtifact {
                 relative_path,
                 artifact_sha256: identity,
                 size_bytes,
             });
+            progress(imported.len(), size_bytes);
         }
 
         let entry = self
@@ -242,6 +294,7 @@ impl<'a> WarehouseImporter<'a> {
             entry,
             imported,
             skipped,
+            expansions,
         })
     }
 }
@@ -251,13 +304,19 @@ fn collect_files(
     root: &Path,
     dir: &Path,
     out: &mut Vec<(String, PathBuf)>,
-) -> std::io::Result<()> {
+    skipped: &mut Vec<SkippedSourceFile>,
+    cancelled: &dyn Fn() -> bool,
+) -> Result<(), ImportError> {
     for entry in std::fs::read_dir(dir)? {
+        if cancelled() { return Err(ImportError::Cancelled); }
         let entry = entry?;
         let path = entry.path();
-        if path.is_dir() {
-            collect_files(root, &path, out)?;
-        } else if path.is_file() {
+        let meta = std::fs::symlink_metadata(&path)?;
+        if crate::zip_intake::is_reparse(&meta) {
+            skipped.push(SkippedSourceFile { relative_path: path.strip_prefix(root).unwrap_or(&path).to_string_lossy().into_owned(), size_bytes: None, reason: "links/reparse points are not copied".into() });
+        } else if meta.is_dir() {
+            collect_files(root, &path, out, skipped, cancelled)?;
+        } else if meta.is_file() {
             let relative = path
                 .strip_prefix(root)
                 .unwrap_or(&path)
@@ -343,6 +402,7 @@ fn import_error_to_app(
         ImportError::CopySizeMismatch { .. } => {
             ("vua.warehouse.copySizeMismatch", ErrorCategory::ExternalFailure)
         }
+        ImportError::Cancelled => ("vua.warehouse.importCancelled", ErrorCategory::ExternalFailure),
     };
     vua_orchestrator::AppErrorV1::new(code, category, "errors.warehouse.importFailed", correlation_id)
         .with_param(
@@ -364,6 +424,13 @@ pub fn warehouse_import_job(
     spec: WarehouseImportTaskSpec,
     auto_generate: Option<AutoGenerateSpec>,
 ) -> TaskJob {
+    import_job(runtime, store, clock, spec, auto_generate, false)
+}
+
+fn import_job(
+    runtime: TaskRuntime, store: Arc<BdlStore>, clock: Arc<dyn Clock>,
+    spec: WarehouseImportTaskSpec, auto_generate: Option<AutoGenerateSpec>, retain_all: bool,
+) -> TaskJob {
     Box::new(move |ctx| {
         let mut reports = Vec::new();
         for folder in &spec.source_folders {
@@ -376,8 +443,12 @@ pub fn warehouse_import_job(
                 return Ok(TaskExit::Cancelled);
             }
             let importer = WarehouseImporter::new(&store, &*clock, spec.warehouse_root.clone());
-            match importer.import_folder(folder) {
+            let result = if retain_all {
+                importer.import_folder_all(folder, &|| ctx.check_cancel(), &|files, bytes| ctx.emit_progress(serde_json::json!({"operation":"library.importFolders","files":files,"bytes":bytes})))
+            } else { importer.import_folder(folder) };
+            match result {
                 Ok(report) => {
+                    if !report.skipped.is_empty() || report.expansions.iter().any(|e| e.state != "expanded") { ctx.warn(); }
                     // The hook (proposal 010 path A): the entry has just
                     // landed — this is the landing instant. The composed
                     // global default is evaluated here, per landing.
@@ -446,6 +517,7 @@ pub fn warehouse_import_job(
                     reports.push(report);
                 }
                 Err(error) => {
+                    if matches!(error, ImportError::Cancelled) { return Ok(TaskExit::Cancelled); }
                     return Err(import_error_to_app(error, &spec.correlation_id, folder))
                 }
             }
@@ -462,8 +534,20 @@ pub fn warehouse_import_job(
         // silently null Done payload presented as success.
         let payload = serde_json::to_value(&result)
             .expect("task result serializes infallibly (plain data shapes only)");
-        Ok(TaskExit::Done(payload))
+        if ctx.check_cancel() { Ok(TaskExit::Cancelled) } else { Ok(TaskExit::Done(payload)) }
     })
+}
+
+/// Successor intake: all ordinary files plus ZIP expansion. The old frozen
+/// warehouse command keeps its format filter and submission behavior.
+pub fn submit_library_import(
+    runtime: TaskRuntime, store: Arc<BdlStore>, clock: Arc<dyn Clock>,
+    spec: WarehouseImportTaskSpec, auto_generate: Option<AutoGenerateSpec>, command_id: &str,
+) -> Result<vua_orchestrator::CommandAcceptedV1, vua_orchestrator::AppErrorV1> {
+    let fingerprint = serde_json::json!({"sourceFolders":spec.source_folders,"autoGenerate":auto_generate.is_some()}).to_string();
+    let correlation_id = spec.correlation_id.clone();
+    let job = import_job(runtime.clone(), store, clock, spec, auto_generate, true);
+    runtime.submit_idempotent(SubmitRequest { correlation_id: Some(correlation_id), timeout: None, job }, "library.importFolders", command_id, &fingerprint)
 }
 
 /// Convenience submission: the correlation id binds the whole batch.
@@ -505,6 +589,33 @@ mod tests {
     use crate::test_support::unique_dir;
     use vua_bdl_store::bdl_queries::ArtifactInspectionVerdict;
     use vua_orchestrator::FixedClock;
+
+    #[test]
+    fn library_intake_keeps_ordinary_files_and_expands_zip_without_changing_sources() {
+        let store = BdlStore::open_in_memory().unwrap();
+        let root = unique_dir("vua-import-all", "warehouse");
+        let source = unique_dir("vua-import-all", "source");
+        for name in ["texture.psd", "preview.png", "guide.jpg", "model.fbx", "README", "unknown.dat"] {
+            std::fs::write(source.join(name), name.as_bytes()).unwrap();
+        }
+        let archive_path = source.join("package.zip");
+        let mut archive = zip::ZipWriter::new(std::fs::File::create(&archive_path).unwrap());
+        archive.start_file("avatar/sub/Avatar.unitypackage", zip::write::SimpleFileOptions::default()).unwrap();
+        archive.write_all(b"synthetic package bytes").unwrap();
+        archive.start_file("avatar/notes.txt", zip::write::SimpleFileOptions::default()).unwrap();
+        archive.write_all(b"notes").unwrap();
+        archive.finish().unwrap();
+        let original = std::fs::read(&archive_path).unwrap();
+        let clock = FixedClock::new(&["2026-10-09T09:00:00.000Z"]);
+        let report = WarehouseImporter::new(&store, &clock, &root).import_folder_all(&source, &|| false, &|_, _| {}).unwrap();
+        assert_eq!(report.imported.len(), 7);
+        assert!(report.skipped.is_empty());
+        assert_eq!(report.expansions[0].state, "expanded");
+        assert_eq!(report.expansions[0].unitypackage_candidates, 1);
+        assert_eq!(store.library_copy_evidence().unwrap().len(), 9);
+        assert_eq!(std::fs::read(archive_path).unwrap(), original);
+        assert!(store.library_copy_evidence().unwrap().iter().any(|c| c.copy.relative_path.ends_with("avatar/sub/Avatar.unitypackage")));
+    }
 
     #[test]
     fn import_copies_a_folder_into_an_entry_without_touching_originals() {
