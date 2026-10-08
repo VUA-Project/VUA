@@ -1,3 +1,4 @@
+import { journeyCopy } from "./journey-copy.ts";
 import type { Strings } from "./strings.en.ts";
 
 /**
@@ -8,6 +9,7 @@ import type { Strings } from "./strings.en.ts";
  * - {placeholder} の名前はソース表と完全一致させること。
  */
 export const strings: Strings = {
+  journey: journeyCopy["ja"],
   websiteTests: {
     title: "ウェブサイトテスト", test: "テスト", testAll: "すべてテスト", testing: "テスト中…",
     add: "サイトを追加", edit: "サイトを編集", editSite: "{name} を編集", testSite: "{name} をテスト",

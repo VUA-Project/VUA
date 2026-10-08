@@ -1,3 +1,4 @@
+import { journeyCopy } from "./journey-copy.ts";
 import type { Strings } from "./strings.en.ts";
 
 /**
@@ -8,6 +9,7 @@ import type { Strings } from "./strings.en.ts";
  * - {placeholder} 이름은 소스 테이블과 정확히 일치해야 함.
  */
 export const strings: Strings = {
+  journey: journeyCopy["ko"],
   websiteTests: {
     title: "웹사이트 테스트", test: "테스트", testAll: "모두 테스트", testing: "테스트 중…",
     add: "사이트 추가", edit: "사이트 편집", editSite: "{name} 편집", testSite: "{name} 테스트",

@@ -1,11 +1,11 @@
-# VUA design standard v0.8.0
+# VUA design standard v0.9.0
 
 
-> Document version: 0.8.0
+> Document version: 0.9.0
 > Status: Accepted
 > Scope: Electron desktop, desktop overlay, and VR overlay presentation  
-> Updated: 2026-10-05
-> Last conformance review: 2026-10-05 (guidance design/source alignment; three-context implementation pending)
+> Updated: 2026-10-08
+> Last conformance review: 2026-10-08 (fixed Home, independent wizard and desktop/big-screen source alignment; author app/device review pending)
 > Normative effect: Governs interaction, visual, and accessibility implementation;
 > does not expand product scope or replace versioned application contracts
 
@@ -16,7 +16,7 @@ v0.6.1 (the historical merge version); the combined scope continues here.
 
 | Treatment | Content |
 | --- | --- |
-| Retain | goal before terminology, Recipe-first, explicit state, recovery first, honest progress, user-content priority, dark-first, VUA purple/AMF orange jurisdictions, 4 px grid, semantic tokens, workshop-track metaphor, the two-business-tab shell with right-pinned Settings and a topbar Guide entry (§3; user rulings 2026-09-25/2026-09-26), command-center composition (the Command Center page itself retired with the home page by the 2026-09-25 user ruling; see §3), slanted tab language, transparent overflow flyout, sidebar growth impression, three motion levels, WebGL scene direction (the nebula backdrop scene retired by the 2026-09-25 user ruling; see §7), Recipe graph/list/exploded views, Release coverflow and 3D pedestal, community-skin direction, WCAG 2.2 AA and APG gates |
+| Retain | goal before terminology, Recipe-first, explicit state, recovery first, honest progress, user-content priority, dark-first, VUA purple/AMF orange jurisdictions, 4 px grid, semantic tokens, workshop-track metaphor, the fixed Home and desktop/big-screen modes (§3; user ruling 2026-10-08), slanted control language, sidebar growth impression, three motion levels, WebGL scene direction (the nebula backdrop scene retired by the 2026-09-25 user ruling; see §7), Recipe graph/list/exploded views, Release coverflow and 3D pedestal, community-skin direction, WCAG 2.2 AA and APG gates |
 | Standardize | Windows and Fluent 2 desktop behavior; macOS native-tool texture as a visual reference; Carbon as information-structure reference only; global success/warning/error colors while reserving large traffic-light treatments for environment deployment; tokenized motion; transform-only sidebar growth; Electron mechanism + AMF use case for browsing/download; the five AMF stages kept as the full capability coverage (since 0.7.19 a wizard selects the path by goal/device/state — see Recipe-first) |
 | Replace | framework-private Tauri window/IPC semantics, BDB contracts, a separate Production stage, globally disabled context menus, font-size or padding reflow on hover (superseded for the sidebar shell only by the 2026-09-25 user ruling: the idle sidebar rests as small type and hover/focus-within activates it — see §3), deceptive progress floors, paid font or icon assumptions |
 | Schedule separately | Visual direction remains part of this standard (merged at v0.6.1). Delivery sequencing, performance gates, and fallback acceptance are reviewed independently from the design decision. |
@@ -77,22 +77,33 @@ are the content; chrome does not obscure them or recolor third-party brands as V
 | Composite keyboard behavior | WAI-ARIA APG |
 | Usability review | Nielsen's ten heuristics |
 
-The shell fixes two business tabs at the top — **Environment** and **Avatar creation** — with
-**Settings** pinned at the far right (a settings area, not a business goal) and **Guide** as a
-topbar entry with three clearly named destinations: the VUA app tour, preparation reader and
-VRChat game guide (user ruling, 2026-10-05). Contextual help opens the relevant destination and
-step directly; the ordinary reader remains available without a running game. These destinations
-do not add business tabs. The earlier home-page and Tool Collection changes remain in effect;
-Environment remains the default landing. The [guidance architecture](../architecture/guidance.md)
-owns window behavior, shared content and independent progress.
+The 2026-10-08 user ruling replaces the two business tabs with one fixed **Home**. The
+left VUA logo is the Home action; do not add a separate Home button. The logo uses environment
+purple in Environment, Avatar orange in Avatar work, and the three-color mark elsewhere, using
+theme tokens in light/dark mode. Home and the feature directory do not change with wizard
+choices. Main navigation tiles contain an icon and a title, without explanatory subtitles.
+Unavailable peers such as Quest and Unity 6 remain at the same level with a top-right
+**In development** badge; they are disabled and make no capability claim.
 
-Primary tabs retain the original slanted language: the visual shell uses `skewX(-12deg)` while the
-label is counter-skewed, and selected or pressed states read as physical engagement. The responsive
-ladder is two levels since the 2026-09-25 user ruling — full labels, then a transparent overflow
-flyout that carries the original tab controls rather than replacing them with an unrelated menu
-style (the former compact-label middle level retired together with the topbar brand subtitle). The
-flyout still follows APG keyboard behavior, exposes focus visibly, and becomes static when reduced
-motion is requested.
+**Desktop mode** keeps a persistent glass sidebar and a mouse-oriented directory of Environment,
+Avatar and global functions. **Big screen mode** uses larger grouped tiles, visible focus,
+directional movement, native Enter activation and Escape/Back. Back restores focus to its source;
+text fields and existing composite widgets retain their own keyboard behavior. Keyboard and
+headset desktop pointing share native controls; there is no separate touch mode. A physical VR
+controller binding is not claimed before its device test. Switching modes preserves page and tasks.
+
+The independent first-run wizard starts with friendly, single-choice result cards. Describe the
+next branch in each choice and advance on its click without an additional Continue. Later steps
+introduce device/platform/version only when relevant, then network, real software findings,
+confirmed preparation, connection guidance and the official play handoff. Save reading position
+separately from task facts; revisiting preparation requires reinspection. Account help opens
+Settings → Accounts and returns to the source step. Registration and linking have dedicated guides.
+
+Help exposes the first-run wizard, VUA app tour, preparation reader and game guide. Contextual help
+opens its destination directly. The [guidance architecture](../architecture/guidance.md) owns the
+window behavior and independent progress. Keep the matrix/grid background, sidebar and small-window
+frosted glass, resource-saving preference and its automatic SteamVR option. Resource saving and
+reduced motion must preserve all choices, facts, focus and navigation.
 
 A resource reading sits in the topbar left of Settings (the 2026-09-25 user ruling): it shows the
 higher of the RAM/VRAM usage percentages, and a click opens a small detail panel anchored top-right
@@ -100,11 +111,12 @@ with per-resource bars, byte figures, and the sample time. VRAM collection unava
 honestly as "unavailable" and the reading degrades to RAM-only — never a guessed value. When the
 host surface is absent the whole indicator is absent.
 
-The current area's index remains at the left; an available task center remains at the bottom; and
+The desktop feature directory remains at the left; an available task center remains at the bottom; and
 content scrolls in its own container. Sidebar items retain the original visual impression of growing
 and shifting toward the user, implemented with transform and a stable layout slot. Since the
-2026-09-25 user ruling the sidebar rests as gradient glass without a hard border with its items
-vertically centered; idle items render as small type, and pointer entry or keyboard focus-within
+2026-09-25 user ruling the sidebar rests as gradient glass without a hard border. The 2026-10-08
+ruling places grouped features at the top and global entries below. Idle items render as small type,
+and pointer entry or keyboard focus-within
 activates the sidebar (type grows and the glass layer animates wider). This activation reflow is
 scoped to the sidebar shell and supersedes the general fixed-type-during-hover rule for it.
 
@@ -112,7 +124,7 @@ Custom title bars retain Windows drag, maximize, system-menu, scaling, and contr
 Remote pages visibly identify origin and security boundary and never imitate a local form.
 
 **Guided pages** show goal/progress, one decision or conclusion, necessary explanation, then
-back/continue. **Workbenches** arrange goal/commands, object/filter area, central workspace, Inspector,
+back and any necessary explicit confirmation. Single-choice branch cards advance directly. **Workbenches** arrange goal/commands, object/filter area, central workspace, Inspector,
 and task/diagnostic surface. Dialogs are for immediate decisions or high-impact confirmation only.
 
 ## 4. Design tokens
@@ -250,7 +262,7 @@ glow, and glass blur, with `data-effects="off"` also stripping backdrop-filter g
 off/static/animated tiers, a CSS fallback, context-loss recovery, a measured performance budget, and
 offscreen/unfocused pause behavior. Light, forced-colors, resource-saving, and reduced-motion modes
 follow the same degradation chain. Pointer tilt and spotlight are animated-tier card enhancements;
-tokens bound their angle and opacity, while keyboard, touch, reduced-motion, and effects-off receive
+tokens bound their angle and opacity, while keyboard, headset desktop pointing, reduced-motion, and effects-off receive
 stable untilted cards.
 
 ## 8. Module visual language
@@ -652,10 +664,10 @@ A page is deliverable only when:
 7. high-impact work shows scope and recovery;
 8. fixtures do not enter production;
 9. 960×600, maximized, 125%/150% DPI, and long Chinese/Japanese/Korean/English strings retain key actions;
-10. the two business tabs (Environment, Avatar creation) with Settings pinned at the far right and
-    Guide as a topbar entry for three contexts (user ruling 2026-10-05), the two-level responsive
-    ladder (2026-09-25), slanted controls, and transparent
-    overflow flyout pass mouse, keyboard, scaling, and reduced-motion checks; sidebar growth moves no
+10. the fixed Home, logo Home action and feature directory are independent of wizard choices;
+    desktop mode retains mouse-oriented navigation and big-screen mode provides visible keyboard
+    focus, directional navigation and one-level return (user ruling 2026-10-08). Scaling and
+    reduced-motion checks pass; sidebar growth moves no
     neighbor (transform-only; the 2026-09-25 idle-small-type/activation ruling governs the sidebar's
     idle and hover/focus-within type sizes);
 11. each WebGL scene passes animated/static/off, CSS fallback, context-loss, focus pause, and measured
@@ -663,23 +675,27 @@ A page is deliverable only when:
 12. Recipe's three views and Release coverflow/pedestal retain complete degradation paths;
 13. each new visual element explains real use and can be removed without information loss.
 
-## 11. Accepted scope (merged at v0.6.1)
+## 11. Accepted scope
 
-The accepted scope covers the base character, two jurisdictions, tokens, component states, the
-two-business-tab shell (Environment and Avatar creation, with Settings pinned right and Guide as a
-topbar entry for three guidance contexts — user ruling 2026-10-05),
-slanted controls and overflow flyout, sidebar growth impression, task feedback, the five AMF stages as full
-capability coverage (presentation per the 0.7.19 user ruling: wizard-selected paths, inspection folded into
-production records), the WebGL scene direction (the nebula backdrop retired by the 2026-09-25 ruling), Recipe's three views, Release coverflow/pedestal, community-skin
+The accepted scope covers the base character, two jurisdictions, tokens, component states, fixed
+Home and logo navigation, desktop/big-screen hierarchy, independent branching wizard, Help entries
+for the guidance contexts (user ruling 2026-10-08), slanted controls, sidebar growth impression,
+task feedback, and the five AMF stages as full capability coverage. Wizard choices never hide these
+feature entries; inspection remains available from production records and the directory. The scope
+also includes the WebGL scene direction (the nebula backdrop retired by the 2026-09-25 ruling),
+Recipe's three views, Release coverflow/pedestal, community-skin
 direction, module metaphors, motion fallbacks, and accessibility gates. Real N-gate slices may refine page
 layout after validation.
 
-The final logo remains a separate commission. The visual direction retained here and its development
+The accepted VUA mark serves as the Home action, with jurisdiction and theme colors as defined in
+§3. The visual direction retained here and its development
 schedule are reviewed separately; a schedule change does not automatically delete an approved design
 direction.
 
 ## 12. Document changelog
 
+
+- **0.9.0 (2026-10-08)**: implement the accepted fixed Home/logo entry, independent branching wizard, concise navigation and desktop/big-screen hierarchy while retaining grid, glass and resource saving.
 - **0.8.0 (2026-10-05)**: define three guidance presentations and their topbar/contextual entries while retaining the two-business-tab shell.
 - **0.7.23 (2026-10-01)**: status-quo alignment and reference repair — §0/§3/§10/§11 the retired
   five-tab shell becomes the current two-business-tab shell (Environment, Avatar creation) with
@@ -770,21 +786,5 @@ direction.
   direct-chain initiation point leaves the workshop and lands in the warehouse
   page's action area (pending item 1's desktop form, ruled 2026-09-22,
   zero change to the v0.1 wire face). EN mirror of the authoritative ZH.
-
-- **0.7.15 (2026-09-22)**: §8.4 addendum for the recipe page as the production hub
-  (first desktop slice consuming the U16 user ruling of 2026-09-21; proposal 029 facets A4/A5) — the library
-  selection is the preview subject and the production-chain fact-source action
-  (chain identity keys come only from the recipe.get receipt document identity,
-  never list labels or local guesses; a changed document identity means a new
-  chain); the selected-state assemble initiation face = the production chain
-  section double-mounted in the recipe page and the composing-draft dialog,
-  consuming the same container-layer store and Gateway port; plan approval keeps
-  the production-use-case v0.2 plan.approve idempotent wording (single key
-  {planId}, no risk decision on this face); the stale-authorization gate
-  (stale-draft) holds only while a composing draft is present and deviates from
-  the saved revision; the U16 word discipline codified for the first time (the
-  user action is "assemble" (组装); wardrobe mounting and the AMF Assembly stage
-  keep "装配"). The workshop page is untouched (§8.5 addendum awaits slice 2,
-  0.7.16). EN mirror of the authoritative ZH.
 
 Earlier entries remain in Git history.

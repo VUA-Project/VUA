@@ -1,3 +1,4 @@
+import { journeyCopy } from "./journey-copy.ts";
 import type { Strings } from "./strings.en.ts";
 
 /**
@@ -12,6 +13,7 @@ import type { Strings } from "./strings.en.ts";
  *   仅 gateway fixture 可达,生产构建被 Tree-shaking 剔除)。
  */
 export const strings: Strings = {
+  journey: journeyCopy["zh-CN"],
   websiteTests: {
     title: "网站测试", test: "测试", testAll: "测试全部", testing: "测试中…",
     add: "添加网站", edit: "编辑网站", editSite: "编辑 {name}", testSite: "测试 {name}",

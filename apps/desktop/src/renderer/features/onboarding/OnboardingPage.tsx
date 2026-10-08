@@ -1,255 +1,98 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { DeploymentPurpose } from "@vua/contracts";
 import type { EnvGoalId, GoalId } from "../../app/onboarding-model.ts";
-import { Badge } from "../../components/primitives/Badge.tsx";
+import type { PageId } from "../../app/nav-model.ts";
+import { storageKeys } from "../../app/storage-keys.ts";
+import { useRouteFocus } from "../../app/use-route-focus.ts";
 import { Button } from "../../components/primitives/Button.tsx";
-import { Icon } from "@vua/design-system";
-import { format, strings, termLabel } from "../../i18n/index.ts";
+import { RouteTile } from "../../components/RouteTile.tsx";
+import { strings } from "../../i18n/index.ts";
+import { DeploymentPanel } from "../deployer/DeploymentPanel.tsx";
+import { NetworkPanel } from "../deployer/NetworkPanel.tsx";
+import { GuideEntryButton } from "../guide/GuideEntryButton.tsx";
+import { GUIDE_TARGETS } from "../guide/guide-target.ts";
+import { PlayLaunch } from "../home/RouteEnvironmentPage.tsx";
+import { initialJourney, journeyBack, parseJourney, type JourneyStep } from "./journey-model.ts";
 import "./onboarding.css";
-
-const copy = strings.onboarding;
-
-/** 目标展示顺序 = 顶部 Tab 从左到右顺序(v0.3.3 §2.1/§2.2) */
-const goalOrder: readonly GoalId[] = ["env", "production"];
-
-/** 新玩家推荐目标(§4.3:推荐项紫色描边 + 说明推荐原因) */
-const recommendedGoals: readonly GoalId[] = ["env"];
-
-const envOrder: readonly EnvGoalId[] = ["play", "create"];
-
+const copy = strings.journey;
 export interface OnboardingResult {
-  status: "completed" | "skipped";
-  goals: GoalId[];
-  environments: EnvGoalId[];
+  status: "completed" | "skipped"; goals: GoalId[]; environments: EnvGoalId[]; page?: PageId;
 }
-
-function goalTitle(goal: GoalId): string {
-  return copy.goals[goal].title;
-}
-
-function goalDescription(goal: GoalId): string {
-  // 术语不进入翻译流程:文案中的 {recipe} 由术语表展开(i18n 预备规则④)
-  return format(copy.goals[goal].description, { recipe: termLabel("recipe") });
-}
-
-/**
- * 首次目标引导(美术方案 v0.3.3 §2.2,三步):
- * ① 四类目标复选(可暂时跳过)→ ② 仅勾选环境部署时细化游玩/生产环境
- * → ③ 确认已选目标、将进行的检测与不会进行的操作。
- * 视觉:宽松低密度;推荐项紫色描边;底部固定"返回 / 继续"(§4.3)。
- * 本组件只做选择,不做检测;确认后由 App 壳持久化并进入第一个已选目标。
- */
-export function OnboardingPage({
-  onComplete,
-  initialGoals = [],
-  initialEnvs = [],
-}: {
-  onComplete: (result: OnboardingResult) => void;
-  /** 目标重选时带入当前选择(设置·目标重选:确认后才生效) */
-  initialGoals?: readonly GoalId[];
-  initialEnvs?: readonly EnvGoalId[];
+export function OnboardingPage({ onComplete, onAccounts }: {
+  onComplete: (result: OnboardingResult) => void; onAccounts: () => void;
 }) {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [goals, setGoals] = useState<readonly GoalId[]>(initialGoals);
-  const [envs, setEnvs] = useState<readonly EnvGoalId[]>(initialEnvs);
-
-  const envSelected = goals.includes("env");
-
-  function toggleGoal(goal: GoalId) {
-    const next = goals.includes(goal) ? goals.filter((g) => g !== goal) : [...goals, goal];
-    setGoals(next);
-    // 取消环境部署时同时清空环境子目标,旧选择不得继续生效
-    if (!next.includes("env")) setEnvs([]);
-  }
-
-  function toggleEnv(env: EnvGoalId) {
-    setEnvs(envs.includes(env) ? envs.filter((e) => e !== env) : [...envs, env]);
-  }
-
-  function goForward() {
-    if (step === 1) {
-      setStep(envSelected ? 2 : 3);
-      return;
-    }
-    if (step === 2) {
-      setStep(3);
-      return;
-    }
-    onComplete({ status: "completed", goals: [...goals], environments: [...envs] });
-  }
-
-  function goBack() {
-    if (step === 3) {
-      setStep(envSelected ? 2 : 1);
-      return;
-    }
-    if (step === 2) setStep(1);
-  }
-
-  const canContinue = step === 1 ? goals.length > 0 : step === 2 ? envs.length > 0 : true;
-  const blockerHint = step === 1 ? copy.goalRequired : step === 2 ? copy.envRequired : null;
-
-  /* 步骤指示(v0.3.3 §2.5):环境细化仅在勾选环境部署时出现(§2.2),
-   * 未勾选时序列收缩为两步,计数同步 */
-  type StepId = keyof typeof copy.steps & ("goals" | "environments" | "confirm");
-  const stepIds: readonly StepId[] = envSelected
-    ? ["goals", "environments", "confirm"]
-    : ["goals", "confirm"];
-  const currentStepId: StepId = step === 1 ? "goals" : step === 2 ? "environments" : "confirm";
-  const currentStepIndex = stepIds.indexOf(currentStepId);
-
-  return (
-    <div className="vua-onboarding">
-      <div className="vua-onboarding__panel">
-        <nav className="vua-onboarding__steps" aria-label={copy.steps.aria}>
-          <ol className="vua-onboarding__steps-list">
-            {stepIds.map((id, index) => {
-              const state =
-                index < currentStepIndex
-                  ? "done"
-                  : index === currentStepIndex
-                    ? "current"
-                    : "pending";
-              return (
-                <li
-                  key={id}
-                  className="vua-onboarding__step"
-                  data-state={state}
-                  aria-current={state === "current" ? "step" : undefined}
-                >
-                  <span className="vua-onboarding__step-marker" aria-hidden="true">
-                    {state === "done" ? <Icon name="check" size={16} /> : index + 1}
-                  </span>
-                  <span className="vua-onboarding__step-label">{copy.steps[id]}</span>
-                </li>
-              );
-            })}
-          </ol>
-          <span className="vua-caption vua-text-secondary">
-            {format(copy.steps.counter, {
-              current: currentStepIndex + 1,
-              total: stepIds.length,
-            })}
-          </span>
-        </nav>
-        <header className="vua-onboarding__header">
-          <h1 className="vua-display">
-            {step === 1 ? copy.step1Title : step === 2 ? copy.step2Title : copy.step3Title}
-          </h1>
-          {step === 1 ? (
-            <p className="vua-text-secondary">{copy.step1Description}</p>
-          ) : step === 2 ? (
-            <p className="vua-text-secondary">{copy.step2Description}</p>
-          ) : null}
-        </header>
-
-        {step === 1 ? (
-          <div className="vua-onboarding__grid" role="group" aria-label={copy.step1Title}>
-            {goalOrder.map((goal) => {
-              const selected = goals.includes(goal);
-              return (
-                <button
-                  key={goal}
-                  type="button"
-                  className="vua-onboarding__option"
-                  data-selected={selected || undefined}
-                  data-recommended={recommendedGoals.includes(goal) || undefined}
-                  aria-pressed={selected}
-                  onClick={() => toggleGoal(goal)}
-                >
-                  <span className="vua-onboarding__option-head">
-                    <span className="vua-title">{goalTitle(goal)}</span>
-                    {recommendedGoals.includes(goal) ? (
-                      <Badge tone="brand">{copy.recommended}</Badge>
-                    ) : null}
-                    <span className="vua-onboarding__check" aria-hidden="true">
-                      {selected ? <Icon name="check" size={16} /> : null}
-                    </span>
-                  </span>
-                  <span className="vua-onboarding__option-desc">{goalDescription(goal)}</span>
-                  <span className="vua-caption vua-text-secondary">{copy.goals[goal].impact}</span>
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
-
-        {step === 2 ? (
-          <div className="vua-onboarding__grid" role="group" aria-label={copy.step2Title}>
-            {envOrder.map((env) => {
-              const selected = envs.includes(env);
-              return (
-                <button
-                  key={env}
-                  type="button"
-                  className="vua-onboarding__option"
-                  data-selected={selected || undefined}
-                  aria-pressed={selected}
-                  onClick={() => toggleEnv(env)}
-                >
-                  <span className="vua-onboarding__option-head">
-                    <span className="vua-title">{copy.environments[env].title}</span>
-                    <span className="vua-onboarding__check" aria-hidden="true">
-                      {selected ? <Icon name="check" size={16} /> : null}
-                    </span>
-                  </span>
-                  <span className="vua-onboarding__option-desc">
-                    {copy.environments[env].description}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
-
-        {step === 3 ? (
-          <div className="vua-onboarding__summary">
-            <section className="vua-onboarding__summary-section">
-              <h2 className="vua-title">{copy.selectedGoals}</h2>
-              <ul className="vua-onboarding__summary-list">
-                {goalOrder.filter((goal) => goals.includes(goal)).map((goal) => (
-                  <li key={goal}>
-                    {goalTitle(goal)}
-                    {goal === "env" && envs.length > 0 ? (
-                      <span className="vua-text-secondary">
-                        {" "}
-                        · {envOrder.filter((e) => envs.includes(e)).map((e) => copy.environments[e].title).join(" · ")}
-                      </span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </section>
-            <section className="vua-onboarding__summary-section">
-              <h2 className="vua-title">{copy.willCheck}</h2>
-              <p className="vua-text-secondary">{copy.willCheckItems}</p>
-            </section>
-            <section className="vua-onboarding__summary-section">
-              <h2 className="vua-title">{copy.wontDo}</h2>
-              <p className="vua-text-secondary">{copy.wontDoItems}</p>
-            </section>
-          </div>
-        ) : null}
-
-        <footer className="vua-onboarding__footer">
-          {step === 1 ? (
-            <Button variant="subtle" onClick={() => onComplete({ status: "skipped", goals: [], environments: [] })}>
-              {copy.skip}
-            </Button>
-          ) : (
-            <Button variant="subtle" onClick={goBack}>
-              {copy.back}
-            </Button>
-          )}
-          <span className="vua-onboarding__footer-right">
-            {!canContinue && blockerHint ? (
-              <span className="vua-caption vua-text-secondary">{blockerHint}</span>
-            ) : null}
-            <Button variant="primary" disabled={!canContinue} onClick={goForward}>
-              {step === 3 ? copy.confirm : copy.continue}
-            </Button>
-          </span>
-        </footer>
+  const [state, setState] = useState(() => { try { return parseJourney(localStorage.getItem(storageKeys.firstRunJourney)); } catch { return initialJourney; } });
+  const [ready, setReady] = useState(false);
+  const focus = useRouteFocus(state.step);
+  useEffect(() => { try { localStorage.setItem(storageKeys.firstRunJourney, JSON.stringify(state)); } catch { /* Session progress remains usable. */ } }, [state]);
+  const move = (step: JourneyStep, purpose = state.purpose) => {
+    setReady(false);
+    setState(s => ({ ...s, step, purpose, connection: purpose === "pico_pcvr" ? s.connection : null }));
+  };
+  const done = (page?: PageId) => {
+    try { localStorage.setItem(storageKeys.firstRunJourney, JSON.stringify(initialJourney)); } catch { /* Completion remains usable without storage. */ }
+    setState(initialJourney);
+    onComplete({ status: "completed", goals: ["env", "production"], environments: ["play", "create"], ...(page ? { page } : {}) });
+  };
+  const choose = (title: string, description: string, step: JourneyStep, purpose?: DeploymentPurpose, kind?: "screen" | "headset" | "unity") =>
+    <RouteTile title={title} description={description} {...(kind ? { kind } : {})} onClick={() => move(step, purpose ?? null)} id={`wizard-${step}-${purpose ?? title}`} />;
+  const steps = copy.steps;
+  const phase = ["network", "prepare"].includes(state.step) ? 1 : ["connection", "launch", "creator-done", "library"].includes(state.step) ? 2 : 0;
+  const title = ({ goal: copy.goal, "play-mode": copy.playMode, headset: copy.headset, "creator-start": copy.creatorStart,
+    target: copy.target, editor: copy.editor, network: copy.network, prepare: copy.prepare, connection: copy.connection,
+    launch: copy.launch, library: copy.assetsGoal, "creator-done": copy.creatorReady })[state.step];
+  const hints: Partial<Record<JourneyStep, string>> = { goal: copy.goalHint, editor: copy.editorHint, network: copy.networkHint, prepare: copy.prepareHint, library: copy.assetsHint };
+  return <div className="vua-onboarding" data-wizard-step={state.step}>
+    <div className="vua-onboarding__panel">
+      <div className="vua-journey-top"><span>{copy.wizard}</span><Button variant="subtle" onClick={() => onComplete({ status: "skipped", goals: [], environments: [] })}>{copy.exit}</Button></div>
+      <nav aria-label={copy.wizard}><ol className="vua-journey-phases">{steps.map((label, index) => <li key={label} aria-current={phase === index ? "step" : undefined}><span>{index + 1}</span>{label}</li>)}</ol></nav>
+      <header className="vua-onboarding__header"><h1 className="vua-display">{title}</h1>{hints[state.step] ? <p className="vua-text-secondary">{hints[state.step]}</p> : null}</header>
+      <div key={state.step} ref={focus.root} onClickCapture={focus.remember} className="vua-journey-content vua-page-enter" data-focus-scope>
+        {state.step === "goal" ? <div className="vua-route-grid">
+          {choose(copy.playGoal, copy.playHint, "play-mode", undefined, "screen")}
+          {choose(copy.createGoal, copy.createHint, "creator-start", undefined, "unity")}
+        </div> : null}
+        {state.step === "play-mode" ? <div className="vua-route-grid">
+          {choose(copy.desktop, copy.desktopHint, "network", "desktop_play", "screen")}
+          {choose(copy.vr, copy.vrHint, "headset", undefined, "headset")}
+        </div> : null}
+        {state.step === "headset" ? <HeadsetChoices onPico={() => move("network", "pico_pcvr")} /> : null}
+        {state.step === "creator-start" ? <div className="vua-route-grid">
+          {choose(copy.assetsGoal, copy.assetsHint, "library")}{choose(copy.environmentGoal, copy.environmentHint, "target", undefined, "unity")}
+        </div> : null}
+        {state.step === "target" ? <div className="vua-route-grid">
+          {choose(copy.pcAvatar, copy.pcHint, "editor", "pc_avatar", "screen")}{choose(copy.questAvatar, copy.questHint, "editor", "quest_avatar", "headset")}
+        </div> : null}
+        {state.step === "editor" ? <div className="vua-route-grid">
+          <RouteTile title={copy.unity2022} kind="unity" onClick={() => move("prepare")} id="wizard-unity2022" />
+          <RouteTile title={copy.unity6} kind="unity" disabled />
+        </div> : null}
+        {state.step === "network" ? <><NetworkPanel /><Button variant="primary" onClick={() => move("prepare")}>{copy.networkContinue}</Button></> : null}
+        {state.step === "prepare" && state.purpose ? <>
+          <DeploymentPanel key={state.purpose} zone={state.purpose.includes("avatar") ? "create" : "play"} purpose={state.purpose} onReadyChange={setReady} />
+          {ready ? <Button variant="primary" onClick={() => move(state.purpose === "pico_pcvr" ? "connection" : state.purpose === "desktop_play" ? "launch" : "creator-done")}>{copy.preparedNext}</Button> : null}
+        </> : null}
+        {state.step === "connection" ? <><div className="vua-route-grid">
+          <RouteTile title={copy.usb} description={copy.usbHint} kind="headset" selected={state.connection === "usb"} id="wizard-usb" onClick={() => setState(s => ({ ...s, connection: "usb" }))} />
+          <RouteTile title={copy.wifi} description={copy.wifiHint} icon="cloud" selected={state.connection === "wifi"} id="wizard-wifi" onClick={() => setState(s => ({ ...s, connection: "wifi" }))} />
+        </div>{state.connection ? <div className="vua-journey-actions">
+          <GuideEntryButton target={state.connection === "usb" ? GUIDE_TARGETS.picoUsb : GUIDE_TARGETS.picoWifi} label={copy.guide} />
+          <p>{copy.declared}</p><Button variant="primary" onClick={() => move("launch")}>{copy.connectionConfirm}</Button>
+        </div> : null}</> : null}
+        {state.step === "launch" ? <><PlayLaunch onAccounts={onAccounts} /><Button variant="subtle" onClick={() => done("home")}>{copy.finish}</Button></> : null}
+        {state.step === "library" ? <Button variant="primary" onClick={() => done("warehouse")}>{copy.openLibrary}</Button> : null}
+        {state.step === "creator-done" ? <Button variant="primary" onClick={() => done("home")}>{copy.finish}</Button> : null}
       </div>
+      <footer className="vua-onboarding__footer">
+        {state.step !== "goal" ? <Button variant="subtle" data-back onClick={() => move(journeyBack(state))}>{copy.back}</Button> : <span />}
+        {state.step !== "goal" ? <Button variant="subtle" onClick={() => { setReady(false); setState(initialJourney); }}>{copy.restart}</Button> : null}
+      </footer>
     </div>
-  );
+  </div>;
+}
+export function HeadsetChoices({ onPico }: { onPico: () => void }) {
+  return <div className="vua-route-grid vua-route-grid--devices">
+    <RouteTile title="PICO" kind="headset" onClick={onPico} id="headset-pico" />
+    {["Meta Quest", "HTC VIVE", "Valve Index"].map(title => <RouteTile key={title} title={title} kind="headset" disabled />)}
+  </div>;
 }

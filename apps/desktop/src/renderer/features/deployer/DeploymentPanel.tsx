@@ -18,7 +18,12 @@ import { GUIDE_TARGETS, guideTargetForComponent } from "../guide/guide-target.ts
 import type { CheckZone } from "./deployer-model.ts";
 
 const copy = strings.deployment;
-export function DeploymentPanel({ zone }: { zone: CheckZone }) {
+export function DeploymentPanel({ zone, purpose, onReadyChange }: {
+  zone: CheckZone;
+  /** A route chosen by the user; standalone deployment keeps its multi-purpose picker. */
+  purpose?: DeploymentPurpose;
+  onReadyChange?: (ready: boolean) => void;
+}) {
   const gateway = useGateway();
   const port = gateway.environment.deployment;
   const useMirrors = useUnityMirrors();
@@ -29,7 +34,7 @@ export function DeploymentPanel({ zone }: { zone: CheckZone }) {
     try { return readDeploymentReceipt(localStorage.getItem(receiptKey)); } catch { return null; }
   });
   const [available, setAvailable] = useState(false);
-  const [purposes, setPurposes] = useState<DeploymentPurpose[]>(restored ? [...restored.intent.purposes] : [zone === "create" ? "pc_avatar" : "desktop_play"]);
+  const [purposes, setPurposes] = useState<DeploymentPurpose[]>(purpose ? [purpose] : restored ? [...restored.intent.purposes] : [zone === "create" ? "pc_avatar" : "desktop_play"]);
   const [picoRegion, setPicoRegion] = useState<PicoInstallRegion | "">(() => {
     if (restored?.intent.picoRegion) return restored.intent.picoRegion;
     try { const value = localStorage.getItem(storageKeys.picoRegion); return value === "china_mainland" || value === "other" ? value : ""; }
@@ -40,6 +45,9 @@ export function DeploymentPanel({ zone }: { zone: CheckZone }) {
   const [task, setTask] = useState<TaskSnapshotV01 | null>(null);
   const [taskId, setTaskId] = useState<string | null>(restored?.taskId ?? null);
   const [acceptedIntent, setAcceptedIntent] = useState<DeploymentIntent | null>(restored?.intent ?? null);
+  // A restored task describes previous work. It does not prove the files still
+  // exist now; revisiting the route requires a fresh plan before continuing.
+  const [executedHere, setExecutedHere] = useState(false);
   const [requestBusy, setBusy] = useState(false);
   const busy = useMinBusyValue(requestBusy ? true : null) !== null;
   const [error, setError] = useState<string | null>(null);
@@ -83,9 +91,17 @@ export function DeploymentPanel({ zone }: { zone: CheckZone }) {
     return () => { alive = false; unsubscribe(); if (timer !== undefined) clearTimeout(timer); };
   }, [port, taskId, gateway, zone]);
 
-  if (port === undefined || !available) return null;
+  const routeReady = available && !active && (
+    (plan !== null && plan.prerequisitesReady && plan.steps.length > 0 && plan.steps.every(s => s.action === "retain" && s.reason === "verified")) ||
+    (executedHere && task?.recoveryDisposition !== "inspect_required" && task?.result?.outcome === "prerequisites_verified"
+      && acceptedIntent !== null && (!purpose || acceptedIntent.purposes.includes(purpose))
+      && (!purpose || purpose.endsWith("play") || purpose === "pico_pcvr" || acceptedIntent.editorRoot === editorRoot))
+  );
+  useEffect(() => { onReadyChange?.(routeReady); }, [routeReady, onReadyChange]);
+  if (port === undefined || !available) return purpose ? <Card><p role="status">{strings.journey.unavailable}</p>
+    <GuideEntryButton target={zone === "play" ? GUIDE_TARGETS.vrchatInstall : { topic: "guide-vua" }} label={strings.journey.guide} /></Card> : null;
   const replan = async () => {
-    setBusy(true); setError(null); setPlan(null); setTask(null); setTaskId(null); setAcceptedIntent(null); setStep(null); command.current = null;
+    setBusy(true); setError(null); setPlan(null); setTask(null); setTaskId(null); setAcceptedIntent(null); setExecutedHere(false); setStep(null); command.current = null;
     try { localStorage.removeItem(receiptKey); } catch { /* Storage does not grant execution authority. */ }
     try {
       const prepared = await port.plan({ purposes, editorRoot, useMirrors, ...(purposes.includes("pico_pcvr") && picoRegion !== "" ? { picoRegion } : {}) });
@@ -115,6 +131,7 @@ export function DeploymentPanel({ zone }: { zone: CheckZone }) {
       // a next-step action, especially after Steam hands installation back to the user.
       setPlan(null);
       setAcceptedIntent(plan.intent);
+      setExecutedHere(true);
       if (id === taskId) setTask(await port.status(id));
       else { setTask(null); setStep(null); setStartedAt(started); setNow(started); setTaskId(id); }
     }
@@ -140,14 +157,13 @@ export function DeploymentPanel({ zone }: { zone: CheckZone }) {
     return p?.phase === "source_failed" || p?.phase === "installation_failed" ? [p] : [];
   });
   return <Card className="vua-deployment">
-    <h2 className="vua-title">{copy.title}</h2>
-    <p>{copy.description}</p>
-    <fieldset disabled={disabled}><legend>{copy.purpose}</legend>
+    {!purpose ? <><h2 className="vua-title">{copy.title}</h2><p>{copy.description}</p></> : null}
+    {!purpose ? <fieldset disabled={disabled}><legend>{copy.purpose}</legend>
       {DEPLOYMENT_PURPOSES.map(p => <label key={p} className="vua-deployment__choice">
         <input type="checkbox" checked={purposes.includes(p)} onChange={() => { setPlan(null); command.current = null; setPurposes(old => old.includes(p) ? old.filter(x => x !== p) : [...old, p]); }} />
         {copy.purposes[p]}
       </label>)}
-    </fieldset>
+    </fieldset> : null}
     {purposes.includes("pico_pcvr") ? <><label>{copy.picoRegion}<select className="vua-deployment__location" disabled={disabled} value={picoRegion}
       onChange={e => {
         const region = e.target.value === "china_mainland" ? "china_mainland" : e.target.value === "other" ? "other" : "";
@@ -180,8 +196,8 @@ export function DeploymentPanel({ zone }: { zone: CheckZone }) {
       {plan.installer !== null ? <p>{copy.installer}{": "}{copy.installerKinds[plan.installer.kind]} ({plan.installer.version})<br /><code>{plan.installer.location}</code></p> : null}
       {plan.installer?.kind !== "hub_cli" && plan.installer !== null ? <p>{copy.installerHint}</p> : null}
       {plan.steps.some(s => s.action === "install_steam" || s.action === "install_pico_runtime") ? <p>{copy.vendorInstallerHint}</p> : null}
-      <p>{copy.consent}</p>
-      <Button variant="primary" disabled={disabled || plan.steps.some(s => s.action === "inspect")} onClick={() => { void execute(); }}>{copy.execute}</Button>
+      {!purpose || !routeReady ? <><p>{copy.consent}</p>
+      <Button variant="primary" disabled={disabled || plan.steps.some(s => s.action === "inspect")} onClick={() => { void execute(); }}>{copy.execute}</Button></> : null}
     </> : null}
     {task !== null ? <div role="status" aria-live="polite">
       <p>{task.recoveryDisposition === "inspect_required" ? copy.inspectRequired : copy.states[task.state]}</p>

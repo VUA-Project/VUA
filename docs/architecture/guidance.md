@@ -1,9 +1,9 @@
 # Guidance architecture: app tour, preparation reader and game guide
 
-> Document version: 1.2.0
+> Document version: 1.3.0
 > Status: Accepted
 > Updated: 2026-10-08
-> Last conformance review: 2026-10-08 (reader, tour and game guide with automatic following; real-machine acceptance pending)
+> Last conformance review: 2026-10-08 (independent first-run wizard and Help/tour routing; real-machine acceptance pending)
 > Scope: First play release guidance in Electron and React
 
 For people: VUA teaches three different activities in three appropriate places: using VUA,
@@ -41,6 +41,10 @@ The initial tour follows the first-play route: choose desktop or PICO, read netw
 inspect software, review the installation plan, find progress/user handoffs, and locate the
 play and guide entries. Page navigation follows those steps. Limit this delivery to available
 first-play controls; Avatar production tours follow their own delivery.
+
+The first-run branching wizard is independent of this control-location tour. Open the tour
+explicitly from Help or command search; completing/exiting the wizard does not automatically
+start a second overlay. Resume an already-active tour using its own bookmark.
 
 Provide back, next, skip/exit and restart. A real action can advance its associated step, but
 opening an installer is not installation success. Waiting for a download does not trap the
@@ -121,7 +125,7 @@ illustration. Map sections deliberately: eye-tracking equipment/module setup bel
 reader, while its in-game OSC step belongs in the game guide. An entire old topic need not move
 to one surface unchanged.
 
-The topbar Guide entry exposes the three clearly named destinations; contextual help goes
+The topbar Help entry exposes the first-run wizard and three clearly named guide destinations; contextual help goes
 directly to the appropriate destination/step. Opening a preparation section must not switch the
 player into a tour or enable game following. Keep the ordinary reader reachable when the game
 is absent. These are guide destinations, not additional business tabs.
@@ -162,6 +166,8 @@ The delivery plan names the outstanding code and real-machine checks.
 
 ## Document changelog
 
+
+- 1.3.0 (2026-10-08): keep the independent first-run wizard and manually opened app tour distinct; route Help and tour anchors through the fixed directory.
 - 1.2.0 (2026-10-08): record the delivered game-window observer and automatic guide following (game-window-observe v0.1); real-machine acceptance remains in the delivery plan.
 - 1.1.0 (2026-10-07): distinguish the delivered three presentations from the remaining game-window observer and automatic lifecycle.
 - 1.0.0 (2026-10-05): accept three guidance contexts, define their window/state responsibilities and map migration from completed A/B slices.

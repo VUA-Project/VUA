@@ -1,11 +1,11 @@
 # Electron desktop and presentation architecture
 
 
-> Document version: 1.8.0
+> Document version: 1.9.0
 > Status: Accepted
 > Scope: `apps/desktop`, `packages/design-system`, frontend Gateway
 > Updated: 2026-10-08
-> Last conformance review: 2026-10-08 (reader, tour and game guide; window observer and following implemented)
+> Last conformance review: 2026-10-08 (integrated first-run UI and existing task/window boundaries; app/device acceptance pending)
 > Normative effect: Yes
 
 ## Technology decision
@@ -54,6 +54,30 @@ Main returns normalized navigation/download events through narrow ports and reta
 into Main application state, Gateway, Orchestrator or Agent inputs. AMF owns acquisition intent, task and source
 correlation, post-download inspection, and Warehouse/BDL decisions.
 
+## Fixed directory and first-run journey
+
+The main shell has one fixed Home, opened by its left logo. Desktop mode shows the fixed
+Environment/Avatar directory in the sidebar; big-screen mode groups those domains into larger
+focusable tiles. `nav-model.ts` retains internal page ownership for tasks and deep links without
+restoring the old two-tab presentation. Wizard choices never hide features or change Home actions.
+The [design standard](../design/design-standard.md#3-platform-and-information-architecture)
+owns the accepted layout, logo colors, unavailable peers and preserved visual preferences.
+
+`journey-model.ts` stores only a versioned reading/selection bookmark. Desktop/PICO and creator
+routes use the existing typed network/deployment ports. A fresh plan or a task completed during
+the current visit can establish software readiness; a restored terminal receipt alone cannot.
+Reopening a completed preparation step reinspects files, and accepted tasks remain observable
+through their receipts. A connection confirmation is explicitly user-declared, not headset evidence.
+Opening Steam or a guide does not prove installation, login or successful play.
+
+Account-help navigation keeps the underlying route mounted and returns to its source step.
+Settings → Accounts retains the N5 BOOTH sign-in/probe/logout surface; Steam, VRChat and Unity
+authentication remain honest placeholders. Registration/linking pages add an official browser
+handoff through `RemoteContentApiV1.openAccountGuideInBrowser(AccountGuideIdV1)` and the matching
+preload/Main channel. This is an additive native desktop port, not a new Provider method or a
+change to the frozen application envelope. Main checks local sender identity and maps the closed
+ID to a fixed public URL; arbitrary URLs, page data and credentials do not cross this port.
+
 ## Account-guide browser
 
 The account guide opens official Steam/VRChat registration pages and optional Unity/BOOTH pages,
@@ -76,7 +100,10 @@ the flow and the distinction between opened, user-confirmed and actually detecte
 The product boundary records later web-reading and experimental persistence intent; neither is
 enabled by this first slice. Any future persisted profile needs explicit consent, local browser
 storage and tested clearing/logout semantics, without secrets in application or Agent data paths.
-This is intended architecture, not evidence that existing browser code already meets these cases.
+Temporary embedded guide sessions remain intended architecture. The current UI uses the
+official system-browser handoff, keeps the selected route available on return and imports no
+browser session. This avoids routing registration through the persistent BOOTH acquisition
+profile. Temporary embedding and authenticated platform adapters remain unimplemented.
 
 ## Deployment presentation
 
@@ -203,6 +230,8 @@ redistribution review authorizes each bundled binary before a public release.
 
 ## Document changelog
 
+
+- 1.9.0 (2026-10-08): record fixed navigation, desktop/big-screen focus, independent wizard/task facts and the closed official account-page browser handoff; temporary embedding and device acceptance remain pending.
 - 1.8.0 (2026-10-08): record the implemented game-window follow loop in Main (game-window-observe
   v0.1 observation, follow decision module, and the setGameGuideFollowing /
   getGameGuideFollowStatus desktop API faces).
@@ -222,7 +251,5 @@ redistribution review authorizes each bundled binary before a public release.
   i18n fact recorded with the §2.3 policy link. No rule change.
 
 - 1.3.0 (2026-09-30): specify isolated temporary account-guide pages and credential-free application state.
-
-- 1.2.2 (2026-09-28): remove obsolete mirror metadata and clarify current ownership where needed during the N documentation audit.
 
 Earlier entries remain in Git history.

@@ -113,7 +113,7 @@ test("legacy page ids migrate to the v0.3.2 IA", () => {
 test("entry: unfinished onboarding cannot be bypassed by a stored last page", () => {
   assert.deepEqual(resolveEntry(null, "warehouse"), {
     showOnboarding: true,
-    page: "env-play",
+    page: "home",
   });
   // 损坏数据同样视为未完成,不能被 vua-last-page 绕过
   assert.equal(resolveEntry(parseStoredGoals("{"), "warehouse").showOnboarding, true);
@@ -128,18 +128,17 @@ test("entry: completed onboarding restores a valid last page, legacy ids migrate
     showOnboarding: false,
     page: "env-create",
   });
-  // 非法/未知历史页(含退役的 home 落点)回退默认落点——2026-09-25
-  // 用户裁决:指挥台页退役,默认落点为环境部署
+  // Unknown history falls back to the fixed Home directory (2026-10-08 user ruling).
   assert.deepEqual(resolveEntry(completedAll, "nope"), {
     showOnboarding: false,
-    page: "env-play",
+    page: "home",
   });
   assert.deepEqual(resolveEntry(completedAll, "home"), {
     showOnboarding: false,
-    page: "env-play",
+    page: "home",
   });
   assert.deepEqual(resolveEntry(completedAll, null), {
     showOnboarding: false,
-    page: "env-play",
+    page: "home",
   });
 });

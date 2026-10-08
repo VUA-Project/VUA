@@ -30,6 +30,7 @@
     "smoke:download-port": "pnpm build && electron scripts/smoke-download-port.mjs",
     "smoke:f4-deliverables": "pnpm build && node scripts/smoke-f4-deliverables.mjs",
     "smoke:production-review": "electron scripts/smoke-production-review.mjs",
+    "smoke:first-run-ui": "electron scripts/smoke-first-run-ui.mjs",
     "smoke:library-maintenance": "electron scripts/smoke-library-maintenance.mjs",
     "smoke:network": "electron scripts/smoke-network.mjs",
     "smoke:deployment": "pnpm --filter @vua/contracts build && electron scripts/smoke-deployment.mjs",

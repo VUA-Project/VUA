@@ -156,6 +156,8 @@ const api: VuaDesktopApiV1 = Object.freeze({
   }),
   // 远程内容窄面(F4-2):只发语义动作;远程页面本身无 preload、无本面
   remoteContent: Object.freeze({
+    openAccountGuideInBrowser: (guide: import("@vua/contracts").AccountGuideIdV1) =>
+      ipcRenderer.invoke("vua:remote-content:open-account-guide-in-browser", guide),
     open: (request: { readonly url: string }) => ipcRenderer.invoke("vua:remote-content:open", request),
     navigate: (viewId: string, url: string) => ipcRenderer.invoke("vua:remote-content:navigate", viewId, url),
     goBack: (viewId: string) => ipcRenderer.invoke("vua:remote-content:go-back", viewId),

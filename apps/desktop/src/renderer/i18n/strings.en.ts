@@ -1,3 +1,4 @@
+import { journeyCopy } from "./journey-copy.ts";
 /**
  * VUA UI string table (en) — SOURCE language.
  * - This table is the structural source of truth: the widened Strings type
@@ -14,6 +15,7 @@
  *   (DEV-only, reachable only from gateway fixtures, tree-shaken in release).
  */
 export const strings = {
+  journey: journeyCopy["en"],
   websiteTests: {
     title: "Website tests", test: "Test", testAll: "Test all", testing: "Testing…",
     add: "Add website", edit: "Edit website", editSite: "Edit {name}", testSite: "Test {name}",

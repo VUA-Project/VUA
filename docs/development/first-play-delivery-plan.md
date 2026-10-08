@@ -1,6 +1,6 @@
 # First play release: implementation checkpoint and remaining work
 
-> Document version: 1.4.0
+> Document version: 1.5.0
 > Status: Accepted
 > Updated: 2026-10-08
 > Scope: Desktop play, PICO 4 Pro USB/Wi-Fi, optional eye tracking and three guidance contexts
@@ -86,6 +86,28 @@ Dated raw evidence remains local: `_local_real_machine/n1-play-zip-2026-10-03.md
 Their bootstrap, controlled UI and physical-hardware results are different evidence categories.
 Refresh evidence after changing the affected path rather than rerunning every old check.
 
+## First-run UI checkpoint (2026-10-08)
+
+PRs #64 (dependency patch), #65 (game guide following) and #66 (N5 material management) are
+merged and integrated with the Steam/PICO acquisition slice on `slice/first-run-main-ui`.
+The accepted wizard and fixed Home now use the existing plans, tasks and guide windows. Logo
+Home access, domain/theme colors, concise main tiles, equal disabled Quest/Unity 6 peers,
+mouse-oriented desktop mode and keyboard big-screen mode are implemented. Matrix/grid, sidebar
+and small-window glass and resource saving remain. Account help opens Accounts, dedicated guides
+and a fixed official system-browser handoff, then returns to the selected preparation step.
+
+Controlled Chromium checks cover route choices, disabled peers, unknown/missing software,
+manual handoff/reinspection, account return, focus/back, mode changes and four-language minimum
+window layout. These checks use synthetic Gateway facts and establish UI behavior only.
+`pnpm --filter @vua/desktop smoke:first-run-ui` reproduces the branching, readiness, account-return
+and Chromium keyboard cases in an isolated Electron session without installing software or signing in.
+Unit/type/boundary/i18n/contrast/leak checks and the integrated preview build are recorded with
+the candidate. The author's acceptance of the design is distinct from review of the running app.
+Physical controller input, missing-software installers, actual desktop/PICO play and four-language
+human review still need the same candidate at the author's chosen test location. No Sandbox run
+was added. Temporary embedded registration sessions remain parked; the official browser handoff
+is available without importing credentials or sessions. N5 merge is not an N5 stage-acceptance claim.
+
 ## 2. Next focus: deliver the three guidance contexts
 
 ### A. Ordinary preparation reader
@@ -147,8 +169,8 @@ contexts. This desktop-window feature does not require a native headset overlay.
 
 | Work | Concrete implementation still needed | Completion run |
 | --- | --- | --- |
-| One desktop/PICO route | Connect the selected goal/model to network checks, required software, plan, progress, guidance and play entry. Desktop must not acquire VR/Unity prerequisites; PICO adds only its route's requirements | Start with either choice and reach the next useful action without configuring unrelated creator software |
-| Steam and PICO acquisition | Implemented on `slice/steam-pico-acquisition`: official download/trust gates, explicit mainland/global PICO selection, `/S` native elevation, activity/errors, entry-file reinspection and task return. Vendor-specific silent behavior and actual completion still need acceptance | Follow the [slice checklist](steam-pico-acquisition-checklist.md) for missing-software, failure/cancellation and reuse. Then integrate the accepted slice with game installation/launch |
+| One desktop/PICO route | Implemented in the first-run UI and fixed feature routes: network, selected prerequisites, plan/task return, PICO connection guidance and Steam play handoff. Real play remains unverified | Start with either choice and reach the next useful action without configuring unrelated creator software |
+| Steam and PICO acquisition | Implemented on `slice/steam-pico-acquisition`: official download/trust gates, explicit mainland/global PICO selection, `/S` native elevation, activity/errors, entry-file reinspection and task return. Vendor-specific silent behavior and actual completion still need acceptance | Follow the [slice checklist](steam-pico-acquisition-checklist.md) for missing-software, failure/cancellation and reuse. The integrated UI keeps Steam library installation/launch as explicit user handoffs |
 | Steam library and game launch | Hand VRChat/SteamVR installation to Steam, explain the expected Steam action, reinspect after return and launch the selected play mode. Keep the task/guide usable during downloads | Steam registration/login or existing account → install VRChat → start desktop mode → enter a world and use controls/audio/microphone |
 | Account handoffs | Connect official registration pages and client/headset handoffs to resumable guide steps; retain external-browser fallback and separate opened/user-confirmed/detected states | Interrupt and return from a page/client without losing the selected route; the player performs login, verification and agreements |
 | PICO USB | Finish official PICO Connect/SteamVR setup guidance and launch path, using the test machine's actual software/firmware wording | PICO 4 Pro: image, head/hand tracking, controllers, audio/microphone, then read the preparation window through SteamVR desktop view and return to play |
@@ -212,6 +234,8 @@ integration, not a substitute for N5's own review and acceptance.
 
 ## Document changelog
 
+
+- 1.5.0 (2026-10-08): record the integrated wizard/Home implementation and controlled UI checks, with official account handoff and real-device/installer/human review still separate.
 - 1.4.0 (2026-10-08): integrate the independently delivered acquisition and game-guide-follow slices without changing their pending real-machine acceptance.
 - 1.3.0 (2026-10-08): prioritize download-to-play blockers under the author's Ibis criterion, record return/next-action repairs and keep optional automation and the deferred Sandbox method outside independent release gates.
 - 1.2.0 (2026-10-08): record the Steam/PICO acquisition implementation and region choice;

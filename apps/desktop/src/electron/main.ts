@@ -16,7 +16,7 @@ import type {
   OverlayViewV1,
   RemoteContentEventV1,
 } from "@vua/contracts";
-import { APPLICATION_CONTRACT_VERSION, isGameWindowObservationResult, isLibraryDownloadParamsV01, isLibraryDownloadSnapshotV01 } from "@vua/contracts";
+import { APPLICATION_CONTRACT_VERSION, accountGuideDestination, isGameWindowObservationResult, isLibraryDownloadParamsV01, isLibraryDownloadSnapshotV01 } from "@vua/contracts";
 import type { OrchestratorProviderV01 } from "@vua/orchestrator-provider";
 import { routeDesktopGatewayInvoke } from "./gateway-router.js";
 import { DownloadPort } from "./download-port.js";
@@ -563,6 +563,14 @@ function registerIpc(provider: OrchestratorProviderV01): void {
   // 远程内容窄面(F4-2 隔离基座):Renderer 只发语义动作;来源允许清单在
   // Main 侧裁决,视图内违规以事件透明上报。种子允许清单只含目录浏览域,
   // 真实值随 catalog 契约冻结(F4-1②)调整
+  // Registration uses the official browser handoff until temporary embedded account
+  // sessions have their own acceptance. BOOTH acquisition keeps its existing profile.
+  ipcMain.handle("vua:remote-content:open-account-guide-in-browser", async (event, guide: unknown) => {
+    assertLocalSender(senderFrameUrl(event));
+    const url = accountGuideDestination(guide);
+    if (url === null) throw new Error("invalid account guide");
+    await shell.openExternal(url);
+  });
   ipcMain.handle("vua:remote-content:open", (event, request: unknown) => {
     assertLocalSender(senderFrameUrl(event));
     const url = (request as { url?: unknown } | null)?.url;

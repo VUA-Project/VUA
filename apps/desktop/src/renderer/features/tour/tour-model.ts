@@ -8,7 +8,7 @@
  *   指向不存在或不相关位置(缺席由渲染层诚实说明,不伪造指向);
  * - 进度状态独立于阅读器阅读位置与安装任务状态(storageKeys.tourProgress,
  *   本地 UI 偏好):active(含步号)/completed/skipped 三态;缺席 = 从未
- *   运行,由壳侧自动开始;中途退出应用按 active 步号恢复;
+ *   运行,由帮助入口显式开始;中途退出应用按 active 步号恢复;
  * - 不依赖教程端口(tutorial-port 为诚实 inactive,本导览不触碰)与
  *   AMF 工作流;应用事实仍来自正常 Gateway/任务状态。
  */
@@ -17,7 +17,7 @@ import type { PageId } from "../../app/nav-model.ts";
 /** 导览状态词面(active = 进行中,步号有效;completed/skipped = 终态) */
 export type TourStatus = "active" | "completed" | "skipped";
 
-/** 持久化进度(版本化;损坏/词表外 → null = 从未运行,诚实回落自动开始) */
+/** 持久化进度(版本化;损坏/词表外 → null = 从未运行,诚实回落未运行) */
 export interface TourProgressV1 {
   readonly v: 1;
   readonly status: TourStatus;
@@ -41,11 +41,11 @@ export interface TourStepDef {
  */
 export const TOUR_STEPS: readonly TourStepDef[] = [
   { id: "route", page: "settings-goals", anchor: '[data-tour-anchor="tour-goals"]' },
-  { id: "network", page: "env-play", anchor: ".vua-network" },
-  { id: "checks", page: "env-play", anchor: ".vua-deployer__hero" },
-  { id: "plan", page: "env-play", anchor: ".vua-deployment" },
-  { id: "tasks", page: "env-play", anchor: ".vua-taskbar__toggle" },
-  { id: "guide", page: "env-play", anchor: '[data-tour-anchor="tour-guide-entry"]' },
+  { id: "network", page: "software", anchor: ".vua-network" },
+  { id: "checks", page: "software", anchor: ".vua-deployer__hero" },
+  { id: "plan", page: "software", anchor: ".vua-deployment" },
+  { id: "tasks", page: "software", anchor: ".vua-taskbar__toggle" },
+  { id: "guide", page: "software", anchor: '[data-tour-anchor="tour-guide-entry"]' },
 ];
 
 /** 词表外/越界步号钳回合法区间(存储损坏时诚实回落,不抛异常) */

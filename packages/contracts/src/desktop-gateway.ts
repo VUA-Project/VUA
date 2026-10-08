@@ -1398,6 +1398,9 @@ export type RemoteContentEventV1 =
     };
 
 export interface RemoteContentApiV1 {
+  /** Additive v1 handoff: an explicit click opens a fixed official account-guide
+   * page in the system browser. No authenticated state is returned or imported. */
+  openAccountGuideInBrowser(guide: import("./account-guide.js").AccountGuideIdV1): Promise<void>;
   /** 打开远程视图并加载 URL;来源不在允许清单时以错误拒绝 */
   open(request: { readonly url: string }): Promise<RemoteContentViewStateV1>;
   navigate(viewId: string, url: string): Promise<RemoteContentViewStateV1>;
