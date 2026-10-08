@@ -18,6 +18,7 @@ struct Host {
     hold_start: bool,
     missing: bool,
     unknown: bool,
+    unknown_pico: bool,
 }
 #[derive(Default)]
 struct Fake(Mutex<Host>);
@@ -59,9 +60,9 @@ impl PlayPlatform for Fake {
         })
         .collect())
     }
-    fn processes(&self) -> Result<Vec<ProcessIdentity>, &'static str> {
+    fn processes(&self, route: PlayRoute) -> Result<Vec<ProcessIdentity>, &'static str> {
         let h = self.0.lock().unwrap();
-        if h.unknown {
+        if h.unknown || (h.unknown_pico && route == PlayRoute::PicoPcvr) {
             Err("unavailable")
         } else {
             Ok(h.processes.clone())
@@ -144,8 +145,10 @@ fn missing_files_prevent_launch_even_if_a_renderer_claims_readiness() {
 #[test]
 fn desktop_reuses_steam_and_only_closes_the_new_game() {
     let f = Arc::new(Fake::default());
+    f.0.lock().unwrap().unknown_pico = true;
     f.0.lock().unwrap().processes.push(process("steam", 10));
     let s = service(&f);
+    assert!(s.observe(PlayRoute::PicoPcvr).is_err());
     let r = PlayRoute::DesktopPlay;
     s.start(r, "start").unwrap();
     let running = wait(&s, r, "running");

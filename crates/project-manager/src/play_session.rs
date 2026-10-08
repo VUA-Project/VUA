@@ -52,7 +52,7 @@ pub struct Launch {
 /// Only project-manager supplies this seam. Requests never supply a native command or path.
 pub trait PlayPlatform: Send + Sync {
     fn inspect(&self, route: PlayRoute) -> Result<Vec<Software>, &'static str>;
-    fn processes(&self) -> Result<Vec<ProcessIdentity>, &'static str>;
+    fn processes(&self, route: PlayRoute) -> Result<Vec<ProcessIdentity>, &'static str>;
     fn launch(&self, launch: &Launch) -> Result<(), &'static str>;
     /// Must recheck the complete identity before attempting normal window close.
     fn close(&self, identity: &ProcessIdentity) -> Result<(), &'static str>;
@@ -118,7 +118,7 @@ impl PlayService {
     }
     pub fn observe(&self, route: PlayRoute) -> Result<PlaySnapshot, &'static str> {
         let software = self.platform.inspect(route)?;
-        let processes = self.platform.processes()?;
+        let processes = self.platform.processes(route)?;
         let state = self.state.lock().map_err(|_| "unavailable")?;
         let session = state.session.as_ref().filter(|s| s.route == route);
         let facts: Vec<_> = software
@@ -171,7 +171,7 @@ impl PlayService {
     }
     pub fn start(&self, route: PlayRoute, command: &str) -> Result<PlaySnapshot, &'static str> {
         let software = self.platform.inspect(route)?;
-        let baseline = self.platform.processes()?;
+        let baseline = self.platform.processes(route)?;
         let mut state = self.state.lock().map_err(|_| "unavailable")?;
         if remember(&mut state, command, route, true)? && state.session.is_none() {
             if software.len() != route.components().len()
@@ -340,7 +340,7 @@ fn start_worker(
             else {
                 return;
             };
-            let Ok(processes) = platform.processes() else {
+            let Ok(processes) = platform.processes(route) else {
                 session.state = "attention";
                 session.issue = Some("start_failed");
                 return;
@@ -409,7 +409,7 @@ fn close_worker(
     let mut dispatched = Vec::new();
     let mut failed = false;
     let issue = loop {
-        let processes = match platform.processes() {
+        let processes = match platform.processes(route) {
             Ok(p) => p,
             Err(_) => break Some("close_failed"),
         };
@@ -526,8 +526,8 @@ impl PlayPlatform for WindowsPlayPlatform {
             })
             .collect())
     }
-    fn processes(&self) -> Result<Vec<ProcessIdentity>, &'static str> {
-        os::processes().map_err(|_| "unavailable")
+    fn processes(&self, route: PlayRoute) -> Result<Vec<ProcessIdentity>, &'static str> {
+        os::processes(route).map_err(|_| "unavailable")
     }
     fn launch(&self, launch: &Launch) -> Result<(), &'static str> {
         let mut command = std::process::Command::new(&launch.exe);
@@ -551,8 +551,16 @@ impl PlayPlatform for WindowsPlayPlatform {
     }
 }
 
+#[cfg(any(windows, test))]
+fn relevant_process_name(route: PlayRoute, name: &str) -> bool {
+    matches!(name, "steam.exe" | "vrchat.exe")
+        || (route == PlayRoute::PicoPcvr && matches!(name, "vrmonitor.exe" | "pico connect.exe"))
+}
+
 mod os {
-    use super::ProcessIdentity;
+    #[cfg(windows)]
+    use super::relevant_process_name;
+    use super::{PlayRoute, ProcessIdentity};
     #[cfg(windows)]
     fn identity(pid: u32) -> std::io::Result<ProcessIdentity> {
         use windows_sys::Win32::{
@@ -590,7 +598,7 @@ mod os {
         })
     }
     #[cfg(windows)]
-    pub(super) fn processes() -> std::io::Result<Vec<ProcessIdentity>> {
+    pub(super) fn processes(route: PlayRoute) -> std::io::Result<Vec<ProcessIdentity>> {
         use windows_sys::Win32::{
             Foundation::{CloseHandle, ERROR_NO_MORE_FILES, INVALID_HANDLE_VALUE},
             System::Diagnostics::ToolHelp::{
@@ -614,14 +622,7 @@ mod os {
                 .position(|c| *c == 0)
                 .unwrap_or(entry.szExeFile.len());
             let name = String::from_utf16_lossy(&entry.szExeFile[..end]).to_lowercase();
-            if [
-                "steam.exe",
-                "vrchat.exe",
-                "vrmonitor.exe",
-                "pico connect.exe",
-            ]
-            .contains(&name.as_str())
-            {
+            if relevant_process_name(route, &name) {
                 match identity(entry.th32ProcessID) {
                     Ok(p) => out.push(p),
                     Err(e) => {
@@ -694,7 +695,7 @@ mod os {
         Ok(())
     }
     #[cfg(not(windows))]
-    pub(super) fn processes() -> std::io::Result<Vec<ProcessIdentity>> {
+    pub(super) fn processes(_: PlayRoute) -> std::io::Result<Vec<ProcessIdentity>> {
         Err(std::io::Error::other("Windows required"))
     }
     #[cfg(not(windows))]
@@ -724,7 +725,7 @@ mod tests {
                 })
                 .collect())
         }
-        fn processes(&self) -> Result<Vec<ProcessIdentity>, &'static str> {
+        fn processes(&self, _: PlayRoute) -> Result<Vec<ProcessIdentity>, &'static str> {
             Ok(self.live.clone())
         }
         fn launch(&self, _: &Launch) -> Result<(), &'static str> {
@@ -737,6 +738,27 @@ mod tests {
             } else {
                 Ok(())
             }
+        }
+    }
+    #[test]
+    fn desktop_process_observation_excludes_vr_only_software() {
+        assert!(!relevant_process_name(
+            PlayRoute::DesktopPlay,
+            "pico connect.exe"
+        ));
+        assert!(!relevant_process_name(
+            PlayRoute::DesktopPlay,
+            "vrmonitor.exe"
+        ));
+        assert!(relevant_process_name(
+            PlayRoute::PicoPcvr,
+            "pico connect.exe"
+        ));
+        assert!(relevant_process_name(PlayRoute::PicoPcvr, "vrmonitor.exe"));
+        for route in [PlayRoute::DesktopPlay, PlayRoute::PicoPcvr] {
+            assert!(relevant_process_name(route, "steam.exe"));
+            assert!(relevant_process_name(route, "vrchat.exe"));
+            assert!(!relevant_process_name(route, "unrelated.exe"));
         }
     }
     #[test]

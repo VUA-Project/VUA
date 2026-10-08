@@ -26,6 +26,9 @@ ask Steam to launch the fixed app ID. Steam owns authentication, game updates, a
 handoff. The desktop request uses VRChat's documented `--no-vr`; PICO leaves VR selection to
 the official Steam/SteamVR path. Vendor prompts remain visible to the user. Startup stays
 pending until the expected processes are observed; failure or timeout is a recoverable result.
+The process observation is scoped to the selected route's component names: an unreadable
+unrelated VR application cannot block the Desktop route. An unreadable required application
+remains an unavailable observation and grants no launch/closing authority.
 
 Only one card may own an active launch session because both routes share the same VRChat
 instance. Stop cancels further VUA launch steps, then sends a normal window-close request to
