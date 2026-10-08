@@ -1,6 +1,6 @@
 # First play release: implementation checkpoint and remaining work
 
-> Document version: 1.2.0
+> Document version: 1.3.0
 > Status: Accepted
 > Updated: 2026-10-08
 > Scope: Desktop play, PICO 4 Pro USB/Wi-Fi, optional eye tracking and three guidance contexts
@@ -9,12 +9,44 @@ For people: this release takes a player from missing play software to playing VR
 instructions in the place where each activity happens. VUA's own tour, a preparation reader
 and the manual VRChat game guide now have separate presentations.
 
-For Agents: continue from `72a22e15` on `slice/n1-device-onboarding`, collected in PR #61.
-The next PR continues the outstanding play paths below. This plan records delivery
+For Agents: build on the `72a22e15` baseline collected in PR #61 and the subsequent slices
+recorded below. This plan records delivery
 status and next work; the [product boundary](../product-boundary.md#first-play-release-user-ruling-2026-10-03)
 owns scope, the [N sequence](../development-outline.md#first-play-release-acceptance) owns
 acceptance, and [guidance architecture](../architecture/guidance.md) owns the new presentation split.
 The [broader N1 plan](n1-delivery-plan.md) retains later device and creator routes.
+
+## Release focus after the 2026-10-08 ruling
+
+Apply the [Ibis newcomer-journey criterion](../product-boundary.md#ibis-release-criterion-user-ruling-2026-10-08).
+The detailed work below is a delivery backlog, not a list of independent publication gates.
+Prioritize these concrete checks on the same candidate build:
+
+1. The download page offers the actual Windows x64 ZIP, with understandable extraction/start
+   instructions, version and signature status. Source archives are not a player download.
+2. A newcomer can choose desktop or PICO, understand the relevant network/software findings,
+   complete acquisition or its official-client handoff, return, log in and start the selected
+   route. Verify missing-software installation and actual desktop/PICO USB/Wi-Fi play; installed
+   files, the reuse baseline and synthetic UI checks do not establish those outcomes.
+3. A failed step or interrupted handoff leaves the current action and guidance available on
+   return. After software preparation, the player can find the selected route's launch guide.
+   Closing guidance does not stop accepted work or play.
+
+Current source review found and repaired lost official/guide entries on return, obsolete
+execution consent after task acceptance, and the lack of a next guide after play prerequisites
+were found. Four-language controlled UI checks cover those handoffs; they are not an integrated
+game/hardware pass. The revised text distinguishes desktop mode and software detection from
+successful play. The previous acquisition preview ZIP did not include these repairs; a new
+candidate must use this revised source and be exercised as a single integrated build.
+The [public Release](https://github.com/VUA-Project/VUA/releases/tag/v0.5.0)
+still has no player asset as checked on 2026-10-08.
+
+Clear Steam handoffs can finish the core journey without adding automatic library installation
+or launch. A checked tutorial-world list, VRCFT automation, further guide polish and exhaustive
+edge-case coverage remain follow-up unless a concrete problem blocks the advertised journey.
+Keep their availability and non-blocking issues honest. No Sandbox is required: the author
+deferred that test method on 2026-10-08, and another Windows baseline can supply the missing
+installation evidence. Finish exact-build notices and concise release instructions at publication.
 
 ## 1. Completed work to build on
 
@@ -37,14 +69,14 @@ destinations and individual/all tests. Regional help remains collapsed and regio
 `0a00cad0` adds the theme-aware VUA brand mark. The website icons use attributed Simple Icons.
 
 The existing deployment layer inspects software, builds confirmed plans and exposes task progress.
-`slice/steam-pico-acquisition` adds official Steam/PICO Connect acquisition, signature verification,
+`b49e064f` on `slice/steam-pico-acquisition` adds official Steam/PICO Connect acquisition, signature verification,
 native installation and bounded entry-file reinspection. PICO's explicit usage region selects
 separately pinned mainland/global 10.6.6 artifacts. The typed consumer and four-language UI
 accept vendor activity/errors and restore accepted task monitoring on return. Synthetic tests
 and static installer inspection are separate from the pending [real installation checklist](steam-pico-acquisition-checklist.md).
 The existing-software baseline and Provider replay after restart passed locally on 2026-10-08;
-no installer ran. Separate mainland/global Windows Sandbox inputs are prepared for the
-missing-software baseline, which remains unexecuted.
+no installer ran. Separate mainland/global Windows Sandbox inputs were prepared but the author
+deferred that method; the missing-software baseline remains unexecuted.
 VRChat/SteamVR remain manual Steam handoffs; acquisition does not complete the play/launch route.
 VRCFT has guide content but still needs the first-play detection/install/launch connection.
 
@@ -140,7 +172,8 @@ Finish the release with these bounded tasks:
 
 1. Run the selected-software-absent and reuse paths on the recorded Windows machine. Preserve
    user data during already-authorized uninstall/reinstall; describe the resulting baseline
-   accurately. Complete desktop, USB, Wi-Fi and optional-eye-tracking acceptance separately.
+   accurately. Exercise the core desktop, USB and Wi-Fi journeys. Optional-eye-tracking
+   acceptance remains separate and pending until actually run.
 2. Review the integrated UI with the author: four locales, narrow/resized windows, supported DPI,
    keyboard/focus, guide transparency and real external handoffs. Replace stale instructions
    found during the headset run. Create the user-facing illustrated guide from the actual build;
@@ -175,6 +208,7 @@ integration, not a substitute for N5's own review and acceptance.
 
 ## Document changelog
 
+- 1.3.0 (2026-10-08): prioritize download-to-play blockers under the author's Ibis criterion, record return/next-action repairs and keep optional automation and the deferred Sandbox method outside independent release gates.
 - 1.2.0 (2026-10-08): record the Steam/PICO acquisition implementation and region choice;
   record local reuse/replay verification and prepared isolated inputs; retain missing-software
   installation and play acceptance as pending.

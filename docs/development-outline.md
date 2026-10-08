@@ -1,9 +1,9 @@
 # VUA development sequence
 
-> Document version: 3.10.0
+> Document version: 3.11.0
 > Status: Accepted
-> Updated: 2026-10-05
-> Authority: User rulings of 2026-09-28 through 2026-10-05, including independent release numbering and three first-play guidance contexts
+> Updated: 2026-10-08
+> Authority: User rulings of 2026-09-28 through 2026-10-08, including independent release numbering, three guidance contexts and the Ibis core-journey criterion
 > Scope: N1-N7, real-machine deployment and real-material workflows, continuing Beta
 > Normative effect: Schedules accepted product work; product scope belongs to product-boundary.md
 
@@ -111,7 +111,11 @@ harness is in vua-unity-bridge and can use synthetic inputs or a
 The first release prioritizes the [bounded play scope](product-boundary.md#first-play-release-user-ruling-2026-10-03).
 Keep N1-N7 identifiers and select a product version at publication. Release the play subset
 with the necessary N6 recovery and N7 distribution work; broader N1 and N7 remain open.
-The following rows, rather than the creator rows below, define this release's acceptance.
+The following rows describe the accepted play work and the evidence needed to claim each
+outcome complete. The [2026-10-08 Ibis criterion](product-boundary.md#ibis-release-criterion-user-ruling-2026-10-08)
+owns publication: exercise the advertised core journey and fix where a newcomer gets stuck.
+Clear manual handoffs may complete that journey; optional work and non-blocking defects may
+remain explicit. Unexercised rows remain pending, and publication does not pass N1 or N2.
 The [first play delivery plan](development/first-play-delivery-plan.md) tracks completed slices
 and remaining work. N5 retains its separate review/acceptance and may join the same release
 afterward; it does not add material-management prerequisites to these play cases.
@@ -126,7 +130,7 @@ afterward; it does not add material-management prerequisites to these play cases
 | Desktop play | Launch VRChat in desktop mode, enter the game, and follow the guide for movement, menus, sound, microphone and basic safety settings. Installed files alone do not pass this row |
 | PICO USB | With PICO 4 Pro, follow cable setup and the official connection flow, enter VRChat in the headset, and verify image, head/hand tracking, controller interaction, sound and microphone |
 | PICO Wi-Fi | Repeat the headset play checks over Wi-Fi; explain the local-network prerequisites, and exercise a disconnect/reconnect without repeating the whole installation |
-| PICO eye tracking | On PICO 4 Pro, guide VRCFT Steam installation, its PICO module, headset eye-tracking calibration and VRChat OSC. Verify actual gaze and blinking on an existing suitable Avatar over both USB and Wi-Fi, including microphone use, reconnect and a later play session. Players may skip this option without blocking ordinary play; the release must exercise it |
+| PICO eye tracking | On PICO 4 Pro, guide VRCFT Steam installation, its PICO module, headset eye-tracking calibration and VRChat OSC. Verify actual gaze and blinking on an existing suitable Avatar over both USB and Wi-Fi, including microphone use, reconnect and a later play session. Players may skip this option; unfinished delivery remains pending under N2 and does not independently block Ibis publication |
 | Return/recovery | Repeat deployment without reinstalling satisfied components. Interrupt one download/install or user handoff, restart VUA, inspect the result and explicitly continue/retry. A later play session has a direct start path |
 | VUA app tour | Inside VUA, follow ordered highlights on actual controls through route selection, checks, plan/progress and play/guide entries. Page changes, back/next, skip/exit and restart work; absent controls have an understandable next action. The transparent tour stays within VUA, keeps text readable and does not cancel a task when exited |
 | Preparation reader | Open a normal opaque, resizable window for room setup, equipment connection and reference instructions without requiring VRChat or AMF. It is not globally pinned. A help entry opens its section once; ordinary reopen restores reading. Manual scrolling wins over positioning, keyboard reading and illustrations work, and closing leaves tasks/game running |
@@ -235,7 +239,7 @@ LIV is classified under capture/streaming; this connection does not install a LI
 ### Tracking-specific acceptance
 
 - **VRCFT:** guide its hardware-module installation in the upstream UI, headset switches/calibration,
-  VRChat OSC (Open Sound Control) and a suitable Avatar. The first play release exercises the PICO
+  VRChat OSC (Open Sound Control) and a suitable Avatar. Completing the PICO slice exercises the
   eye-tracking row above. Native gaze/blinking can use a suitable existing Avatar; full facial
   expressions require a face-tracking-compatible Avatar. Verify actual tracking/OSC output,
   reconnect and microphone coexistence, not just successful module initialization. Follow the
@@ -422,6 +426,7 @@ do not turn documentation completeness, speculative coverage, or idle agent acti
 
 ## Document changelog
 
+- 3.11.0 (2026-10-08): distinguish the author's Ibis publication criterion from completion of every accepted play/N2 row; retain real-run evidence and pending optional outcomes.
 - 3.10.0 (2026-10-05): define observable acceptance for three guidance contexts, their independent state and the separate N5 co-release review.
 - 3.9.0 (2026-10-03): advance PICO eye tracking into first-play acceptance and define seven N2 Steam connections with shared inventory/install/launch acceptance and focused tracking guides.
 - 3.8.0 (2026-10-03): define first-play-release acceptance for desktop/PICO USB/Wi-Fi, guidance, recovery and standalone ZIP; move creator completion behind that release.
@@ -440,6 +445,5 @@ do not turn documentation completeness, speculative coverage, or idle agent acti
   hedge with blocked-with-reason recording, expand first-use jargon (MA/OSC/VPM/BDL), and fix the
   circular Integration role wording; no acceptance change.
 - 3.4.0 (2026-09-30): decouple N stages from product versions while retaining every delivery outcome and acceptance requirement.
-- 3.3.1 (2026-09-30): state the selected external-tool delivery path directly.
 
 Earlier entries remain in Git history.

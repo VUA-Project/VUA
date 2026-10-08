@@ -1,10 +1,10 @@
 # VUA product boundary
 
 
-> Document version: 2.10.0
+> Document version: 2.11.0
 > Status: Accepted
 > Scope: Entire VUA product
-> Updated: 2026-10-05
+> Updated: 2026-10-08
 > Normative effect: Yes
 
 ## Product definition
@@ -215,6 +215,24 @@ gate derives risk from declared capabilities and behavior.
 
 ### First play release (user ruling, 2026-10-03)
 
+#### Ibis release criterion (user ruling, 2026-10-08)
+
+Before Ibis publication, ask one question: can a VRChat player who has never used VUA get
+from its download page through the advertised core play workflow without getting stuck?
+Fix blockers found on that journey; publish once it works. A clear official-client handoff,
+with a useful next action and a way to return, can satisfy the journey without extra automation.
+Do not add another feature or require zero bugs as an independent release condition.
+
+Desktop and PICO USB/Wi-Fi remain the core play routes. Optional eye tracking, a curated
+tutorial-world list and further automation do not independently delay this release. Keep
+unfinished optional work visibly skippable and describe its actual availability. This ruling
+supersedes the earlier requirement to finish optional eye tracking before Ibis publication;
+it retains that accepted N2 work and its evidence requirements. Publication does not close
+untested N-stage outcomes. The [version policy](release/versioning.md) continues to govern
+numbering, Beta status and disclosure of non-blocking defects.
+
+#### Bounded play scope
+
 The first play release takes a Windows user from missing play software to desktop VRChat play
 or PICO Connect streaming. It delivers the following bounded scope:
 
@@ -243,7 +261,7 @@ or PICO Connect streaming. It delivers the following bounded scope:
   Guide Steam installation, the PICO hardware module, headset calibration and VRChat OSC;
   verify gaze and blinking over USB and Wi-Fi, including reconnect and simultaneous microphone
   use. Use an existing suitable Avatar; Avatar modification is not a prerequisite. This N2
-  slice is required release acceptance even though players can skip enabling eye tracking.
+  slice retains its own acceptance; the Ibis release criterion above permits it to remain pending.
 
 PICO 4 Pro with both USB and Wi-Fi is the first hardware acceptance target. Record actual
 PICO OS, PICO Connect, SteamVR and game versions at test time. PICO precedes Quest so this
@@ -496,6 +514,7 @@ plugin execution and a marketplace still require their separately accepted secur
 
 ## Document changelog
 
+- 2.11.0 (2026-10-08): adopt the author's newcomer core-journey criterion for Ibis publication, allow clear manual handoffs and retain unfinished optional work without making it an independent release gate.
 - 2.10.0 (2026-10-05): separate app, preparation and game guidance in the first play scope and retain N5 as an independently reviewed co-release.
 - 2.9.0 (2026-10-03): add PICO eye tracking to the first play release and expand N2 to seven external tools with shared Steam inventory/install/launch acceptance.
 
@@ -513,6 +532,5 @@ plugin execution and a marketplace still require their separately accepted secur
   and compress the active-delivery policy to boundary rulings, linking acceptance definitions to
   the development outline; no scope change.
 - 2.4.0 (2026-10-01): select region-aware Unity/NoUnityCN source priority, a mirror switch and Hub fallback; authorize original-installer deployment with official CLI registration during N1 development.
-- 2.3.0 (2026-09-30): select official standalone Unity CLI installation with separate user licensing; Hub is optional.
 
 Earlier entries remain in Git history.

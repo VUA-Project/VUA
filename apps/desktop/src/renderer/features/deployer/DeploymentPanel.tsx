@@ -1,18 +1,20 @@
 /** N1 presentation only. The Gateway owns plans, execution and task facts. Changing intent
  * invalidates displayed consent; an opened official page never changes readiness locally. */
 import { useEffect, useRef, useState } from "react";
-import { DEPLOYMENT_PURPOSES, UNITY_HUB_INSTALL_LINK, isTerminalTaskStateV01, readDeploymentProgress, type DeploymentPlan, type DeploymentProgress, type DeploymentPurpose, type PicoInstallRegion, type TaskSnapshotV01 } from "@vua/contracts";
+import { DEPLOYMENT_PURPOSES, UNITY_HUB_INSTALL_LINK, isTerminalTaskStateV01, readDeploymentProgress, type DeploymentIntent, type DeploymentPlan, type DeploymentProgress, type DeploymentPurpose, type PicoInstallRegion, type TaskSnapshotV01 } from "@vua/contracts";
 import { useGateway } from "../../gateway/index.ts";
 import { strings } from "../../i18n/index.ts";
+import { format } from "../../i18n/format.ts";
 import { openExternalUrl } from "../../app/open-external.ts";
 import { useUnityMirrors } from "../../app/unity-download-preference.ts";
 import { storageKeys } from "../../app/storage-keys.ts";
 import { useMinBusyValue } from "../../app/busy-timing.ts";
 import { readDeploymentReceipt, type DeploymentReceiptBookmark } from "./deployment-receipt.ts";
+import { readDeploymentManualHandoff } from "./deployment-handoff.ts";
 import { Button } from "../../components/primitives/Button.tsx";
 import { Card } from "../../components/primitives/Card.tsx";
 import { GuideEntryButton } from "../guide/GuideEntryButton.tsx";
-import { guideTargetForComponent } from "../guide/guide-target.ts";
+import { GUIDE_TARGETS, guideTargetForComponent } from "../guide/guide-target.ts";
 import type { CheckZone } from "./deployer-model.ts";
 
 const copy = strings.deployment;
@@ -37,6 +39,7 @@ export function DeploymentPanel({ zone }: { zone: CheckZone }) {
   const [plan, setPlan] = useState<DeploymentPlan | null>(null);
   const [task, setTask] = useState<TaskSnapshotV01 | null>(null);
   const [taskId, setTaskId] = useState<string | null>(restored?.taskId ?? null);
+  const [acceptedIntent, setAcceptedIntent] = useState<DeploymentIntent | null>(restored?.intent ?? null);
   const [requestBusy, setBusy] = useState(false);
   const busy = useMinBusyValue(requestBusy ? true : null) !== null;
   const [error, setError] = useState<string | null>(null);
@@ -82,7 +85,7 @@ export function DeploymentPanel({ zone }: { zone: CheckZone }) {
 
   if (port === undefined || !available) return null;
   const replan = async () => {
-    setBusy(true); setError(null); setPlan(null); setTask(null); setTaskId(null); setStep(null); command.current = null;
+    setBusy(true); setError(null); setPlan(null); setTask(null); setTaskId(null); setAcceptedIntent(null); setStep(null); command.current = null;
     try { localStorage.removeItem(receiptKey); } catch { /* Storage does not grant execution authority. */ }
     try {
       const prepared = await port.plan({ purposes, editorRoot, useMirrors, ...(purposes.includes("pico_pcvr") && picoRegion !== "" ? { picoRegion } : {}) });
@@ -108,6 +111,10 @@ export function DeploymentPanel({ zone }: { zone: CheckZone }) {
         if (plan.intent.purposes.some(p => p === "desktop_play" || p === "pico_pcvr")) localStorage.setItem(storageKeys.deploymentReceiptPlay, serialized);
         if (plan.intent.purposes.some(p => p === "pc_avatar" || p === "quest_avatar")) localStorage.setItem(storageKeys.deploymentReceiptCreate, serialized);
       } catch { /* The live receipt and task center remain available. */ }
+      // Accepted work is monitored through its receipt. The old digest is no longer
+      // a next-step action, especially after Steam hands installation back to the user.
+      setPlan(null);
+      setAcceptedIntent(plan.intent);
       if (id === taskId) setTask(await port.status(id));
       else { setTask(null); setStep(null); setStartedAt(started); setNow(started); setTaskId(id); }
     }
@@ -116,6 +123,11 @@ export function DeploymentPanel({ zone }: { zone: CheckZone }) {
   };
   const disabled = busy || active;
   const outcome = task?.result?.outcome;
+  const manualHandoff = readDeploymentManualHandoff(task?.result);
+  const acceptedPlayOnly = acceptedIntent !== null && acceptedIntent.purposes.every(p => p === "desktop_play" || p === "pico_pcvr");
+  const playGuide = acceptedIntent?.purposes.includes("pico_pcvr") ? GUIDE_TARGETS.picoPrepare : GUIDE_TARGETS.vrchatFirstLaunch;
+  const verifiedMessage = acceptedPlayOnly && acceptedIntent !== null
+    ? format(copy.playVerified, { routes: acceptedIntent.purposes.map(p => copy.purposes[p]).join(" / ") }) : copy.verified;
   const installedEditor = task?.result?.editor;
   const installedVersion = typeof installedEditor === "object" && installedEditor !== null && "version" in installedEditor && typeof installedEditor.version === "string" ? installedEditor.version : null;
   const failedComponent = task?.error?.params?.component;
@@ -180,7 +192,10 @@ export function DeploymentPanel({ zone }: { zone: CheckZone }) {
         {step.phase === "installing" ? <p className="vua-caption">{copy.installingHint}</p> : null}
       </> : null}
       {active && startedAt !== null ? <p className="vua-caption">{copy.elapsed}{": "}{Math.max(0, Math.floor((now - startedAt) / 1000))} s</p> : null}
-      {typeof failedComponent === "string" && Object.hasOwn(copy.components, failedComponent) ? <p>{copy.components[failedComponent as keyof typeof copy.components]}</p> : null}
+      {typeof failedComponent === "string" && Object.hasOwn(copy.components, failedComponent) ? <>
+        <p>{copy.components[failedComponent as keyof typeof copy.components]}</p>
+        <GuideEntryButton target={guideTargetForComponent(failedComponent)} label={copy.guideCta} />
+      </> : null}
       {task.error !== undefined ? <>
         <p>{failureMessage}</p>
         <details><summary>{copy.errorDetails}</summary><code>{task.error.code}</code></details>
@@ -192,8 +207,18 @@ export function DeploymentPanel({ zone }: { zone: CheckZone }) {
         {sourceFailures.length > 0 ? <details><summary>{copy.sourceFailures}</summary><ul>{sourceFailures.map((failure, index) => <li key={index}>{failure.editorVersion}{" "}{failure.source === undefined ? copy.phases[failure.phase] : copy.downloadSources[failure.source]}{": "}<code>{failure.cause}</code></li>)}</ul></details> : null}
         <Button onClick={() => { void openExternalUrl(UNITY_HUB_INSTALL_LINK); }}>{copy.openHub}</Button>
         <Button variant="subtle" onClick={() => { void openExternalUrl("https://unity.com/download"); }}>{copy.getHub}</Button>
-      </> : outcome === "manual_required" ? <p>{copy.manualRequired}</p> : null}
-      {outcome === "prerequisites_verified" ? <p>{copy.verified}{installedVersion === null ? null : <><br />{copy.components.unity_editor}{": "}<code>{installedVersion}</code></>}</p> : null}
+      </> : outcome === "manual_required" ? <>
+        <p>{copy.manualRequired}</p>
+        {manualHandoff !== null ? <>
+          <p><strong>{copy.components[manualHandoff.component]}</strong></p>
+          <Button onClick={() => { void openExternalUrl(manualHandoff.officialUrl); }}>{copy.official}</Button>
+          <GuideEntryButton target={guideTargetForComponent(manualHandoff.component)} label={copy.guideCta} />
+        </> : null}
+      </> : null}
+      {outcome === "prerequisites_verified" ? <>
+        <p>{verifiedMessage}{installedVersion === null ? null : <><br />{copy.components.unity_editor}{": "}<code>{installedVersion}</code></>}</p>
+        {acceptedPlayOnly ? <GuideEntryButton target={playGuide} label={copy.guideCta} /> : null}
+      </> : null}
       {active && !task.cancellationRequested ? <Button disabled={busy} onClick={() => {
         setBusy(true); void port.cancel(task.taskId, task.revision).catch(() => setError(copy.cancelFailed)).finally(() => setBusy(false));
       }}>{copy.cancel}</Button> : null}

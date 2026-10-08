@@ -7,6 +7,7 @@ import { emptyGateway } from "../../src/renderer/gateway/empty-gateway.ts";
 import { DeploymentPanel } from "../../src/renderer/features/deployer/DeploymentPanel.tsx";
 import { storageKeys } from "../../src/renderer/app/storage-keys.ts";
 import { strings } from "../../src/renderer/i18n/index.ts";
+import type { GuideTarget } from "../../src/renderer/features/guide/guide-target.ts";
 import "@vua/design-system/tokens.css";
 import "@vua/design-system/base.css";
 import "../../src/renderer/features/deployer/deployer.css";
@@ -14,6 +15,11 @@ import "../../src/renderer/features/deployer/deployer.css";
 const base = emptyGateway();
 const root = createRoot(document.getElementById("root")!);
 const checks: string[] = [];
+const openedUrls: string[] = [];
+const openedGuides: GuideTarget[] = [];
+// Observe navigation requests without opening external pages or an actual guide window.
+window.open = url => { openedUrls.push(String(url)); return {} as Window; };
+Object.assign(window, { vua: { window: { showReader: async (target: GuideTarget) => { openedGuides.push(target); } } } });
 const listeners = new Set<(progress: DeploymentProgress) => void>();
 let executions = 0, statuses = 0, plans = 0, generation = 0;
 let snapshot: TaskSnapshotV01 = { contractVersion: "0.1", taskId: "synthetic-acquisition", revision: 1,
@@ -71,6 +77,7 @@ Object.assign(window, { deploymentReview: { run: async () => {
   button(strings.deployment.plan).click(); await until(() => document.querySelector("ol"));
   await until(() => findButton(strings.deployment.execute)?.disabled === false);
   button(strings.deployment.execute).click(); await until(() => executions === 1 && statuses > 0);
+  assert(!findButton(strings.deployment.execute), "accepted task clears obsolete execution consent");
   listeners.forEach(listener => listener({ component: "steam", action: "install_steam", phase: "downloading", source: "official", completedBytes: 1024, totalBytes: 2048 }));
   await until(() => document.querySelector("progress"));
   assert(document.querySelector("progress")!.value === 1024, "download uses actual byte progress");
@@ -85,5 +92,23 @@ Object.assign(window, { deploymentReview: { run: async () => {
   assert(document.querySelector("details code")?.textContent === snapshot.error!.code, "failure code stays in expandable details");
   assert(!(document.querySelector("details") as HTMLDetailsElement).open, "failure details default collapsed");
   assert(executions === 1, "failed task never auto-retries");
+  snapshot = { ...snapshot, state: "succeeded_with_warnings", revision: 3, error: undefined,
+    result: { outcome: "manual_required", prerequisitesReady: false,
+      nextStep: { component: "vrchat", action: "manual_install", officialUrl: "https://store.steampowered.com/app/438100/" } } };
+  mount(); await until(() => findButton(strings.deployment.official));
+  assert(!document.querySelector("ol") && !!document.querySelector('[data-guide-entry="install-vrchat"]'), "returned handoff retains official and guide entries without a saved plan");
+  button(strings.deployment.official).click();
+  assert(openedUrls.at(-1) === "https://store.steampowered.com/app/438100/", "returned handoff requests the current official destination");
+  (document.querySelector('[data-guide-entry="install-vrchat"]') as HTMLButtonElement).click();
+  assert(openedGuides.at(-1)?.section === "install-vrchat", "returned handoff opens the current installation guide section");
+  assert(executions === 1 && plans === 2, "manual handoff return does not start another task");
+  snapshot = { ...snapshot, state: "succeeded", revision: 4, result: { outcome: "prerequisites_verified", prerequisitesReady: true } };
+  mount(); await until(() => document.querySelector('[data-guide-entry="pico-prepare"]'));
+  assert(document.body.textContent?.includes([strings.deployment.purposes.desktop_play, strings.deployment.purposes.pico_pcvr].join(" / ")), "task outcome names the accepted routes");
+  assert(!!document.querySelector('[data-guide-entry="pico-prepare"]'), "returned successful play task leads to the accepted PICO route");
+  (document.querySelector('[data-guide-entry="pico-prepare"]') as HTMLButtonElement).click();
+  assert(openedGuides.at(-1)?.section === "pico-prepare", "software preparation opens the selected route guide");
+  choice(strings.deployment.purposes.pico_pcvr).click(); await tick();
+  assert(!!document.querySelector('[data-guide-entry="pico-prepare"]'), "changing future choices cannot rewrite the accepted task route");
   return checks;
 } } });
