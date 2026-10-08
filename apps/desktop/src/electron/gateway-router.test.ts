@@ -15,6 +15,16 @@ function request(): unknown {
 }
 
 describe("Electron Desktop Gateway routing", () => {
+  it("routes file deletion with its durable removal identity and rejects renderer paths", async () => {
+    const provider = new MockOrchestratorProviderV01(); await provider.start(); const invoke = vi.spyOn(provider, "invoke");
+    const context = { provider, productVersion: "0.6.0", platform: "win32", rendererUrl };
+    const params = { schemaVersion: "0.1", removalId: "library-removal-test", target: { kind: "product", id: "booth:90" }, copyIds: ["cpy-test"], previewHash: `sha256:${"a".repeat(64)}` };
+    await routeDesktopGatewayInvoke(context, `${rendererUrl}/`, { schemaVersion: 1, requestId: "remove", method: "library.removeFiles", params });
+    expect(invoke).toHaveBeenCalledWith(expect.objectContaining({ kind: "command", method: "library.removeFiles", commandId: params.removalId, params }));
+    invoke.mockClear();
+    const rejected = await routeDesktopGatewayInvoke(context, `${rendererUrl}/`, { schemaVersion: 1, requestId: "bad", method: "library.removeFiles", params: { ...params, storedPath: "C:\\Synthetic\\foreign.zip" } });
+    expect(rejected).toMatchObject({ ok: false, error: { code: "invalid_request" } }); expect(invoke).not.toHaveBeenCalled();
+  });
   it("routes network checks as read-only queries and rejects arbitrary endpoints", async () => {
     const provider = new MockOrchestratorProviderV01();
     await provider.start();

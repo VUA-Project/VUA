@@ -65,15 +65,11 @@ import { DeployerPage } from "./features/deployer/DeployerPage.tsx";
 import { OnboardingPage, type OnboardingResult } from "./features/onboarding/OnboardingPage.tsx";
 import { NavigationConfirmOverlay } from "./app/NavigationConfirmOverlay.tsx";
 import { AppTour } from "./features/tour/AppTour.tsx";
+import { LoginBrowserOverlay } from "./app/LoginBrowserOverlay.tsx";
 import { PackagesPage } from "./features/packages/PackagesPage.tsx";
-import { ProductionIntroOverlay } from "./features/production/ProductionIntroOverlay.tsx";
 import { RecipePage } from "./features/recipe/RecipePage.tsx";
 import { ReleasePage } from "./features/release/ReleasePage.tsx";
 import { InspectionPage } from "./features/inspection/InspectionPage.tsx";
-import {
-  nextIntroPhase,
-  type ProductionIntroPhase,
-} from "./features/production/production-intro-state.ts";
 import { Taskbar } from "./features/task-center/Taskbar.tsx";
 import { NotificationPopover } from "./features/task-center/NotificationPopover.tsx";
 import { ResourceMonitor } from "./features/resource-monitor/ResourceMonitor.tsx";
@@ -88,6 +84,7 @@ import {
 } from "./features/settings/diagnostics.ts";
 import { ExperimentalCommands } from "./features/settings/experimental-commands.tsx";
 import { DevModeSection } from "./features/settings/dev-mode-section.tsx";
+import { AccountSettingsPage } from "./features/settings/AccountSettingsPage.tsx";
 import { EnvironmentSettingsPage } from "./features/settings/environment-page.tsx";
 import { useAutoDeleteOriginals } from "./app/delete-originals-auto.ts";
 import {
@@ -665,6 +662,8 @@ function renderPage(
       return <GoalsSettingsPage onRestart={actions.restartOnboarding} />;
     case "settings-environment":
       return <EnvironmentSettingsPage />;
+    case "settings-accounts":
+      return <AccountSettingsPage />;
     case "settings-language":
       return <LanguageSettingsPage />;
     case "settings-theme":
@@ -910,13 +909,6 @@ function AppShell({
     return [...pages, ...actions];
     // navigate 由 App 每次渲染新建;命令表重建成本低,无需缓存
   }, [navigate, resolvedTheme, themeOverride]);
-
-  // 模型生产假加载页(需求 2026-08):本次启动首次进入 production 模块时覆盖,
-  // 固定时长/点击/Escape 退出;真实初始化任务接入后由任务状态驱动(G10)
-  const [introPhase, setIntroPhase] = useState<ProductionIntroPhase>("idle");
-  useEffect(() => {
-    setIntroPhase((phase) => nextIntroPhase(phase, activeModule === "production"));
-  }, [activeModule]);
 
   // 沉浸式自定义标题栏:仅在 Electron 壳内渲染窗口控制(浏览器预览无 preload,不渲染)
   const inShell = window.vua !== undefined;
@@ -1266,9 +1258,6 @@ function AppShell({
               steamVRRunning,
             }, uiRoot, onUiRootChange)}
           </div>
-          {introPhase === "showing" ? (
-            <ProductionIntroOverlay onDone={() => setIntroPhase("done")} />
-          ) : null}
         </main>
       </div>
       {/* 任务中心(ui-ux §4.2 底部入口):capability 非 ready 时组件自身不渲染 */}
@@ -1278,6 +1267,9 @@ function AppShell({
       {/* 应用导览(三类引导裁决 2026-10-05):主窗口内有序高亮;从未运行自动
        *  开始,active 按步号恢复,重播经命令面板;状态独立于阅读器/安装 */}
       <AppTour page={page} navigate={navigate} startRequest={tourStartRequest} />
+      {/* 窗口级登录浏览器(2026-10-05 用户裁决):无开启意图时零渲染;视图
+          生命周期归组件(卸载即关),宿主不依赖任何页面/弹窗 */}
+      <LoginBrowserOverlay />
       {paletteOpen ? (
         <CommandPalette commands={commands} onClose={() => setPaletteOpen(false)} />
       ) : null}

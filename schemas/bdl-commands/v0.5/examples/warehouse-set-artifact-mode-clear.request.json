@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "0.5",
+  "operation": "warehouse.setArtifactMode",
+  "params": {
+    "warehouseItemId": "whi-01hexample0000000000000a",
+    "mode": null
+  }
+}

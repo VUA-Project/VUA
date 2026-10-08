@@ -1,0 +1,10 @@
+{
+  "method": "library.list",
+  "params": {
+    "schemaVersion": "0.1",
+    "source": "all",
+    "state": "all",
+    "limit": 50,
+    "offset": 0
+  }
+}

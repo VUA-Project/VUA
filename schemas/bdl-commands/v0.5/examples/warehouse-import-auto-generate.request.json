@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "0.5",
+  "operation": "warehouse.import",
+  "params": {
+    "sourceFolders": [
+      "C:\Users\example\Downloads\uniform-pack"
+    ],
+    "autoGenerate": true
+  }
+}

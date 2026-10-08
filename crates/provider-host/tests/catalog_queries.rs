@@ -5,7 +5,7 @@
 //! frozen face to the v0.5 directory).
 //!
 //! The host consumes the data-side frozen vectors from
-//! `schemas/bdl-queries/v0.5/examples` through the real frame loop. The
+//! `schemas/bdl-queries/v0.6/examples` through the real frame loop. The
 //! assembly (bdl-store) produces the result payload; the wire face wraps it
 //! into the frozen `{ schemaVersion, operation, result }` document — so the
 //! wire answer must equal the direct store assembly for the same params
@@ -30,13 +30,13 @@ use vua_provider_host::{run_provider_host_with_services, WarehouseConfig};
 /// The frozen v0.5 schemas (the CURRENT generation: the validators key on
 /// the word face the wire now serves).
 fn schema_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/bdl-queries/v0.5")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/bdl-queries/v0.6")
 }
 
 /// The frozen vector generation for the six v0.4 methods' examples: the
 /// v0.5 freeze added only the dependencies vectors (the additive rise
 /// keeps the six v0.4 word faces identical, so their vectors stay in the
-/// v0.4 generation dir verbatim — schemaVersion "0.4" and all). The route
+/// v0.4 generation dir verbatim — schemaVersion "0.5" and all). The route
 /// parses params only, so a vector drives the wire with its params alone.
 fn vector_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/bdl-queries/v0.4")
@@ -192,7 +192,7 @@ fn empty_table_answers_the_honest_empty_state_over_the_wire() {
     let frames = run_query(&world, "req-list", "catalog.list", json!({}));
     let value = &frames[0]["payload"]["value"];
     assert!(validator.is_valid(value), "{value}");
-    assert_eq!(value["schemaVersion"], "0.5");
+    assert_eq!(value["schemaVersion"], "0.6");
     assert_eq!(value["operation"], "catalog.list");
     assert_eq!(value["result"]["total"], 0);
     assert_eq!(value["result"]["entries"], json!([]));
@@ -585,7 +585,7 @@ fn downloads_list_completed_is_the_adoption_guards_mirror() {
     let frames = run_query(&world, "req-downloads", "downloads.listCompleted", json!({}));
     let value = &frames[0]["payload"]["value"];
     assert!(validator.is_valid(value), "the listing must match the frozen v0.5 schema: {value}");
-    assert_eq!(value["schemaVersion"], "0.5");
+    assert_eq!(value["schemaVersion"], "0.6");
     assert_eq!(value["operation"], "downloads.listCompleted");
     let rows = value["result"]["downloads"].as_array().expect("downloads rows");
     assert_eq!(rows.len(), 2, "both adoptable deliveries list: {value}");

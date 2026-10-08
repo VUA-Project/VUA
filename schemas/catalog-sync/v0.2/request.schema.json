@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ph-r.com/vua/schemas/catalog-sync/v0.2/request.schema.json",
+  "title": "VUA catalog-sync library-page request v0.1",
+  "description": "One archived BOOTH account-library listing page reported by the Electron partition-session reader to the provider (docs/protocols/catalog-sync-v0.1). The page carries observed page facts only: raw HTML, the page URL, and the fetch time. Requests never carry cookies, session tokens or credentials; pageNumber and runId are correlation metadata the provider records but does not derive behavior from.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "sourceUrl",
+    "html",
+    "fetchedAt"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "0.1" },
+    "sourceUrl": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The page URL the HTML was fetched from (the account library pagination URL)."
+    },
+    "html": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The archived page body verbatim; parsing and closed-set validation happen provider-side."
+    },
+    "pageNumber": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Optional page ordinal for correlation and logging; not used to select parsing behavior."
+    },
+    "fetchedAt": {
+      "type": "string",
+      "minLength": 1,
+      "description": "RFC 3339 observation time of the fetch (never a BOOTH publish time)."
+    },
+    "libraryType": {
+      "enum": ["bought", "gifts", "free_downloads"],
+      "description": "v0.2: which account library the page lists (BDL v0.3 column). Optional; v0.1 requests omit it."
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional sync-run identity stamped into every observation written by this page."
+    }
+  }
+}

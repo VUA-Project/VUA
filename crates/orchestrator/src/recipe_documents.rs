@@ -149,6 +149,7 @@ impl RecipeDocumentStore {
             output.write_all(&bytes).map_err(|error| {
                 RecipeSaveError::StoreIo { detail: error.to_string() }
             })?;
+            output.sync_all().map_err(|error| RecipeSaveError::StoreIo { detail: error.to_string() })?;
         }
         // Replace is safe here: recipes are mutable documents (unlike
         // evidence/records), fenced by the baseRevision check above.
@@ -174,9 +175,12 @@ impl RecipeDocumentStore {
     /// updatedAt). Pagination/filtering belongs to the application face.
     pub fn list(&self) -> Result<Vec<RecipeListEntry>, RecipeSaveError> {
         let mut entries = Vec::new();
-        for entry in fs::read_dir(&self.root).map_err(|error| {
-            RecipeSaveError::StoreIo { detail: error.to_string() }
-        })? {
+        let directory = match fs::read_dir(&self.root) {
+            Ok(directory) => directory,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(entries),
+            Err(error) => return Err(RecipeSaveError::StoreIo { detail: error.to_string() }),
+        };
+        for entry in directory {
             let entry = entry.map_err(|error| {
                 RecipeSaveError::StoreIo { detail: error.to_string() }
             })?;
@@ -272,6 +276,15 @@ mod tests {
     }
 
     const ID: &str = "019e0000-0000-7000-8000-000000000001";
+
+    #[test]
+    fn absent_store_is_empty_but_an_unreadable_store_remains_an_error() {
+        let root=unique_root("absent").join("not-created");
+        let store=RecipeDocumentStore::new_with_system_clock(&root);
+        assert!(store.list().unwrap().is_empty());
+        fs::write(&root,b"not a directory").unwrap();
+        assert!(store.list().is_err());
+    }
 
     #[test]
     fn save_create_then_optimistic_concurrency() {

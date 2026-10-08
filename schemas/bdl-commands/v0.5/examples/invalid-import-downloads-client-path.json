@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "0.5",
+  "operation": "warehouse.importDownloads",
+  "params": {
+    "downloadIds": [
+      "dl-01hexample0000000000000a"
+    ],
+    "sourcePath": "C:\\Users\\example\\AppData\\Local\\VUA\\installed\\default\\downloads\\staged.zip"
+  }
+}

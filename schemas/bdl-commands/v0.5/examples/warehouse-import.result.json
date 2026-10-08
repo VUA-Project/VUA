@@ -1,0 +1,6 @@
+{
+  "schemaVersion": "0.5",
+  "operation": "warehouse.import",
+  "taskId": "tsk_01JABCDEFGHJKLMNPQRSTUVWXYZ234",
+  "correlationId": "corr-import-1"
+}

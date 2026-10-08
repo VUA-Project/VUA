@@ -630,6 +630,11 @@ export function fixtureGateway(
     // 029 B 面环 4:配方导出 fixture 臂诚实缺席(mock/fixture 不出 DEV;
     // 演示工程登记不含导出词表,不伪造草稿)
     recipeExport: createUnavailableRecipeExportPort(),
+  recipe: {
+    list: () => Promise.resolve([]),
+    get: () => Promise.resolve(null),
+    save: () => Promise.reject(new Error("fixture gateway")),
+  },
     // bdl-queries v0.5 消费准备切片:依赖反查/观察列 fixture 臂诚实缺席
     // (mock/fixture 不出 DEV;库内无演示依赖观察事实,不伪造线索/建议)
     dependencies: createUnavailableDependenciesPort(),

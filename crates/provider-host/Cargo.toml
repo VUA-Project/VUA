@@ -41,3 +41,4 @@ jsonschema = "0.52.1"
 # Test-only: auxiliary observation-side rows (tombstones) are written
 # through a second connection, mirroring the bdl-store consumer tests.
 rusqlite = { version = "=0.40.1", features = ["bundled"] }
+scraper = "0.27.0"

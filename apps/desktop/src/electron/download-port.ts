@@ -36,6 +36,8 @@ export interface DownloadPortOptions {
   /** 分区 Session(retry 全新 attempt 时经 downloadURL 重发起) */
   readonly partitionSession: Session;
   readonly allowedOrigins: readonly string[];
+  /** Private library composition: an admitted BOOTH request awaiting native binding. */
+  readonly isAwaitingLibraryRequest?: (originalUrl: string) => boolean;
   readonly sink: DownloadEventSink;
   readonly now?: () => string;
   /** progress 节流间隔(默认 250ms;冒烟可调小) */
@@ -54,6 +56,7 @@ interface DownloadRecord {
   readonly sourceUrl: string;
   readonly initiatedFromPageUrl: string | null;
   readonly urlChain: readonly string[] | null;
+  readonly selectedLibraryUrl: string | null;
   readonly suggestedFileName: string | null;
   readonly item: DownloadItem;
   attempt: number;
@@ -67,7 +70,7 @@ export class DownloadPort {
   readonly #options: DownloadPortOptions;
   readonly #records = new Map<string, DownloadRecord>();
   /** 弃件后等待重绑定的下载:按 sourceUrl 键(重发起的 item 以同 URL 到来) */
-  readonly #pendingRestarts = new Map<string, { downloadId: string; attempt: number }>();
+  readonly #pendingRestarts = new Map<string, { downloadId: string; attempt: number; selectedLibraryUrl: string | null }>();
   #sequence = 0;
 
   constructor(options: DownloadPortOptions) {
@@ -81,7 +84,9 @@ export class DownloadPort {
    */
   handleWillDownload(event: { readonly preventDefault: () => void }, item: DownloadItem, webContents: WebContents): void {
     const sourceUrl = item.getURL();
-    if (!isAllowedRemoteOrigin(sourceUrl, this.#options.allowedOrigins)) {
+    const urlChain = this.#urlChainOf(item);
+    const selectedLibraryUrl = this.#selectedLibraryUrlOf(sourceUrl, urlChain);
+    if (!isAllowedRemoteOrigin(sourceUrl, this.#options.allowedOrigins) && selectedLibraryUrl === null) {
       event.preventDefault();
       this.#emit({
         kind: "download.failed",
@@ -89,7 +94,7 @@ export class DownloadPort {
         attempt: 1,
         sourceUrl,
         initiatedFromPageUrl: this.#pageUrlOf(webContents),
-        urlChain: this.#urlChainOf(item),
+        urlChain,
         suggestedFileName: this.#suggestedNameOf(item),
         storedPath: null,
         expectedBytes: this.#expectedBytesOf(item),
@@ -101,11 +106,12 @@ export class DownloadPort {
     }
 
     // 弃件重发起:同 URL 的新 item 重绑定原 downloadId,attempt 递增
-    const restart = this.#pendingRestarts.get(sourceUrl);
+    const requestUrl = selectedLibraryUrl ?? sourceUrl;
+    const restart = this.#pendingRestarts.get(requestUrl);
     this.#sequence += 1;
     const downloadId = restart?.downloadId ?? `dl-${this.#sequence}-${crypto.randomUUID()}`;
     const attempt = restart ? restart.attempt + 1 : 1;
-    if (restart !== undefined) this.#pendingRestarts.delete(sourceUrl);
+    if (restart !== undefined) this.#pendingRestarts.delete(requestUrl);
 
     const storedPath = this.#reserveStagingPath(downloadId, item.getFilename());
     item.setSavePath(storedPath);
@@ -113,7 +119,8 @@ export class DownloadPort {
       downloadId,
       sourceUrl,
       initiatedFromPageUrl: this.#pageUrlOf(webContents),
-      urlChain: this.#urlChainOf(item),
+      urlChain,
+      selectedLibraryUrl,
       suggestedFileName: this.#suggestedNameOf(item),
       item,
       attempt,
@@ -229,8 +236,9 @@ export class DownloadPort {
     }
     if (intent === "retry") {
       // 全新 attempt:重发起的新 item 将在 will-download 重绑原 downloadId
-      this.#pendingRestarts.set(record.sourceUrl, { downloadId, attempt: record.attempt });
-      this.#options.partitionSession.downloadURL(record.sourceUrl);
+      const requestUrl = record.selectedLibraryUrl ?? record.sourceUrl;
+      this.#pendingRestarts.set(requestUrl, { downloadId, attempt: record.attempt, selectedLibraryUrl: record.selectedLibraryUrl });
+      this.#options.partitionSession.downloadURL(requestUrl);
     }
   }
 
@@ -288,6 +296,23 @@ export class DownloadPort {
     }
   }
 
+  #selectedLibraryUrlOf(sourceUrl: string, chain: readonly string[] | null): string | null {
+    if (chain === null) return null;
+    const original = chain[0];
+    if (original === undefined || chain.at(-1) !== sourceUrl
+      || !/^https:\/\/booth\.pm\/downloadables\/[1-9][0-9]*$/u.test(original)
+      || !isAllowedRemoteOrigin(original, this.#options.allowedOrigins)) return null;
+    try {
+      for (const hop of chain) {
+        const url = new URL(hop);
+        if (url.protocol !== "https:" || url.username !== "" || url.password !== "" || url.hash !== "") return null;
+      }
+    } catch { return null; }
+    if (this.#pendingRestarts.get(original)?.selectedLibraryUrl === original
+      || this.#options.isAwaitingLibraryRequest?.(original) === true) return original;
+    return null;
+  }
+
   #suggestedNameOf(item: DownloadItem): string | null {
     try {
       const name = item.getFilename();
@@ -313,19 +338,18 @@ export class DownloadPort {
     return received > 0 ? received : 0;
   }
 
-  /** 暂存路径 = 注入根 + 文件名;同名以 downloadId 短码消歧(消歧归端口) */
+  /** Never reuse a consumed delivery path: old manifests still refer to it. */
   #reserveStagingPath(downloadId: string, suggestedName: string | null): string {
     const rawName = (suggestedName ?? "download.bin").replaceAll("\\", "/").split("/").at(-1) ?? "download.bin";
-    const parsed = path.parse(rawName);
-    const shortId = downloadId.replace(/^dl-\d+-/, "").slice(0, 6);
-    const candidates = [parsed.name + parsed.ext, `${parsed.name}-${shortId}${parsed.ext}`];
-    for (const candidate of candidates) {
-      const candidatePath = path.join(this.#options.stagingRoot, candidate);
-      if (!fs.existsSync(candidatePath)) return candidatePath;
-    }
+    const sanitized = rawName.replace(/[<>:"|?*\u0000-\u001f]/g, "_").replace(/[. ]+$/u, "");
+    let leaf = (sanitized || "download.bin").slice(-128);
+    if (/^[\uDC00-\uDFFF]/u.test(leaf)) leaf = leaf.slice(1);
+    const stem = `${downloadId}-${leaf}`;
+    const candidatePath = path.join(this.#options.stagingRoot, stem);
+    if (!fs.existsSync(candidatePath)) return candidatePath;
     let counter = 2;
     for (;;) {
-      const candidatePath = path.join(this.#options.stagingRoot, `${parsed.name}-${shortId}-${counter}${parsed.ext}`);
+      const candidatePath = path.join(this.#options.stagingRoot, `${downloadId}-${counter}-${leaf}`);
       if (!fs.existsSync(candidatePath)) return candidatePath;
       counter += 1;
     }

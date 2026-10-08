@@ -1,0 +1,65 @@
+{
+  "schemaVersion": "0.6",
+  "operation": "dependencies.listByProduct",
+  "result": {
+    "productId": "booth:6584744",
+    "productStatus": "complete",
+    "observations": [
+      {
+        "depKind": "shader",
+        "depName": "liltoon",
+        "versionHint": "2.3.2~",
+        "rawQuote": "・liltoon 2.3.2~",
+        "sourceSpan": "body",
+        "extractionMethod": "explicit_heading",
+        "extractedBy": "human",
+        "observedAt": "2026-09-22T00:00:00.000Z",
+        "resolution": {
+          "productId": "booth:3087170",
+          "confirmed": true,
+          "evidence": [
+            {
+              "linkText": "lilToon",
+              "linkUrl": "https://lilxyzw.booth.pm/items/3087170",
+              "span": "description_link",
+              "note": "description link resolves to the lilToon product page; title/shop cross-checked"
+            }
+          ]
+        }
+      },
+      {
+        "depKind": "other",
+        "depName": "Unity",
+        "versionHint": "2022.3.22f1",
+        "rawQuote": "- Unity 2022.3.22f1",
+        "sourceSpan": "body",
+        "extractionMethod": "bullet",
+        "extractedBy": "human",
+        "observedAt": "2026-09-22T00:00:00.000Z",
+        "resolution": null
+      },
+      {
+        "depKind": "avatar_base",
+        "depName": "Lapwing",
+        "versionHint": null,
+        "rawQuote": "◎Liltoon",
+        "sourceSpan": "description_link",
+        "extractionMethod": "link",
+        "extractedBy": "dep-pipeline-0.1",
+        "observedAt": "2026-09-22T00:01:00.000Z",
+        "resolution": {
+          "productId": "booth:4993931",
+          "confirmed": false,
+          "evidence": [
+            {
+              "linkText": "◎Liltoon",
+              "linkUrl": "https://booth.pm/ja/items/4993931",
+              "span": "description_link",
+              "note": "link text says lilToon but the target page is an unrelated avatar — the proposal 030 §1 sample-3 mislink; stays a labeled clue until a human rules"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

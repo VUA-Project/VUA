@@ -381,7 +381,7 @@
 }
 
 .vua-shell__main {
-  /* relative:模型生产首次进入覆盖层(.vua-production-intro)的定位锚点 */
+  /* relative:主内容区内绝对定位子元素的通用定位锚点 */
   position: relative;
   flex: 1;
   min-width: 0;

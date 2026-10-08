@@ -25,6 +25,8 @@ export interface TaskItem {
   readonly cancellable: boolean;
   /** 失败/警告说明(数据负载) */
   readonly errorText?: string;
+  /** 终态后仍显示为通知直到手动清除(登记身份时声明;见 task-identity) */
+  readonly notifyOnComplete?: boolean;
 }
 
 export interface TaskCenterView {

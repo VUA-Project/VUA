@@ -165,6 +165,13 @@ pub enum IdempotentTaskAcceptance {
     },
 }
 
+/// Private durable command inputs used by operation-specific recovery readers.
+pub struct IdempotentTaskRecord {
+    pub idempotency_key: String,
+    pub request_fingerprint: String,
+    pub task_id: String,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StoredCancellationOutcome {
@@ -389,6 +396,13 @@ impl SqliteTaskStore {
             task: Box::new(stored_task),
             event: Box::new(event),
         })
+    }
+
+    pub fn idempotent_tasks(&self, command_kind: &str) -> Result<Vec<IdempotentTaskRecord>, SqliteStoreError> {
+        let connection = self.connection.lock().expect("SQLite connection poisoned");
+        let mut statement = connection.prepare("SELECT idempotency_key,request_fingerprint,task_id FROM command_idempotency WHERE command_kind=?1 ORDER BY idempotency_key")?;
+        let rows = statement.query_map([command_kind], |row| Ok(IdempotentTaskRecord { idempotency_key: row.get(0)?, request_fingerprint: row.get(1)?, task_id: row.get(2)? }))?;
+        Ok(rows.collect::<Result<Vec<_>, _>>()?)
     }
 
     pub fn mutate_task(

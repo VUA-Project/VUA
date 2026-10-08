@@ -19,6 +19,10 @@ export interface TaskIdentity {
   readonly title: string;
   /** 来源页:任务列表「回到来源页」与行打开的回跳目标 */
   readonly originPage: PageId;
+  /** 终态后仍作为通知显示直到手动清除(用户裁决 2026-10-02:短任务的
+   * 完成也应有通知——运行窗口太短,用户打开通知中心时已按默认纪律
+   * 消失)。只影响呈现,不影响任务权威事实。 */
+  readonly notifyOnComplete?: boolean;
 }
 
 const identities = new Map<string, TaskIdentity>();

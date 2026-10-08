@@ -7,5 +7,10 @@
  * 以 Electron 机制重建。
  */
 export function catalogImageUrl(url: string): string {
+  // N5(2026-10-03):vua-img 协议本地缓存(Electron 侧 image-cache.ts;
+  // 只代理 booth.pximg.net,命中磁盘直回)。非该域 URL 原样返回
+  if (url.startsWith('https://booth.pximg.net/')) {
+    return `vua-img://${encodeURIComponent(url)}`;
+  }
   return url;
 }

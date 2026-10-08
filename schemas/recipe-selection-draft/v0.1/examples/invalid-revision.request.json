@@ -1,0 +1,9 @@
+{
+  "method": "recipeDraft.addSelection",
+  "params": {
+    "schemaVersion": "0.1",
+    "draftId": "recipe-draft-synthetic",
+    "baseRevision": 9007199254740991,
+    "selections": []
+  }
+}

@@ -18,15 +18,15 @@
 //! per content: re-inspecting an already-concluded artifact returns the
 //! stored verdict instead of erroring.
 
+use sha2::{Digest, Sha256};
+use std::io::Read;
+use std::path::{Path, PathBuf};
 use vua_bdl_store::bdl_store::{
     ArtifactInspectionState, ArtifactRecordingOutcome, BdlStore, BdlStoreError, NewLocalArtifact,
     StoredArtifact,
 };
 use vua_bdl_store::download_events::{ConsumerError, DownloadEventConsumer};
 use vua_orchestrator::Clock;
-use sha2::{Digest, Sha256};
-use std::io::Read;
-use std::path::{Path, PathBuf};
 
 /// Inspection thresholds. The defaults map to the two material-intake v0.1
 /// channels: direct `.unitypackage` and `.zip`-carried local VPM work.
@@ -57,12 +57,17 @@ pub enum InspectionError {
     /// No completion-manifest entry: the download never completed, is still
     /// in flight, or already reached a terminal state.
     UnknownStagingCompletion(String),
-    StagingTokenMismatch { download_id: String },
+    StagingTokenMismatch {
+        download_id: String,
+    },
     StagingRootMissing(PathBuf),
     StagingFileVanished(String),
     /// The staged final component is a symlink/reparse point; staging files
     /// are port-created regular files, so any link is tampering.
-    StagingPathNotRegular { download_id: String, path: String },
+    StagingPathNotRegular {
+        download_id: String,
+        path: String,
+    },
     /// Canonicalized path leaves the injected staging root.
     StagingPathEscape {
         download_id: String,
@@ -102,28 +107,49 @@ impl std::fmt::Display for InspectionError {
             Self::Store(error) => write!(formatter, "{error}"),
             Self::Io(error) => write!(formatter, "staging file failed: {error}"),
             Self::UnknownStagingCompletion(download_id) => {
-                write!(formatter, "download {download_id} has no inspectable completion")
+                write!(
+                    formatter,
+                    "download {download_id} has no inspectable completion"
+                )
             }
             Self::StagingTokenMismatch { download_id } => {
-                write!(formatter, "download {download_id}: staging token does not match the completion manifest")
+                write!(
+                    formatter,
+                    "download {download_id}: staging token does not match the completion manifest"
+                )
             }
             Self::StagingRootMissing(root) => {
-                write!(formatter, "expected staging root {} does not exist", root.display())
+                write!(
+                    formatter,
+                    "expected staging root {} does not exist",
+                    root.display()
+                )
             }
             Self::StagingFileVanished(path) => {
                 write!(formatter, "staged file {path} vanished before inspection")
             }
             Self::StagingPathNotRegular { download_id, path } => {
-                write!(formatter, "download {download_id}: staged path {path} is a link, not a regular file")
+                write!(
+                    formatter,
+                    "download {download_id}: staged path {path} is a link, not a regular file"
+                )
             }
-            Self::StagingPathEscape { download_id, path, root } => {
+            Self::StagingPathEscape {
+                download_id,
+                path,
+                root,
+            } => {
                 write!(
                     formatter,
                     "download {download_id}: staged path {path} escapes the staging root {}",
                     root.display()
                 )
             }
-            Self::ReportedSizeMismatch { download_id, reported, actual } => {
+            Self::ReportedSizeMismatch {
+                download_id,
+                reported,
+                actual,
+            } => {
                 write!(
                     formatter,
                     "download {download_id}: staged file is {actual} bytes, the completed delivery reported {reported}"
@@ -196,6 +222,23 @@ impl<'a> ArtifactInspector<'a> {
         &self,
         request: &DownloadInspectionRequest<'_>,
     ) -> Result<DownloadInspectionOutcome, InspectionError> {
+        self.inspect_delivery(request, true)
+    }
+
+    /// Library storage retains all formats. Passing this mechanical boundary
+    /// is not admission to a production channel; format inspection is separate.
+    pub fn inspect_download_for_storage(
+        &self,
+        request: &DownloadInspectionRequest<'_>,
+    ) -> Result<DownloadInspectionOutcome, InspectionError> {
+        self.inspect_delivery(request, false)
+    }
+
+    fn inspect_delivery(
+        &self,
+        request: &DownloadInspectionRequest<'_>,
+        require_production_extension: bool,
+    ) -> Result<DownloadInspectionOutcome, InspectionError> {
         let consumer = DownloadEventConsumer::new(self.store);
         let completion = consumer
             .staging_completion(request.download_id)?
@@ -208,33 +251,36 @@ impl<'a> ArtifactInspector<'a> {
             });
         }
 
-        let canonical_root = std::fs::canonicalize(request.expected_staging_root).map_err(
-            |error| match error.kind() {
+        let canonical_root =
+            std::fs::canonicalize(request.expected_staging_root).map_err(|error| {
+                match error.kind() {
+                    std::io::ErrorKind::NotFound => InspectionError::StagingRootMissing(
+                        request.expected_staging_root.to_path_buf(),
+                    ),
+                    _ => InspectionError::Io(error),
+                }
+            })?;
+        let staged = PathBuf::from(&completion.stored_path);
+        let staged_link =
+            std::fs::symlink_metadata(&staged).map_err(|error| match error.kind() {
                 std::io::ErrorKind::NotFound => {
-                    InspectionError::StagingRootMissing(request.expected_staging_root.to_path_buf())
+                    InspectionError::StagingFileVanished(completion.stored_path.clone())
                 }
                 _ => InspectionError::Io(error),
-            },
-        )?;
-        let staged = PathBuf::from(&completion.stored_path);
-        let staged_link = std::fs::symlink_metadata(&staged).map_err(|error| match error.kind() {
-            std::io::ErrorKind::NotFound => {
-                InspectionError::StagingFileVanished(completion.stored_path.clone())
-            }
-            _ => InspectionError::Io(error),
-        })?;
+            })?;
         if staged_link.file_type().is_symlink() {
             return Err(InspectionError::StagingPathNotRegular {
                 download_id: request.download_id.to_string(),
                 path: completion.stored_path.clone(),
             });
         }
-        let canonical_file = std::fs::canonicalize(&staged).map_err(|error| match error.kind() {
-            std::io::ErrorKind::NotFound => {
-                InspectionError::StagingFileVanished(completion.stored_path.clone())
-            }
-            _ => InspectionError::Io(error),
-        })?;
+        let canonical_file =
+            std::fs::canonicalize(&staged).map_err(|error| match error.kind() {
+                std::io::ErrorKind::NotFound => {
+                    InspectionError::StagingFileVanished(completion.stored_path.clone())
+                }
+                _ => InspectionError::Io(error),
+            })?;
         if !canonical_file.starts_with(&canonical_root) {
             return Err(InspectionError::StagingPathEscape {
                 download_id: request.download_id.to_string(),
@@ -253,12 +299,22 @@ impl<'a> ArtifactInspector<'a> {
                 actual: actual_size,
             });
         }
-        if let Some(reason) = mechanical_rejection(
-            &self.policy,
-            completion.suggested_file_name.as_deref(),
-            &staged,
-            actual_size,
-        ) {
+        let rejection = if require_production_extension {
+            mechanical_rejection(
+                &self.policy,
+                completion.suggested_file_name.as_deref(),
+                &staged,
+                actual_size,
+            )
+        } else if actual_size > self.policy.max_bytes {
+            Some(format!(
+                "size {actual_size} exceeds the allowed maximum {}",
+                self.policy.max_bytes
+            ))
+        } else {
+            None
+        };
+        if let Some(reason) = rejection {
             return Ok(DownloadInspectionOutcome::Rejected(StagingRejection {
                 download_id: request.download_id.to_string(),
                 size_bytes: actual_size,
@@ -330,9 +386,9 @@ pub(crate) fn mechanical_rejection(
         .map(|extension| extension.to_ascii_lowercase());
     match extension {
         None => Some("file name carries no extension to allow-list".into()),
-        Some(extension) if !policy.allowed_extensions.contains(&extension) => {
-            Some(format!("extension \".{extension}\" is not in the allowed list"))
-        }
+        Some(extension) if !policy.allowed_extensions.contains(&extension) => Some(format!(
+            "extension \".{extension}\" is not in the allowed list"
+        )),
         Some(_) => None,
     }
 }
@@ -477,18 +533,23 @@ mod tests {
         let DownloadInspectionOutcome::Rejected(rejection) = outcome else {
             panic!("expected a size rejection");
         };
-        assert!(rejection.reason.starts_with("size 10 exceeds"), "{}", rejection.reason);
         assert!(
-            store.artifact(&format!(
-                "sha256:{}",
-                hex_lower(&{
-                    let mut hasher = Sha256::new();
-                    hasher.update(b"0123456789");
-                    hasher.finalize()
-                })
-            ))
-            .unwrap()
-            .is_none(),
+            rejection.reason.starts_with("size 10 exceeds"),
+            "{}",
+            rejection.reason
+        );
+        assert!(
+            store
+                .artifact(&format!(
+                    "sha256:{}",
+                    hex_lower(&{
+                        let mut hasher = Sha256::new();
+                        hasher.update(b"0123456789");
+                        hasher.finalize()
+                    })
+                ))
+                .unwrap()
+                .is_none(),
             "a pre-digest rejection never creates a content-keyed row"
         );
 
@@ -565,7 +626,11 @@ mod tests {
                     complete_download(&consumer, "dl-4", 1, &link, 4);
                     let link_grant = consumer.staging_completion("dl-4").unwrap().unwrap();
                     assert!(matches!(
-                        inspector.inspect_download(&request(&link_grant.staging_token, "dl-4", &root)),
+                        inspector.inspect_download(&request(
+                            &link_grant.staging_token,
+                            "dl-4",
+                            &root
+                        )),
                         Err(InspectionError::StagingPathNotRegular { .. })
                     ));
                 }
@@ -613,7 +678,10 @@ mod tests {
         else {
             panic!("expected the re-download inspection to pass");
         };
-        assert_eq!(first_artifact.artifact_sha256, second_artifact.artifact_sha256);
+        assert_eq!(
+            first_artifact.artifact_sha256,
+            second_artifact.artifact_sha256
+        );
         assert_eq!(
             second_artifact.download_id.as_deref(),
             Some("dl-1"),
@@ -645,7 +713,13 @@ mod tests {
 
         let root2 = unique_dir("vua-inspect", "rootless");
         std::fs::write(root2.join("dl-2-1-material-pack.zip"), b"PK\x03\x04").unwrap();
-        complete_download(&consumer, "dl-2", 1, &root2.join("dl-2-1-material-pack.zip"), 4);
+        complete_download(
+            &consumer,
+            "dl-2",
+            1,
+            &root2.join("dl-2-1-material-pack.zip"),
+            4,
+        );
         let grant = consumer.staging_completion("dl-2").unwrap().unwrap();
         let gone = root2.join("no-such-root");
         assert!(matches!(

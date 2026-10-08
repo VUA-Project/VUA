@@ -2,6 +2,8 @@ packages:
   - apps/*
   - packages/*
 allowBuilds:
+  # The desktop and Chromium interaction checks need Electron's installed runtime.
+  electron: true
   # Squirrel.Windows is not a ZIP/NSIS dependency; do not download its build helpers.
   electron-winstaller: false
 minimumReleaseAgeExclude:

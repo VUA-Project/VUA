@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vua.local/schemas/library-download/v0.1/request",
+  "type": "object", "required": ["method", "params"], "additionalProperties": false,
+  "properties": { "method": { "enum": ["library.beginDownload", "library.observeDownload", "library.downloadStatus"] }, "params": { "type": "object" } },
+  "oneOf": [
+    { "properties": { "method": { "const": "library.beginDownload" }, "params": { "$ref": "#/$defs/begin" } } },
+    { "properties": { "method": { "const": "library.observeDownload" }, "params": { "$ref": "#/$defs/observe" } } },
+    { "properties": { "method": { "const": "library.downloadStatus" }, "params": { "$ref": "#/$defs/status" } } }
+  ],
+  "$defs": {
+    "batch": { "type": "string", "pattern": "^library-download-[A-Za-z0-9_.:-]{1,100}$" },
+    "id": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "begin": {
+      "type": "object", "required": ["schemaVersion", "batchId", "productId", "downloadableIds"], "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": "0.1" }, "batchId": { "$ref": "#/$defs/batch" },
+        "productId": { "type": "string", "pattern": "^booth:[0-9]+$" },
+        "downloadableIds": { "type": "array", "minItems": 1, "maxItems": 200, "uniqueItems": true, "items": { "$ref": "#/$defs/id" } },
+        "replacementTargets": {
+          "type": "array", "maxItems": 200, "items": { "type": "object", "required": ["downloadableId", "copyId"], "additionalProperties": false,
+            "properties": { "downloadableId": { "$ref": "#/$defs/id" }, "copyId": { "type": "string", "minLength": 1 } }
+          }
+        }
+      }
+    },
+    "observe": {
+      "type": "object", "required": ["schemaVersion", "batchId", "downloadableId", "outcome"], "additionalProperties": false,
+      "properties": {
+        "schemaVersion": { "const": "0.1" }, "batchId": { "$ref": "#/$defs/batch" }, "downloadableId": { "$ref": "#/$defs/id" },
+        "outcome": { "enum": ["started", "settled", "initiation_failed", "cancelled", "unconfirmed"] },
+        "downloadId": { "type": "string", "minLength": 1, "maxLength": 200 }
+      },
+      "if": { "properties": { "outcome": { "enum": ["started", "settled"] } } },
+      "then": { "required": ["downloadId"] }, "else": { "not": { "required": ["downloadId"] } }
+    },
+    "status": {
+      "type": "object", "required": ["schemaVersion", "batchId"], "additionalProperties": false,
+      "properties": { "schemaVersion": { "const": "0.1" }, "batchId": { "$ref": "#/$defs/batch" } }
+    }
+  }
+}

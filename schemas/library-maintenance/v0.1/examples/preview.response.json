@@ -1,0 +1,44 @@
+{
+  "schemaVersion": "0.1",
+  "target": {
+    "kind": "product",
+    "id": "booth:90"
+  },
+  "previewHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "files": [
+    {
+      "copyId": "cpy-original",
+      "entryId": "whi-synthetic",
+      "fileName": "original.zip",
+      "role": "original",
+      "artifactSha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sizeBytes": 14,
+      "presence": "present",
+      "superseded": false
+    },
+    {
+      "copyId": "cpy-old-vpm",
+      "entryId": "whi-synthetic",
+      "fileName": "vpm/old.zip",
+      "role": "generated_vpm",
+      "artifactSha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sizeBytes": 14,
+      "presence": "present",
+      "superseded": true
+    }
+  ],
+  "references": [
+    {
+      "kind": "draft",
+      "id": "recipe-draft-synthetic",
+      "title": "Synthetic selection",
+      "revision": 1,
+      "copyIds": [
+        "cpy-original"
+      ],
+      "missingAfterRemoval": true
+    }
+  ],
+  "referenceCoverage": "drafts_and_recipes",
+  "unresolvedRecipeAssets": 0
+}

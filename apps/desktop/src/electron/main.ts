@@ -4,6 +4,9 @@ import fs from "node:fs";
 import path from "node:path";
 import type {
   ApplicationEventV01,
+  CatalogSyncBeginV03,
+  CatalogSyncFinishV03,
+  CatalogSyncPageV03,
   DownloadEventV01,
   EditorSettingsV1,
   GameGuideFollowStatusV1,
@@ -13,11 +16,19 @@ import type {
   OverlayViewV1,
   RemoteContentEventV1,
 } from "@vua/contracts";
-import { APPLICATION_CONTRACT_VERSION, isGameWindowObservationResult } from "@vua/contracts";
+import { APPLICATION_CONTRACT_VERSION, isGameWindowObservationResult, isLibraryDownloadParamsV01, isLibraryDownloadSnapshotV01 } from "@vua/contracts";
 import type { OrchestratorProviderV01 } from "@vua/orchestrator-provider";
 import { routeDesktopGatewayInvoke } from "./gateway-router.js";
 import { DownloadPort } from "./download-port.js";
+import { createSilentDownloadQueue } from "./silent-download.js";
 import { createDownloadEventSink } from "./download-ingest.js";
+import {
+  CATALOG_SYNC_DEFAULT_START_URL,
+  isSignInPage,
+  startCatalogSync,
+  type CatalogSyncRun,
+} from "./catalog-sync.js";
+import { registerImageCacheProtocol, registerImageCacheScheme } from "./image-cache.js";
 import { RemoteContentManager } from "./remote-content.js";
 import { createDesktopOrchestratorProvider } from "./provider-bootstrap.js";
 import {
@@ -82,6 +93,8 @@ import { resolveDesktopRuntime } from "./runtime-paths.js";
 import { preparePackagedSmoke } from "./packaged-smoke.js";
 import { configureDesktopProfile, resolveDesktopProfile, tagDevelopmentWindow } from "./runtime-profile.js";
 
+registerImageCacheScheme();
+
 const desktopRuntime = resolveDesktopRuntime({
   isPackaged: app.isPackaged,
   resourcesPath: process.resourcesPath,
@@ -114,6 +127,13 @@ let gameGuideWindow: BrowserWindow | null = null;
 let provider: OrchestratorProviderV01 | null = null;
 let remoteContent: RemoteContentManager | null = null;
 let downloadPort: DownloadPort | null = null;
+let silentDownloadQueue: ReturnType<typeof createSilentDownloadQueue> | null = null;
+// 账号库同步当前运行(N5 S1):单并发守卫的持有位;结果落 provider 任务面
+let catalogSyncRun: CatalogSyncRun | null = null;
+// 最近一次同步运行的终态事实(任务前失败可见性,真机 2026-10-05):首页就
+// 失败的运行在 provider 侧不产生任务,通知中心/任务轮询永远等不到——此处
+// 记下终态码,probe 面据此让渲染层把「已开始」翻成失败提示
+let catalogSyncLastTerminal: { runId: string; code: string | null } | null = null;
 // 系统资源占用采集器(顶栏占用查看器):whenReady 启动,退出前 stop
 const systemUsage = new SystemUsageCollector();
 let providerHandshake: Awaited<ReturnType<OrchestratorProviderV01["start"]>> | null = null;
@@ -586,6 +606,215 @@ function registerIpc(provider: OrchestratorProviderV01): void {
     assertLocalSender(senderFrameUrl(event));
     return remoteContent!.signInHint();
   });
+  // 真实登录判定(2026-10-05,登录浏览器轮询用):抓一次已购库首页按内容
+  // 识别登录页——与同步启动门同一判据;探测异常恒 false,不冒充已登录。
+  // 已登录时顺带提取页头 data-user-name(登录 ID 原样,账号管理卡显示用;
+  // 提取失败 = null,不猜)
+  ipcMain.handle("vua:remote-content:auth-probe", async (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    if (remoteContent === null) return { authOk: false, accountName: null };
+    try {
+      const probe = await remoteContent.fetchWithSession(CATALOG_SYNC_DEFAULT_START_URL);
+      const authOk = probe.status === 200 && !isSignInPage(probe.body);
+      const accountName = authOk
+        ? /data-user-name="([^"]{1,64})"/.exec(probe.body)?.[1] ?? null
+        : null;
+      return { authOk, accountName };
+    } catch {
+      return { authOk: false, accountName: null };
+    }
+  });
+  // 登出(账号管理,2026-10-05):清空分区存储并关闭打开中的远程视图
+  ipcMain.handle("vua:remote-content:sign-out", async (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    if (remoteContent === null) throw new Error("remote content is unavailable");
+    await remoteContent.signOut();
+  });
+
+  // 账号库同步触发面(N5 S1,计划 D4):分区会话逐页抓取 → provider
+  // catalog.ingestLibraryPage 折叠;进度与终态走九态任务面(通知中心),
+  // 本面只回触发结果。登录线索 "none" 返回 blocked 引导登录不空跑;
+  // "unknown" 放行走真抓取(探测失败不冒充事实,HTTP 结果才是)。凭据
+  // 全程留在 remoteContent 的分区会话内,IPC 面零 Cookie/令牌。
+  ipcMain.handle("vua:catalog-sync:start", async (event, request: unknown) => {
+    assertLocalSender(senderFrameUrl(event));
+    if (remoteContent === null) throw new Error("remote content is unavailable");
+    if (catalogSyncRun !== null) {
+      return { status: "already_running", runId: catalogSyncRun.runId };
+    }
+    const hint = await remoteContent.signInHint();
+    // The awaited probe lets another start install the global run.
+    const concurrentRun = catalogSyncRun as CatalogSyncRun | null;
+    if (concurrentRun !== null) {
+      return { status: "already_running", runId: concurrentRun.runId };
+    }
+    if (hint === "none") {
+      return { status: "blocked", reason: "sign-in-required" };
+    }
+    // 库类型(已购缺省/gifts/free_downloads/all=三库串行,用户期望
+    // 2026-10-05:一次点击覆盖全部 ~35 件);来源守卫由 fetchWithSession
+    // 的允许清单最终把关
+    const libraryTypeRaw = (request as { libraryType?: unknown } | null | undefined)?.libraryType;
+    // 缺省显式化为 bought:观察面是“最新事实全量覆盖”,不带类型的同步
+    // 会把已分类行清回 NULL(真机 2026-10-03 确诊)
+    const libraryType =
+      libraryTypeRaw === "gifts" || libraryTypeRaw === "free_downloads" || libraryTypeRaw === "bought" || libraryTypeRaw === "all"
+        ? libraryTypeRaw
+        : ("bought" as const);
+    const segments =
+      libraryType === "all"
+        ? [
+            { startUrl: CATALOG_SYNC_DEFAULT_START_URL, libraryType: "bought" as const },
+            { startUrl: "https://accounts.booth.pm/library/gifts?page=1", libraryType: "gifts" as const },
+            { startUrl: "https://accounts.booth.pm/library/free_downloads?page=1", libraryType: "free_downloads" as const },
+          ]
+        : libraryType === "gifts"
+          ? [{ startUrl: "https://accounts.booth.pm/library/gifts?page=1", libraryType: "gifts" as const }]
+          : libraryType === "free_downloads"
+            ? [{ startUrl: "https://accounts.booth.pm/library/free_downloads?page=1", libraryType: "free_downloads" as const }]
+            : [{ startUrl: CATALOG_SYNC_DEFAULT_START_URL, libraryType: "bought" as const }];
+    const content = remoteContent;
+    const invokeCatalogSync = (command:
+      | { readonly method: "catalog.beginLibrarySync"; readonly params: CatalogSyncBeginV03 }
+      | { readonly method: "catalog.ingestLibraryPage"; readonly params: CatalogSyncPageV03 }
+      | { readonly method: "catalog.finishLibrarySync"; readonly params: CatalogSyncFinishV03 }
+    ) => {
+      if (provider === null) {
+        return Promise.reject(new Error("provider is not running"));
+      }
+      return provider
+        .invoke({
+          contractVersion: APPLICATION_CONTRACT_VERSION,
+          requestId: crypto.randomUUID(),
+          correlationId: crypto.randomUUID(),
+          commandId: crypto.randomUUID(),
+          kind: "command",
+          ...command,
+        })
+        .then((response) =>
+          response.ok
+            ? { ok: true as const, value: response.value }
+            : { ok: false as const, error: { code: response.error.code } },
+        );
+    };
+    const run = startCatalogSync(
+      {
+        fetch: (url, signal) => content.fetchWithSession(url, signal),
+        begin: (params) => invokeCatalogSync({ method: "catalog.beginLibrarySync", params }),
+        invoke: (params) => invokeCatalogSync({ method: "catalog.ingestLibraryPage", params }),
+        finish: (params) => invokeCatalogSync({ method: "catalog.finishLibrarySync", params }),
+      },
+      { segments },
+    );
+    catalogSyncRun = run;
+    catalogSyncLastTerminal = null;
+    void run.result.then(
+      (result) => {
+        catalogSyncLastTerminal = {
+          runId: run.runId,
+          code: result.status === "completed" ? null : (result.error?.code ?? result.status),
+        };
+      },
+      () => {
+        catalogSyncLastTerminal = { runId: run.runId, code: "internal" };
+      },
+    );
+    void run.result.finally(() => {
+      if (catalogSyncRun === run) catalogSyncRun = null;
+    });
+    await run.ready;
+    return { status: "started", runId: run.runId };
+  });
+  ipcMain.handle("vua:catalog-sync:stop", (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    catalogSyncRun?.stop();
+  });
+  // 静默下载触发面(N5,2026-10-05 用户裁决:Steam 式,不打开页面):渲染层
+  // 传入 BDL 捕获的文件 id 批;入队即受理,进度与终态走下载任务面(通知中心)
+  ipcMain.handle(
+    "vua:silent-download:start",
+    async (event, productId: unknown, downloadableIds: unknown, replacementTargets: unknown) => {
+      assertLocalSender(senderFrameUrl(event));
+      if (silentDownloadQueue === null || provider === null || providerHandshake?.downloadIngest !== true) return { errorCode: "vua.library.unavailable" };
+      const queue = silentDownloadQueue;
+      const currentProvider = provider;
+      const batchId = `library-download-${crypto.randomUUID()}`;
+      const params = { schemaVersion: "0.1" as const, batchId, productId, downloadableIds, ...(replacementTargets === undefined ? {} : { replacementTargets }) };
+      if (!isLibraryDownloadParamsV01("library.beginDownload", params)) throw new Error("invalid library download selection");
+      const beginParams = params as import("@vua/contracts").LibraryDownloadBeginV01;
+      if (await remoteContent?.signInHint() === "none") return { blocked: "sign-in-required" };
+      const response = await currentProvider.invoke({
+        contractVersion: APPLICATION_CONTRACT_VERSION, requestId: crypto.randomUUID(), correlationId: batchId,
+        kind: "command", method: "library.beginDownload", commandId: batchId,
+        params: beginParams,
+      });
+      if (!response.ok) return { errorCode: response.error.code };
+      if (!isLibraryDownloadSnapshotV01(response.value) || response.value.batchId !== batchId || response.value.state !== "running"
+        || response.value.productId !== beginParams.productId || response.value.files.length !== beginParams.downloadableIds.length
+        || response.value.files.some((file) => !beginParams.downloadableIds.includes(file.downloadableId))) throw new Error("library download receipt unconfirmed");
+      const accepted = queue.enqueue({ batchId, productId: response.value.productId, downloadableIds: response.value.files.map((file) => file.downloadableId) });
+      if (accepted === 0) {
+        for (const file of response.value.files) {
+          await currentProvider.invoke({
+            contractVersion: APPLICATION_CONTRACT_VERSION, requestId: crypto.randomUUID(), correlationId: batchId,
+            kind: "command", method: "library.observeDownload", commandId: crypto.randomUUID(),
+            params: { schemaVersion: "0.1", batchId, downloadableId: file.downloadableId, outcome: "initiation_failed" },
+          });
+        }
+        return { errorCode: "vua.library.initiation_failed" };
+      }
+      return { accepted, batchId, taskId: response.value.taskId };
+    },
+  );
+  // 运行状态探针(任务前失败可见性):渲染层轮询 provider 任务之外,经此面
+  // 得知「运行已结束且从未产生任务」的终态事实,把卡住的“已开始”翻成失败
+  ipcMain.handle("vua:catalog-sync:probe", (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    return {
+      status: catalogSyncRun !== null ? ("running" as const) : ("idle" as const),
+      runId: catalogSyncRun?.runId ?? catalogSyncLastTerminal?.runId ?? null,
+      lastFailureCode: catalogSyncRun === null ? catalogSyncLastTerminal?.code ?? null : null,
+    };
+  });
+  // 详情富化(N5 D2,2026-10-03):单商品页抓取 → 同一 ingest 面(provider
+  // 自动识别 #items 商品页语法走全量观察);URL 由商品号派生,不放开任意 URL
+  ipcMain.handle(
+    "vua:catalog-sync:fetch-product",
+    async (event, productId: unknown) => {
+      assertLocalSender(senderFrameUrl(event));
+      if (remoteContent === null) throw new Error("remote content is unavailable");
+      if (typeof productId !== "string" || !/^booth:[0-9]+$/.test(productId)) {
+        throw new Error("invalid product id");
+      }
+      const nativeId = productId.slice("booth:".length);
+      const url = `https://booth.pm/zh-cn/items/${nativeId}`;
+      const providerRef = provider;
+      if (providerRef === null) return { ok: false };
+      try {
+        const outcome = await remoteContent.fetchWithSession(url);
+        if (outcome.status !== 200) return { ok: false };
+        const result = await providerRef
+          .invoke({
+            contractVersion: APPLICATION_CONTRACT_VERSION,
+            requestId: crypto.randomUUID(),
+            correlationId: crypto.randomUUID(),
+            commandId: crypto.randomUUID(),
+            kind: "command",
+            method: "catalog.ingestLibraryPage",
+            params: {
+              schemaVersion: "0.2",
+              sourceUrl: url,
+              html: outcome.body,
+              fetchedAt: new Date().toISOString(),
+            },
+          })
+          .then((r) => (r.ok ? { ok: true as const } : { ok: false as const }));
+        return result;
+      } catch {
+        return { ok: false };
+      }
+    },
+  );
 
   // 导航确认作答(015 §12):只受理本地来源;未知 confirmId/重复作答忽略
   // (渲染层不能伪造未发出的确认);作答后 pending 移除,确认 Promise 落定
@@ -1012,6 +1241,9 @@ async function createWindow(): Promise<void> {
   // download-ingest.ts,行为有单测)。握手未声明下载域时诚实降级写诊断
   // 通道。暂存根跟随用户数据目录布局,由注入决定,端口不自选策略
   const ingestSink = createDownloadEventSink({
+    onPersisted: (event) => silentDownloadQueue?.notifyPersisted(event),
+    onRejected: (event) => silentDownloadQueue?.notifyUnconfirmed(event),
+    onDropped: (event) => silentDownloadQueue?.notifyUnconfirmed(event),
     invoke: (params) => {
       if (provider === null) {
         return Promise.reject(new Error("provider is not running"));
@@ -1035,10 +1267,11 @@ async function createWindow(): Promise<void> {
   });
   const downloadSink = {
     emit: (event: DownloadEventV01): void => {
-      if (providerHandshake?.downloadIngest === true) {
-        ingestSink.emit(event);
-      } else {
-        process.stderr.write(`${JSON.stringify({ channel: "download-events", ...event })}\n`);
+      silentDownloadQueue?.notifyTransport(event);
+      if (providerHandshake?.downloadIngest === true) ingestSink.emit(event);
+      else {
+        silentDownloadQueue?.notifyUnconfirmed(event);
+        process.stderr.write(JSON.stringify({ channel: "download-events", kind: event.kind, downloadId: event.downloadId, persistenceUnavailable: true }) + "\n");
       }
     },
   };
@@ -1047,17 +1280,42 @@ async function createWindow(): Promise<void> {
     partitionSession: session.fromPartition("persist:vua-remote"),
     allowedOrigins: ["https://booth.pm"],
     sink: downloadSink,
+    isAwaitingLibraryRequest: (originalUrl) => silentDownloadQueue?.isAwaitingNative(originalUrl) === true,
   });
+  // 静默下载编排(N5,2026-10-05 用户裁决):串行 + 6s 源站礼貌间隔,经
+  // downloadURL 走 will-download 管道(暂存/事件/九态任务/采纳全复用)
+  silentDownloadQueue = createSilentDownloadQueue({
+    partitionSession: session.fromPartition("persist:vua-remote"),
+    abandon: (downloadId) => downloadPort?.applyIntent(downloadId, "abandon"),
+    observe: async (params) => {
+      if (provider === null) throw new Error("provider unavailable");
+      const response = await provider.invoke({
+        contractVersion: APPLICATION_CONTRACT_VERSION, requestId: crypto.randomUUID(), correlationId: params.batchId,
+        kind: "command", method: "library.observeDownload", commandId: crypto.randomUUID(), params,
+      });
+      if (!response.ok || !isLibraryDownloadSnapshotV01(response.value)
+        || response.value.batchId !== params.batchId) throw new Error("library receipt unconfirmed");
+    },
+  });
+  mainWindow.on("closed", () => { ingestSink.dispose(); silentDownloadQueue?.dispose(); silentDownloadQueue = null; });
 
   // 远程内容管理器(F4-2):独立 partition Session;目录浏览域为种子允许清单,
   // 真实值随 catalog 契约冻结(F4-1②)调整;违规事件广播到本地来源窗口;
   // 确认层注入使 U9(1) 清单外「提示后放行」与 U9(3) 外部协议确认在视图内生效。
-  // accounts.booth.pm(W25 走查缺陷③b):登录/库/会话唯一账户子域——未登录
-  // 引导首导登录页需直行该域(否则登录引导被清单拒绝),视图内登录跳转
-  // 同域受益;仅内嵌浏览清单扩此域,下载域清单与本地窗口弹窗清单不动
+  // 登录链域(真机首验 2026-10-02 修正):BOOTH 登录实际走 pixiv SSO——
+  // accounts.booth.pm 起步 → oauth.secure.pixiv.net 授权 → accounts.pixiv.net
+  // 登录/选号 → 回跳 booth.pm。W25 走查缺陷③b 只认账户子域的假设不完整:
+  // 缺 pixiv 两域时 OAuth 跳转被导航策略无声拦截,「继续使用此账号」点击
+  // 无任何可见效果,登录永远无法完成。本清单只放行导航;下载域清单仍仅
+  // booth.pm(素材获取边界不变)。
   remoteContent = new RemoteContentManager({
     partition: "persist:vua-remote",
-    allowedOrigins: ["https://booth.pm", "https://accounts.booth.pm"],
+    allowedOrigins: [
+      "https://booth.pm",
+      "https://accounts.booth.pm",
+      "https://oauth.secure.pixiv.net",
+      "https://accounts.pixiv.net",
+    ],
     openExternal: (url) => void shell.openExternal(url),
     broadcast: (event) => broadcastRemoteContentEvent(rendererUrl, event),
     confirmNavigation,
@@ -1089,6 +1347,8 @@ async function createWindow(): Promise<void> {
 }
 
 app.whenReady().then(async () => {
+  // 目录图片本地缓存(N5):vua-img 协议命中磁盘直回(scheme 已在启动前注册)
+  await registerImageCacheProtocol();
   // 素材登记持久化(W25 易失缺陷修复):先载入落盘事实再开放 IPC 面,
   // 保证首个渲染层请求可见的登记与上一次会话一致
   loadMaterialSourcesFromDisk();
@@ -1102,6 +1362,10 @@ app.whenReady().then(async () => {
     console.error("[vua] provider start failed; main window still opens:", error);
   }
   provider.subscribe((event) => {
+    if (event.kind === "task.cancellationRequested" && event.taskId === catalogSyncRun?.runId) {
+      catalogSyncRun.stop();
+    }
+    if (event.kind === "task.cancellationRequested" && event.taskId.startsWith("library-download-")) silentDownloadQueue?.cancel(event.taskId);
     if (event.kind === "download.intent") {
       // 端口意图:intentSeq 去重后串行解释;Main 内部消费,不广播渲染层
       const { downloadId, intent, intentSeq } = event.payload;

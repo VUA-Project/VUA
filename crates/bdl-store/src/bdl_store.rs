@@ -43,10 +43,21 @@ use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-pub const BDL_FORMAT_VERSION: &str = "0.2";
-const BDL_MIGRATION_VERSION: i64 = 2;
+#[path = "managed_library_files.rs"]
+mod managed_library_files;
+pub use managed_library_files::{ManagedLibraryFile, ManagedLibraryDelivery};
+#[path = "library_evidence.rs"]
+mod library_evidence;
+pub use library_evidence::LibraryCopyEvidence;
+
+pub const BDL_FORMAT_VERSION: &str = "0.5";
+const BDL_MIGRATION_VERSION: i64 = 6;
 const MIGRATION_001: &str = include_str!("../../../schemas/bdl/v0.1/001_initial.sql");
 const MIGRATION_002: &str = include_str!("../../../schemas/bdl/v0.2/002_dependency_observations.sql");
+const MIGRATION_003: &str = include_str!("../../../schemas/bdl/v0.3/003_library_type.sql");
+const MIGRATION_004: &str = include_str!("../../../schemas/bdl/v0.3/004_variant_name.sql");
+const MIGRATION_005: &str = include_str!("../../../schemas/bdl/v0.4/005_product_downloadables.sql");
+const MIGRATION_006: &str = include_str!("../../../schemas/bdl/v0.5/006_managed_library_files.sql");
 
 #[derive(Debug)]
 pub enum BdlStoreError {
@@ -352,6 +363,10 @@ pub struct ProductObservation {
     /// (the store rejects a mismatched pair).
     pub product_id: String,
     pub native_product_id: String,
+    /// Which account library listed the product (BDL v0.3):
+    /// bought | gifts | free_downloads; None = not library-derived.
+    pub library_type: Option<String>,
+    pub variant_name: Option<String>,
     pub source_url: String,
     pub final_url: Option<String>,
     pub status: ProductObservationStatus,
@@ -392,6 +407,16 @@ pub struct ProductObservation {
 fn validate_product_observation(
     observation: &ProductObservation,
 ) -> Result<(), BdlStoreError> {
+    if let Some(library_type) = &observation.library_type {
+        if !matches!(
+            library_type.as_str(),
+            "bought" | "gifts" | "free_downloads"
+        ) {
+            return Err(BdlStoreError::InvalidObservation(
+                "library_type must be bought|gifts|free_downloads or null",
+            ));
+        }
+    }
     let expected_product_id = format!("booth:{}", observation.native_product_id);
     if observation.product_id != expected_product_id
         || !observation
@@ -622,15 +647,51 @@ struct ObservedCard {
     price_currency: Option<String>,
     image_urls: Option<String>,
     availability: Option<String>,
+    library_type: Option<String>,
+    imported_artifacts: i64,
+    shop_name: Option<String>,
+    variant_name: Option<String>,
+    subproducts: Option<String>,
 }
 
 impl ObservedCard {
     /// The price is admitted only as a pair; a stored row with exactly one
     /// half is a corrupt value (the write face rejects it upstream).
-    fn as_price(&self) -> Result<Option<CatalogPrice>, BdlStoreError> {
+        /// Q2(2026-10-03):多变体商品显示价区间——主价(最低)之外,若子品
+    /// 序列化 JSON 里有更高的不同金额,以最大值作区间上限(high)。
+    fn price_with_range(&self) -> Result<Option<CatalogPrice>, BdlStoreError> {
+        let mut price = self.as_price()?;
+        if price.is_none() {
+            return Ok(price);
+        }
+        let parsed: Option<Value> = self
+            .subproducts
+            .as_deref()
+            .and_then(|raw| serde_json::from_str(raw).ok());
+        if let Some(Value::Array(items)) = parsed {
+            let mut max: Option<&str> = None;
+            for item in &items {
+                let amount = item.get("price_amount").and_then(Value::as_str);
+                if let Some(amount) = amount {
+                    if max.is_none_or(|current| amount_as_f64(amount) > amount_as_f64(current)) {
+                        max = Some(amount);
+                    }
+                }
+            }
+            if let (Some(max), Some(price)) = (max, price.as_mut()) {
+                if max != price.amount {
+                    price.high = Some(max.to_owned());
+                }
+            }
+        }
+        Ok(price)
+    }
+
+    #[allow(clippy::needless_return)]
+fn as_price(&self) -> Result<Option<CatalogPrice>, BdlStoreError> {
         match (&self.price_amount, &self.price_currency) {
             (Some(amount), Some(currency)) => {
-                Ok(Some(CatalogPrice { amount: amount.clone(), currency: currency.clone() }))
+                Ok(Some(CatalogPrice { amount: amount.clone(), currency: currency.clone(), high: None }))
             }
             (None, None) => Ok(None),
             _ => Err(BdlStoreError::CorruptValue {
@@ -649,8 +710,12 @@ impl ObservedCard {
             })?;
         Ok(CatalogProductSummary {
             product_id: self.product_id.clone(),
+            variant_name: self.variant_name.clone(),
             title: self.title.clone(),
-            price: self.as_price()?,
+            library_type: self.library_type.clone(),
+            imported_artifacts: self.imported_artifacts.max(0) as u32,
+            shop_name: self.shop_name.clone(),
+            price: self.price_with_range()?,
             image_url: image_urls.first().cloned(),
             availability_raw: self.availability.clone(),
             availability_status: availability_status(self.availability.as_deref()),
@@ -672,6 +737,9 @@ struct ObservedDetail {
     description: Option<String>,
     shop_name: Option<String>,
     shop_url: Option<String>,
+    library_type: Option<String>,
+    variant_name: Option<String>,
+    source_published_at: Option<String>,
     age_restriction: Option<String>,
     adult: bool,
     video_urls: Option<String>,
@@ -710,6 +778,7 @@ impl ObservedDetail {
                     (Some(amount), Some(currency)) => Some(CatalogPrice {
                         amount: amount.to_owned(),
                         currency: currency.to_owned(),
+                        high: None,
                     }),
                     (None, None) => None,
                     _ => {
@@ -737,6 +806,7 @@ impl ObservedDetail {
             (Some(amount), Some(currency)) => Some(CatalogPrice {
                 amount: amount.clone(),
                 currency: currency.clone(),
+                high: None,
             }),
             (None, None) => None,
             _ => {
@@ -749,6 +819,9 @@ impl ObservedDetail {
         Ok(CatalogDetailResult {
             product: CatalogProductDetail {
                 product_id: product_id.to_owned(),
+                library_type: self.library_type.clone(),
+                variant_name: self.variant_name.clone(),
+                source_published_at: self.source_published_at.clone(),
                 title: self.title.clone(),
                 price,
                 image_url: image_urls.first().cloned(),
@@ -795,6 +868,8 @@ pub struct StoredArtifactCopy {
     pub role: CopyRole,
     pub created_at: String,
 }
+
+
 
 /// `warehouse.listEntries` card (bdl-queries v0.3 wire shape).
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -945,26 +1020,13 @@ impl BdlStore {
                 "migration-{migration}"
             )));
         }
-        if migration == 0 {
-            // Fresh database: born v0.2 — the full executable chain (001
-            // then 002) runs in one transaction, so a half-migrated fresh
-            // database cannot exist.
-            let transaction =
-                connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-            transaction.execute_batch(MIGRATION_001)?;
-            transaction.execute_batch(MIGRATION_002)?;
-            transaction.pragma_update(None, "user_version", BDL_MIGRATION_VERSION)?;
-            transaction.commit()?;
-        }
-        if migration == 1 {
-            // Existing v0.1 database: 002 is the persistent-format migration
-            // (compatibility_observations CHECK rebuild with verbatim row
-            // carry-over + the dependency_observations table). Any data loss
-            // aborts it; the user_version fencing stays host-owned, exactly
-            // as the v0.1 host set it after MIGRATION_001.
-            let transaction =
-                connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-            transaction.execute_batch(MIGRATION_002)?;
+        if migration < BDL_MIGRATION_VERSION {
+            // Execute the remaining frozen migrations atomically. Their guarded
+            // format stamps still refuse foreign metadata instead of repairing it.
+            let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+            for (index, sql) in [MIGRATION_001, MIGRATION_002, MIGRATION_003, MIGRATION_004, MIGRATION_005, MIGRATION_006].iter().enumerate() {
+                if migration <= index as i64 { transaction.execute_batch(sql)?; }
+            }
             transaction.pragma_update(None, "user_version", BDL_MIGRATION_VERSION)?;
             transaction.commit()?;
         }
@@ -1876,7 +1938,8 @@ impl BdlStore {
             connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
         transaction.execute(
             "INSERT INTO products(
-                product_id, native_product_id, source_url, final_url, status,
+                product_id, native_product_id, library_type, variant_name,
+                source_url, final_url, status,
                 source_locale, source_category, title, description,
                 age_restriction, adult, availability, price_amount,
                 price_currency, shop_name, shop_url, image_urls, video_urls,
@@ -1884,30 +1947,33 @@ impl BdlStore {
                 content_hash, observed_at, run_id, processor_version,
                 missing_fields
              ) VALUES (
-                ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14,
-                ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26
+                ?1, ?2, ?27, ?28, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12,
+                ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24,
+                ?25, ?26
              )
              ON CONFLICT(product_id) DO UPDATE SET
                 native_product_id = excluded.native_product_id,
+                library_type = COALESCE(excluded.library_type, products.library_type),
+                variant_name = COALESCE(excluded.variant_name, products.variant_name),
                 source_url = excluded.source_url,
-                final_url = excluded.final_url,
+                final_url = COALESCE(excluded.final_url, products.final_url),
                 status = excluded.status,
-                source_locale = excluded.source_locale,
-                source_category = excluded.source_category,
-                title = excluded.title,
-                description = excluded.description,
-                age_restriction = excluded.age_restriction,
-                adult = excluded.adult,
-                availability = excluded.availability,
-                price_amount = excluded.price_amount,
-                price_currency = excluded.price_currency,
-                shop_name = excluded.shop_name,
-                shop_url = excluded.shop_url,
-                image_urls = excluded.image_urls,
-                video_urls = excluded.video_urls,
-                subproducts = excluded.subproducts,
+                source_locale = COALESCE(excluded.source_locale, products.source_locale),
+                source_category = COALESCE(excluded.source_category, products.source_category),
+                title = COALESCE(excluded.title, products.title),
+                description = COALESCE(excluded.description, products.description),
+                age_restriction = COALESCE(excluded.age_restriction, products.age_restriction),
+                adult = CASE WHEN excluded.missing_fields LIKE '%adult_badge%' THEN products.adult ELSE excluded.adult END,
+                availability = COALESCE(excluded.availability, products.availability),
+                price_amount = COALESCE(excluded.price_amount, products.price_amount),
+                price_currency = COALESCE(excluded.price_currency, products.price_currency),
+                shop_name = COALESCE(excluded.shop_name, products.shop_name),
+                shop_url = COALESCE(excluded.shop_url, products.shop_url),
+                image_urls = CASE WHEN COALESCE(json_array_length(excluded.image_urls), 0) >= COALESCE(json_array_length(products.image_urls), 0) THEN excluded.image_urls ELSE products.image_urls END,
+                video_urls = CASE WHEN COALESCE(json_array_length(excluded.video_urls), 0) >= COALESCE(json_array_length(products.video_urls), 0) THEN excluded.video_urls ELSE products.video_urls END,
+                subproducts = CASE WHEN COALESCE(json_array_length(excluded.subproducts), 0) >= COALESCE(json_array_length(products.subproducts), 0) THEN excluded.subproducts ELSE products.subproducts END,
                 search_text_normalized = excluded.search_text_normalized,
-                source_published_at = excluded.source_published_at,
+                source_published_at = COALESCE(excluded.source_published_at, products.source_published_at),
                 content_hash = excluded.content_hash,
                 observed_at = excluded.observed_at,
                 run_id = excluded.run_id,
@@ -1940,8 +2006,17 @@ impl BdlStore {
                 observation.run_id,
                 observation.processor_version,
                 missing_fields,
+                observation.library_type,
+                observation.variant_name,
             ],
         )?;
+        if let Some(kind) = observation.library_type.as_deref() {
+            transaction.execute(
+                "INSERT INTO product_library_memberships(product_id,library_type,first_seen_at,last_seen_at) VALUES (?1,?2,?3,?3)
+                 ON CONFLICT(product_id,library_type) DO UPDATE SET last_seen_at=excluded.last_seen_at",
+                params![observation.product_id,kind,observation.observed_at],
+            )?;
+        }
         transaction.execute(
             "INSERT INTO bdl_meta(key, value) VALUES ('catalog_updated_seq', '1')
              ON CONFLICT(key) DO UPDATE SET
@@ -2147,17 +2222,135 @@ impl BdlStore {
     /// the derived stable enum (v0.2 rule table), rows without a
     /// recognizable word stay honest `unknown`. Empty table = the honest
     /// empty set — 空态即终态.
+    /// 只读辅助:单行的库类型(N5 商品页富化透传保留用)。
+    pub fn library_type_of(&self, native_product_id: &str) -> Option<String> {
+        let connection = self.connection.lock().expect("SQLite connection poisoned");
+        connection
+            .query_row(
+                "SELECT library_type FROM products WHERE native_product_id = ?1",
+                [native_product_id],
+                |row| row.get::<_, Option<String>>(0),
+            )
+            .ok()
+            .flatten()
+    }
+
+    /// 按商品 ID 反查关联的仓库条目 ID(经 artifact_mappings → artifact_copies)。
+    /// N5 删除本地文件用:catalog 卡右键 → 找到本地条目 → 删原件。
+    pub fn warehouse_item_ids_for_product(
+        &self,
+        product_id: &str,
+    ) -> Result<Vec<String>, BdlStoreError> {
+        let connection = self.connection.lock().expect("SQLite connection poisoned");
+        let mut statement = connection.prepare(
+            "SELECT DISTINCT ac.warehouse_item_id
+             FROM artifact_copies ac
+             JOIN artifact_mappings am ON ac.artifact_sha256 = am.artifact_sha256
+             WHERE am.product_id = ?1
+             ORDER BY ac.warehouse_item_id",
+        )?;
+        let rows = statement
+            .query_map([product_id], |row| row.get::<_, String>(0))?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
+    /// 库页逐文件下载链接观察(v0.4,N5 静默下载切片):一次库页同步落一批。
+    /// 幂等:同 downloadable_id 重见只推进 last_seen_* 与 anchor_text(页面
+    /// 词面可能随语言变),first_seen_at 永不重写;文件从后续库页消失不删行
+    /// ——「最后一次被观察到在场」本身是事实。商品行必须已存在(FK),由
+    /// ingest 侧先落商品观察再落本表(同一同步页内天然满足)。
+    pub fn upsert_product_downloadables(
+        &self,
+        product_id: &str,
+        downloadables: &[(i64, String)],
+        observed_at: &str,
+        run_id: Option<&str>,
+        library_type: Option<&str>,
+    ) -> Result<(), BdlStoreError> {
+        let mut connection = self.connection.lock().expect("SQLite connection poisoned");
+        let transaction = connection.transaction()?;
+        {
+            let mut statement = transaction.prepare(
+                "INSERT INTO product_downloadables
+                   (downloadable_id, product_id, anchor_text,
+                    first_seen_at, last_seen_at, last_seen_run_id, library_type)
+                 VALUES (?1, ?2, ?3, ?4, ?4, ?5, ?6)
+                 ON CONFLICT(downloadable_id) DO UPDATE SET
+                   anchor_text = excluded.anchor_text,
+                   last_seen_at = excluded.last_seen_at,
+                   last_seen_run_id = excluded.last_seen_run_id,
+                   library_type = COALESCE(excluded.library_type, product_downloadables.library_type)",
+            )?;
+            for (downloadable_id, anchor_text) in downloadables {
+                statement.execute(rusqlite::params![
+                    downloadable_id,
+                    product_id,
+                    anchor_text,
+                    observed_at,
+                    run_id,
+                    library_type,
+                ])?;
+            }
+        }
+        transaction.commit()?;
+        Ok(())
+    }
+
+    /// downloadable id → 商品(BDL 自有关联事实,采纳反查用):同一文件
+    /// 理论上只在一个商品名下捕获;多行时取最早捕获(确定性)
+    pub fn product_of_downloadable(
+        &self,
+        downloadable_id: i64,
+    ) -> Result<Option<String>, BdlStoreError> {
+        let connection = self.connection.lock().expect("SQLite connection poisoned");
+        let mut statement = connection.prepare(
+            "SELECT product_id FROM product_downloadables
+             WHERE downloadable_id = ?1
+             ORDER BY first_seen_at, downloadable_id
+             LIMIT 1",
+        )?;
+        let rows = statement
+            .query_map([downloadable_id], |row| row.get::<_, String>(0))?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(rows.into_iter().next())
+    }
+
+    /// 商品的已记录下载文件(N5 静默下载的读取面):按首次见到顺序原样出线,
+    /// 调用方决定全量或勾选;签名 CDN 地址永不在库,下载时现解析。
+    pub fn downloadables_for_product(
+        &self,
+        product_id: &str,
+    ) -> Result<Vec<(i64, String)>, BdlStoreError> {
+        let connection = self.connection.lock().expect("SQLite connection poisoned");
+        let mut statement = connection.prepare(
+            "SELECT downloadable_id, anchor_text
+             FROM product_downloadables
+             WHERE product_id = ?1
+             ORDER BY first_seen_at, downloadable_id",
+        )?;
+        let rows = statement
+            .query_map([product_id], |row| {
+                Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+            })?
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(rows)
+    }
+
     pub fn catalog_list(
         &self,
         params: &CatalogListParams,
     ) -> Result<CatalogListResult, BdlStoreError> {
         let connection = self.connection.lock().expect("SQLite connection poisoned");
         let mut statement = connection.prepare(
-            "SELECT product_id, title, price_amount, price_currency,
-                    image_urls, availability
-             FROM products
-             WHERE status = 'complete'
-             ORDER BY product_id",
+            "SELECT p.product_id, p.title, p.price_amount, p.price_currency,
+                    p.image_urls, p.availability, p.library_type,
+                    (SELECT COUNT(*) FROM artifact_mappings m
+                     WHERE m.product_id = p.product_id) AS imported_artifacts,
+                    p.shop_name, p.variant_name, p.subproducts
+             FROM products p
+             WHERE p.status = 'complete'
+             ORDER BY p.product_id",
         )?;
         let observed: Vec<ObservedCard> = statement
             .query_map([], |row| {
@@ -2168,6 +2361,11 @@ impl BdlStore {
                     price_currency: row.get(3)?,
                     image_urls: row.get(4)?,
                     availability: row.get(5)?,
+                    library_type: row.get(6)?,
+                    imported_artifacts: row.get(7)?,
+                    shop_name: row.get(8)?,
+                    variant_name: row.get(9)?,
+                    subproducts: row.get(10)?,
                 })
             })?
             .collect::<Result<Vec<_>, _>>()?;
@@ -2198,6 +2396,12 @@ impl BdlStore {
                     None => true,
                 }
             })
+            // BDL v0.3: the library-type filter matches the stored column
+            // verbatim; NULL rows only match when no filter is asked.
+            .filter(|card| match &params.library_type {
+                Some(expected) => card.library_type.as_deref() == Some(expected.as_str()),
+                None => true,
+            })
             .collect();
 
         let total = matched.len() as i64;
@@ -2223,7 +2427,8 @@ impl BdlStore {
             .query_row(
                 "SELECT title, price_amount, price_currency, image_urls,
                         availability, description, shop_name, shop_url,
-                        age_restriction, adult, video_urls, source_category,
+                        library_type, variant_name, source_published_at,
+                        age_restriction, COALESCE(adult, 0) AS adult, video_urls, source_category,
                         subproducts
                  FROM products
                  WHERE product_id = ?1 AND status = 'complete'",
@@ -2238,11 +2443,14 @@ impl BdlStore {
                         description: row.get(5)?,
                         shop_name: row.get(6)?,
                         shop_url: row.get(7)?,
-                        age_restriction: row.get(8)?,
-                        adult: row.get::<_, i64>(9)? != 0,
-                        video_urls: row.get(10)?,
-                        source_category: row.get(11)?,
-                        subproducts: row.get(12)?,
+                        library_type: row.get(8)?,
+                        variant_name: row.get(9)?,
+                        source_published_at: row.get(10)?,
+                        age_restriction: row.get(11)?,
+                        adult: row.get::<_, i64>(12)? != 0,
+                        video_urls: row.get(13)?,
+                        source_category: row.get(14)?,
+                        subproducts: row.get(15)?,
                     })
                 },
             )
@@ -2671,6 +2879,17 @@ fn to_u64(value: i64, field: &'static str) -> Result<u64, BdlStoreError> {
     })
 }
 
+
+/// 金额字符串的数值比较辅助("1,400" → 1400.0);解析失败按 0(不参与
+/// 区间比较)。展示仍用原字符串,不经数值转换。
+fn amount_as_f64(amount: &str) -> f64 {
+    amount
+        .replace([',', '￥'], "")
+        .trim()
+        .parse::<f64>()
+        .unwrap_or(0.0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2717,11 +2936,15 @@ mod tests {
         let migration: i64 = connection
             .pragma_query_value(None, "user_version", |row| row.get(0))
             .unwrap();
-        assert_eq!(migration, 2, "fresh databases are born v0.2 (001 + 002)");
+        assert_eq!(migration, BDL_MIGRATION_VERSION, "fresh databases execute the entire migration chain");
         let dep_table: i64 = connection
             .query_row("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'dependency_observations'", [], |row| row.get(0))
             .unwrap();
         assert_eq!(dep_table, 1, "the v0.2 table exists on a fresh store");
+        let dl_table: i64 = connection
+            .query_row("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'product_downloadables'", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(dl_table, 1, "the v0.4 table exists on a fresh store");
     }
 
     #[test]

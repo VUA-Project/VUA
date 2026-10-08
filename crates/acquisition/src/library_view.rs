@@ -1,0 +1,299 @@
+//! AMF's library read model. Historical mappings never prove current file presence.
+use crate::library_download::{LibraryDownloadError, LibraryDownloadService};
+use serde::Deserialize;
+use serde_json::{json, Value};
+use std::collections::{HashMap, HashSet};
+use std::path::Path;
+use vua_bdl_store::{ArtifactMode, BdlStore, CopyRole, LibraryCopyEvidence};
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct Query {
+    schema_version: String,
+    #[serde(default = "all")]
+    source: String,
+    #[serde(default = "all")]
+    state: String,
+    #[serde(default)]
+    text: String,
+    availability_status: Option<String>,
+    #[serde(default = "limit")]
+    limit: usize,
+    #[serde(default)]
+    offset: usize,
+}
+fn all() -> String {
+    "all".into()
+}
+fn limit() -> usize {
+    50
+}
+
+pub(crate) fn presence(root: &Path, evidence: &LibraryCopyEvidence) -> &'static str {
+    let path = Path::new(&evidence.copy.stored_path);
+    let meta = match std::fs::symlink_metadata(path) {
+        Ok(meta) => meta,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return "missing",
+        Err(_) => return "unreadable",
+    };
+    if !meta.file_type().is_file() {
+        return "unreadable";
+    }
+    let inside = std::fs::canonicalize(root)
+        .ok()
+        .zip(std::fs::canonicalize(path).ok())
+        .is_some_and(|(root, path)| path.starts_with(root));
+    if !inside {
+        return "unreadable";
+    }
+    if meta.len() != evidence.size_bytes {
+        return "changed";
+    }
+    // Presence is a metadata check. Production must recheck the selected hash.
+    "present"
+}
+
+fn storage(copies: &[&LibraryCopyEvidence], presences: &HashMap<String, &'static str>) -> Value {
+    let count = |word| {
+        copies
+            .iter()
+            .filter(|copy| presences[&copy.copy.copy_id] == word)
+            .count()
+    };
+    let present = count("present");
+    let missing = count("missing");
+    let changed = count("changed");
+    let unreadable = count("unreadable");
+    let state = if copies.is_empty() {
+        "cloud_only"
+    } else if unreadable > 0 {
+        "unreadable"
+    } else if changed > 0 {
+        "changed"
+    } else if present == copies.len() {
+        "present"
+    } else if present == 0 {
+        "missing"
+    } else {
+        "partial"
+    };
+    let superseded = copies.iter().filter(|copy| copy.superseded).count();
+    let current_generated = copies
+        .iter()
+        .filter(|copy| {
+            copy.copy.role == CopyRole::GeneratedVpm
+                && !copy.superseded
+                && presences[&copy.copy.copy_id] == "present"
+        })
+        .count();
+    json!({"state":state,"storedCopies":copies.len(),"presentCopies":present,"missingCopies":missing,
+        "changedCopies":changed,"unreadableCopies":unreadable,"supersededGeneratedCopies":superseded,
+        "currentGeneratedCopies":current_generated,"productionQualification":"not_evaluated"})
+}
+
+pub fn list(
+    bdl: &BdlStore,
+    root: &Path,
+    global_default: ArtifactMode,
+    downloads: &LibraryDownloadService,
+    params: Value,
+) -> Result<Value, LibraryDownloadError> {
+    if params.get("availabilityStatus").is_some_and(Value::is_null) {
+        return Err(LibraryDownloadError("invalid_params"));
+    }
+    let query: Query = serde_json::from_value(params)?;
+    if query.schema_version != "0.1"
+        || !["all", "local", "bought", "gifts", "free_downloads"].contains(&query.source.as_str())
+        || ![
+            "all",
+            "downloaded",
+            "cloud_only",
+            "missing",
+            "in_progress",
+            "attention",
+        ]
+        .contains(&query.state.as_str())
+        || query.limit == 0
+        || query.limit > 200
+        || query.offset > 9_007_199_254_740_991usize
+        || query.text.chars().count() > 1000
+        || query
+            .availability_status
+            .as_ref()
+            .is_some_and(|word| !["available", "unavailable", "unknown"].contains(&word.as_str()))
+    {
+        return Err(LibraryDownloadError("invalid_params"));
+    }
+    let mut products = bdl.library_product_summaries()?;
+    let product_ids: HashSet<_> = products
+        .iter()
+        .map(|product| product.product_id.clone())
+        .collect();
+    let copies = bdl.library_copy_evidence()?;
+    let presences = copies
+        .iter()
+        .map(|copy| (copy.copy.copy_id.clone(), presence(root, copy)))
+        .collect();
+    let snapshots = downloads.library_snapshots()?;
+    let mut operations = HashMap::new();
+    // An active attempt takes precedence over an older terminal attempt.
+    for snapshot in snapshots
+        .iter()
+        .filter(|s| s["state"] == "running")
+        .chain(snapshots.iter().filter(|s| s["state"] != "running"))
+    {
+        operations
+            .entry(snapshot["productId"].as_str().unwrap_or("").to_owned())
+            .or_insert(snapshot.clone());
+    }
+    let mut rows = Vec::new();
+    for product in &mut products {
+        let attached: Vec<_> = copies
+            .iter()
+            .filter(|copy| copy.product_ids.contains(&product.product_id))
+            .collect();
+        let facts = storage(&attached, &presences);
+        // Compatibility projection: this new face counts present physical copies,
+        // while the frozen catalog face retains its historical mapping count.
+        product.imported_artifacts = facts["presentCopies"].as_u64().unwrap_or(0) as u32;
+        rows.push(json!({"kind":"product","product":product,"sources":bdl.product_library_memberships(&product.product_id)?,
+            "storage":facts,"operation":operations.remove(&product.product_id)}));
+    }
+    for mut entry in bdl.warehouse_entry_cards(global_default)? {
+        let unassociated: Vec<_> = copies
+            .iter()
+            .filter(|copy| {
+                copy.copy.warehouse_item_id == entry.warehouse_item_id
+                    && !copy.product_ids.iter().any(|id| product_ids.contains(id))
+            })
+            .collect();
+        if unassociated.is_empty() && !entry.artifacts.is_empty() {
+            continue;
+        }
+        entry.artifacts.retain(|artifact| {
+            unassociated.iter().any(|copy| {
+                copy.copy.artifact_sha256 == artifact.artifact_sha256
+                    && copy.copy.relative_path == artifact.relative_path
+                    && copy.copy.role == artifact.role
+            })
+        });
+        rows.push(
+            json!({"kind":"local","entry":entry,"storage":storage(&unassociated,&presences)}),
+        );
+    }
+    let needle = query.text.to_lowercase();
+    rows.retain(|row| {
+        let product = row["kind"] == "product";
+        let sources = row["sources"].as_array();
+        let source_match = match query.source.as_str() {
+            "all" => true,
+            "local" => row["storage"]["storedCopies"].as_u64().unwrap_or(0) > 0,
+            kind => {
+                product
+                    && sources.is_some_and(|sources| sources.iter().any(|source| source == kind))
+            }
+        };
+        let present = row["storage"]["presentCopies"].as_u64().unwrap_or(0);
+        let state_match = match query.state.as_str() {
+            "all" => true,
+            "downloaded" => present > 0,
+            "cloud_only" => row["storage"]["storedCopies"] == 0,
+            "missing" => row["storage"]["missingCopies"].as_u64().unwrap_or(0) > 0,
+            "in_progress" => row["operation"]["state"] == "running",
+            _ => {
+                ["partial", "missing", "changed", "unreadable"]
+                    .contains(&row["storage"]["state"].as_str().unwrap_or(""))
+                    || !row["operation"].is_null()
+                        && ["failed", "succeeded_with_warnings"]
+                            .contains(&row["operation"]["state"].as_str().unwrap_or(""))
+                    || row["operation"]["recoveryDisposition"] == "inspect_required"
+            }
+        };
+        let id = if product {
+            &row["product"]["productId"]
+        } else {
+            &row["entry"]["warehouseItemId"]
+        };
+        let title = if product {
+            &row["product"]["title"]
+        } else {
+            &row["entry"]["displayName"]
+        };
+        let matches_text = [
+            id,
+            title,
+            &row["product"]["shopName"],
+            &row["product"]["variantName"],
+            &row["entry"]["folderName"],
+        ]
+        .iter()
+        .any(|v| {
+            v.as_str()
+                .is_some_and(|v| v.to_lowercase().contains(&needle))
+        }) || row["entry"]["artifacts"]
+            .as_array()
+            .is_some_and(|artifacts| {
+                artifacts.iter().any(|artifact| {
+                    artifact["relativePath"]
+                        .as_str()
+                        .is_some_and(|name| name.to_lowercase().contains(&needle))
+                })
+            });
+        source_match
+            && state_match
+            && matches_text
+            && query
+                .availability_status
+                .as_ref()
+                .is_none_or(|word| product && row["product"]["availabilityStatus"] == *word)
+    });
+    let total = rows.len();
+    Ok(
+        json!({"schemaVersion":"0.1","total":total,"offset":query.offset,"limit":query.limit,"items":rows.into_iter().skip(query.offset).take(query.limit).collect::<Vec<_>>()}),
+    )
+}
+
+pub fn product_files(
+    bdl: &BdlStore,
+    root: &Path,
+    params: Value,
+) -> Result<Value, LibraryDownloadError> {
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields, rename_all = "camelCase")]
+    struct Request {
+        schema_version: String,
+        product_id: String,
+    }
+    let request: Request = serde_json::from_value(params)?;
+    if request.schema_version != "0.1"
+        || !request
+            .product_id
+            .strip_prefix("booth:")
+            .is_some_and(|id| !id.is_empty() && id.bytes().all(|c| c.is_ascii_digit()))
+    {
+        return Err(LibraryDownloadError("invalid_params"));
+    }
+    if bdl.catalog_detail(&request.product_id)?.is_none() {
+        return Err(LibraryDownloadError("product_not_found"));
+    }
+    let evidence = bdl.library_copy_evidence()?;
+    let mut files = Vec::new();
+    for (id, name) in bdl.downloadables_for_product(&request.product_id)? {
+        let bound = bdl.managed_library_file(id)?;
+        let candidates = if let Some(bound) = &bound {
+            evidence
+                .iter()
+                .filter(|copy| copy.copy.copy_id == bound.copy_id)
+                .map(|copy| copy.copy.clone())
+                .collect()
+        } else {
+            bdl.legacy_download_copies(id)?
+        };
+        let copies: Vec<_> = candidates.into_iter().filter(|copy| copy.role == CopyRole::Original).map(|copy| {
+            let presence = evidence.iter().find(|item| item.copy.copy_id == copy.copy_id).map(|item| presence(root,item)).unwrap_or("unreadable");
+            json!({"copyId":copy.copy_id,"entryId":copy.warehouse_item_id,"fileName":copy.relative_path,"artifactSha256":copy.artifact_sha256,"presence":presence})
+        }).collect();
+        files.push(json!({"downloadableId":id,"fileName":name,"managedCopyId":bound.map(|bound|bound.copy_id),"copies":copies}));
+    }
+    Ok(json!({"schemaVersion":"0.1","productId":request.product_id,"items":files}))
+}
