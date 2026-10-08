@@ -1,6 +1,6 @@
 # First play release: implementation checkpoint and remaining work
 
-> Document version: 1.6.0
+> Document version: 1.7.0
 > Status: Accepted
 > Updated: 2026-10-09
 > Scope: Desktop play, PICO 4 Pro USB/Wi-Fi, optional eye tracking and three guidance contexts
@@ -100,14 +100,22 @@ business sidebar and returns to the same workflow, Inspection belongs to Avatar,
 sidebar Help/Settings and the topbar page name are removed, and headset choices use recognizable
 brand glyphs. Tasks shows actual Gateway facts without a guide switch and follows saved/system
 appearance. A localized VUA tray restores Main and exposes update checking, big screen and exit.
+The follow-up compact-shell corrections narrow the sidebar, retire the bottom taskbar and
+header Tasks/display/theme/search controls, place search at the Settings-sidebar bottom, and
+use connected Dark/Light/System appearance buttons with a Dark default. Saved theme choices,
+matrix/glass, motion fallbacks and the global search shortcut remain. The task-tour step now
+points to Home's Tasks tile with matching four-language instructions.
 
 Controlled Chromium checks cover route choices, disabled peers, unknown/missing software,
 manual handoff/reinspection, account return, focus/back, mode changes and four-language minimum
 window layout. These checks use synthetic Gateway facts and establish UI behavior only.
 `pnpm --filter @vua/desktop smoke:first-run-ui` reproduces the branching, readiness, account-return
 and Chromium keyboard cases in an isolated Electron session without installing software or signing in.
-Its current 40 checks also cover settings-only navigation, source/focus preservation, tray-renderer
-gestures, live task-port selection in DEV and cross-window/system appearance changes.
+Its current 56 checks also cover settings-only navigation, source/focus preservation, tray-renderer
+gestures, live task-port selection in DEV, compact navigation/search, the Home task-tour anchor,
+a Dark default on a Light system, connected appearance choices, reduced-motion/resource-saving
+fallbacks, visible search with scrolling settings categories in a small big-screen window,
+and cross-window/system appearance changes.
 `pnpm --filter @vua/desktop smoke:system-tray` adds eight native Electron API checks with
 programmatically invoked tray events. Physical Windows tray clicks still require author review.
 No new ZIP was made for these changes: the author is reviewing `pnpm dev:desktop` first.
@@ -246,6 +254,7 @@ integration, not a substitute for N5's own review and acceptance.
 ## Document changelog
 
 
+- 1.7.0 (2026-10-09): record the compact shell and Settings search/appearance corrections, update the task-tour destination and expand the controlled UI checks to 56; no new ZIP or physical-acceptance claim.
 - 1.6.0 (2026-10-09): record the author's development-mode UI corrections, task/theme separation, settings return, headset glyphs and native tray checks; defer another ZIP while the UI is under review.
 - 1.5.0 (2026-10-08): record the integrated wizard/Home implementation and controlled UI checks, with official account handoff and real-device/installer/human review still separate.
 - 1.4.0 (2026-10-08): integrate the independently delivered acquisition and game-guide-follow slices without changing their pending real-machine acceptance.

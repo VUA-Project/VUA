@@ -1,11 +1,11 @@
-# VUA design standard v0.10.0
+# VUA design standard v0.11.0
 
 
-> Document version: 0.10.0
+> Document version: 0.11.0
 > Status: Accepted
 > Scope: Electron desktop, desktop overlay, and VR overlay presentation  
 > Updated: 2026-10-09
-> Last conformance review: 2026-10-09 (settings return, task themes, tray and brand-glyph source alignment; author app/device review pending)
+> Last conformance review: 2026-10-09 (compact shell, settings search, connected appearance controls and preserved motion fallbacks; author app/device review pending)
 > Normative effect: Governs interaction, visual, and accessibility implementation;
 > does not expand product scope or replace versioned application contracts
 
@@ -94,7 +94,19 @@ Settings again return to the original page with its workflow and focus preserved
 settings categories does not change that return destination. Do not repeat the page name beside
 the logo. Guides may have their own one-level Back inside the content.
 
-Tasks opens the actual queue, without an onboarding/guide switch; optional production details
+The follow-up 2026-10-09 user ruling narrows the sidebar to 176 px in desktop mode and 208 px
+in big-screen Settings. Retain its glass and scroll access in short windows. Remove the bottom
+notification/task bar and the topbar Tasks, display-mode, theme and feature-search buttons.
+Feature search appears only at the bottom of the Settings sidebar; Ctrl+P remains available
+throughout the application. Big screen is selected in Theme settings or the system tray.
+
+Settings → Theme → Appearance uses three connected native buttons in the order Dark, Light,
+Follow system, with one selected frame sliding across them. A new or invalid preference defaults
+to Dark (superseding the earlier system default); keep existing saved choices. System remains
+selected while the effective theme follows Windows. Reduced motion and resource saving flatten
+the frame movement without changing selection, keyboard access or theme propagation.
+
+Home's Tasks tile opens the actual queue, without an onboarding/guide switch; optional production details
 are collapsed initially. Its window follows the saved light/dark/system appearance, including
 changes while open. Guidance remains accessible through Help and contextual entries. The VUA
 system tray logo restores the main window on double-click. Its right-click menu has exactly
@@ -635,8 +647,8 @@ changelog history already uses.
   animations flatten entirely, the dwell shortens, and milestones are not awaited. The
   bottom-left version badge reads build-time injected facts (version · commit · dirty); the
   update badge appears only for "newer available" — a failed check or up-to-date never disturbs.
-  The notification center (header bell) and the bottom taskbar share one notification projection
-  — one fact source, two presentations, no diverging invented counts; when the task-engine
+  The notification center (header bell) projects the task facts without invented counts;
+  the former bottom taskbar is retired by the 2026-10-09 user ruling. When the task-engine
   capability is not ready the entry never appears at all (§2 "Explicit facts and recovery"
   no-fact-no-render, not a disabled
   state), and the bell badge equals the active-task count. The panel is a fullscreen frosted
@@ -711,6 +723,7 @@ direction.
 ## 12. Document changelog
 
 
+- **0.11.0 (2026-10-09)**: narrow the sidebar, retire the bottom bar and four redundant header controls, move search into Settings, and adopt connected appearance choices with a Dark default and preserved motion fallbacks.
 - **0.10.0 (2026-10-09)**: separate tasks from onboarding, define settings-only navigation and return, restore Inspection to Avatar, add tray gestures and recognizable headset glyphs, and remove the header page-name duplicate.
 - **0.9.0 (2026-10-08)**: implement the accepted fixed Home/logo entry, independent branching wizard, concise navigation and desktop/big-screen hierarchy while retaining grid, glass and resource saving.
 - **0.8.0 (2026-10-05)**: define three guidance presentations and their topbar/contextual entries while retaining the two-business-tab shell.
@@ -779,17 +792,5 @@ direction.
   recipe.save save chain (same shape and same guard set, first save
   baseRevision 0), "saved" only after the receipt, a draft never silently
   promoted. ZH mirror synced.
-
-- **0.7.17 (2026-09-22)**: §8.4 addendum for create and add-assets (third
-  desktop slice consuming the U16 user ruling of 2026-09-21; proposal 029 facets A1/A2/A3 local segment) — the
-  "Create" entry promoted onto the recipe page main path (U16 ruling wording;
-  the draft dialog remains one creation starting point, two-UIs-one-save-chain
-  holds); the selected-state "Add assets" action rides the recipe.save version
-  chain (same save-chain shape, same guard set: baseRevision + D5 dedup + busy
-  guard; parallel-document-edit-chain form), pending additions and saved facts
-  presented separately with "saved" shown only after the receipt; the asset
-  picker = warehouse read-face projection (no third import entry; cloud access
-  = pending item 3 stays honestly absent before a ruling). This closes the
-  proposal-029 A-face (A1–A6) desktop consumption loop. EN mirror synced.
 
 Earlier entries remain in Git history.

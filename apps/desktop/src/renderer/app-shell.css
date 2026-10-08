@@ -219,7 +219,7 @@
   transform: skewX(-12deg) translateY(1px);
 }
 
-.vua-shell__theme-toggle {
+.vua-shell__utility {
   border: 1px solid var(--vua-border);
   border-radius: var(--vua-radius-control);
   background: transparent;
@@ -228,25 +228,7 @@
   cursor: pointer;
 }
 
-.vua-shell__theme-toggle:hover {
-  background: color-mix(in srgb, var(--vua-text-strong) 6%, transparent);
-  color: var(--vua-text-strong);
-}
-
-/* 命令面板入口(C-EFFICIENCY):胶囊形,与主题切换同质感;
- * 单行不缩——日语长文案窄窗时也不折行,收缩责任同样在 Tabs 轨道 */
-.vua-shell__palette-cta {
-  border: 1px solid var(--vua-border);
-  border-radius: var(--vua-radius-pill);
-  background: transparent;
-  color: var(--vua-text-secondary);
-  padding: var(--vua-space-2) var(--vua-space-3);
-  cursor: pointer;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.vua-shell__palette-cta:hover {
+.vua-shell__utility:hover {
   background: color-mix(in srgb, var(--vua-text-strong) 6%, transparent);
   color: var(--vua-text-strong);
 }
@@ -263,15 +245,14 @@
  * 即激活——字号动画长大,毛玻璃层向右动画扩大 */
 .vua-shell__sidebar {
   position: relative;
-  width: 232px;
+  width: 176px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: var(--vua-space-4);
   padding: var(--vua-space-4) var(--vua-space-3);
-  /* 走查#2:设置区页项增多后,底部项被固定任务栏遮挡——允许滚动并预留任务栏高度 */
+  /* 矮窗下滚动设置目录;底部常驻任务条已按 2026-10-09 用户裁决取消 */
   overflow-y: auto;
-  padding-bottom: calc(var(--vua-space-4) + 56px);
   /* 基态:向左浓向右淡的渐变玻璃,无边框分界 */
   background: linear-gradient(
     90deg,

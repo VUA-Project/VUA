@@ -29,6 +29,11 @@
 .vua-shell__header { gap: 12px; }
 .vua-shell__sidebar { overflow-y: auto; justify-content: flex-start; padding-block: 28px; gap: 26px; }
 .vua-shell__sidebar-group { margin-block: 0; }
+.vua-shell__sidebar--settings { overflow: hidden; }
+.vua-shell__sidebar-group--settings { min-height: 0; overflow-y: auto; overflow-x: hidden; padding-right: 4px; }
+.vua-shell__sidebar-footer { margin-top: auto; flex-shrink: 0; position: relative; }
+.vua-shell__sidebar-search { width: 100%; min-height: var(--vua-control-height); padding: 10px 12px; border: 1px solid var(--vua-border); border-radius: var(--vua-radius-control); background: var(--vua-bg-panel); color: var(--vua-text-strong); font: var(--vua-font-body); cursor: pointer; }
+.vua-shell__sidebar-search:hover { background: var(--vua-accent-tint); border-color: var(--vua-accent); }
 .vua-shell__main > .vua-page-enter > .vua-page { width: 100%; }
 .vua-shell__main > div:has(> .vua-onboarding) { flex: 1; min-height: 0; overflow-y: auto; }
 .vua-onboarding { align-items: flex-start; }
@@ -37,8 +42,9 @@
 .vua-shell[data-display-mode='bigscreen'] .vua-shell__header button:not(.vua-shell__window-button),
 .vua-shell[data-display-mode='bigscreen'] .vua-shell__main .vua-button { min-height: 64px; min-width: 64px; font-size: 18px; }
 .vua-shell[data-display-mode='bigscreen'] .vua-shell__wordmark svg { width: 40px; height: 40px; }
-.vua-shell[data-display-mode='bigscreen'] .vua-shell__sidebar { width: 260px; flex-basis: 260px; }
-.vua-shell[data-display-mode='bigscreen'] .vua-shell__sidebar-item { min-height: 64px; font-size: 18px; }
+.vua-shell[data-display-mode='bigscreen'] .vua-shell__sidebar { width: 208px; flex-basis: 208px; }
+.vua-shell[data-display-mode='bigscreen'] .vua-shell__sidebar-item,
+.vua-shell[data-display-mode='bigscreen'] .vua-shell__sidebar-search { min-height: 64px; font-size: 18px; }
 .vua-shell[data-display-mode='bigscreen'] .vua-home { max-width: 1300px; padding: 36px; }
 .vua-shell[data-display-mode='bigscreen'] .vua-route-tile { min-height: 180px; border-radius: 7px; padding: 32px; }
 .vua-shell[data-display-mode='bigscreen'] .vua-route-tile strong { font-size: 24px; }
@@ -48,7 +54,7 @@
 .vua-shell[data-display-mode='bigscreen'] .vua-shell__main input, .vua-shell[data-display-mode='bigscreen'] .vua-shell__main select { min-height: 56px; font-size: 18px; }
 .vua-shell[data-display-mode='bigscreen'] .vua-shell__main p { font-size: 18px; line-height: 1.65; }
 .vua-shell [hidden] { display: none !important; }
-@media (max-width: 800px) { .vua-shell__header .vua-shell__palette-cta { display: none; } .vua-shell__sidebar { width: 156px; flex-basis: 156px; } .vua-route-tile { padding: 20px; } }
+@media (max-width: 800px) { .vua-shell__sidebar { width: 156px; flex-basis: 156px; } .vua-route-tile { padding: 20px; } }
 @media (max-width: 560px) { .vua-shell__sidebar { width: 120px; flex-basis: 120px; } }
 
 .vua-account-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 24px; }

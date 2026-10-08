@@ -44,7 +44,7 @@ export const TOUR_STEPS: readonly TourStepDef[] = [
   { id: "network", page: "software", anchor: ".vua-network" },
   { id: "checks", page: "software", anchor: ".vua-deployer__hero" },
   { id: "plan", page: "software", anchor: ".vua-deployment" },
-  { id: "tasks", page: "software", anchor: ".vua-taskbar__toggle" },
+  { id: "tasks", page: "home", anchor: '[data-nav-id="home-tasks"]' },
   { id: "guide", page: "software", anchor: '[data-tour-anchor="tour-guide-entry"]' },
 ];
 

@@ -461,8 +461,8 @@ demoTaskTitle: "Demo task",
       },
       tasks: {
         title: "Task progress lives here",
-        body: "Running installs and downloads gather in the bottom taskbar; the Status entry in the topbar opens a pinned status card. Closing or exiting either never cancels a task.",
-        absent: "The taskbar appears here once the task engine is ready.",
+        body: "Open Tasks on Home to view installations and downloads. The header bell shows task notifications when the task engine is ready. Closing the task window does not cancel a task.",
+        absent: "The Tasks entry is not currently visible. You can return to Home to check it later.",
       },
       guide: {
         title: "Guidance is always reachable",

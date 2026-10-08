@@ -28,7 +28,7 @@ const step = (value: string) => wait(() => document.querySelector(`[data-wizard-
 window.vua = {
   gateway: { invoke: async (req: { method: string; params?: { intent?: { purposes: string[] } }; }) => {
     let value: unknown;
-    if (req.method === "app.snapshot") value = { capabilities: { tasks: false, operations: ["environment.planDeployment", "environment.executeDeployment"].map(operationId => ({ operationId, availability: "available" })) } };
+    if (req.method === "app.snapshot") value = { capabilities: { tasks: true, operations: ["environment.planDeployment", "environment.executeDeployment"].map(operationId => ({ operationId, availability: "available" })) } };
     if (req.method === "task.list") value = { revision: 1, tasks: [] };
     if (req.method === "environment.getSnapshot") value = { capturedAt: new Date().toISOString(), items: [] };
     if (req.method === "environment.planDeployment") {
@@ -51,11 +51,11 @@ window.vua = {
   remoteContent: { openAccountGuideInBrowser: async (id: string) => { guideId = id; }, authProbe: async () => ({ authOk: false, accountName: null }) },
 } as unknown as VuaDesktopApiV1;
 
-async function mount(mode: typeof scenario = "installed", displayMode = "bigscreen") {
+async function mount(mode: typeof scenario = "installed", displayMode = "bigscreen", tourStep?: number) {
   root?.unmount(); localStorage.clear(); location.hash = ""; scenario = mode;
-  localStorage.setItem(storageKeys.locale, "en"); localStorage.setItem(storageKeys.theme, "dark");
+  localStorage.setItem(storageKeys.locale, "en");
   localStorage.setItem(storageKeys.displayMode, displayMode);
-  localStorage.setItem(storageKeys.tourProgress, JSON.stringify({ v: 1, status: "skipped", step: 0 }));
+  localStorage.setItem(storageKeys.tourProgress, JSON.stringify({ v: 1, status: tourStep === undefined ? "skipped" : "active", step: tourStep ?? 0 }));
   if (mode === "restored") {
     localStorage.setItem(storageKeys.firstRunJourney, JSON.stringify({ v: 1, step: "prepare", purpose: "desktop_play", connection: null }));
     localStorage.setItem(storageKeys.deploymentReceiptPlay, JSON.stringify({ v: 1, taskId: "synthetic-deployment", startedAt: Date.now() - 60000, intent: { purposes: ["desktop_play"], editorRoot: "C:/Synthetic/Editor" } }));
@@ -72,6 +72,7 @@ async function prepare() {
 const review = {
   async run() {
     await mount(); await step("goal");
+    check("a new session defaults to Dark with the system set to Light", localStorage.getItem(storageKeys.theme) === "dark" && document.documentElement.dataset.theme === "dark");
     document.querySelector<HTMLButtonElement>('[data-nav-id="logo-home"]')!.click();
     await wait(() => document.querySelector(".vua-home") && !document.querySelector("[data-wizard-step]"));
     check("logo exits the first-run guide even when Home is already the underlying page", !document.querySelector("[data-wizard-step]"));
@@ -99,15 +100,39 @@ const review = {
     check("only the logo is the Home action", document.querySelectorAll('[data-nav-id="logo-home"]').length === 1 && !document.querySelector(".vua-shell__tabs"));
     check("home has no tile subtitles", !document.querySelector(".vua-home .vua-route-tile__description"));
     check("header no longer repeats the page title beside the logo", !document.querySelector(".vua-shell__location strong"));
+    const headerLabels = [...document.querySelectorAll(".vua-shell__header button")].map(el => el.textContent?.trim());
+    check("header has no Tasks, display-mode, theme or feature-search button", [copy.tasks, copy.bigscreenMode, copy.desktopMode, strings.settings.theme.dark, strings.settings.theme.light, strings.commandPalette.cta].every(label => !headerLabels.some(text => text?.includes(label))));
+    await wait(() => document.querySelector(".vua-shell__notify"));
+    check("ready task capability retains the bell without mounting a bottom taskbar", !!document.querySelector(".vua-shell__notify") && !document.querySelector(".vua-shell__taskbar"));
     await mount("installed", "desktop"); await step("goal");
     document.querySelector<HTMLButtonElement>('[data-nav-id="logo-home"]')!.click();
     await wait(() => !document.querySelector("[data-wizard-step]"));
     check("Inspection belongs to the Avatar sidebar group", !!document.querySelector('[data-module="production"] [data-nav-id="nav-inspection"]'));
     check("bottom-left duplicate settings and help entries are gone", !document.querySelector(".vua-shell__sidebar-global") && !document.querySelector('.vua-shell__sidebar [data-nav-id="nav-settings-theme"]'));
+    check("desktop sidebar is narrower and retains frosted glass", document.querySelector(".vua-shell__sidebar")!.getBoundingClientRect().width === 176 && getComputedStyle(document.querySelector(".vua-shell__sidebar")!).backdropFilter.includes("blur"));
+    check("feature search has no sidebar button outside Settings", !document.querySelector('[data-nav-id="settings-search"]'));
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "p", ctrlKey: true, bubbles: true }));
+    await wait(() => document.querySelector(".vua-palette"));
+    check("Ctrl+P still opens feature search outside Settings", !!document.querySelector(".vua-palette"));
+    document.querySelector<HTMLInputElement>(".vua-palette__input")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await wait(() => !document.querySelector(".vua-palette"));
     await click(copy.play); await click(copy.desktop);
     await wait(() => document.querySelector('[data-route-stage="prepare"]'));
     document.querySelector<HTMLButtonElement>('[data-nav-id="shell-settings"]')!.click();
     await wait(() => document.querySelector('[data-nav-id="nav-settings-accounts"]'));
+    const search = document.querySelector<HTMLButtonElement>('[data-nav-id="settings-search"]')!;
+    const sidebar = document.querySelector<HTMLElement>(".vua-shell__sidebar")!;
+    check("Settings places its single search button at the sidebar bottom", search.closest(".vua-shell__sidebar-footer") && sidebar.lastElementChild === search.parentElement && Math.abs(search.getBoundingClientRect().bottom - (sidebar.getBoundingClientRect().bottom - parseFloat(getComputedStyle(sidebar).paddingBottom))) < 2);
+    search.click(); await wait(() => document.querySelector(".vua-palette"));
+    check("Settings search button opens the command palette", !!document.querySelector(".vua-palette"));
+    document.querySelector<HTMLInputElement>(".vua-palette__input")!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    await wait(() => !document.querySelector(".vua-palette"));
+    check("appearance has ordered connected Dark / Light / System choices", [...document.querySelectorAll(".vua-theme-choice__button")].map(el => el.getAttribute("data-nav-id")).join() === "theme-dark,theme-light,theme-system");
+    await review.setThemePreference("light");
+    check("Light applies immediately and only its appearance button is selected", document.documentElement.dataset.theme === "light" && document.querySelectorAll('.vua-theme-choice [aria-pressed="true"]').length === 1 && document.querySelector('[data-nav-id="theme-light"][aria-pressed="true"]'));
+    await review.setThemePreference("system");
+    check("System keeps its own saved selection even when resolved to Light", document.documentElement.dataset.theme === "light" && localStorage.getItem(storageKeys.theme) === "system" && document.querySelector('[data-nav-id="theme-system"][aria-pressed="true"]'));
+    await review.setThemePreference("dark");
     document.querySelector<HTMLButtonElement>('[data-nav-id="nav-settings-accounts"]')!.click();
     await wait(() => document.querySelector(".vua-account-grid"));
     document.querySelector<HTMLButtonElement>('[data-nav-id="shell-settings"]')!.click();
@@ -121,6 +146,7 @@ const review = {
     shellCommand!("bigscreen");
     await wait(() => document.querySelector('.vua-shell[data-display-mode="bigscreen"]'));
     check("tray big screen gesture switches the existing shell", !!document.querySelector('.vua-shell[data-display-mode="bigscreen"]'));
+    check("big-screen settings sidebar is narrower with full-size controls", document.querySelector(".vua-shell__sidebar")!.getBoundingClientRect().width === 208 && document.querySelector('[data-nav-id="settings-search"]')!.getBoundingClientRect().height >= 64);
     document.querySelector<HTMLButtonElement>('[data-nav-id="shell-back"]')!.click();
     await wait(() => !document.querySelector('[data-nav-id="nav-settings-version"]'));
     check("tray-opened settings retains the same source page", !!document.querySelector('[data-route-stage="prepare"]'));
@@ -134,6 +160,12 @@ const review = {
     check("old terminal receipt alone does not authorize continuation", !button(copy.preparedNext));
     scenario = "installed"; await click(strings.deployment.plan); await wait(() => button(copy.preparedNext));
     check("restored work can continue after reinspection", !!button(copy.preparedNext));
+    await mount("installed", "desktop", 4); await step("goal");
+    document.querySelector<HTMLButtonElement>('[data-nav-id="logo-home"]')!.click();
+    await wait(() => document.querySelector(".vua-tour__highlight"));
+    const taskTile = document.querySelector('[data-nav-id="home-tasks"]')!.getBoundingClientRect();
+    const taskHighlight = document.querySelector(".vua-tour__highlight")!.getBoundingClientRect();
+    check("restored task-tour step highlights the Home Tasks entry", document.querySelector(".vua-tour")?.textContent?.includes(strings.tour.steps.tasks.body) && Math.abs((taskTile.x + taskTile.width / 2) - (taskHighlight.x + taskHighlight.width / 2)) < 1 && Math.abs((taskTile.y + taskTile.height / 2) - (taskHighlight.y + taskHighlight.height / 2)) < 1);
     await mount(); await step("goal");
     await wait(() => document.activeElement?.getAttribute("data-nav-id")?.startsWith("wizard-play-mode"));
     return checks;
@@ -161,10 +193,31 @@ const review = {
     } else if (!document.querySelector('[data-nav-id="nav-settings-theme"][aria-current="page"]')) {
       document.querySelector<HTMLButtonElement>('[data-nav-id="nav-settings-theme"]')!.click();
     }
-    await wait(() => [...document.querySelectorAll<HTMLSelectElement>("select")].some(el => visible(el) && el.getAttribute("aria-label") === strings.settings.theme.appearanceAria));
-    const select = [...document.querySelectorAll<HTMLSelectElement>("select")].find(el => visible(el) && el.getAttribute("aria-label") === strings.settings.theme.appearanceAria)!;
-    select.value = theme; select.dispatchEvent(new Event("change", { bubbles: true }));
+    await wait(() => document.querySelector(`[data-nav-id="theme-${theme}"]`));
+    document.querySelector<HTMLButtonElement>(`[data-nav-id="theme-${theme}"]`)!.click();
     await wait(() => localStorage.getItem(storageKeys.theme) === theme);
+    await wait(() => {
+      const selected = document.querySelector('.vua-theme-choice [aria-pressed="true"]')!.getBoundingClientRect();
+      const frame = document.querySelector(".vua-theme-choice__selection")!.getBoundingClientRect();
+      return Math.abs(selected.x - frame.x) < 1 && Math.abs(selected.width - frame.width) < 1;
+    }, "appearance selection frame matches its button");
+  },
+  async setResourceSaver(enabled: boolean) {
+    await click(enabled ? strings.settings.theme.saverTurnOn : strings.settings.theme.saverTurnOff);
+    await wait(() => (document.documentElement.dataset.effects === "off") === enabled);
+  },
+  expectFlattenedThemeMotion(mode: "reduced-motion" | "resource-saving") {
+    const style = getComputedStyle(document.querySelector(".vua-theme-choice__selection")!);
+    const flattened = mode === "reduced-motion" ? !style.transitionProperty.includes("transform") : parseFloat(style.transitionDuration) <= 0.001;
+    if (!flattened) throw new Error(`Theme frame does not flatten for ${mode}`);
+    return `Appearance selection remains usable with ${mode}`;
+  },
+  async expectSearchFooterVisible() {
+    await wait(() => window.innerWidth === 960 && window.innerHeight === 600);
+    const search = document.querySelector('[data-nav-id="settings-search"]')!.getBoundingClientRect();
+    const categories = document.querySelector(".vua-shell__sidebar-group--settings")!;
+    if (search.bottom > window.innerHeight || search.top < 0 || categories.scrollHeight <= categories.clientHeight) throw new Error("Search footer is not retained below the scrollable settings categories in a small window");
+    return "Small big-screen Settings retains visible search below its scrolling categories";
   },
 };
 (window as unknown as { firstRunReview: typeof review }).firstRunReview = review;

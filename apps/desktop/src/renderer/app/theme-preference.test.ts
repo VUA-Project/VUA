@@ -1,7 +1,7 @@
 /**
- * 主题偏好纯逻辑校验(2026-09-26 跟随系统裁决):
+ * 主题偏好纯逻辑校验(2026-10-09 默认深色裁决):
  * - resolveTheme:system 按系统深浅色解析,dark/light 原样;
- * - loadThemePreference:旧存储 dark|light 仍合法,非法/缺失回落 system;
+ * - loadThemePreference:已有三值偏好仍合法,非法/缺失回落 dark;
  * - toggledPreference:取当前生效主题的反面;
  * - saveThemePreference:写入偏好,存储异常静默。
  */
@@ -35,14 +35,14 @@ test("isThemePreference guards the three-value closed set", () => {
   assert.equal(isThemePreference(undefined), false);
 });
 
-test("loadThemePreference: stored dark/light stay valid, missing or invalid falls back to system", () => {
+test("loadThemePreference: saved preferences stay valid, missing or invalid falls back to dark", () => {
   // 旧版写入的 dark|light 是合法子集(存储键不变,vua-theme)
   assert.equal(loadThemePreference(() => "dark"), "dark");
   assert.equal(loadThemePreference(() => "light"), "light");
   assert.equal(loadThemePreference(() => "system"), "system");
-  assert.equal(loadThemePreference(() => null), "system");
-  assert.equal(loadThemePreference(() => "bogus"), "system");
-  assert.equal(loadThemePreference(() => ""), "system");
+  assert.equal(loadThemePreference(() => null), "dark");
+  assert.equal(loadThemePreference(() => "bogus"), "dark");
+  assert.equal(loadThemePreference(() => ""), "dark");
 });
 
 test("loadThemePreference: a throwing reader degrades to the session default", () => {
@@ -50,7 +50,7 @@ test("loadThemePreference: a throwing reader degrades to the session default", (
     loadThemePreference(() => {
       throw new Error("storage unavailable");
     }),
-    "system",
+    "dark",
   );
 });
 

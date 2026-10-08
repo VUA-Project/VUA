@@ -60,7 +60,6 @@ import { PackagesPage } from "./features/packages/PackagesPage.tsx";
 import { RecipePage } from "./features/recipe/RecipePage.tsx";
 import { ReleasePage } from "./features/release/ReleasePage.tsx";
 import { InspectionPage } from "./features/inspection/InspectionPage.tsx";
-import { Taskbar } from "./features/task-center/Taskbar.tsx";
 import { NotificationPopover } from "./features/task-center/NotificationPopover.tsx";
 import { ResourceMonitor } from "./features/resource-monitor/ResourceMonitor.tsx";
 import { BootSplash } from "./components/splash/BootSplash.tsx";
@@ -278,6 +277,11 @@ function ThemeSettingsPage({
   onSaverAutoChange,
 }: PagePrefs) {
   const copy = strings.settings.theme;
+  const themeOptions = [
+    { value: "dark", label: copy.dark },
+    { value: "light", label: copy.light },
+    { value: "system", label: copy.system },
+  ] as const;
   const saverSource = resourceSaverSource({
     manualOn: saverOn,
     autoEnabled: saverAuto,
@@ -295,17 +299,24 @@ function ThemeSettingsPage({
       <Card>
         <div className="vua-page__stack">
           <h2 className="vua-title">{copy.appearanceHeading}</h2>
-          <div>
-            <select
-              className="vua-settings-select"
-              aria-label={copy.appearanceAria}
-              value={theme}
-              onChange={(event) => onThemeChange(event.target.value as ThemePreference)}
-            >
-              <option value="system">{copy.system}</option>
-              <option value="dark">{copy.dark}</option>
-              <option value="light">{copy.light}</option>
-            </select>
+          <div className="vua-theme-choice" role="group" aria-label={copy.appearanceAria}>
+            <span
+              className="vua-theme-choice__selection"
+              aria-hidden="true"
+              style={{ transform: `translateX(${themeOptions.findIndex(option => option.value === theme) * 100}%)` }}
+            />
+            {themeOptions.map(option => (
+              <button
+                type="button"
+                key={option.value}
+                className="vua-theme-choice__button"
+                aria-pressed={theme === option.value}
+                data-nav-id={`theme-${option.value}`}
+                onClick={() => onThemeChange(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
         </div>
       </Card>
@@ -1076,20 +1087,8 @@ function AppShell({
         >
           <span className="vua-shell__tab-label">{tabLabel(moduleDef("settings"))}</span>
         </button>
-        <button
-          type="button"
-          className="vua-shell__palette-cta vua-caption"
-          onClick={() => setPaletteOpen(true)}
-        >
-          {strings.commandPalette.cta} · {strings.commandPalette.ctaHint}
-        </button>
-        <button type="button" className="vua-shell__theme-toggle" onClick={() => { if (themeOverride !== null) setThemeOverride(resolvedTheme === "dark" ? "light" : "dark"); else setThemePref(toggledPreference(resolvedTheme)); }} title={resolvedTheme === "dark" ? strings.commandPalette.toggleThemeToLight : strings.commandPalette.toggleThemeToDark} aria-label={resolvedTheme === "dark" ? strings.commandPalette.toggleThemeToLight : strings.commandPalette.toggleThemeToDark}>
-          {resolvedTheme === "dark" ? strings.settings.theme.light : strings.settings.theme.dark}
-        </button>
-        <button type="button" className="vua-shell__theme-toggle" aria-pressed={bigscreen} onClick={() => setDisplayMode(bigscreen ? "desktop" : "bigscreen")}>{bigscreen ? strings.journey.desktopMode : strings.journey.bigscreenMode}</button>
-        <button type="button" className="vua-shell__theme-toggle" data-tour-anchor="tour-guide-entry" onClick={() => navigate("help")}>{strings.journey.help}</button>
-        <button type="button" className="vua-shell__theme-toggle" onClick={() => void window.vua?.window.showOverlay("status")}>{strings.journey.tasks}</button>
-        {/* 通知中心顶栏入口(对标 Comfy 铃铛,自绘):与底部任务条共用同一通知投影;
+        <button type="button" className="vua-shell__utility" data-tour-anchor="tour-guide-entry" onClick={() => navigate("help")}>{strings.journey.help}</button>
+        {/* 通知中心顶栏入口(对标 Comfy 铃铛,自绘):保留任务与通知投影;
          *  capability 非 ready 时组件自身不渲染 */}
         <NotificationPopover navigate={navigate} />
         {inShell ? (
@@ -1122,13 +1121,25 @@ function AppShell({
         ) : null}
       </header>
       <div className="vua-shell__body">
-        {!bigscreen || settingsOpen ? <aside className="vua-shell__sidebar" aria-label={settingsOpen ? strings.nav.tabs.settings : strings.app.sidebarAria}>
-          {settingsOpen ? <div className="vua-shell__sidebar-group" data-module="settings">
+        {!bigscreen || settingsOpen ? <aside className={`vua-shell__sidebar${settingsOpen ? " vua-shell__sidebar--settings" : ""}`} aria-label={settingsOpen ? strings.nav.tabs.settings : strings.app.sidebarAria}>
+          {settingsOpen ? <div className="vua-shell__sidebar-group vua-shell__sidebar-group--settings" data-module="settings">
             {moduleDef("settings").groups.flatMap(g => g.pages).map(p => <button type="button" key={p.id} className="vua-shell__sidebar-item" aria-current={page === p.id ? "page" : undefined} onClick={() => navigate(p.id)} data-nav-id={`nav-${p.id}`}>{pageLabel(p)}</button>)}
           </div> : (["env", "production"] as const).map(group => <div className="vua-shell__sidebar-group" key={group} data-module={group}>
             <button type="button" className="vua-shell__sidebar-label" onClick={() => navigate(group === "env" ? "environment-hub" : "avatar-hub")}>{group === "env" ? strings.journey.environment : strings.journey.avatar}</button>
             {directory[group].map(item => <button type="button" key={item.id} className="vua-shell__sidebar-item" aria-current={page === item.id ? "page" : undefined} onClick={() => navigate(item.id)} data-nav-id={`nav-${item.id}`}>{item.title}</button>)}
           </div>)}
+          {settingsOpen ? <div className="vua-shell__sidebar-footer">
+            <button
+              type="button"
+              className="vua-shell__sidebar-search"
+              data-nav-id="settings-search"
+              aria-keyshortcuts="Control+P Meta+P"
+              title={`${strings.commandPalette.cta} · ${strings.commandPalette.ctaHint}`}
+              onClick={() => setPaletteOpen(true)}
+            >
+              {strings.commandPalette.cta}
+            </button>
+          </div> : null}
         </aside> : null}
         <main className="vua-shell__main">
           {contentPage !== null ? <div hidden={showOnboarding || settingsOpen} key={contentPage} className="vua-page-enter">
@@ -1138,8 +1149,6 @@ function AppShell({
           {settingsOpen ? <div key={page} className="vua-page-enter">{renderPage(page, creatorReady, pageActions, pagePrefs, uiRoot, onUiRootChange, bigscreen)}</div> : null}
         </main>
       </div>
-      {/* 任务中心(ui-ux §4.2 底部入口):capability 非 ready 时组件自身不渲染 */}
-      <Taskbar navigate={navigate} />
       {/* 导航确认卡(015 §12,批 B-3):U9(1)/(3) 确认层的渲染层载体,全局一次挂载 */}
       <NavigationConfirmOverlay />
       {/* 应用导览(三类引导裁决 2026-10-05):主窗口内有序高亮;从未运行自动

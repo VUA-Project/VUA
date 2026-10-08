@@ -32,9 +32,10 @@ try {
   const errors = [];
   window.webContents.on("console-message", event => { if (event.level === "error") errors.push(event.message); });
   await window.loadURL(`http://127.0.0.1:${server.httpServer.address().port}/__first-run-review`);
+  window.webContents.debugger.attach("1.3");
+  await window.webContents.debugger.sendCommand("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: "light" }] });
   const checks = await window.webContents.executeJavaScript("new Promise((resolve,reject)=>{const start=Date.now();const timer=setInterval(()=>{if(window.firstRunReview){clearInterval(timer);window.firstRunReview.run().then(resolve,reject);}else if(Date.now()-start>15000){clearInterval(timer);reject(new Error('fixture load timeout'));}},50);})");
   console.log(`First-run controlled UI: ${checks.length} checks passed`);
-  window.webContents.debugger.attach("1.3");
   await window.webContents.debugger.sendCommand("Emulation.setFocusEmulationEnabled", { enabled: true });
   for (const key of ["Enter", "Escape", "Escape", "ArrowRight"]) {
     await window.webContents.executeJavaScript(`window.firstRunReview.beforeKey(${JSON.stringify(key)})`);
@@ -55,6 +56,15 @@ try {
   checks.push(await taskWindow.webContents.executeJavaScript('window.taskWindowReview.expectTheme("light")'));
   await window.webContents.executeJavaScript('window.firstRunReview.setThemePreference("dark")');
   checks.push(await taskWindow.webContents.executeJavaScript('window.taskWindowReview.expectTheme("dark")'));
+  await window.webContents.debugger.sendCommand("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: "light" }, { name: "prefers-reduced-motion", value: "reduce" }] });
+  await window.webContents.executeJavaScript('window.firstRunReview.setThemePreference("dark")');
+  checks.push(await window.webContents.executeJavaScript('window.firstRunReview.expectFlattenedThemeMotion("reduced-motion")'));
+  await window.webContents.debugger.sendCommand("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: "light" }] });
+  await window.webContents.executeJavaScript('window.firstRunReview.setResourceSaver(true)');
+  await window.webContents.executeJavaScript('window.firstRunReview.setThemePreference("light")');
+  checks.push(await window.webContents.executeJavaScript('window.firstRunReview.expectFlattenedThemeMotion("resource-saving")'));
+  await window.webContents.executeJavaScript('window.firstRunReview.setResourceSaver(false)');
+  await window.webContents.executeJavaScript('window.firstRunReview.setThemePreference("dark")');
   taskWindow.webContents.debugger.attach("1.3");
   await taskWindow.webContents.debugger.sendCommand("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: "light" }] });
   await window.webContents.executeJavaScript('window.firstRunReview.setThemePreference("system")');
@@ -62,6 +72,9 @@ try {
   await taskWindow.webContents.debugger.sendCommand("Emulation.setEmulatedMedia", { features: [{ name: "prefers-color-scheme", value: "dark" }] });
   checks.push(await taskWindow.webContents.executeJavaScript('window.taskWindowReview.expectTheme("dark")'));
   await writeFile(path.join(os.tmpdir(), "vua-settings-review.png"), (await window.webContents.capturePage()).toPNG());
+  window.setContentSize(960, 600);
+  checks.push(await window.webContents.executeJavaScript('window.firstRunReview.expectSearchFooterVisible()'));
+  await writeFile(path.join(os.tmpdir(), "vua-settings-small-review.png"), (await window.webContents.capturePage()).toPNG());
   await writeFile(path.join(os.tmpdir(), "vua-task-window-review.png"), (await taskWindow.webContents.capturePage()).toPNG());
   // A missing favicon is irrelevant to the route; actual renderer errors fail the smoke.
   const meaningfulErrors = errors.filter(e => !e.includes("404 (Not Found)"));

@@ -1,11 +1,11 @@
 # Electron desktop and presentation architecture
 
 
-> Document version: 1.10.0
+> Document version: 1.11.0
 > Status: Accepted
 > Scope: `apps/desktop`, `packages/design-system`, frontend Gateway
 > Updated: 2026-10-09
-> Last conformance review: 2026-10-09 (settings source preservation, task appearance and native tray wiring; physical app/device review pending)
+> Last conformance review: 2026-10-09 (compact shell, settings search/appearance and restored task-tour anchor; physical app/device review pending)
 > Normative effect: Yes
 
 ## Technology decision
@@ -76,6 +76,13 @@ big screen mode; the upper-left Back action and the active Settings button retur
 source page. Category changes do not replace the return destination. Inspection belongs to the
 Avatar directory; Help and Settings have no duplicate bottom-left entry, and the topbar does
 not repeat the page name beside the Home logo.
+
+The compact shell follows the [design standard](../design/design-standard.md#3-platform-and-information-architecture):
+the bottom taskbar is no longer mounted, and feature search is a Settings-sidebar footer action
+with the existing global shortcut. Appearance changes use joined native buttons backed by the
+same three-value preference. A missing/invalid preference resolves to Dark; saved preferences
+and cross-window/system subscriptions stay compatible. The app tour's task step navigates to
+the fixed Home Tasks tile rather than a retired taskbar anchor.
 
 Account-help navigation uses that same settings return path.
 Settings → Accounts retains the N5 BOOTH sign-in/probe/logout surface; Steam, VRChat and Unity
@@ -197,7 +204,7 @@ and its badge. `preview-overlay.mjs` opts into that isolated demonstration.
 - No Overlay session identity: actions submitted from Overlay go through the existing command face
   with the same acceptance path and nine-state discipline; the service side does not distinguish
   whether an action came from the main window or an Overlay window;
-- The entry is the formal main-window top-bar action (outside DevScenario); show/hide toggling is
+- The entry is the fixed Home Tasks tile (outside DevScenario); show/hide toggling is
   arbitrated by Main (the decision face is a pure, testable function in `overlay-window.ts`);
   showing never steals focus; closing the Overlay window itself only clears the reference (the next
   toggle recreates it), and closing the main window destroys the Overlay — main-window close keeps
@@ -257,6 +264,7 @@ redistribution review authorizes each bundled binary before a public release.
 ## Document changelog
 
 
+- 1.11.0 (2026-10-09): apply the compact-shell ruling, move command search into Settings, replace the appearance select with joined buttons and a Dark default, and retarget the task-tour step to Home.
 - 1.10.0 (2026-10-09): implement settings-only sidebar/return, separate real task status and appearance from guides/demo previews, and add the localized VUA tray with typed main-renderer gestures and normal shutdown.
 - 1.9.0 (2026-10-08): record fixed navigation, desktop/big-screen focus, independent wizard/task facts and the closed official account-page browser handoff; temporary embedding and device acceptance remain pending.
 - 1.8.0 (2026-10-08): record the implemented game-window follow loop in Main (game-window-observe
@@ -271,10 +279,4 @@ redistribution review authorizes each bundled binary before a public release.
 - 1.4.1 (2026-10-02): merge the N1 Unity Hub handoff protocol with the status-quo alignment;
   no rule change.
 - 1.4.0 (2026-10-01): allow the Unity Hub installation handoff under the existing per-action external-protocol confirmation.
-- 1.3.1 (2026-10-01): status-quo alignment — Main supervises the Provider as a separate process
-  (orchestrator.md wording); U9 external-protocol list phrasing defers to the owning product
-  boundary; overlay shape parameters cite the spike-overlay.mjs verification; proposal 017 cited
-  as a dated archived proposal; "core freeze batch" scheduling residue removed; four-locale UI
-  i18n fact recorded with the §2.3 policy link. No rule change.
-
 Earlier entries remain in Git history.
