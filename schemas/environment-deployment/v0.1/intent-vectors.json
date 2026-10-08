@@ -18,9 +18,16 @@
   {"name":"reserved serial device","valid":false,"intent":{"purposes":["pc_avatar"],"editorRoot":"C:\\COM1"}},
   {"name":"reserved superscript serial device","valid":false,"intent":{"purposes":["pc_avatar"],"editorRoot":"C:\\COM¹"}},
   {"name":"alternate data stream","valid":false,"intent":{"purposes":["pc_avatar"],"editorRoot":"C:\\Editors:stream"}},
-  {"name":"Unicode control character","valid":false,"intent":{"purposes":["pc_avatar"],"editorRoot":"C:\\Editors\u0085"}},
+  {"name":"Unicode control character","valid":false,"intent":{"purposes":["pc_avatar"],"editorRoot":"C:\\Editors"}},
   {"name":"wildcard","valid":false,"intent":{"purposes":["pc_avatar"],"editorRoot":"C:\\Editor*"}},
   {"name":"mirror explicitly enabled","valid":true,"intent":{"purposes":["pc_avatar"],"editorRoot":"C:\\Editors","useMirrors":true}},
   {"name":"mirror explicitly disabled","valid":true,"intent":{"purposes":["pc_avatar"],"editorRoot":"C:\\Editors","useMirrors":false}},
-  {"name":"mirror preference must be boolean","valid":false,"intent":{"purposes":["pc_avatar"],"editorRoot":"C:\\Editors","useMirrors":"off"}}
+  {"name":"mirror preference must be boolean","valid":false,"intent":{"purposes":["pc_avatar"],"editorRoot":"C:\\Editors","useMirrors":"off"}},
+  {"name":"explicit PICO region china_mainland","valid":true,"intent":{"purposes":["pico_pcvr"],"editorRoot":"C:\\Editors","picoRegion":"china_mainland"}},
+  {"name":"explicit PICO region other","valid":true,"intent":{"purposes":["pico_pcvr"],"editorRoot":"C:\\Editors","picoRegion":"other"}},
+  {"name":"unsupported PICO region auto","valid":false,"intent":{"purposes":["pico_pcvr"],"editorRoot":"C:\\Editors","picoRegion":"auto"}},
+  {"name":"unsupported PICO region unknown","valid":false,"intent":{"purposes":["pico_pcvr"],"editorRoot":"C:\\Editors","picoRegion":"unknown"}},
+  {"name":"unsupported PICO region en","valid":false,"intent":{"purposes":["pico_pcvr"],"editorRoot":"C:\\Editors","picoRegion":"en"}},
+  {"name":"unsupported PICO region null","valid":false,"intent":{"purposes":["pico_pcvr"],"editorRoot":"C:\\Editors","picoRegion":null}},
+  {"name":"unsupported PICO region https://example.com/installer.exe","valid":false,"intent":{"purposes":["pico_pcvr"],"editorRoot":"C:\\Editors","picoRegion":"https://example.com/installer.exe"}}
 ]

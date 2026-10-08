@@ -9,7 +9,8 @@
       "properties": {
         "purposes": {"type":"array","minItems":1,"maxItems":4,"uniqueItems":true,"items":{"enum":["desktop_play","pico_pcvr","pc_avatar","quest_avatar"]}},
         "editorRoot": {"type":"string","minLength":4,"maxLength":240,"pattern":"^[A-Za-z]:[\\\\/].+"},
-        "useMirrors": {"type":"boolean","default":true}
+        "useMirrors": {"type":"boolean","default":true},
+        "picoRegion": {"enum":["china_mainland","other"]}
       }
     }
   },

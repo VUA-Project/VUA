@@ -330,7 +330,7 @@ function EnvironmentChecks({
         </Card>
       )}
 
-      {checkReady && goal === "active" ? <DeploymentPanel zone={zone} /> : null}
+      {checkReady && goal === "active" ? <DeploymentPanel key={zone} zone={zone} /> : null}
       {planError !== null ? (
         <p className="vua-caption vua-text-secondary">{planError}</p>
       ) : null}

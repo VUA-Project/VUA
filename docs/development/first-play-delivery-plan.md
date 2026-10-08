@@ -1,8 +1,8 @@
 # First play release: implementation checkpoint and remaining work
 
-> Document version: 1.1.0
+> Document version: 1.2.0
 > Status: Accepted
-> Updated: 2026-10-07
+> Updated: 2026-10-08
 > Scope: Desktop play, PICO 4 Pro USB/Wi-Fi, optional eye tracking and three guidance contexts
 
 For people: this release takes a player from missing play software to playing VRChat, with
@@ -36,9 +36,16 @@ separate entry. Automatic VRChat-window following and a checked tutorial-world l
 destinations and individual/all tests. Regional help remains collapsed and region-aware.
 `0a00cad0` adds the theme-aware VUA brand mark. The website icons use attributed Simple Icons.
 
-The existing deployment layer already inspects software, builds plans and exposes confirmation
-and task progress. Missing Steam, VRChat, SteamVR and PICO currently resolve to manual-install
-steps; the completed Unity installer work does not complete their install/launch adapters.
+The existing deployment layer inspects software, builds confirmed plans and exposes task progress.
+`slice/steam-pico-acquisition` adds official Steam/PICO Connect acquisition, signature verification,
+native installation and bounded entry-file reinspection. PICO's explicit usage region selects
+separately pinned mainland/global 10.6.6 artifacts. The typed consumer and four-language UI
+accept vendor activity/errors and restore accepted task monitoring on return. Synthetic tests
+and static installer inspection are separate from the pending [real installation checklist](steam-pico-acquisition-checklist.md).
+The existing-software baseline and Provider replay after restart passed locally on 2026-10-08;
+no installer ran. Separate mainland/global Windows Sandbox inputs are prepared for the
+missing-software baseline, which remains unexecuted.
+VRChat/SteamVR remain manual Steam handoffs; acquisition does not complete the play/launch route.
 VRCFT has guide content but still needs the first-play detection/install/launch connection.
 
 Dated raw evidence remains local: `_local_real_machine/n1-play-zip-2026-10-03.md`,
@@ -105,7 +112,7 @@ desktop-window feature does not require a native headset overlay.
 | Work | Concrete implementation still needed | Completion run |
 | --- | --- | --- |
 | One desktop/PICO route | Connect the selected goal/model to network checks, required software, plan, progress, guidance and play entry. Desktop must not acquire VR/Unity prerequisites; PICO adds only its route's requirements | Start with either choice and reach the next useful action without configuring unrelated creator software |
-| Steam and PICO acquisition | Add/reuse official-source installer adapters, supported silent execution, real activity reporting and user handoff. Detect actual completion after installer/bootstrapper exit | Exercise missing-software installation and cancellation/failure, then reinspect; repeat with a valid existing installation and reuse it |
+| Steam and PICO acquisition | Implemented on `slice/steam-pico-acquisition`: official download/trust gates, explicit mainland/global PICO selection, `/S` native elevation, activity/errors, entry-file reinspection and task return. Vendor-specific silent behavior and actual completion still need acceptance | Follow the [slice checklist](steam-pico-acquisition-checklist.md) for missing-software, failure/cancellation and reuse. Then integrate the accepted slice with game installation/launch |
 | Steam library and game launch | Hand VRChat/SteamVR installation to Steam, explain the expected Steam action, reinspect after return and launch the selected play mode. Keep the task/guide usable during downloads | Steam registration/login or existing account → install VRChat → start desktop mode → enter a world and use controls/audio/microphone |
 | Account handoffs | Connect official registration pages and client/headset handoffs to resumable guide steps; retain external-browser fallback and separate opened/user-confirmed/detected states | Interrupt and return from a page/client without losing the selected route; the player performs login, verification and agreements |
 | PICO USB | Finish official PICO Connect/SteamVR setup guidance and launch path, using the test machine's actual software/firmware wording | PICO 4 Pro: image, head/hand tracking, controllers, audio/microphone, then read the preparation window through SteamVR desktop view and return to play |
@@ -168,5 +175,8 @@ integration, not a substitute for N5's own review and acceptance.
 
 ## Document changelog
 
+- 1.2.0 (2026-10-08): record the Steam/PICO acquisition implementation and region choice;
+  record local reuse/replay verification and prepared isolated inputs; retain missing-software
+  installation and play acceptance as pending.
 - 1.1.0 (2026-10-07): record the reader, app tour, manual game guide, website cards and brand mark in PR #61; retain automatic following and play/release completion for subsequent work.
 - 1.0.0 (2026-10-05): record the completed ZIP/network/A/B/profile slices, prioritize three guidance contexts and enumerate the remaining play/release work separately from N5.

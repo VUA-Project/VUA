@@ -89,6 +89,20 @@ fn default_mirrors() -> bool {
     true
 }
 
+/// User-selected PICO distribution; independent of interface language and IP probes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PicoInstallRegion {
+    ChinaMainland,
+    Other,
+}
+
+fn deserialize_pico_region<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<PicoInstallRegion>, D::Error> {
+    PicoInstallRegion::deserialize(deserializer).map(Some)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DeploymentPurpose {
@@ -107,6 +121,13 @@ pub struct DeploymentIntent {
     /// Desktop preference; omission from an older request keeps mirrors enabled.
     #[serde(default = "default_mirrors")]
     pub use_mirrors: bool,
+    /// Older clients omit this and keep the manual PICO handoff.
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_pico_region"
+    )]
+    pub pico_region: Option<PicoInstallRegion>,
 }
 
 impl DeploymentIntent {
@@ -192,6 +213,10 @@ pub enum DeploymentAction {
     InstallEditor,
     AddAndroidModules,
     InstallUnityCli,
+    /// Vendor-installer actions acquire the reviewed official artifact through the
+    /// adapter; unlike the Unity actions they need no pre-existing installer identity.
+    InstallSteam,
+    InstallPicoRuntime,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -298,6 +323,9 @@ pub type DeploymentReporter<'a> = dyn FnMut(DeploymentActivity) -> Result<(), &'
 
 /// Infrastructure implements these facts/actions in project-manager. New installers must
 /// not bypass this boundary or change the plan's meanings in React/Electron handlers.
+/// `confirmed` carries the reviewed Unity installer identity; vendor-installer actions
+/// (InstallSteam/InstallPicoRuntime) pin their identity in the adapter instead, so a
+/// play-only intent legitimately passes `None`.
 pub trait DeploymentAdapter: Send + Sync {
     fn download_region(&self) -> DownloadRegion {
         DownloadRegion::Unknown
@@ -308,7 +336,7 @@ pub trait DeploymentAdapter: Send + Sync {
         &self,
         intent: &DeploymentIntent,
         action: DeploymentAction,
-        confirmed: &DeploymentInstaller,
+        confirmed: Option<&DeploymentInstaller>,
         report: &mut DeploymentReporter<'_>,
     ) -> Result<(), &'static str>;
 }
@@ -368,7 +396,11 @@ pub fn plan_deployment_with_region(
             ("steamvr", "https://store.steampowered.com/app/250820/"),
             (
                 "pico_runtime",
-                "https://www.picoxr.com/software/pico-connect",
+                if intent.pico_region == Some(PicoInstallRegion::ChinaMainland) {
+                    "https://www.picoxr.com/cn/software/pico-link"
+                } else {
+                    "https://www.picoxr.com/global/software/pico-link"
+                },
             ),
         ]);
     }
@@ -423,6 +455,15 @@ pub fn plan_deployment_with_region(
                         .is_some_and(|i| i.kind == DeploymentInstallerKind::UnityCliBootstrap) =>
             {
                 DeploymentAction::InstallUnityCli
+            }
+            // Official-source vendor installers acquired by the adapter itself; no
+            // pre-existing installer identity gates them. vrchat/steamvr install
+            // through Steam and keep the manual handoff in this slice.
+            DeploymentPresence::Missing if component == "steam" => DeploymentAction::InstallSteam,
+            DeploymentPresence::Missing
+                if component == "pico_runtime" && intent.pico_region.is_some() =>
+            {
+                DeploymentAction::InstallPicoRuntime
             }
             DeploymentPresence::Missing => DeploymentAction::ManualInstall,
         };
@@ -586,7 +627,18 @@ impl DeploymentService {
                         action => {
                             let mut source_failures = Vec::new();
                             let mut installation_failures = Vec::new();
-                            let result = adapter.install(&intent, action, fresh.installer.as_ref().ok_or_else(|| deployment_error("vua.deployment.installer_unavailable", &correlation))?, &mut |activity| {
+                            // Unity actions bind consent to the reviewed installer identity.
+                            // Vendor-installer actions pin identity inside the adapter and
+                            // legitimately run on play-only intents without one.
+                            let confirmed = match action {
+                                DeploymentAction::InstallEditor
+                                | DeploymentAction::AddAndroidModules
+                                | DeploymentAction::InstallUnityCli => Some(
+                                    fresh.installer.as_ref().ok_or_else(|| deployment_error("vua.deployment.installer_unavailable", &correlation))?,
+                                ),
+                                _ => fresh.installer.as_ref(),
+                            };
+                            let result = adapter.install(&intent, action, confirmed, &mut |activity| {
                                 if ctx.check_cancel() { return Err("vua.deployment.cancelled"); }
                                 if matches!(activity.phase, DeploymentPhase::SourceFailed) {
                                     source_failures.push(serde_json::to_value(&activity).expect("activity serializes"));
@@ -659,6 +711,9 @@ fn deployment_error(code: &str, correlation: &str) -> AppErrorV1 {
             | "vua.deployment.verification_failed"
             | "vua.deployment.cli_acquisition_failed"
             | "vua.deployment.cli_integrity_failed"
+            | "vua.deployment.installer_download_failed"
+            | "vua.deployment.installer_integrity_failed"
+            | "vua.deployment.installer_timed_out"
             | "vua.deployment.editor_download_failed"
             | "vua.deployment.editor_integrity_failed"
             | "vua.deployment.editor_source_changed"

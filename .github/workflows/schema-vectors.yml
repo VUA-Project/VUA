@@ -44,6 +44,7 @@ jobs:
       #                       global_default_v02              (bdl-commands v0.2)
       # - vua-orchestrator:   assembly, build_record, contracts,
       #                       recipe, recipe_v03, vpm_spike_contract
+      #                       deployment                     (environment-deployment v0.1 Candidate)
       #                       production_evidence             (production-evidence consumer)
       # - vua-project-manager: environment_managers           (environment-managers v0.1)
       #                       editor_verify_wire              (editor-verify v0.1 DRAFT —
@@ -69,7 +70,7 @@ jobs:
       - name: vua-bdl-store
         run: cargo test -p vua-bdl-store --test catalog_serving --test downloads_list_serving --test global_default_v02
       - name: vua-orchestrator
-        run: cargo test -p vua-orchestrator --test assembly --test build_record --test contracts --test recipe --test recipe_v03 --test production_evidence --test vpm_spike_contract
+        run: cargo test -p vua-orchestrator --test assembly --test build_record --test contracts --test recipe --test recipe_v03 --test production_evidence --test vpm_spike_contract --test deployment
       - name: vua-project-manager
         run: cargo test -p vua-project-manager --test environment_managers --test editor_verify_wire --test eac_probe --test eac_allowlist_verify --test eac_terminate --test import_copy --test project_inspection --test project_queries --test vua_identity
       - name: vua-provider-host

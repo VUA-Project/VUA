@@ -75,6 +75,8 @@ pub use vua_identity::{
 /// Concrete Windows adapters for the N1 deployment port.
 pub mod deployment_adapter;
 mod deployment_trust;
+mod pico_install;
+mod steam_install;
 mod unity_cli_bootstrap;
 mod unity_download_region;
 mod unity_editor_install;

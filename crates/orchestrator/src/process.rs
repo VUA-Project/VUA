@@ -71,6 +71,11 @@ pub struct ProcessSpec {
     /// Keep this a directory value, assembled by the owning adapter, never shell text.
     /// Normal programs leave it absent and retain standard argument escaping.
     pub windows_nsis_install_dir: Option<PathBuf>,
+    /// Reviewed NSIS installers whose manifest requires administrator access use
+    /// Windows' native elevation and direct wait from the start. Do not place their
+    /// bootstrapper/driver children in the owned per-invocation process tree.
+    /// The allowed argument vocabulary remains exactly /S with optional /D.
+    pub windows_elevated_nsis: bool,
     pub working_dir: Option<PathBuf>,
     /// Mandatory wall-clock budget (ORC-CON-004: unlimited waits are not
     /// accepted).
@@ -113,6 +118,7 @@ impl Default for ProcessSpec {
             executable: PathBuf::new(),
             args: Vec::new(),
             windows_nsis_install_dir: None,
+            windows_elevated_nsis: false,
             working_dir: None,
             timeout: Duration::ZERO,
             output_limit: 0,
@@ -183,6 +189,8 @@ pub trait ProcessRunner: Send + Sync {
 
 /// Windows owns elevation for a reviewed NSIS installer. The adapter verifies its output.
 /// Elevated processes are waited directly; no command interpreter or output pipe is used.
+/// `/D=` is appended only when the adapter pins a destination; installers whose vendor
+/// chooses the destination (Steam, PICO Connect) elevate with the bare `/S` gate.
 #[cfg(windows)]
 fn run_elevated_nsis(spec: &ProcessSpec) -> Result<ProcessOutcome, ProcessError> {
     use windows_sys::Win32::{
@@ -195,11 +203,19 @@ fn run_elevated_nsis(spec: &ProcessSpec) -> Result<ProcessOutcome, ProcessError>
             WindowsAndMessaging::SW_HIDE,
         },
     };
-    let directory = spec
-        .windows_nsis_install_dir
-        .as_ref()
-        .ok_or_else(|| ProcessError::Io(std::io::Error::other("missing NSIS directory")))?;
-    if spec.args != ["/S"] || spec.timeout.is_zero() || spec.timeout > Duration::from_secs(7200) {
+    let executable = spec.executable.to_string_lossy();
+    let invalid_directory = spec.windows_nsis_install_dir.as_ref().is_some_and(|path| {
+        let value = path.to_string_lossy();
+        !path.is_absolute() || value.contains('"') || value.chars().any(char::is_control)
+    });
+    if spec.args != ["/S"]
+        || spec.timeout.is_zero()
+        || spec.timeout > Duration::from_secs(7200)
+        || !spec.executable.is_absolute()
+        || executable.contains('"')
+        || executable.chars().any(char::is_control)
+        || invalid_directory
+    {
         return Err(ProcessError::Io(std::io::Error::other(
             "unsupported elevated installer command",
         )));
@@ -207,7 +223,12 @@ fn run_elevated_nsis(spec: &ProcessSpec) -> Result<ProcessOutcome, ProcessError>
     let wide = |value: &str| value.encode_utf16().chain(Some(0)).collect::<Vec<u16>>();
     let exe = wide(&spec.executable.to_string_lossy());
     let verb = wide("runas");
-    let args = wide(&format!("/S /D={}", directory.display()));
+    // /D must stay the final unquoted tail when present; without a pinned destination the
+    // closed vocabulary is exactly "/S".
+    let args = wide(&match &spec.windows_nsis_install_dir {
+        Some(directory) => format!("/S /D={}", directory.display()),
+        None => "/S".to_owned(),
+    });
     // SAFETY: all UTF-16 buffers outlive ShellExecuteExW; zeroed optional fields are absent.
     let mut info: SHELLEXECUTEINFOW = unsafe { std::mem::zeroed() };
     info.cbSize = std::mem::size_of::<SHELLEXECUTEINFOW>() as u32;
@@ -268,6 +289,15 @@ impl ProcessRunner for StdProcessRunner {
         spec: &ProcessSpec,
         is_cancelled: &(dyn Fn() -> bool + Send + Sync),
     ) -> Result<ProcessOutcome, ProcessError> {
+        if spec.windows_elevated_nsis {
+            #[cfg(windows)]
+            return run_elevated_nsis(spec);
+            #[cfg(not(windows))]
+            return Err(ProcessError::Io(std::io::Error::new(
+                std::io::ErrorKind::Unsupported,
+                "native NSIS installation requires Windows",
+            )));
+        }
         // 直接 exec 固定可执行文件：参数是独立数组元素传给 OS 的 execve，
         // 不存在"被 shell 重新解释"的环节，注入无从谈起（ORC-ADP-001）。
         // stdin 直接关闭：外部工具不该等输入。
@@ -319,6 +349,7 @@ impl ProcessRunner for StdProcessRunner {
         }
         let mut child = match command.spawn() {
             Ok(child) => child,
+            // Existing destination-pinned Unity installers retain their UAC fallback.
             #[cfg(windows)]
             Err(error)
                 if error.raw_os_error() == Some(740) && spec.windows_nsis_install_dir.is_some() =>
@@ -516,10 +547,19 @@ fn drain_bounded(pipe: &mut impl Read, limit: usize) -> (String, bool) {
 /// engine-level tests can simulate the backend mutating project state.
 type SideEffect = Box<dyn Fn(&ProcessSpec) + Send + Sync>;
 
+/// One queued reply. Beyond plain messages, tests can script an IO failure
+/// carrying a raw Windows error code (740 elevation-required, 1223
+/// user-declined) so adapters exercise their elevation mapping.
+enum FakeReply {
+    Outcome(ProcessOutcome),
+    Message(String),
+    RawOsError(i32),
+}
+
 #[derive(Default)]
 pub struct FakeProcessRunner {
     calls: Mutex<Vec<ProcessSpec>>,
-    script: Mutex<VecDeque<Result<ProcessOutcome, String>>>,
+    script: Mutex<VecDeque<FakeReply>>,
     on_run: Mutex<Option<SideEffect>>,
 }
 
@@ -534,7 +574,20 @@ impl FakeProcessRunner {
         self.script
             .lock()
             .expect("fake script poisoned")
-            .push_back(outcome);
+            .push_back(match outcome {
+                Ok(outcome) => FakeReply::Outcome(outcome),
+                Err(message) => FakeReply::Message(message),
+            });
+        self
+    }
+
+    /// Queues one IO failure carrying a raw OS error code, which a plain
+    /// message cannot express (e.g. 740/1223 from an elevation boundary).
+    pub fn push_raw_os_error(&self, raw_os_error: i32) -> &Self {
+        self.script
+            .lock()
+            .expect("fake script poisoned")
+            .push_back(FakeReply::RawOsError(raw_os_error));
         self
     }
 
@@ -574,8 +627,13 @@ impl ProcessRunner for FakeProcessRunner {
             .expect("fake script poisoned")
             .pop_front();
         match next {
-            Some(Ok(outcome)) => Ok(outcome),
-            Some(Err(message)) => Err(ProcessError::Io(std::io::Error::other(message))),
+            Some(FakeReply::Outcome(outcome)) => Ok(outcome),
+            Some(FakeReply::Message(message)) => {
+                Err(ProcessError::Io(std::io::Error::other(message)))
+            }
+            Some(FakeReply::RawOsError(code)) => {
+                Err(ProcessError::Io(std::io::Error::from_raw_os_error(code)))
+            }
             None => Ok(ProcessOutcome {
                 exit_code: Some(0),
                 timed_out: false,
@@ -748,5 +806,51 @@ mod tests {
         assert_eq!(second.exit_code, Some(0), "empty script answers success");
         assert_eq!(runner.call_count(), 2);
         assert_eq!(runner.calls()[0], spec);
+    }
+
+    #[test]
+    fn orc_dev_003_fake_runner_scripts_raw_os_errors_for_elevation_mapping() {
+        let runner = FakeProcessRunner::new();
+        runner.push_raw_os_error(740);
+        let spec = node_spec("1", Duration::from_secs(1), 128);
+        match runner.run(&spec) {
+            Err(ProcessError::Io(error)) => assert_eq!(error.raw_os_error(), Some(740)),
+            other => panic!("expected a raw OS error, got {other:?}"),
+        }
+        assert!(
+            runner.run(&spec).unwrap().success(),
+            "an empty script still answers success"
+        );
+    }
+
+    /// The vendor-chosen-destination shape (bare "/S") passes the same closed
+    /// vocabulary gate; rejections return before any OS elevation call.
+    #[cfg(windows)]
+    #[test]
+    fn elevated_nsis_gate_keeps_the_closed_vocabulary_without_a_pinned_destination() {
+        let mut spec = node_spec("1", Duration::from_secs(1800), 4096);
+        spec.executable = r"C:\VUA\SteamSetup.exe".into();
+        spec.windows_elevated_nsis = true;
+        for bad_args in [
+            vec![],
+            vec!["/S".to_owned(), "/D=x".to_owned()],
+            vec!["/quiet".to_owned()],
+        ] {
+            spec.args = bad_args;
+            assert!(StdProcessRunner.run(&spec).is_err());
+        }
+        spec.args = vec!["/S".to_owned()];
+        spec.timeout = Duration::ZERO;
+        assert!(run_elevated_nsis(&spec).is_err());
+        spec.timeout = Duration::from_secs(7201);
+        assert!(run_elevated_nsis(&spec).is_err());
+        spec.timeout = Duration::from_secs(1800);
+        for directory in [r"C:relative", "C:\\bad\"path", "C:\\bad\npath"] {
+            spec.windows_nsis_install_dir = Some(directory.into());
+            assert!(StdProcessRunner.run(&spec).is_err());
+        }
+        spec.windows_nsis_install_dir = None;
+        spec.executable = "SteamSetup.exe".into();
+        assert!(StdProcessRunner.run(&spec).is_err());
     }
 }

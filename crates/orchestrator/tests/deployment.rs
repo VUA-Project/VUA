@@ -16,6 +16,7 @@ fn intent(purposes: Vec<DeploymentPurpose>) -> DeploymentIntent {
         purposes,
         editor_root: r"C:\VUA Test\Editors".into(),
         use_mirrors: true,
+        pico_region: Some(PicoInstallRegion::ChinaMainland),
     }
 }
 
@@ -112,17 +113,24 @@ impl DeploymentAdapter for FakeAdapter {
         &self,
         _intent: &DeploymentIntent,
         action: DeploymentAction,
-        confirmed: &DeploymentInstaller,
+        confirmed: Option<&DeploymentInstaller>,
         report: &mut DeploymentReporter<'_>,
     ) -> Result<(), &'static str> {
-        assert_eq!(self.installer.lock().unwrap().as_ref(), Some(confirmed));
+        assert_eq!(self.installer.lock().unwrap().as_ref(), confirmed);
         self.installs.fetch_add(1, Ordering::SeqCst);
         report(DeploymentActivity {
             completed_bytes: Some(1024),
             total_bytes: Some(2048),
             ..DeploymentActivity::from_source(
                 DeploymentPhase::Downloading,
-                EditorDownloadSource::Nounitycn,
+                if matches!(
+                    action,
+                    DeploymentAction::InstallSteam | DeploymentAction::InstallPicoRuntime
+                ) {
+                    EditorDownloadSource::Official
+                } else {
+                    EditorDownloadSource::Nounitycn
+                },
             )
         })?;
         if let Some((entered, release)) = &self.boundary {
@@ -160,6 +168,8 @@ impl DeploymentAdapter for FakeAdapter {
             }
             DeploymentAction::InstallEditor => "unity_editor",
             DeploymentAction::AddAndroidModules => "android_modules",
+            DeploymentAction::InstallSteam => "steam",
+            DeploymentAction::InstallPicoRuntime => "pico_runtime",
             _ => panic!("unsupported action"),
         };
         self.facts
@@ -216,6 +226,312 @@ fn play_never_requires_unity_or_steamvr_and_pico_requires_both_runtimes() {
         .iter()
         .all(|s| s.action == DeploymentAction::Inspect));
     assert!(!pico.prerequisites_ready);
+}
+
+#[test]
+fn missing_steam_and_pico_runtime_plan_vendor_installs_while_store_apps_stay_manual() {
+    let play = plan_deployment(
+        &intent(vec![DeploymentPurpose::DesktopPlay]),
+        &[
+            fact("steam", DeploymentPresence::Missing),
+            fact("vrchat", DeploymentPresence::Missing),
+        ],
+        None,
+    )
+    .unwrap();
+    assert_eq!(
+        play.steps
+            .iter()
+            .map(|s| (s.component.as_str(), s.action))
+            .collect::<Vec<_>>(),
+        [
+            ("steam", DeploymentAction::InstallSteam),
+            ("vrchat", DeploymentAction::ManualInstall)
+        ]
+    );
+    let pico = plan_deployment(
+        &intent(vec![DeploymentPurpose::PicoPcvr]),
+        &[
+            fact("steam", DeploymentPresence::Missing),
+            fact("vrchat", DeploymentPresence::Missing),
+            fact("steamvr", DeploymentPresence::Missing),
+            fact("pico_runtime", DeploymentPresence::Missing),
+        ],
+        None,
+    )
+    .unwrap();
+    assert_eq!(
+        pico.steps
+            .iter()
+            .map(|s| (s.component.as_str(), s.action))
+            .collect::<Vec<_>>(),
+        [
+            ("steam", DeploymentAction::InstallSteam),
+            ("vrchat", DeploymentAction::ManualInstall),
+            ("steamvr", DeploymentAction::ManualInstall),
+            ("pico_runtime", DeploymentAction::InstallPicoRuntime)
+        ]
+    );
+}
+
+#[test]
+fn vendor_install_actions_are_scoped_to_their_own_components() {
+    let create = plan_deployment(
+        &intent(vec![DeploymentPurpose::PcAvatar]),
+        &creator_facts(),
+        Some(test_installer()),
+    )
+    .unwrap();
+    assert!(create.steps.iter().all(|s| !matches!(
+        s.action,
+        DeploymentAction::InstallSteam | DeploymentAction::InstallPicoRuntime
+    )));
+    let play = plan_deployment(
+        &intent(vec![DeploymentPurpose::DesktopPlay]),
+        &[
+            fact("steam", DeploymentPresence::Missing),
+            fact("vrchat", DeploymentPresence::Missing),
+        ],
+        None,
+    )
+    .unwrap();
+    assert!(play.steps.iter().all(|s| !matches!(
+        s.action,
+        DeploymentAction::InstallEditor
+            | DeploymentAction::AddAndroidModules
+            | DeploymentAction::InstallUnityCli
+    )));
+}
+
+#[test]
+fn pico_region_changes_consent_and_an_older_request_keeps_manual_handoff() {
+    let mut chosen = intent(vec![DeploymentPurpose::PicoPcvr]);
+    let facts = vec![
+        fact("steam", DeploymentPresence::Verified),
+        fact("vrchat", DeploymentPresence::Verified),
+        fact("steamvr", DeploymentPresence::Verified),
+        fact("pico_runtime", DeploymentPresence::Missing),
+    ];
+    let mainland = plan_deployment(&chosen, &facts, None).unwrap();
+    assert_eq!(
+        mainland.steps[3].official_url.as_deref(),
+        Some("https://www.picoxr.com/cn/software/pico-link")
+    );
+    chosen.pico_region = Some(PicoInstallRegion::Other);
+    let global = plan_deployment(&chosen, &facts, None).unwrap();
+    assert_eq!(global.steps[3].action, DeploymentAction::InstallPicoRuntime);
+    assert_eq!(
+        global.steps[3].official_url.as_deref(),
+        Some("https://www.picoxr.com/global/software/pico-link")
+    );
+    assert_ne!(mainland.digest, global.digest);
+    chosen.pico_region = None;
+    let older = plan_deployment(&chosen, &facts, None).unwrap();
+    assert_eq!(older.steps[3].action, DeploymentAction::ManualInstall);
+}
+
+#[test]
+fn steam_install_executes_without_a_unity_installer_identity() {
+    let (store, runtime) = store_runtime();
+    let adapter = Arc::new(FakeAdapter::new(vec![
+        fact("steam", DeploymentPresence::Missing),
+        fact("vrchat", DeploymentPresence::Verified),
+    ]));
+    let service = DeploymentService::new(adapter.clone(), runtime);
+    let plan = service
+        .plan(&intent(vec![DeploymentPurpose::DesktopPlay]))
+        .unwrap();
+    assert_eq!(plan.steps[0].action, DeploymentAction::InstallSteam);
+    assert!(plan.installer.is_none());
+    let receipt = service
+        .execute(plan.intent, &plan.digest, "steam-1", "corr")
+        .unwrap();
+    assert_eq!(
+        wait(&service.runtime, &receipt.task_id),
+        TaskState::Succeeded
+    );
+    assert_eq!(adapter.installs.load(Ordering::SeqCst), 1);
+    let result = store
+        .task(&receipt.task_id)
+        .unwrap()
+        .unwrap()
+        .result
+        .unwrap();
+    assert_eq!(result["prerequisitesReady"], true);
+    assert_eq!(result["functionalVerification"], "not_run");
+}
+
+#[test]
+fn pico_pcvr_executes_vendor_installs_and_reobserves_readiness() {
+    let (store, runtime) = store_runtime();
+    let adapter = Arc::new(FakeAdapter::new(vec![
+        fact("steam", DeploymentPresence::Missing),
+        fact("vrchat", DeploymentPresence::Verified),
+        fact("steamvr", DeploymentPresence::Verified),
+        fact("pico_runtime", DeploymentPresence::Missing),
+    ]));
+    let service = DeploymentService::new(adapter.clone(), runtime);
+    let plan = service
+        .plan(&intent(vec![DeploymentPurpose::PicoPcvr]))
+        .unwrap();
+    assert_eq!(
+        plan.steps.iter().map(|s| s.action).collect::<Vec<_>>(),
+        [
+            DeploymentAction::InstallSteam,
+            DeploymentAction::Retain,
+            DeploymentAction::Retain,
+            DeploymentAction::InstallPicoRuntime
+        ]
+    );
+    let receipt = service
+        .execute(plan.intent, &plan.digest, "pico-1", "corr")
+        .unwrap();
+    assert_eq!(
+        wait(&service.runtime, &receipt.task_id),
+        TaskState::Succeeded
+    );
+    assert_eq!(adapter.installs.load(Ordering::SeqCst), 2);
+    let result = store
+        .task(&receipt.task_id)
+        .unwrap()
+        .unwrap()
+        .result
+        .unwrap();
+    assert_eq!(result["prerequisitesReady"], true);
+}
+
+#[test]
+fn a_vendor_install_still_stops_at_the_store_app_handoff() {
+    let (store, runtime) = store_runtime();
+    let adapter = Arc::new(FakeAdapter::new(vec![
+        fact("steam", DeploymentPresence::Missing),
+        fact("vrchat", DeploymentPresence::Missing),
+    ]));
+    let service = DeploymentService::new(adapter.clone(), runtime);
+    let plan = service
+        .plan(&intent(vec![DeploymentPurpose::DesktopPlay]))
+        .unwrap();
+    let receipt = service
+        .execute(plan.intent, &plan.digest, "steam-manual", "corr")
+        .unwrap();
+    assert_eq!(
+        wait(&service.runtime, &receipt.task_id),
+        TaskState::SucceededWithWarnings
+    );
+    let result = store
+        .task(&receipt.task_id)
+        .unwrap()
+        .unwrap()
+        .result
+        .unwrap();
+    assert_eq!(result["outcome"], "manual_required");
+    assert_eq!(result["nextStep"]["component"], "vrchat");
+    assert_eq!(result["nextStep"]["action"], "manual_install");
+    assert_eq!(adapter.installs.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn vendor_failure_is_durable_and_retry_requires_a_fresh_command() {
+    let (store, runtime) = store_runtime();
+    let mut fake = FakeAdapter::new(vec![
+        fact("steam", DeploymentPresence::Missing),
+        fact("vrchat", DeploymentPresence::Verified),
+    ]);
+    fake.fail = true;
+    let adapter = Arc::new(fake);
+    let service = DeploymentService::new(adapter.clone(), runtime);
+    let plan = service
+        .plan(&intent(vec![DeploymentPurpose::DesktopPlay]))
+        .unwrap();
+    let first = service
+        .execute(plan.intent.clone(), &plan.digest, "vendor-failure", "corr")
+        .unwrap();
+    assert_eq!(wait(&service.runtime, &first.task_id), TaskState::Failed);
+    let failed = store.task(&first.task_id).unwrap().unwrap();
+    assert!(failed.result.is_none());
+    let error = failed.error.unwrap();
+    assert_eq!(error.code, "vua.deployment.install_failed");
+    assert_eq!(
+        serde_json::to_value(error.params.unwrap()).unwrap()["component"],
+        "steam"
+    );
+    let progress = store.events_after(&first.task_id, 0).unwrap();
+    assert!(progress
+        .iter()
+        .any(|event| event.kind == TaskEventKind::Progress
+            && event.payload["params"]["action"] == "install_steam"
+            && event.payload["params"]["source"] == "official"));
+
+    let recovered = TaskRuntime::with_sqlite(
+        store,
+        Arc::new(SystemClock),
+        Arc::new(NanosTaskIdGenerator::default()),
+    )
+    .unwrap();
+    let restarted = DeploymentService::new(adapter.clone(), recovered);
+    assert_eq!(
+        restarted
+            .execute(
+                plan.intent.clone(),
+                &plan.digest,
+                "vendor-failure",
+                "replay"
+            )
+            .unwrap()
+            .task_id,
+        first.task_id
+    );
+    assert_eq!(adapter.installs.load(Ordering::SeqCst), 1);
+
+    // A user-completed installation is retained on the next plan without replaying
+    // the failed action or inferring that the whole play route was exercised.
+    adapter.facts.lock().unwrap()[0].presence = DeploymentPresence::Verified;
+    let fresh = restarted.plan(&plan.intent).unwrap();
+    assert!(fresh.prerequisites_ready);
+    assert!(fresh
+        .steps
+        .iter()
+        .all(|step| step.action == DeploymentAction::Retain));
+    assert_eq!(adapter.installs.load(Ordering::SeqCst), 1);
+}
+
+#[test]
+fn vendor_cancellation_after_steam_keeps_files_and_skips_pico() {
+    let (store, runtime) = store_runtime();
+    let (entered_tx, entered_rx) = mpsc::channel();
+    let (release_tx, release_rx) = mpsc::channel();
+    let mut fake = FakeAdapter::new(vec![
+        fact("steam", DeploymentPresence::Missing),
+        fact("vrchat", DeploymentPresence::Verified),
+        fact("steamvr", DeploymentPresence::Verified),
+        fact("pico_runtime", DeploymentPresence::Missing),
+    ]);
+    fake.boundary = Some((entered_tx, Mutex::new(release_rx)));
+    let adapter = Arc::new(fake);
+    let service = DeploymentService::new(adapter.clone(), runtime);
+    let plan = service
+        .plan(&intent(vec![DeploymentPurpose::PicoPcvr]))
+        .unwrap();
+    let first = service
+        .execute(plan.intent.clone(), &plan.digest, "vendor-cancel", "corr")
+        .unwrap();
+    entered_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+    store
+        .request_cancellation_idempotent(
+            "cancel-vendor",
+            "corr",
+            &first.task_id,
+            None,
+            "2026-10-08T00:00:00Z",
+        )
+        .unwrap();
+    release_tx.send(()).unwrap();
+    assert_eq!(wait(&service.runtime, &first.task_id), TaskState::Cancelled);
+    assert_eq!(adapter.installs.load(Ordering::SeqCst), 1);
+    let fresh = service.plan(&plan.intent).unwrap();
+    assert_eq!(fresh.steps[0].action, DeploymentAction::Retain);
+    assert_eq!(fresh.steps[3].action, DeploymentAction::InstallPicoRuntime);
+    assert!(!fresh.prerequisites_ready);
 }
 
 #[test]

@@ -5,6 +5,11 @@
  * - scenario 用 sessionStorage(仅本次会话,见 DevScenarioBar)。
  */
 export const storageKeys = {
+  /** Explicit PICO official distribution choice, independent of UI language. */
+  picoRegion: "vua-pico-region",
+  /** Accepted task bookmark only; contains no plan digest or installation result. */
+  deploymentReceiptPlay: "vua-deployment-receipt-play-v1",
+  deploymentReceiptCreate: "vua-deployment-receipt-create-v1",
   /** Website destinations only; measured responses remain session-local. */
   testWebsites: "vua-test-websites-v1",
   /** N1 download-source preference; absence enables region-aware mirror fallback. */

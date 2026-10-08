@@ -2,7 +2,7 @@
 
 > Document version: 0.1
 > Status: Candidate
-> Updated: 2026-10-02
+> Updated: 2026-10-08
 > Scope: Additive purpose-plan and confirmed-execution family under Gateway v1 / application 0.1
 
 ## Reading context and ownership
@@ -29,6 +29,10 @@ The [N sequence](../development-outline.md#n1-purpose-driven-deployment) owns pr
 true for older requests and is normalized into returned intent. The desktop Settings preference
 supplies it explicitly. Purposes are a nonempty unique array drawn from
 `desktop_play`, `pico_pcvr`, `pc_avatar`, `quest_avatar`; multiple purposes are supported.
+Optional `picoRegion` is the user's PICO usage-region choice, `china_mainland` or `other`.
+It is independent of UI language and the Unity country probe and is bound into the plan digest.
+Omission preserves the manual PICO handoff for older clients; null/auto/unknown are rejected.
+The desktop asks for an explicit choice before preparing a PICO plan and remembers it locally.
 `editorRoot` is a drive-absolute Windows installation root, 4–240 UTF-8 bytes. Reject device/UNC
 paths, traversal, empty segments, trailing dot/space aliases, reserved DOS device names, control
 characters, wildcards and alternate data streams. No executable, command text, extra arguments,
@@ -84,10 +88,14 @@ Android module detection uses the selected Editor's directory. Frozen identity c
 is preserved; N1's development admission uses the complete version instead of that classification.
 
 Actions are `retain`, `manual_install`, `inspect`, `install_unity_cli`, `install_editor`,
-`add_android_modules`.
+`add_android_modules`, `install_steam` and `install_pico_runtime`.
 Verified facts are retained. Unknown/failed/unsuitable facts require inspection. Missing
 components use official handoffs unless a trusted supported installer and matching Editor root
 permit automatic installation. Missing CLI may be acquired from a reviewed, fixed official artifact.
+Missing Steam uses `install_steam`. Missing PICO Connect uses `install_pico_runtime` only with
+an explicit `picoRegion`; VRChat and SteamVR remain Steam-owned manual steps in this slice.
+These vendor actions need no Unity installer identity, Editor root or mirror policy. Existing
+verified entries are retained; unsuitable/detection-failed entries still require inspection.
 Its acquisition plan never includes automatic Editor/module installation: prepare fresh consent
 after the tool is verified. The [standalone deployment direction](../architecture/unity-deployment.md)
 owns artifact/source, path semantics and account/license handoff. `prerequisitesReady` is true only when
@@ -125,15 +133,59 @@ Optional `editorVersion` identifies `2022.3.22f1` or `2022.3.22f1c1`. Optional `
 or `nounitycn`. Optional `completedBytes`/`totalBytes` are nonnegative safe integers; a supplied
 total is positive and at least the completed count. Unknown-length transfers omit total bytes.
 Optional `cause` is a bounded `vua.deployment.*` code, never raw vendor text. A `source_failed`
-phase requires source and cause. `installation_failed` requires editorVersion and cause.
+phase requires source and cause. `installation_failed` requires cause and, for Unity actions,
+editorVersion. Steam/PICO activity never carries a Unity edition or mirror source; consumers
+require each new action to match its own component.
 Counts in the outer envelope still describe prerequisite steps.
 The desktop displays native installation stage and elapsed time while the process is monitored;
 it does not infer an installation percentage. Failed
 automatic steps include `component` in the error params. Progress and final results are durable;
-the current panel consumes live progress and authoritative task snapshots. Reopening a page may
-miss earlier live progress; the task list and final state remain authoritative, not guessed.
+the current panel consumes live progress and authoritative task snapshots. An accepted receipt
+bookmark restores the selected intent and queries the existing task after page return/restart.
+It stores no plan digest, command authority or readiness and never executes on mount. Earlier
+live activity may be missed; the task list and final state remain authoritative. An unreadable
+task can be queried again or replaced by a fresh read-only plan, not automatically retried.
 
-Automatic actions reverify installer trust, binary digest, capabilities and destination at the
+### Steam and PICO acquisition
+
+The [Steam adapter](../../crates/project-manager/src/steam_install.rs) acquires the installer
+linked from [Steam's official page](https://store.steampowered.com/about/), using the closed
+`cdn.fastly.steamstatic.com` HTTPS host, a 32 MiB bound and exact Authenticode leaf signer
+`Valve Corp.`. The mutable bootstrapper has no pinned content digest; the acquired digest is
+recorded locally. Valid cached bytes are reverified before reuse and immediately before launch.
+
+The [PICO adapter](../../crates/project-manager/src/pico_install.rs) pins version 10.6.6 for
+both official distributions. `china_mainland` selects the [mainland page](https://www.picoxr.com/cn/software/pico-link);
+`other` selects the [global page](https://www.picoxr.com/global/software/pico-link). Each has its
+own fixed CDN route, byte length, SHA-256 and cache directory; both require exact leaf signer
+`Douyin Vision Co., Ltd.`. Size/hash/signature and the user's confirmed region must all match.
+Neither adapter accepts a download URL from the renderer or redistributes installers in the ZIP.
+
+Downloads publish verified staged bytes without replacing an existing file. Invalid cache
+entries move to a unique rejected filename; cancellation removes only the owned partial file.
+Redirects remain on the reviewed HTTPS host. Idle reads time out at 60 seconds; byte and hash
+activity provides cancellation boundaries. Source/integrity failure has no automatic alternate
+publisher or region fallback; the official page remains available for explicit handoff.
+
+Both reviewed PE manifests declare `requireAdministrator`. The fixed `/S` command uses the
+ProcessRunner's explicit native Windows elevation path from the start, with no `/D` override
+and no shell. NSIS documents this syntax, but manufacturer-specific silent behavior still needs
+the [installation checklist](../development/steam-pico-acquisition-checklist.md). Windows owns
+the permission request. VUA waits up to 30 minutes for the direct process, then re-inspects the
+component's entry files for up to 15 seconds while holding the installation lease. It does not
+kill driver/bootstrapper children via the ordinary invocation Job Object. This does not certify
+client updates, login, driver readiness, game launch or headset operation.
+
+Download/integrity errors, nonzero exit, process failure, missing output and elevation refusal
+leave readiness unverified. `vua.deployment.installer_timed_out` means the native installer may
+still be running: inspect it before fresh consent; there is no automatic retry or rollback.
+Cancellation before launch prevents execution; after launch it waits for the native boundary,
+retains installed files and skips subsequent steps. Known errors have localized recovery text,
+with the diagnostic code in expandable details. Only creator plans show the Unity location field.
+
+### Unity acquisition and installation
+
+Automatic Unity actions reverify installer trust, binary digest, capabilities and destination at the
 mutation boundary. Trust uses Windows Authenticode plus an exact allowlisted Unity signer common
 name, without a shell. Certificate retrieval is cache-only; unavailable trust data refuses
 automation. CLI acquisition verifies pinned size/hash/signature and publishes into an absent managed
@@ -226,6 +278,9 @@ evidence must distinguish synthetic coverage from dated real-machine runs kept l
 
 ## Document changelog
 
+- 0.1 Candidate update (2026-10-08): add official Steam/PICO acquisition actions, explicit
+  consent-bound PICO distribution, vendor progress/error decoding, native elevation and
+  bounded entry-file reinspection; restore accepted task monitoring without replaying execution.
 - 0.1 Candidate update (2026-10-02): require official-first plans, validate CLI release metadata and classify f1/c1 after download instead of rejecting regional redirects.
 - 0.1 Candidate update (2026-10-02): bind global/China order to consent, accept the development pair,
   retain actual Editor identity on completion and report per-edition installation failures.
