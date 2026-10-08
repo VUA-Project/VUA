@@ -73,7 +73,11 @@
   gap: var(--vua-space-4);
   align-items: stretch;
   flex: 1;
-  min-height: 0;
+  /* 卡片墙可见性地板(真机 2026-10-02:flex:1 + min-height:0 会被同页的
+     生产区段等兄弟节点挤成 0——35 张卡片渲染在 DOM 里却完全不可见)。
+     超出时页面级滚动由 .vua-page(overflow-y:auto)按外壳设计承担;
+     轨道合并布局重排(用户方向 2026-10-02)时统一整理。 */
+  min-height: 60vh;
 }
 
 .vua-warehouse__content[data-drawer-open] {
@@ -89,13 +93,30 @@
   min-height: 0;
 }
 
-/* 图片墙滚动区:工具栏固定,仅本区域滚动 */
+/* 图片墙滚动区:工具栏固定,仅本区域滚动。
+ * Explorer 选区交互(2026-10-05):墙内禁原生文本选择与图片拖影——
+ * 拖动一律归框选语义,双击才开详情 */
 .vua-warehouse__wall-scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   /* 卡片 hover 上浮(-2px)在滚动区内不裁切 */
   padding-top: 2px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.vua-warehouse__wall-scroll img {
+  -webkit-user-drag: none;
+}
+
+/* 框选矩形(视口坐标 fixed;pointer-events 穿透,不影响命中测试) */
+.vua-warehouse__marquee {
+  position: fixed;
+  border: 1px solid var(--vua-accent, #ff8c42);
+  background: color-mix(in srgb, var(--vua-accent, #ff8c42) 12%, transparent);
+  pointer-events: none;
+  z-index: 500;
 }
 
 /* ---- 工具栏:搜索 + 筛选 + 计数 ---- */
@@ -897,5 +918,229 @@
 .vua-flow__skeleton {
   display: flex;
   flex-direction: column;
+  gap: var(--vua-space-2);
+}
+
+/* 单库页分组标题(用户方向 2026-10-02:云端/本地合并,来源只作筛选) */
+.vua-warehouse__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-3);
+}
+
+.vua-warehouse__group-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* 仓储页专属宽度(真机 2026-10-03 用户反馈:全局 960px 页宽 + 抽屉打开时
+   主列被挤到 ~594px,卡片墙过窄)。卡片墙是网格消费方,给仓储页更高的
+   上限;抽屉打开时主列仍有 ~900px。 */
+.vua-page.vua-warehouse {
+  max-width: 1280px;
+  /* margin:0 auto 在列向 flex 容器里是交叉轴 auto 边距 → 收缩到内容宽
+     (真机 2026-10-03:页面只有 769px 而容器有 1160px)。显式占满。 */
+  width: 100%;
+}
+
+/* 卡片变体标记行(购买变体名;用户裁决 2026-10-03) */
+.vua-warehouse-card__variant {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--vua-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 纯文字列表模式(视图切换;商店名两态都在) */
+.vua-warehouse__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vua-warehouse-list-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--vua-space-3);
+  padding: var(--vua-space-2) var(--vua-space-3);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.vua-warehouse-list-row:hover,
+.vua-warehouse-list-row[data-selected] {
+  background: var(--vua-bg-hover, rgba(255, 255, 255, 0.06));
+}
+
+.vua-warehouse-list-row__title {
+  flex: 1;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vua-warehouse-list-row__variant {
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.vua-warehouse-list-row__shop {
+  font-size: 0.8125rem;
+  color: var(--vua-text-secondary);
+  white-space: nowrap;
+}
+
+/* 多选模式卡片选中态(用户裁决 2026-10-04):橙色描边 + 角标计数 */
+.vua-warehouse-card[data-selected] {
+  outline: 2px solid var(--vua-accent, #ff8c42);
+  outline-offset: -2px;
+}
+
+/* 加入 Recipe 小窗 */
+.vua-add-to-recipe {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-3);
+  min-width: 320px;
+}
+
+.vua-add-to-recipe__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.vua-add-to-recipe__row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--vua-space-2);
+  width: 100%;
+  padding: var(--vua-space-2) var(--vua-space-3);
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.vua-add-to-recipe__row:hover {
+  background: var(--vua-bg-hover, rgba(255, 255, 255, 0.06));
+}
+
+.vua-add-to-recipe__name {
+  font-weight: 500;
+  flex: 1;
+}
+
+.vua-add-to-recipe__new {
+  display: flex;
+  gap: var(--vua-space-2);
+  align-items: center;
+  padding-top: var(--vua-space-2);
+  border-top: 1px solid var(--vua-border, rgba(255, 255, 255, 0.1));
+}
+
+/* 适配依赖小窗(N5):观察行 = 名义 + 版本 + 类别章 + 逐字证据引文 */
+.vua-compatible-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-3);
+  min-width: 340px;
+  max-width: 480px;
+}
+
+.vua-compatible-items__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-2);
+}
+
+.vua-compatible-items__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-1);
+  padding: var(--vua-space-2) var(--vua-space-3);
+  border: 1px solid var(--vua-border, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+}
+
+.vua-compatible-items__main {
+  display: flex;
+  align-items: baseline;
+  gap: var(--vua-space-2);
+  flex-wrap: wrap;
+}
+
+.vua-compatible-items__name {
+  font-weight: 500;
+}
+
+.vua-compatible-items__kind {
+  font-size: 0.75rem;
+  padding: 0 var(--vua-space-2);
+  border: 1px solid var(--vua-border, rgba(255, 255, 255, 0.1));
+  border-radius: 999px;
+  color: var(--vua-text-secondary);
+  white-space: nowrap;
+}
+
+.vua-compatible-items__row .vua-caption {
+  margin: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* 静默下载文件清单(N5,2026-10-05):勾选行 + 动作位 */
+.vua-download-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-3);
+  min-width: 340px;
+  max-width: 520px;
+}
+
+.vua-download-checklist__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-1);
+}
+
+.vua-download-checklist__row {
+  padding: var(--vua-space-1) var(--vua-space-2);
+  border: 1px solid var(--vua-border, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+}
+
+.vua-download-checklist__label {
+  display: flex;
+  align-items: center;
+  gap: var(--vua-space-2);
+  cursor: pointer;
+  word-break: break-all;
+}
+
+.vua-download-checklist__actions {
+  display: flex;
+  justify-content: flex-end;
   gap: var(--vua-space-2);
 }

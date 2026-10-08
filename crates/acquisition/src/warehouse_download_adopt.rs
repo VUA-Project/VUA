@@ -295,6 +295,40 @@ impl<'a> DownloadAdopter<'a> {
             &now,
         )?;
 
+        // N5 D2 opportunistic catalog correlation. Candidate URLs: the
+        // sourceUrl (browser-initiated downloads genuinely carry a
+        // booth.pm/items/ direct link) plus the redirect chain — a silent
+        // download 302s from booth.pm/downloadables/{id} to a signed CDN
+        // address, so the original link only survives as the chain head.
+        // Association priority: an /items/ id anywhere; else a
+        // /downloadables/{id} resolved through BDL's OWN captured
+        // product_downloadables table — server-side facts only, never a
+        // client assertion over an AMF fact (the IN-4 boundary stands).
+        // Best-effort by design: an unknown product (not yet synced) or a
+        // foreign URL leaves the artifact uncorrelated — never a failed
+        // adoption.
+        let mut association_urls: Vec<&str> = vec![&completion.source_url];
+        association_urls.extend(completion.source_url_chain.iter().map(String::as_str));
+        let product_id = association_urls
+            .iter()
+            .find_map(|url| booth_item_id_from_url(url))
+            .map(|native| format!("booth:{native}"))
+            .or_else(|| {
+                association_urls
+                    .iter()
+                    .find_map(|url| downloadable_id_from_url(url))
+                    .and_then(|id| self.store.product_of_downloadable(id).ok().flatten())
+            });
+        if let Some(product_id) = product_id {
+            let _ = self.store.record_artifact_mapping(
+                &identity,
+                &product_id,
+                None,
+                Some("download_adoption"),
+                &now,
+            );
+        }
+
         // Invariant (BG-12): the entry was created by this same adoption a
         // few lines above — the detail read can only be absent on store
         // corruption, which is a panic-worthy break, never a silent skip.
@@ -576,5 +610,57 @@ mod tests {
         assert_eq!(copies[0].relative_path, "evil.zip");
         std::fs::remove_dir_all(&warehouse_root).ok();
         std::fs::remove_dir_all(&staging_dir).ok();
+    }
+}
+
+
+/// `/items/{digits}` in a booth.pm URL (any locale path) — the only URL
+/// shape eligible for catalog correlation. Non-booth or item-less URLs
+/// return None (uncorrelated, not an error).
+/// `/downloadables/{digits}` → the digits (BDL capture-table key; the
+/// adoption-side reverse lookup into product_downloadables).
+fn downloadable_id_from_url(url: &str) -> Option<i64> {
+    let start = url.find("/downloadables/")? + "/downloadables/".len();
+    let tail = &url[start..];
+    let end = tail
+        .find(|c: char| !c.is_ascii_digit())
+        .unwrap_or(tail.len());
+    if end == 0 {
+        None
+    } else {
+        tail[..end].parse::<i64>().ok()
+    }
+}
+
+fn booth_item_id_from_url(url: &str) -> Option<&str> {
+    let start = url.find("/items/")? + "/items/".len();
+    let tail = &url[start..];
+    let end = tail
+        .find(|c: char| !c.is_ascii_digit())
+        .unwrap_or(tail.len());
+    if end == 0 {
+        None
+    } else {
+        Some(&tail[..end])
+    }
+}
+
+#[cfg(test)]
+mod correlation_tests {
+    use super::booth_item_id_from_url;
+
+    #[test]
+    fn extracts_item_ids_from_booth_urls() {
+        assert_eq!(
+            booth_item_id_from_url("https://booth.pm/ja/items/3087170"),
+            Some("3087170")
+        );
+        assert_eq!(
+            booth_item_id_from_url("https://accounts.booth.pm/download/123/x?item=/items/99"),
+            Some("99")
+        );
+        assert_eq!(booth_item_id_from_url("https://booth.pm/library"), None);
+        assert_eq!(booth_item_id_from_url("https://example.com/items/abc"), None);
+        assert_eq!(booth_item_id_from_url("not a url"), None);
     }
 }

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "0.1",
+  "productId": "booth:90",
+  "items": [
+    {
+      "downloadableId": 901,
+      "fileName": "file.zip",
+      "managedCopyId": null,
+      "copies": [
+        {
+          "copyId": "cpy-synthetic-1",
+          "entryId": "whi-synthetic-1",
+          "fileName": "file.zip",
+          "artifactSha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "presence": "present",
+          "storedPath": "C:\\synthetic\\rejected"
+        },
+        {
+          "copyId": "cpy-synthetic-2",
+          "entryId": "whi-synthetic-2",
+          "fileName": "file.zip",
+          "artifactSha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "presence": "missing"
+        }
+      ]
+    }
+  ]
+}

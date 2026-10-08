@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "0.2",
+  "sourceUrl": "https://booth.pm/en/library?page=1",
+  "pageNumber": 1,
+  "html": "<!DOCTYPE html><html><body><ul class=\"l-col market-items\"><li class=\"item-card l-card\" data-product-brand=\"example-shop\" data-product-category=\"56\" data-product-id=\"1693144\" data-product-name=\"Example first item\" data-product-price=\"300\"><div class=\"item-card__wrap\" id=\"item_1693144\"><a href=\"https://booth.pm/en/items/1693144\"><div class=\"item-card__thumbnail js-thumbnail\"><img src=\"https://booth.pximg.net/first-thumb.jpg\" data-origin=\"https://booth.pximg.net/first-original.jpg\"></div></a></div></li><li class=\"item-card l-card\" data-product-brand=\"example-shop\" data-product-id=\"8711621\" data-product-name=\"Example second item\" data-product-price=\"3300\"><div class=\"item-card__wrap\" id=\"item_8711621\"><a href=\"/en/items/8711621\"><div class=\"item-card__thumbnail js-thumbnail\"><img src=\"https://booth.pximg.net/second-thumb.jpg\"></div></a></div></li></ul><div class=\"pager\"><a rel=\"next\" href=\"https://booth.pm/en/library?page=2\">Next</a></div></body></html>",
+  "fetchedAt": "2026-10-02T00:00:00.000Z",
+  "runId": "sync-example-1",
+  "libraryType": "bought"
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "0.7",
+  "operation": "catalog.productDownloadables",
+  "result": {
+    "productId": "booth:6190761",
+    "items": [
+      {
+        "downloadableId": 5330963,
+        "fileName": "_JerseyTenshi_Materials_v1.0.0.zip"
+      },
+      {
+        "downloadableId": 5330987,
+        "fileName": "Airi_JerseyTenshi_v1.0.0.zip"
+      }
+    ]
+  }
+}

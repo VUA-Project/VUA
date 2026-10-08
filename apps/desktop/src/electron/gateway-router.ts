@@ -199,6 +199,28 @@ function toApplicationRequest(
     // bdl-queries v0.2 只读查询面:查询闭集已由信封守卫验证,参数原样透传
     case "catalog.list":
       return { ...base, kind: "query", method: "catalog.list", params: request.params };
+    case "catalog.librarySyncStatus":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "library.downloadStatus":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "library.list":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "library.productFiles":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "library.removalPreview":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "library.removalStatus":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "library.removeFiles":
+      return { ...base, kind: "command", commandId: request.params.removalId, method: request.method, params: request.params };
+    case "recipeDraft.list":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "recipeDraft.get": case "recipeDraft.selectionStatus":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "recipeDraft.save":
+      return { ...base, kind: "command", commandId: request.requestId, method: request.method, params: request.params };
+    case "recipeDraft.addSelection":
+      return { ...base, kind: "command", commandId: request.requestId, method: request.method, params: request.params };
     case "catalog.detail":
       return { ...base, kind: "query", method: "catalog.detail", params: request.params };
     case "catalog.status":
@@ -228,6 +250,9 @@ function toApplicationRequest(
       };
     case "dependencies.listByProduct":
       return { ...base, kind: "query", method: "dependencies.listByProduct", params: { productId: request.params.productId } };
+    // bdl-queries v0.7(N5 静默下载):单商品已捕获文件清单
+    case "catalog.productDownloadables":
+      return { ...base, kind: "query", method: "catalog.productDownloadables", params: { productId: request.params.productId } };
     // 013 读面第一翼(核心 e720544):environmentManagers 快照,空参数 verbatim
     case "project.environmentManagers":
       return { ...base, kind: "query", method: "project.environmentManagers", params: {} };
@@ -458,10 +483,25 @@ function toApplicationRequest(
       return { ...base, kind: "command", method: "warehouse.generateVpm", commandId: request.params.commandId, params: { warehouseItemId: request.params.warehouseItemId } };
     case "warehouse.deleteOriginals":
       return { ...base, kind: "command", method: "warehouse.deleteOriginals", commandId: request.params.commandId, params: { warehouseItemId: request.params.warehouseItemId } };
+    // N5 收口:按商品删除本地原件(卡片右键),params 闭集 {productId}
+    case "warehouse.deleteOriginalsByProduct":
+      return { ...base, kind: "command", method: "warehouse.deleteOriginalsByProduct", commandId: request.params.commandId, params: { productId: request.params.productId } };
     case "warehouse.setGlobalDefaultMode":
       return { ...base, kind: "command", method: "warehouse.setGlobalDefaultMode", commandId: request.params.commandId, params: { mode: request.params.mode } };
     case "warehouse.import":
-      return { ...base, kind: "command", method: "warehouse.import", commandId: request.params.commandId, params: { sourceFolders: [...request.params.sourceFolders] } };
+      // v0.5 实验选项原样转发:缺席即不发送(可选键闭集纪律)
+      return {
+        ...base,
+        kind: "command",
+        method: "warehouse.import",
+        commandId: request.params.commandId,
+        params: {
+          sourceFolders: [...request.params.sourceFolders],
+          ...(request.params.autoGenerate === undefined
+            ? {}
+            : { autoGenerate: request.params.autoGenerate }),
+        },
+      };
     // bdl-commands v0.4 下载采纳(IMP-3):仅身份请求原样映射
     case "warehouse.importDownloads":
       return { ...base, kind: "command", method: "warehouse.importDownloads", commandId: request.params.commandId, params: { downloadIds: [...request.params.downloadIds] } };

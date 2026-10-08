@@ -2877,6 +2877,7 @@ version = "0.1.0"
 dependencies = [
  "flate2",
  "jsonschema",
+ "scraper",
  "serde",
  "serde_json",
  "sha2",
@@ -2934,6 +2935,7 @@ dependencies = [
  "flate2",
  "jsonschema",
  "rusqlite",
+ "scraper",
  "serde",
  "serde_json",
  "sha2",

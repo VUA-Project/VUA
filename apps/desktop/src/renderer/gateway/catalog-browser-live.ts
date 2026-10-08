@@ -1,3 +1,4 @@
+import { catalogImageUrl } from "../app/catalog-image.ts";
 import type { DesktopGatewayRequestV1 } from "@vua/contracts";
 import type { CatalogStatus } from "./catalog.ts";
 import type {
@@ -10,6 +11,7 @@ import type {
   CatalogProductDetail,
   CatalogProductSummary,
   CatalogSubproduct,
+  ProductDownloadablesView,
 } from "./catalog-browser-port.ts";
 import type { CatalogPrice } from "./refs.ts";
 import type { GatewayClient, GatewayResult } from "./gateway-client.ts";
@@ -53,7 +55,7 @@ const BOOTH_PRODUCT_ID_PATTERN = /^booth:[0-9]+$/;
 /** catalog 三方法的请求窄化:wildcard method 字面量收窄出联合 */
 type CatalogGatewayRequest = Extract<
   DesktopGatewayRequestV1,
-  { readonly method: "catalog.list" | "catalog.detail" | "catalog.status" }
+  { readonly method: "catalog.list" | "catalog.detail" | "catalog.status" | "catalog.productDownloadables" }
 >;
 
 function asString(value: unknown): string | null {
@@ -80,7 +82,7 @@ function word<T extends string>(value: unknown, vocabulary: readonly T[]): T | n
 /**
  * bdl-queries 三键信封解包(BOARD #36 缺陷②同类修复批,2026-09-18):
  * live wire 对 catalog.list / catalog.detail / catalog.status 应答
- * {schemaVersion "0.4", operation, result 本体}(provider-host
+ * {schemaVersion "0.6", operation, result 本体}(provider-host
  * bdl_query_success),此前平铺读 value.{total,entries}/value.product/
  * value.{health,revision} 恒 undefined → 目录页真机恒 not-connected
  * (引擎健康,#22 live/fixture 形状分裂)。词表外信封 = null(调用方按
@@ -89,7 +91,10 @@ function word<T extends string>(value: unknown, vocabulary: readonly T[]): T | n
 function bdlQueryResult(value: unknown, operation: string): Record<string, unknown> | null {
   const envelope = asRecord(value);
   if (envelope === null) return null;
-  if (envelope.schemaVersion !== "0.4" || envelope.operation !== operation) return null;
+  // bdl-queries 家族信封已随 v0.5 依赖批升版(v0.4→v0.5 只升共享信封常量,
+  // 六方法词面不变);此处钉死旧版会让一切成功应答被判形态不齐而回落
+  // not-connected——真机首验(2026-10-02)抓出的存量缺陷
+  if (envelope.schemaVersion !== "0.6" || envelope.operation !== operation) return null;
   return asRecord(envelope.result);
 }
 
@@ -107,6 +112,7 @@ function listParams(query: CatalogBrowserQuery): CatalogListParams {
   const text = query.text?.trim();
   if (text !== undefined && text.length > 0) params.text = text;
   if (query.availabilityStatus !== undefined) params.availabilityStatus = query.availabilityStatus;
+  if (query.libraryType !== undefined) params.libraryType = query.libraryType;
   if (query.limit !== undefined) params.limit = query.limit;
   if (query.offset !== undefined) params.offset = query.offset;
   return params;
@@ -115,6 +121,7 @@ function listParams(query: CatalogBrowserQuery): CatalogListParams {
 interface CatalogListParams {
   text?: string;
   availabilityStatus?: CatalogAvailabilityStatus;
+  libraryType?: import("./catalog-browser-port.ts").CatalogLibraryType;
   limit?: number;
   offset?: number;
 }
@@ -124,7 +131,8 @@ function projectPrice(value: unknown): CatalogPrice | null {
   if (record === null) return null;
   const amount = asString(record.amount);
   const currency = asString(record.currency);
-  return amount !== null && currency !== null ? { amount, currency } : null;
+  const high = asString(record.high);
+  return amount !== null && currency !== null ? { amount, currency, high } : null;
 }
 
 function projectStringArray(value: unknown): string[] {
@@ -138,7 +146,7 @@ function projectAvailabilityStatus(value: unknown): CatalogAvailabilityStatus | 
   return word(value, AVAILABILITY_STATUSES);
 }
 
-function projectSummary(value: unknown): CatalogProductSummary | null {
+export function projectSummary(value: unknown): CatalogProductSummary | null {
   const record = asRecord(value);
   if (record === null) return null;
   const productId = asString(record.productId);
@@ -146,12 +154,24 @@ function projectSummary(value: unknown): CatalogProductSummary | null {
   const availabilityStatus = projectAvailabilityStatus(record.availabilityStatus);
   if (availabilityStatus === null) return null;
   const imageUrls = projectStringArray(record.imageUrls);
+  const variantName = asString(record.variantName);
+  const libraryType =
+    record.libraryType === "bought" || record.libraryType === "gifts" || record.libraryType === "free_downloads"
+      ? record.libraryType
+      : null;
   return {
     productId,
     title: asString(record.title),
+    libraryType,
+    importedArtifacts:
+      typeof record.importedArtifacts === "number" && record.importedArtifacts >= 0
+        ? record.importedArtifacts
+        : 0,
+    shopName: asString(record.shopName),
+    variantName: asString(record.variantName),
     price: projectPrice(record.price),
     // 协议保证 imageUrl = imageUrls[0] 或 null;缺失时按媒体首图收窄
-    imageUrl: asString(record.imageUrl) ?? imageUrls[0] ?? null,
+    imageUrl: catalogImageUrl(asString(record.imageUrl) ?? imageUrls[0] ?? '') || null,
     imageUrls,
     // 徽标词表以派生枚举填充(三值 ⊂ 四值);墓碑不来自 live
     availability: availabilityStatus,
@@ -220,11 +240,26 @@ function projectDetail(value: unknown): CatalogProductDetail | null {
   }
   const shopName = asString(record.shopName);
   const shopUrl = asString(record.shopUrl);
+  const variantName = asString(record.variantName);
+  const libraryType =
+    record.libraryType === "bought" || record.libraryType === "gifts" || record.libraryType === "free_downloads"
+      ? record.libraryType
+      : null;
+  const variations = subproducts.map((sub) => ({
+    variationId: sub.variationId,
+    name: sub.name,
+    price: sub.price,
+    soldOut: sub.availability !== "available",
+  }));
   return {
     productId,
     title: asString(record.title),
+    libraryType,
+    variantName,
+    sourcePublishedAt: asString(record.sourcePublishedAt),
+    variations,
     price: projectPrice(record.price),
-    imageUrl: asString(record.imageUrl) ?? imageUrls[0] ?? null,
+    imageUrl: catalogImageUrl(asString(record.imageUrl) ?? imageUrls[0] ?? '') || null,
     availability: availabilityStatus,
     availabilityRaw: asString(record.availabilityRaw),
     // v0.3 无来源页与实体存储:诚实空槽(来源区/实体区/关系区随升版回归)
@@ -345,6 +380,52 @@ export function createLiveCatalogBrowser(client: GatewayClient): CatalogBrowserP
       return result.error.kind === "application"
         ? { schemaVersion: 1, kind: "error", messageKey: applicationErrorView(result.error) }
         : { schemaVersion: 1, kind: "not-connected" };
+    },
+    // bdl-queries v0.7(N5 静默下载):v0.7 家族自有信封常量,与 v0.6 家族
+    // 分开钉死;已知商品零捕获 = 诚实空集(下载流补抓),未知 = not-found
+    async productDownloadables(productId): Promise<ProductDownloadablesView> {
+      if (!BOOTH_PRODUCT_ID_PATTERN.test(productId)) {
+        return { kind: "not-found" };
+      }
+      const result = await invokeCatalog(client, {
+        schemaVersion: 1,
+        requestId: crypto.randomUUID(),
+        method: "catalog.productDownloadables",
+        params: { productId },
+      });
+      if (result.ok) {
+        const envelope = asRecord(result.value);
+        if (
+          envelope === null
+          || envelope.schemaVersion !== "0.7"
+          || envelope.operation !== "catalog.productDownloadables"
+        ) {
+          return { kind: "absent" };
+        }
+        const body = asRecord(envelope.result);
+        const rawItems = body === null ? null : body.items;
+        if (body === null || !Array.isArray(rawItems)) return { kind: "absent" };
+        const items: { downloadableId: number; fileName: string }[] = [];
+        for (const raw of rawItems) {
+          const row = asRecord(raw);
+          const id = row === null ? null : row.downloadableId;
+          const name = row === null ? null : row.fileName;
+          if (typeof id !== "number" || !Number.isInteger(id) || typeof name !== "string") {
+            return { kind: "absent" };
+          }
+          items.push({ downloadableId: id, fileName: name });
+        }
+        return { kind: "files", productId, items };
+      }
+      if (
+        result.error.kind === "application"
+        && result.error.error.code === "vua.catalog.product_not_found"
+      ) {
+        return { kind: "not-found" };
+      }
+      return result.error.kind === "application"
+        ? { kind: "absent" }
+        : { kind: "absent" };
     },
 
     async status(): Promise<CatalogStatus> {

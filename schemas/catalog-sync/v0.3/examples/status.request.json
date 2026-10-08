@@ -1,0 +1,7 @@
+{
+  "method": "catalog.librarySyncStatus",
+  "params": {
+    "schemaVersion": "0.3",
+    "runId": "catalog-sync-synthetic"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "0.3",
+  "sourceUrl": "https://accounts.booth.pm/library?page=1",
+  "parsedCount": 1,
+  "upsertedCount": 1,
+  "rejectedItems": [],
+  "nextPageUrl": null,
+  "cancellationRequested": false
+}

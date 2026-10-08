@@ -1,4 +1,4 @@
-//! Contract anchor for `schemas/bdl-commands/v0.4` (M6 download adoption —
+//! Contract anchor for `schemas/bdl-commands/v0.5` (M6 download adoption —
 //! user ruling U7-③ / IMP-3 contract-first slice): the
 //! `warehouse.importDownloads` vector drives the real adoption task, the
 //! acceptance payload validates back against the frozen result schema, the
@@ -24,7 +24,7 @@ use vua_bdl_store::download_events::{
 use vua_orchestrator::{FixedIdGenerator, MemoryJournal, SystemClock, TaskRuntime};
 
 fn schema_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/bdl-commands/v0.4")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/bdl-commands/v0.5")
 }
 
 fn read_json(relative: &str) -> Value {
@@ -214,7 +214,7 @@ fn import_downloads_vector_drives_the_real_adoption_task_and_validates() {
 
     // The acceptance assembles into the frozen v0.4 importDownloads result shape.
     let acceptance = json!({
-        "schemaVersion": "0.4",
+        "schemaVersion": "0.5",
         "operation": "warehouse.importDownloads",
         "taskId": accepted.task_id,
         "correlationId": correlation_id,

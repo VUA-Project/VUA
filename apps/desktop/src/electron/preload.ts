@@ -159,6 +159,11 @@ const api: VuaDesktopApiV1 = Object.freeze({
     setVisible: (viewId: string, visible: boolean) =>
       ipcRenderer.invoke("vua:remote-content:set-visible", viewId, visible),
     signInHint: () => ipcRenderer.invoke("vua:remote-content:sign-in-hint"),
+    // 真实登录判定:抓一次库首页按内容识别登录页(线索三态会被半登录会话
+    // 误报;authOk 才是「此刻能读到账号库」);accountName = 页头登录 ID
+    authProbe: () => ipcRenderer.invoke("vua:remote-content:auth-probe"),
+    // 登出:清空分区存储(Cookie/本地存储/认证缓存)并关闭远程视图
+    signOut: () => ipcRenderer.invoke("vua:remote-content:sign-out"),
     events: Object.freeze({
       subscribe: (listener: (event: RemoteContentEventV1) => void) => {
         const wrapped = (_event: IpcRendererEvent, payload: RemoteContentEventV1) => listener(payload);
@@ -171,6 +176,28 @@ const api: VuaDesktopApiV1 = Object.freeze({
         };
       },
     }),
+  }),
+  // 账号库同步窄面(N5 S1):只触发/中止;进度与终态走任务面。会话凭据
+  // 不经过本面(见 contracts CatalogSyncApiV1 注释)
+  catalogSync: Object.freeze({
+    // libraryType 可选:同步哪个账号库(缺省已购;all=三库串行);
+    // 入口由 Main 按类型派生
+    start: (request?: {
+      readonly libraryType?: "bought" | "gifts" | "free_downloads" | "all";
+    }) => ipcRenderer.invoke("vua:catalog-sync:start", request),
+    stop: () => ipcRenderer.invoke("vua:catalog-sync:stop"),
+    // 运行状态探针:任务前失败(首页即失败,provider 无任务)经此面可见
+    probe: () => ipcRenderer.invoke("vua:catalog-sync:probe"),
+    // 详情富化:经分区会话抓一个商品页,provider 侧自动识别商品页语法
+    // 并以全量观察(变体/画廊/描述/品牌)更新该行;无网络外泄面
+    fetchProduct: (productId: string) =>
+      ipcRenderer.invoke("vua:catalog-sync:fetch-product", productId),
+  }),
+  // 静默下载(N5,2026-10-05 用户裁决):文件 id 批入队即受理;进度与终态
+  // 走下载任务面(通知中心),本面不返回过程
+  silentDownload: Object.freeze({
+    start: (productId: string, downloadableIds: readonly number[], replacementTargets?: readonly { readonly downloadableId: number; readonly copyId: string }[]) =>
+      ipcRenderer.invoke("vua:silent-download:start", productId, downloadableIds, replacementTargets),
   }),
   // 壳能力自报(proposal 015 §11 方案 a):能力拥有者静态声明;内嵌浏览
   // 基座(remote-content + U9 导航策略)随本壳交付,呈现两态由渲染层据此

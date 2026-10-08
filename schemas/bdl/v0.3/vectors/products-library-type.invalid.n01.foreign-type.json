@@ -1,0 +1,5 @@
+{
+  "native_product_id": "1000003",
+  "library_type": "wishlist",
+  "expect_rejected": "InvalidObservation: library_type must be bought|gifts|free_downloads or null"
+}

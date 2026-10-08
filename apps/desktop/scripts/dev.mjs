@@ -132,7 +132,7 @@ const dependencies = spawn("pnpm", ["--filter", "@vua/orchestrator-provider", "b
 const dependencyCode = await new Promise((resolve) => dependencies.once("exit", resolve));
 if (dependencyCode !== 0) throw new Error("Desktop runtime dependencies failed to build");
 
-const vite = spawn("pnpm", ["exec", "vite", "--port", String(VITE_PORT)], { stdio: "inherit", shell: useShell });
+const vite = spawn("pnpm", ["exec", "vite", "--force", "--port", String(VITE_PORT)], { stdio: "inherit", shell: useShell });
 
 // Electron 额外参数透传(W25 走查取证护栏,2026-09-23):VUA_ELECTRON_ARGS
 // 以空格分词追加到 electron 命令(如 --remote-debugging-port=51993,供

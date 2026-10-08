@@ -46,6 +46,7 @@ export type PageId =
   | "tools-installed"
   | "settings-goals"
   | "settings-environment"
+  | "settings-accounts"
   | "settings-language"
   | "settings-theme"
   | "settings-version"
@@ -148,6 +149,7 @@ export const settingsModule: ModuleDef = {
       pages: [
         { id: "settings-goals", labelKey: "settingsGoals" },
         { id: "settings-environment", labelKey: "settingsEnvironment" },
+        { id: "settings-accounts", labelKey: "settingsAccounts" },
         { id: "settings-language", labelKey: "settingsLanguage" },
         { id: "settings-theme", labelKey: "settingsTheme" },
         { id: "settings-version", labelKey: "settingsVersion" },

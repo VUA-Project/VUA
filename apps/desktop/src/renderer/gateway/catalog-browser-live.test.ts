@@ -12,7 +12,7 @@ import type { CatalogDetailView, CatalogListView } from "./catalog-browser-port.
  * 的 wire 投影(client 纪律)、诚实空态语义与能力门控。不经 Kernel 全链路
  * (路由臂由 contracts 守卫测试与 mock provider 覆盖)。
  * BOARD #36 缺陷②同类修复批(2026-09-18):mock 应答统一钉 live 形状
- * (bdl-queries 三键信封,schemaVersion "0.4" + operation + result)——
+ * (bdl-queries 三键信封,schemaVersion "0.6" + operation + result)——
  * 此前 mock 钉契约平铺值、live 实答带信封,测试全绿真机不通(#22 教训);
  * 并以负例钉死「平铺值按不可解释处理」,防回摆。
  */
@@ -21,7 +21,7 @@ function wireSummary(overrides: Record<string, unknown> = {}) {
   return {
     productId: "booth:3681787",
     title: "Sample Outfit",
-    price: { amount: "1980", currency: "JPY" },
+    price: { amount: "1980", currency: "JPY", high: null },
     imageUrl: "https://booth.pm/img/3681787/main.jpg",
     imageUrls: ["https://booth.pm/img/3681787/main.jpg"],
     availabilityRaw: "compliant",
@@ -36,7 +36,7 @@ function wireSubproduct(overrides: Record<string, unknown> = {}) {
   return {
     variationId: "v1",
     name: "Miku color",
-    price: { amount: "1980", currency: "JPY" },
+    price: { amount: "1980", currency: "JPY", high: null },
     availabilityRaw: null,
     availabilityStatus: "available",
     ...overrides,
@@ -73,7 +73,7 @@ const okValue = (value: unknown): GatewayResult<DesktopGatewaySuccessValueV1> =>
 
 /** bdl-queries live 信封(provider-host bdl_query_success 同形) */
 const okBdl = (operation: string, result: unknown): GatewayResult<DesktopGatewaySuccessValueV1> =>
-  okValue({ schemaVersion: "0.4", operation, result });
+  okValue({ schemaVersion: "0.6", operation, result });
 
 const errApplication = (code: string): GatewayResult<DesktopGatewaySuccessValueV1> => ({
   ok: false,
@@ -140,7 +140,7 @@ describe("live catalog browser port (F4-5)", () => {
     expect(view.vocabulary.relationKinds).toEqual([]);
     const item = view.items[0];
     expect(item?.title).toBe("Sample Outfit");
-    expect(item?.price).toEqual({ amount: "1980", currency: "JPY" });
+    expect(item?.price).toEqual({ amount: "1980", currency: "JPY", high: null });
     // 双字段:徽标消费派生枚举,原词证据原样保留
     expect(item?.availability).toBe("available");
     expect(item?.availabilityRaw).toBe("compliant");
@@ -276,7 +276,7 @@ describe("live catalog browser port (F4-5)", () => {
       {
         variationId: "v1",
         name: "Miku color",
-        price: { amount: "1980", currency: "JPY" },
+        price: { amount: "1980", currency: "JPY", high: null },
         availabilityRaw: null,
         availability: "available",
       },

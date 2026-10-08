@@ -54,6 +54,16 @@ export function MediaSlot({
     setRetryCount(0);
   }, [src]);
 
+  // 缓存秒载护栏(真机 2026-10-03):浏览器缓存命中的图片可能在 React
+  // 挂上 onLoad 之前就完成加载,事件丢失会让卡片永久停在 spinner 且
+  // 正文被 pending 遮蔽。ref 回调在挂载/重建时检查 complete +
+  // naturalWidth,已完成即直接置 ready;未完成则由 onLoad 正常接管。
+  const imageRef = (element: HTMLImageElement | null): void => {
+    if (element !== null && element.complete && element.naturalWidth > 0) {
+      setState((current) => (current === "loading" ? "ready" : current));
+    }
+  };
+
   // 自动重试:失败后在间隔后重建 img;耗尽次数后停在转圈(诚实等待,
   // 不显示失败说明——用户无需操作,也不必面对不可达的按钮)
   useEffect(() => {
@@ -110,10 +120,13 @@ export function MediaSlot({
        *  decoding="async":大图解码不阻塞主线程 */}
       <img
         key={attempt}
+        ref={imageRef}
         className="vua-media-slot__img"
         data-pending={effective !== "ready" || undefined}
         loading="lazy"
         decoding="async"
+        /* 拖影禁用:仓储墙按住拖动=框选(2026-10-05),原生 ghost-drag 会劫持手势 */
+        draggable={false}
         src={effectiveSrc}
         alt={alt}
         onLoad={() => setState((s) => mediaReducer(s, "load"))}

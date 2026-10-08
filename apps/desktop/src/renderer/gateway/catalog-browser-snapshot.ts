@@ -279,6 +279,10 @@ export function createSnapshotCatalogBrowser(data: CatalogSnapshotData): Catalog
       summary: {
         productId,
         title: asString(detail.title) ?? productId,
+        libraryType: null,
+        importedArtifacts: 0,
+        variantName: null,
+        shopName: null,
         price: parsePrice(detail.price),
         imageUrl: primary,
         // 相册数组:详情媒体全量;无媒体时由主图兜底成单图(列表兜底在下方回写)
@@ -324,6 +328,10 @@ export function createSnapshotCatalogBrowser(data: CatalogSnapshotData): Catalog
             summary: {
               productId,
               title: asString(item.title) ?? productId,
+              libraryType: null,
+        importedArtifacts: 0,
+        variantName: null,
+        shopName: null,
               price: parsePrice(item.price),
               imageUrl: fallbackImage,
               imageUrls: fallbackGallery,
@@ -427,6 +435,10 @@ export function createSnapshotCatalogBrowser(data: CatalogSnapshotData): Catalog
       : [];
     const detail: CatalogProductDetail = {
       productId: record.summary.productId,
+      libraryType: null,
+      variantName: null,
+      sourcePublishedAt: null,
+      variations: [],
       title: record.summary.title,
       price: record.summary.price,
       imageUrl: record.summary.imageUrl,
@@ -463,6 +475,8 @@ export function createSnapshotCatalogBrowser(data: CatalogSnapshotData): Catalog
         vocabulary,
       });
     },
+    // bdl-queries v0.7:快照网关无文件清单事实,诚实缺席
+    productDownloadables: () => Promise.resolve({ kind: "absent" }),
     detail: (productId: string) => {
       const record = byId.get(productId);
       if (!record) {

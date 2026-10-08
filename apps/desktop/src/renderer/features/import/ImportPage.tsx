@@ -37,6 +37,8 @@ import {
   type EmbeddedBrowseState,
 } from "./import-model.ts";
 import "./import-page.css";
+import { useAcquireView } from "../../gateway/index.ts";
+import { entrySurfacesVisible, inferGlobalDefaultMode } from "../warehouse/acquire-model.ts";
 
 /**
  * 素材导入(M6 IMP-2 批 A;proposal 015 对账受理,design-standard §8.3):连续素
@@ -115,12 +117,16 @@ const openFailureText: Record<EmbeddedBrowseOpenFailure["kind"], string> = {
 function EmbeddedBrowsePanel({
   availability,
   onViewClosedByUser,
+  initialUrl,
 }: {
   availability: EmbeddedBrowseAvailability;
   /** 用户经导航条 × 关闭当前视图(且已完成下载为零时宿主弹窗自动收口
    *  的裁决在 ImportPage):仅「用户关闭」会触发,拆卸/代次兜底关闭
    *  永不触发(归因见 import-model ViewCloseTracker) */
   onViewClosedByUser?: (() => void) | undefined;
+  /** 定向首开地址(仓储右键「下载到本地」):在场时首开直接去该商品页,
+   *  跳过登录态线索分流——用户已用右键显式表达了浏览意图 */
+  initialUrl?: string | undefined;
 }) {
   const modalOwner = useModalOwner();
   const [browse, setBrowse] = useState<EmbeddedBrowseState>(initialEmbeddedBrowseState);
@@ -232,6 +238,10 @@ function EmbeddedBrowsePanel({
     setOpenFailure(null);
     const remote = window.vua?.remoteContent;
     if (remote === undefined) return;
+    if (initialUrl !== undefined) {
+      openAddress(initialUrl);
+      return;
+    }
     void remote.signInHint().then((hint) => {
       openAddress(initialBrowseUrl(hint));
     });
@@ -474,10 +484,20 @@ function LocalImportSection({ onRequestClose }: ImportCloseRequest) {
     return dialog.pickWarehouseFolders();
   };
 
+  // N5 实验选项(用户方向 2026-10-02):「制成 VPM 包再导入」只在设置-实验性
+  // 的「生成 VPM 包替代」开启时显示;推断同仓储条目面(entrySurfacesVisible)
+  const acquireView = useAcquireView();
+  const globalDefault = inferGlobalDefaultMode(
+    acquireView !== null && acquireView.kind === "entries" ? acquireView.entries : [],
+  );
+  const vpmOptionVisible = entrySurfacesVisible(globalDefault);
+  const [autoVpm, setAutoVpm] = useState(false);
   const submitImport = (folders: readonly string[]) => {
     setImportBusy(true);
     setImportFeedback(null);
-    void gateway.warehouseCommands.importFolders(folders).then((outcome: WarehouseCommandOutcome) => {
+    void gateway.warehouseCommands
+      .importFolders(folders, autoVpm ? { autoGenerate: true } : undefined)
+      .then((outcome: WarehouseCommandOutcome) => {
       setImportBusy(false);
       if (outcome.ok) {
         setPendingFolders(null);
@@ -531,6 +551,17 @@ function LocalImportSection({ onRequestClose }: ImportCloseRequest) {
             <Button variant="default" disabled={importBusy} onClick={() => setPendingFolders(null)}>
               {acquireCopy.importCancel}
             </Button>
+            {vpmOptionVisible ? (
+              <label className="vua-import__vpm-toggle">
+                <input
+                  type="checkbox"
+                  checked={autoVpm}
+                  disabled={importBusy}
+                  onChange={(event) => setAutoVpm(event.target.checked)}
+                />
+                {copy.vpmImportOption}
+              </label>
+            ) : null}
             <Button variant="primary" disabled={importBusy} onClick={() => submitImport(pendingFolders)}>
               {acquireCopy.importConfirmCta}
             </Button>
@@ -724,7 +755,12 @@ function CompletedDownloadsPanel({
 
 /* ---- 页面 ---- */
 
-export function ImportPage({ onRequestClose }: ImportCloseRequest = {}) {
+export function ImportPage({ onRequestClose, initialUrl }: ImportCloseRequest & {
+  /** 定向首开地址(仓储右键「下载到本地」→ 商品页):在场且云端可用时
+   *  弹窗直入云端段并首开该地址,跳过「本地/云端」选择步——右键已是
+   *  显式浏览意图;弹窗关闭即卸载,重开(无论是否携带)回到诚实起点 */
+  initialUrl?: string | undefined;
+} = {}) {
   // 能力两态数据源 = 壳能力自报(proposal 015 §11 仲裁方案 a:能力拥有者
   // (Electron 壳)经 preload 面静态自报,不经 provider 转述)。无壳环境
   // (浏览器开发)保守不可用;非函数态读取同样保守不可用。
@@ -739,7 +775,9 @@ export function ImportPage({ onRequestClose }: ImportCloseRequest = {}) {
   // onRequestClose(W25 走查缺陷③根因修复):宿主弹窗的关闭请求线——
   // 受理态自动关闭计时与失败态醒目「关闭」主按钮都经此线收口;缺省
   // (如独立夹具挂载)诚实降级为无自动关闭,不猜测宿主。
-  const [section, setSection] = useState<"choose" | "local" | "cloud">("choose");
+  const [section, setSection] = useState<"choose" | "local" | "cloud">(
+    initialUrl !== undefined && availability.kind === "available" ? "cloud" : "choose",
+  );
   // 已完成下载计数(云端段自动收口裁决的事实源):null = 读面不可达/
   // 未落定,未知不武装(不猜态);由 CompletedDownloadsPanel 落定即报
   const [downloadsCount, setDownloadsCount] = useState<number | null>(null);
@@ -793,6 +831,7 @@ export function ImportPage({ onRequestClose }: ImportCloseRequest = {}) {
                 <EmbeddedBrowsePanel
                   availability={availability}
                   onViewClosedByUser={handleViewClosedByUser}
+                  initialUrl={initialUrl}
                 />
                 <h3 className="vua-warehouse-detail__section-title">{copy.downloadsTitle}</h3>
                 <CompletedDownloadsPanel

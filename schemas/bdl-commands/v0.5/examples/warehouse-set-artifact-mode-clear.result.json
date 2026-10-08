@@ -1,0 +1,6 @@
+{
+  "schemaVersion": "0.5",
+  "operation": "warehouse.setArtifactMode",
+  "warehouseItemId": "whi-01hexample0000000000000a",
+  "effectiveMode": "use_original_unitypackage"
+}

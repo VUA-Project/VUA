@@ -35,11 +35,15 @@ export type CatalogRelationKind = "compatible_with" | "addon_for" | "requires";
 export type CatalogAvailabilityStatus = "available" | "unavailable" | "unknown";
 
 /** 列表查询:全部条件 AND 组合;缺省不过滤 */
+export type CatalogLibraryType = "bought" | "gifts" | "free_downloads";
+
 export interface CatalogBrowserQuery {
   /** 标题 / productId 子串匹配(大小写不敏感) */
   readonly text?: string;
   /** 对派生稳定枚举精确匹配;live 随请求发送,由 AMF 侧过滤 */
   readonly availabilityStatus?: CatalogAvailabilityStatus;
+  /** BDL v0.3/bdl-queries v0.6:按账号库类型精确匹配(已购/礼物/免费) */
+  readonly libraryType?: CatalogLibraryType;
   /** 分页:1–200,缺省 50(AMF 默认);快照实现本地应用 */
   readonly limit?: number;
   /** 分页偏移:≥ 0,缺省 0 */
@@ -57,6 +61,14 @@ export interface CatalogProductSummary {
   readonly productId: string;
   /** v0.3 允许无题观测:未解析出标题时为 null,UI 回落 productId */
   readonly title: string | null;
+  /** BDL v0.3:条目来自哪个账号库(已购/礼物/免费);null = 未知 */
+  readonly libraryType: CatalogLibraryType | null;
+  /** N5 D2:经 artifact_mappings 关联的本地工件数;0 = 仅云端,>0 = 已入库 */
+  readonly importedArtifacts: number;
+  /** 库行观察到的店铺显示名(null = 未知);卡片店铺行 */
+  readonly shopName: string | null;
+  /** 购买变体标记(库行尾缀拆出;null = 未区分) */
+  readonly variantName: string | null;
   /** 字符串金额 + 币种;来源缺价格时为 null,UI 显示"无价格信息"而非猜测 */
   readonly price: CatalogPrice | null;
   readonly imageUrl: string | null;
@@ -114,6 +126,19 @@ export interface CatalogProductDetail {
   readonly productId: string;
   /** v0.3 允许无题观测:未解析出标题时为 null,UI 回落 productId */
   readonly title: string | null;
+  /** BDL v0.3:来自哪个账号库(null = 未知);详情证据展示 */
+  readonly libraryType: CatalogLibraryType | null;
+  /** 商品页观察的上架日期原文(null = 未观察) */
+  readonly sourcePublishedAt: string | null;
+  /** 购买变体标记(库行尾缀;null = 未区分) */
+  readonly variantName: string | null;
+  /** 商品页观察的变体列表(名+价+售罄;空 = 未富化) */
+  readonly variations: readonly {
+    readonly variationId: string | null;
+    readonly name: string | null;
+    readonly price: CatalogPrice | null;
+    readonly soldOut: boolean;
+  }[];
   readonly price: CatalogPrice | null;
   readonly imageUrl: string | null;
   /** deleted 即墓碑:保留最后标题与主图,UI 须明确表达"已下架/墓碑" */
@@ -187,10 +212,24 @@ export type CatalogDetailView =
   | { schemaVersion: 1; kind: "error"; messageKey: CatalogErrorKey }
   | { schemaVersion: 1; kind: "detail"; product: CatalogProductDetail };
 
+/** 单商品已捕获文件清单视图(bdl-queries v0.7,N5 静默下载弹清单用):
+ *  known 商品零捕获 = 诚实空集;absent = 实现域未接线/传输不可达 */
+export type ProductDownloadablesView =
+  | { readonly kind: "absent" }
+  | { readonly kind: "not-found" }
+  | {
+      readonly kind: "files";
+      readonly productId: string;
+      /** 行序 = 捕获序(first_seen_at, id) */
+      readonly items: readonly { readonly downloadableId: number; readonly fileName: string }[];
+    };
+
 export interface CatalogBrowserPort {
   list(query?: CatalogBrowserQuery): Promise<CatalogListView>;
   detail(productId: string): Promise<CatalogDetailView>;
   /** 目录新鲜度视图(catalog.ts 词汇;修订序号语义见 CatalogRevision) */
   status(): Promise<CatalogStatus>;
+  /** bdl-queries v0.7:单商品已捕获文件清单(N5 静默下载弹清单的数据源) */
+  productDownloadables(productId: string): Promise<ProductDownloadablesView>;
   capability(): Promise<CapabilityReport>;
 }
