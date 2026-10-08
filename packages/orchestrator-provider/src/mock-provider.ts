@@ -205,6 +205,18 @@ export class MockOrchestratorProviderV01 implements OrchestratorProviderV01 {
       case "environment.checkNetwork":
       case "environment.testWebsites":
         return this.#failure(request, this.#error("vua.network.unavailable", "unavailable", "errors.network.failed", request.correlationId, false, false));
+      case "environment.observeGameWindow":
+        // game-guide follow 切片(桌面契约登记随同批):DEV 模拟面无 OS 窗口
+        // 枚举,诚实缺席——code/category/messageKey 三元与真实 provider-host
+        // 路由(game_window_routes)的 unavailable 分支同形,绝不伪造观察
+        return this.#failure(request, this.#error(
+          "vua.game_window.unavailable",
+          "unavailable",
+          "errors.gameWindow.unavailable",
+          request.correlationId,
+          true,
+          false,
+        ));
       case "environment.planDeployment":
       case "environment.executeDeployment":
         return this.#failure(request, this.#error("vua.deployment.unavailable", "unavailable", "errors.deployment.failed", request.correlationId, false, false));

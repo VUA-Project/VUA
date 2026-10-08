@@ -141,10 +141,16 @@ const api: VuaDesktopApiV1 = Object.freeze({
         };
       },
     }),
-    // 游戏引导小窗(三类引导 §4 手动版 additive):透明置顶窗,打开永远
+    // 游戏引导小窗(三类引导 §4 additive):透明置顶窗,打开永远
     // showInactive 不夺焦点;隐藏不销毁(保留位置与进度),由窗内/Esc 显式发起
     showGameGuide: () => ipcRenderer.invoke("vua:game-guide:show"),
     hideGameGuide: () => ipcRenderer.invoke("vua:game-guide:hide"),
+    // 游戏引导跟随(game-guide follow 切片 additive):开关由渲染层持久化
+    // (localStorage)并经此推送,Main 强制执行;状态面只读(跟随开关 +
+    // 最近一次游戏窗口观察三态,unknown = 观察通道缺席的诚实记录)
+    setGameGuideFollowing: (following: boolean) =>
+      ipcRenderer.invoke("vua:game-guide:set-following", following),
+    getGameGuideFollowStatus: () => ipcRenderer.invoke("vua:game-guide:follow-status"),
     // 返回主窗口(仅响应用户明确动作,允许切换焦点)
     focusMainWindow: () => ipcRenderer.invoke("vua:window:focus-main"),
   }),

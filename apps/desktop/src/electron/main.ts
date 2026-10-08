@@ -1,5 +1,5 @@
 import { dialogStrings, startupFailureCopy } from "./dialog-i18n.js";
-import { app, BrowserWindow, dialog, ipcMain, net, session, shell } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, net, screen, session, shell } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import type {
@@ -9,12 +9,14 @@ import type {
   CatalogSyncPageV03,
   DownloadEventV01,
   EditorSettingsV1,
+  GameGuideFollowStatusV1,
+  GameWindowRectPhysicalV1,
   GuideTargetV1,
   NavigationConfirmRequestV1,
   OverlayViewV1,
   RemoteContentEventV1,
 } from "@vua/contracts";
-import { APPLICATION_CONTRACT_VERSION, isLibraryDownloadParamsV01, isLibraryDownloadSnapshotV01 } from "@vua/contracts";
+import { APPLICATION_CONTRACT_VERSION, isGameWindowObservationResult, isLibraryDownloadParamsV01, isLibraryDownloadSnapshotV01 } from "@vua/contracts";
 import type { OrchestratorProviderV01 } from "@vua/orchestrator-provider";
 import { routeDesktopGatewayInvoke } from "./gateway-router.js";
 import { DownloadPort } from "./download-port.js";
@@ -68,6 +70,16 @@ import {
   decideGameGuideWindowAction,
   gameGuideVisibilityAfterDecision,
 } from "./game-guide-window.js";
+import {
+  applyFollowToggle,
+  applyManualHide,
+  applyManualShow,
+  decideFollowTick,
+  initialGameGuideFollowState,
+  recordUnknownTick,
+  type DipRect,
+  type GameGuideFollowState,
+} from "./game-guide-follow.js";
 import {
   installLocalContentNavigationPolicy,
   installPermissionDenyPolicy,
@@ -127,6 +139,14 @@ const systemUsage = new SystemUsageCollector();
 let providerHandshake: Awaited<ReturnType<OrchestratorProviderV01["start"]>> | null = null;
 const lastAppliedIntentSeq = new Map<string, number>();
 let shutdownStarted = false;
+
+// 游戏引导跟随(game-guide follow 切片,guidance §4):状态机与决策在
+// game-guide-follow.ts(纯函数可测);此处只持有状态、250ms 定时器与请求
+// 序号。跟随开关缺省 ON(用户裁决),渲染层持久化并经 set-following 推送,
+// Main 强制执行
+let gameGuideFollow: GameGuideFollowState = initialGameGuideFollowState;
+let gameGuideFollowTimer: ReturnType<typeof setInterval> | null = null;
+let gameGuideFollowSeq = 0;
 
 // #26 防弹兜底(用户实测退出弹「Uncaught Exception」原生框):意外异常改为
 // 诊断通道 stderr 全文留痕,不弹系统错误框——失败仍如实呈现(留痕可查),
@@ -475,17 +495,49 @@ function registerIpc(provider: OrchestratorProviderV01): void {
     return showReaderWindow(parseGuideTargetPayload(target));
   });
 
-  // 打开/聚焦游戏引导小窗(三类引导 §4 手动版 additive):只受理本地来源;
+  // 打开/聚焦游戏引导小窗(三类引导 §4 additive):只受理本地来源;
   // 窗口显隐语义在 game-guide-window.ts 决策面(纯函数可测);隐藏由渲染面
-  // 经 vua:game-guide:hide 显式发起
+  // 经 vua:game-guide:hide 显式发起。显式打开 = 清除本会话手动隐藏记录,
+  // 恢复跟随(game-guide-follow.ts applyManualShow)
   ipcMain.handle("vua:game-guide:show", (event) => {
     assertLocalSender(senderFrameUrl(event));
+    gameGuideFollow = applyManualShow(gameGuideFollow);
     return showGameGuideWindow();
   });
   ipcMain.handle("vua:game-guide:hide", (event) => {
     assertLocalSender(senderFrameUrl(event));
+    // 本会话内手动隐藏优先:当前游戏会话的窗口变化不再把它带回
+    gameGuideFollow = applyManualHide(gameGuideFollow);
     hideGameGuideWindow();
     return { visible: false };
+  });
+
+  // 跟随开关(game-guide follow 切片 additive):渲染层持久化(localStorage)
+  // 并经本通道推送,Main 强制执行——关闭即停一切自动显隐/移动,已绑定且
+  // 可见的引导立即收起,不留全局置顶窗压在无关应用上;开启只翻开关,
+  // 显隐恢复等下一个 tick 按观察决定。定时器随开关与窗口在位状态启停
+  ipcMain.handle("vua:game-guide:set-following", (event, following: unknown) => {
+    assertLocalSender(senderFrameUrl(event));
+    if (typeof following !== "boolean") throw new Error("invalid game-guide follow flag");
+    const result = applyFollowToggle(
+      gameGuideFollow,
+      following,
+      gameGuideWindow !== null && !gameGuideWindow.isDestroyed() && gameGuideWindow.isVisible(),
+    );
+    gameGuideFollow = result.next;
+    if (result.hideNow) hideGameGuideWindow();
+    if (following) ensureGameGuideFollowTimer();
+    else stopGameGuideFollowTimer();
+  });
+  // 跟随状态(只读):跟随开关 + 最近一次游戏窗口观察三态(unknown = 观察
+  // 通道未就绪/查询失败的诚实缺席,绝不伪造 ready)
+  ipcMain.handle("vua:game-guide:follow-status", (event): GameGuideFollowStatusV1 => {
+    assertLocalSender(senderFrameUrl(event));
+    return {
+      following: gameGuideFollow.followEnabled,
+      observation: gameGuideFollow.lastObservation,
+      gameForeground: gameGuideFollow.lastGameForeground,
+    };
   });
 
   // 收起覆盖层(首玩 B 切片 additive):隐藏不销毁,保留窗口与阅读状态;
@@ -979,11 +1031,12 @@ function showReaderWindow(target: GuideTargetV1 | null): { readonly visible: boo
 }
 
 /**
- * 游戏引导小窗(三类引导 §4 手动版 additive,契约 DesktopWindowApiV1.
+ * 游戏引导小窗(三类引导 §4 additive,契约 DesktopWindowApiV1.
  * showGameGuide):小型透明置顶窗——transparent + frameless + skipTaskbar +
  * hasShadow:false,360×560 可缩放,alwaysOnTop("screen-saver" 级,盖过全屏
- * 游戏)。打开永远 showInactive:不夺游戏焦点;玩家自行拖到游戏画面上
- * (窗口观察与跟随属后续切片)。隐藏走渲染面显式动作(隐藏不销毁,保留
+ * 游戏)。打开永远 showInactive:不夺游戏焦点;跟随开启时由
+ * gameGuideFollowTick 按游戏窗口观察自动落位/显隐(决策在
+ * game-guide-follow.ts)。隐藏走渲染面显式动作(隐藏不销毁,保留
  * 位置与进度),已开窗(含隐藏态)的打开 = showInactive 恢复。透明度由
  * 渲染面就地调节并持久化,不经 Main。
  */
@@ -1005,11 +1058,14 @@ function createGameGuideWindow(): void {
   tagDevelopmentWindow(win, desktopProfile);
   win.setAlwaysOnTop(true, GAME_GUIDE_WINDOW_LEVEL);
   gameGuideWindow = win;
+  // 跟随定时器随窗口创建惰性启动(跟随开启时);窗口销毁即停,绝不并跑
+  ensureGameGuideFollowTimer();
   win.once("ready-to-show", () => {
     if (!win.isDestroyed()) win.showInactive();
   });
   win.on("closed", () => {
     if (gameGuideWindow === win) gameGuideWindow = null;
+    stopGameGuideFollowTimer();
   });
   const search = `surface=${GAME_GUIDE_SURFACE_PARAM}`;
   if (rendererUrl) void win.loadURL(`${rendererUrl}?${search}`);
@@ -1037,6 +1093,106 @@ function hideGameGuideWindow(): void {
   if (gameGuideWindow !== null && !gameGuideWindow.isDestroyed() && gameGuideWindow.isVisible()) {
     gameGuideWindow.hide();
   }
+}
+
+/**
+ * 游戏窗口物理矩形 → DIP(game-guide follow 切片):provider 观察是物理
+ * 像素,setBounds 收 DIP。首选 screenToDipRect(win32;window=null = 按矩形
+ * 所在显示器换算——跟随跨显示器/DPI 变化);非 Windows 平台该 API 缺席时
+ * 按匹配显示器 scaleFactor 换算回落。本函数永不触碰游戏窗口本身。
+ */
+function gameWindowRectToDip(rect: GameWindowRectPhysicalV1): DipRect {
+  if (typeof screen.screenToDipRect === "function") {
+    const dip = screen.screenToDipRect(null, rect);
+    return { x: dip.x, y: dip.y, width: dip.width, height: dip.height };
+  }
+  const scale = screen.getDisplayMatching(rect).scaleFactor || 1;
+  return {
+    x: Math.round(rect.x / scale),
+    y: Math.round(rect.y / scale),
+    width: Math.round(rect.width / scale),
+    height: Math.round(rect.height / scale),
+  };
+}
+
+/** 跟随定时器:引导窗在位且跟随开启才运行;幂等,绝不并跑两个 */
+function ensureGameGuideFollowTimer(): void {
+  if (gameGuideFollowTimer !== null) return;
+  if (!gameGuideFollow.followEnabled) return;
+  if (gameGuideWindow === null || gameGuideWindow.isDestroyed()) return;
+  gameGuideFollowTimer = setInterval(() => {
+    void gameGuideFollowTick();
+  }, 250);
+}
+
+function stopGameGuideFollowTimer(): void {
+  if (gameGuideFollowTimer !== null) {
+    clearInterval(gameGuideFollowTimer);
+    gameGuideFollowTimer = null;
+  }
+}
+
+/**
+ * 跟随 tick(guidance §4 自动跟随):向 provider 查询 environment.
+ * observeGameWindow,决策在 game-guide-follow.ts(纯函数)。纪律:
+ * - 跟随关闭/窗口缺席 = 跳过(手动打开的窗口保持纯手动);
+ * - provider 未就绪(state ≠ ready)、应用错误(vua.game_window.*)或
+ *   响应形状违反 = recordUnknownTick 诚实缺席,本 tick 无动作——通道
+ *   打嗝绝不当作游戏缺席;
+ * - 动作接缝:show = setBounds + showInactive(永不夺焦点,唯一显示
+ *   路径);move = 仅可见时 setBounds;hide = hide();
+ * - 响应到达时重读窗口/状态(查询在途期间可能已有手动显隐)。
+ */
+async function gameGuideFollowTick(): Promise<void> {
+  const win = gameGuideWindow;
+  if (!gameGuideFollow.followEnabled || win === null || win.isDestroyed()) return;
+  const running = provider;
+  let providerReady = false;
+  try {
+    providerReady = running !== null && running.status().state === "ready";
+  } catch {
+    providerReady = false;
+  }
+  if (running === null || !providerReady) {
+    gameGuideFollow = recordUnknownTick(gameGuideFollow);
+    return;
+  }
+  gameGuideFollowSeq += 1;
+  const requestId = `game-guide-follow-${gameGuideFollowSeq}`;
+  let response: Awaited<ReturnType<OrchestratorProviderV01["invoke"]>>;
+  try {
+    response = await running.invoke({
+      contractVersion: APPLICATION_CONTRACT_VERSION,
+      requestId,
+      correlationId: requestId,
+      kind: "query",
+      method: "environment.observeGameWindow",
+      params: {},
+    });
+  } catch {
+    gameGuideFollow = recordUnknownTick(gameGuideFollow);
+    return;
+  }
+  if (!response.ok || !isGameWindowObservationResult(response.value)) {
+    gameGuideFollow = recordUnknownTick(gameGuideFollow);
+    return;
+  }
+  if (win.isDestroyed()) return;
+  const { action, next } = decideFollowTick(
+    gameGuideFollow,
+    response.value.gameWindow,
+    { visible: win.isVisible(), focused: win.isFocused() },
+    { width: GAME_GUIDE_WINDOW_WIDTH, height: GAME_GUIDE_WINDOW_HEIGHT },
+    gameWindowRectToDip,
+  );
+  gameGuideFollow = next;
+  if (action === null) return;
+  if (action.kind === "hide") {
+    win.hide();
+    return;
+  }
+  win.setBounds(action.placement);
+  if (action.kind === "show") win.showInactive();
 }
 
 async function createWindow(): Promise<void> {
@@ -1254,6 +1410,7 @@ app.on("window-all-closed", () => {
  */
 app.on("before-quit", (event) => {
   systemUsage.stop();
+  stopGameGuideFollowTimer();
   if (provider === null || shutdownStarted || provider.status().state === "stopped") return;
   event.preventDefault();
   shutdownStarted = true;

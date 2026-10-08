@@ -1,6 +1,7 @@
 import { isDeploymentCommandId, isDeploymentParams, type DeploymentPlanParams, type DeploymentExecuteParams, type DeploymentPlanResult, type DeploymentAccepted } from "./environment-deployment.js";
 import { isNetworkParams, type NetworkIntent, type NetworkResult } from "./environment-network.js";
 import { isWebsiteTestParams, type WebsiteTestParams, type WebsiteTestResult } from "./website-test.js";
+import { type GameWindowObservationResultV1 } from "./game-window.js";
 import { isDownloadEventV01 } from "./download-events.js";
 import { isCatalogSyncPageRequestV01, type CatalogSyncPageRequestV01 } from "./catalog-sync.js";
 import { isCatalogSyncParamsV03, type CatalogSyncBeginV03, type CatalogSyncPageV03, type CatalogSyncFinishV03, type CatalogSyncStatusV03 } from "./catalog-sync-v03.js";
@@ -2812,6 +2813,7 @@ export interface DeploymentExecuteCommand extends ApplicationRequestBaseV01 { re
 export type ApplicationRequestV01 =
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.checkNetwork"; readonly params: { readonly intent: NetworkIntent } })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.testWebsites"; readonly params: WebsiteTestParams })
+  | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.observeGameWindow"; readonly params: Readonly<Record<string, never>> })
   | DeploymentPlanQuery
   | DeploymentExecuteCommand
   | ApplicationSnapshotQueryV01
@@ -2974,6 +2976,7 @@ export interface DemoTaskStartedV01 {
 export type ApplicationSuccessValueV01 =
   | NetworkResult
   | WebsiteTestResult
+  | GameWindowObservationResultV1
   | LibraryListV01 | LibraryProductFilesV01
   | RecipeDraftListV01 | RecipeDraftReadV01
   | LibraryRemovalPreviewV01 | LibraryRemovalSnapshotV01 | RecipeDraftSelectionStatusV01
@@ -3192,6 +3195,10 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
   if (value.method === "environment.testWebsites") {
     return value.kind === "query" && hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
       && isWebsiteTestParams(value.params);
+  }
+  if (value.kind === "query" && value.method === "environment.observeGameWindow") {
+    return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
+      && hasExactKeys(value.params, []);
   }
   if (value.method === "environment.planDeployment" || value.method === "environment.executeDeployment") {
     const execute = value.method === "environment.executeDeployment";

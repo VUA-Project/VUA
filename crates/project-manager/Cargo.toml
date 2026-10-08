@@ -43,6 +43,11 @@ windows-sys = { version = "=0.61.2", features = [
     "Win32_Security_WinTrust",
     "Win32_System_Diagnostics_ToolHelp",
     "Win32_System_Threading",
+    # Game-window observation (game_window): top-level window enumeration
+    # and window state getters, plus the one-time DPI-awareness opt-in so
+    # GetWindowRect reports physical pixels.
+    "Win32_UI_HiDpi",
+    "Win32_UI_WindowsAndMessaging",
 ] }
 
 [features]

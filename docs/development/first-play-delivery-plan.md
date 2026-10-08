@@ -1,8 +1,8 @@
 # First play release: implementation checkpoint and remaining work
 
-> Document version: 1.1.0
+> Document version: 1.2.0
 > Status: Accepted
-> Updated: 2026-10-07
+> Updated: 2026-10-08
 > Scope: Desktop play, PICO 4 Pro USB/Wi-Fi, optional eye tracking and three guidance contexts
 
 For people: this release takes a player from missing play software to playing VRChat, with
@@ -30,7 +30,8 @@ The [broader N1 plan](n1-delivery-plan.md) retains later device and creator rout
 Subsequent implementation: `aa5ada4c` adds the ordinary reader and fixes pre-first-frame user
 scroll cancellation; `acef54a0` adds the six-step anchored app tour; `72a22e15` adds the manual
 game guide with step confirmation/skip and persistent 50% default opacity. Task status keeps a
-separate entry. Automatic VRChat-window following and a checked tutorial-world list remain.
+separate entry. Automatic VRChat-window following has since landed (§2.C); its real-machine
+acceptance and a checked tutorial-world list remain.
 
 `5ff2dfd1` replaces the main network form with VRChat/Steam/GitHub test cards, custom HTTPS
 destinations and individual/all tests. Regional help remains collapsed and region-aware.
@@ -81,24 +82,27 @@ The tour must not need a general tutorial service or an AMF workflow to operate.
 ### C. VRChat game guide
 
 The manual edition is implemented in `72a22e15`: separate transparent window, manual positioning,
-hide/reopen, confirmation/skip and independent persisted progress/opacity. It currently stays
-globally on top while open. The observer and automatic lifecycle below are next-PR work, not
-completed acceptance. Tutorial-world guidance currently explains in-game search; curated world
-identifiers await the author's verification.
+hide/reopen, confirmation/skip and independent persisted progress/opacity. The game-window
+observer and automatic lifecycle landed on 2026-10-08: a versioned read-only provider query
+`environment.observeGameWindow` (`vua.game-window-observe/v0.1`) reports absent/waiting/ready
+window state, and Electron Main runs the follow loop (geometry following with DPI conversion,
+focus-free `showInactive()` showing, hiding on minimize/exit/app-switch, session-keyed manual
+hide, and a Main-enforced follow toggle persisted renderer-side), with the toggle and an honest
+status line in all four locales. Tutorial-world guidance currently explains in-game search;
+curated world identifiers await the author's verification.
 
-Add the game-window observer and a dedicated short-step guide. Implement the accepted defaults
-and lifecycle from [guidance architecture](../architecture/guidance.md#4-vrchat-game-guide):
-following enabled, 50% transparency, persisted preferences, game-bound positioning, background/
-minimize hiding, restoration without focus stealing, and manual hide taking precedence.
+The delivered behavior implements the accepted defaults and lifecycle from
+[guidance architecture](../architecture/guidance.md#4-vrchat-game-guide):
+following enabled by default, 50% transparency, persisted preferences, game-bound positioning,
+background/minimize hiding, restoration without focus stealing, and manual hide taking
+precedence. Workspace and contract tests plus a local fake-window smoke cover the loop.
 
-Reuse suitable instructions for controls, microphone, Personal Space and Allow Untrusted URLs;
-let the player confirm or skip. Prepare a small checked tutorial-world list by learning language,
-with a local-guide route when no suitable world is listed. No game-account session is needed.
-
-Exercise the actual VRChat window: absent game, startup, movement/resize, minimize/restore,
-Alt-Tab, clicking guide controls, explicit hide/reopen, exit/relaunch and monitor/DPI changes.
-Verify readable default transparency and independent progress in all three contexts. This
-desktop-window feature does not require a native headset overlay.
+Remaining work: prepare a small checked tutorial-world list by learning language, with a
+local-guide route when no suitable world is listed; no game-account session is needed. Remaining
+acceptance: exercise the actual VRChat window — absent game, startup, movement/resize,
+minimize/restore, Alt-Tab, clicking guide controls, explicit hide/reopen, exit/relaunch and
+monitor/DPI changes. Verify readable default transparency and independent progress in all three
+contexts. This desktop-window feature does not require a native headset overlay.
 
 ## 3. Finish the usable play paths
 
@@ -168,5 +172,6 @@ integration, not a substitute for N5's own review and acceptance.
 
 ## Document changelog
 
+- 1.2.0 (2026-10-08): record the delivered game-window observer and automatic game-guide following; real-machine acceptance and the curated tutorial-world list remain.
 - 1.1.0 (2026-10-07): record the reader, app tour, manual game guide, website cards and brand mark in PR #61; retain automatic following and play/release completion for subsequent work.
 - 1.0.0 (2026-10-05): record the completed ZIP/network/A/B/profile slices, prioritize three guidance contexts and enumerate the remaining play/release work separately from N5.

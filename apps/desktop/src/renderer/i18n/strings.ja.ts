@@ -360,6 +360,14 @@ demoTaskTitle: "デモタスク",
     title: "ゲームガイド",
     hide: "隠す",
     opacityLabel: "透明度",
+    /** VRChat ウィンドウ追従スイッチ(guidance §4、初期値オン):描画層が
+     *  永続化し、Main が強制する */
+    followLabel: "VRChat ウィンドウに追従",
+    /** 追従ステータスの正直な提示(観測が ready 以外のときだけ表示):
+     *  ゲーム不在 / ウィンドウ未起動 / 観測チャネル不可用の三態 */
+    followStatusAbsent: "VRChat ウィンドウが見つかりません —— ゲームが起動するとガイドが自動で表示されます。",
+    followStatusWaiting: "VRChat 起動中 —— ゲームウィンドウを待っています。",
+    followStatusUnknown: "ゲームウィンドウの状態を取得できません —— 自動追従は一時停止中です。手動での表示/隠すは使えます。",
     confirm: "わかった",
     skip: "スキップ",
     restart: "最初から",

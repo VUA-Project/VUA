@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Game-window observe v0.1 request params",
+  "description": "Read-only VRChat game-window observation (environment.observeGameWindow): ordinary Win32 window APIs only — no client injection, no game-memory reads, no settings edits. Params are an empty closed set. The observation reports absent (no vrchat.exe process), waiting (process without a usable visible top-level window), or ready (exactly one selected window fact); state and window are consistent by construction (ready <=> non-null window). rectPhysical is physical pixels: the provider opts into per-monitor DPI awareness v2 before the first enumeration.",
+  "type": "object",
+  "additionalProperties": false,
+  "$defs": {
+    "rectPhysical": {
+      "type": "object", "additionalProperties": false,
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
+        "y": { "type": "integer", "minimum": -2147483648, "maximum": 2147483647 },
+        "width": { "type": "integer", "minimum": 1, "maximum": 2147483647 },
+        "height": { "type": "integer", "minimum": 1, "maximum": 2147483647 }
+      }
+    },
+    "windowFacts": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sessionId", "rectPhysical", "minimized", "foreground"],
+      "properties": {
+        "sessionId": {
+          "type": "string", "minLength": 1, "pattern": "^[0-9]+:[0-9]+$",
+          "description": "Decimal pid + ':' + decimal hwnd; changes when the game relaunches or its window is recreated."
+        },
+        "rectPhysical": { "$ref": "#/$defs/rectPhysical" },
+        "minimized": { "type": "boolean" },
+        "foreground": {
+          "type": "boolean",
+          "description": "The current foreground window belongs to ANY vrchat.exe pid (game context active, not necessarily the selected window itself)."
+        }
+      }
+    },
+    "observation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schemaVersion", "capturedAt", "state", "window"],
+      "properties": {
+        "schemaVersion": { "const": "vua.game-window-observe/v0.1" },
+        "capturedAt": { "type": "string", "minLength": 1 },
+        "state": { "enum": ["absent", "waiting", "ready"] },
+        "window": { "type": ["object", "null"] }
+      },
+      "oneOf": [
+        { "properties": { "state": { "enum": ["absent", "waiting"] }, "window": { "type": "null" } } },
+        { "properties": { "state": { "const": "ready" }, "window": { "$ref": "#/$defs/windowFacts" } } }
+      ]
+    },
+    "result": {
+      "type": "object", "additionalProperties": false, "required": ["gameWindow"],
+      "properties": { "gameWindow": { "$ref": "#/$defs/observation" } }
+    }
+  }
+}

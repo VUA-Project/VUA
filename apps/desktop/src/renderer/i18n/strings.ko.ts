@@ -360,6 +360,14 @@ demoTaskTitle: "데모 작업",
     title: "게임 가이드",
     hide: "숨기기",
     opacityLabel: "투명도",
+    /** VRChat 창 따라가기 스위치(guidance §4, 기본값 켜짐): 렌더러가
+     *  저장하고 Main이 강제한다 */
+    followLabel: "VRChat 창 따라가기",
+    /** 따라가기 상태의 정직한 안내(관측이 ready가 아닐 때만 표시):
+     *  게임 부재 / 창 준비 중 / 관측 채널 불가의 세 상태 */
+    followStatusAbsent: "VRChat 창을 찾을 수 없습니다 — 게임이 실행되면 가이드가 자동으로 나타납니다.",
+    followStatusWaiting: "VRChat 시작 중 — 게임 창을 기다리는 중입니다.",
+    followStatusUnknown: "게임 창 상태를 확인할 수 없습니다 — 자동 따라가기는 잠시 멈췄습니다. 수동 열기/숨기기는 그대로 사용할 수 있습니다.",
     confirm: "확인했어요",
     skip: "건너뛰기",
     restart: "처음부터",
