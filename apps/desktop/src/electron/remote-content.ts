@@ -235,7 +235,7 @@ export class RemoteContentManager {
    * status/body/finalUrl 文本——凭据与 Cookie 永不出分区边界。来源守卫
    * 沿用允许清单：清单外 URL 直接抛错，不发起请求。
    */
-  async fetchWithSession(url: string): Promise<{
+  async fetchWithSession(url: string, signal?: AbortSignal): Promise<{
     readonly status: number;
     readonly body: string;
     readonly finalUrl: string;
@@ -245,6 +245,7 @@ export class RemoteContentManager {
       throw new Error("origin_not_allowed");
     }
     const response = await this.#session.fetch(url, {
+      ...(signal === undefined ? {} : { signal }),
       redirect: "follow",
       headers: { accept: "text/html,application/xhtml+xml" },
     });

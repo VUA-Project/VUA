@@ -1,0 +1,7 @@
+{
+  "method": "library.productFiles",
+  "params": {
+    "schemaVersion": "0.1",
+    "productId": "booth:90"
+  }
+}

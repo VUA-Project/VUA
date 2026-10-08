@@ -1,316 +1,142 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  CATALOG_SYNC_DEFAULT_START_URL,
-  isSignInPage,
-  startCatalogSync,
-  type CatalogSyncFetch,
-  type CatalogSyncInvoke,
-  type CatalogSyncPageResultV01,
-} from "./catalog-sync.js";
+import type { CatalogSyncPageV03, CatalogSyncPageResultV03, CatalogSyncSnapshotV03 } from "@vua/contracts";
+import { CATALOG_SYNC_DEFAULT_START_URL as BOUGHT, isSignInPage, startCatalogSync, type CatalogSyncRunnerOptions } from "./catalog-sync.js";
 
-function pageResult(overrides: Partial<CatalogSyncPageResultV01>): CatalogSyncPageResultV01 {
-  return {
-    schemaVersion: "0.1",
-    sourceUrl: CATALOG_SYNC_DEFAULT_START_URL,
-    parsedCount: 2,
-    upsertedCount: 2,
-    rejectedItems: [],
-    nextPageUrl: null,
-    ...overrides,
+const GIFTS = "https://accounts.booth.pm/library/gifts?page=1";
+const FREE = "https://accounts.booth.pm/library/free_downloads?page=1";
+const segments = [{ startUrl: BOUGHT, libraryType: "bought" }, { startUrl: GIFTS, libraryType: "gifts" }, { startUrl: FREE, libraryType: "free_downloads" }] as const;
+
+/** Synthetic provider receipts. These tests exercise transport, never a real session. */
+function harness(page: (request: CatalogSyncPageV03) => unknown = (request) => receipt(request)) {
+  const calls: string[] = [];
+  const state: CatalogSyncSnapshotV03 = { schemaVersion: "0.3", runId: "catalog-sync-test", taskId: "catalog-sync-test", revision: 3,
+    state: "running", cancellationRequested: false, recoveryDisposition: "none", libraryTypes: ["bought"], completedLibraryTypes: [],
+    pages: 0, parsedCount: 0, upsertedCount: 0, rejectedCount: 0, nextPageUrl: null, errorCode: null };
+  let current = state;
+  const options: CatalogSyncRunnerOptions = {
+    pageDelayMs: 0,
+    begin: async (request) => {
+      calls.push("begin");
+      current = { ...current, runId: request.runId, taskId: request.runId, libraryTypes: request.libraryTypes };
+      return { ok: true, value: current };
+    },
+    fetch: async (url) => { calls.push(`fetch:${url}`); return { status: 200, body: "<synthetic-library/>", finalUrl: url }; },
+    invoke: async (request) => {
+      calls.push(`page:${request.libraryType}:${request.pageNumber}`);
+      const value = page(request) as CatalogSyncPageResultV03;
+      if (value.nextPageUrl !== undefined && value.parsedCount !== undefined) {
+        current = { ...current, pages: current.pages + 1, parsedCount: current.parsedCount + value.parsedCount,
+          upsertedCount: current.upsertedCount + value.upsertedCount, rejectedCount: current.rejectedCount + value.rejectedItems.length,
+          completedLibraryTypes: value.nextPageUrl === null ? [...current.completedLibraryTypes, request.libraryType] : current.completedLibraryTypes,
+          nextPageUrl: value.nextPageUrl };
+      }
+      return { ok: true, value };
+    },
+    finish: async (request) => {
+      calls.push(`finish:${request.outcome}:${request.errorCode ?? ""}`);
+      current = { ...current, revision: current.revision + 1,
+        state: request.outcome === "cancelled" ? "cancelled" : request.outcome === "completed" ? (current.rejectedCount > 0 ? "succeeded_with_warnings" : "succeeded") : "failed" };
+      return { ok: true, value: current };
+    },
   };
+  return { calls, options };
+}
+function receipt(request: CatalogSyncPageV03, extra: Partial<CatalogSyncPageResultV03> = {}): CatalogSyncPageResultV03 {
+  return { schemaVersion: "0.3", sourceUrl: request.sourceUrl, parsedCount: 2, upsertedCount: 2, rejectedItems: [], nextPageUrl: null, cancellationRequested: false, ...extra };
 }
 
-function makeFetch(pages: Record<string, { status?: number; body?: string }>): {
-  fetch: CatalogSyncFetch;
-  urls: string[];
-} {
-  const urls: string[] = [];
-  const fetch: CatalogSyncFetch = async (url) => {
-    urls.push(url);
-    const page = pages[url];
-    if (page === undefined) throw new Error(`unexpected fetch ${url}`);
-    return {
-      status: page.status ?? 200,
-      body: page.body ?? "<html></html>",
-      finalUrl: url,
-    };
-  };
-  return { fetch, urls };
-}
-
-function okInvoke(result: CatalogSyncPageResultV01): CatalogSyncInvoke {
-  return async () => ({ ok: true, value: result });
-}
-
-const noDelay = { pageDelayMs: 0, sleep: async () => {} };
-
-describe("isSignInPage", () => {
-  it("recognizes the structural sign-in markers, not locale text", () => {
-    // 真机取证 2026-10-05:登录页核心结构 = pixiv 认证表单 + 密码登录帮助链接
-    expect(isSignInPage('<form class="button_to" method="post" action="/users/auth/pixiv">')).toBe(true);
-    expect(isSignInPage('<a href="https://booth.pm/users/sign_in_by_password">help</a>')).toBe(true);
-    // 真实库页语法不含这些路径
-    expect(isSignInPage('<a href="https://booth.pm/zh-cn/items/7463144">item</a>')).toBe(false);
-    expect(isSignInPage('<a href="https://booth.pm/downloadables/880001">Download</a>')).toBe(false);
-    expect(isSignInPage("<html><body>library</body></html>")).toBe(false);
-    expect(isSignInPage("")).toBe(false);
+describe("catalog sync v0.3 transport", () => {
+  it("registers the task before any fetch and finalizes once after all three libraries", async () => {
+    const h = harness((request) => receipt(request, { nextPageUrl: request.pageNumber === 1 ? "/library?page=2" : null }));
+    const result = await startCatalogSync(h.options, { segments }).result;
+    expect(result).toMatchObject({ status: "completed", pages: 4, upsertedCount: 8 });
+    expect(h.calls[0]).toBe("begin");
+    expect(h.calls.filter((call) => call.startsWith("page:"))).toEqual(["page:bought:1", "page:bought:2", "page:gifts:3", "page:free_downloads:4"]);
+    expect(h.calls.filter((call) => call.startsWith("finish:"))).toEqual(["finish:completed:"]);
   });
-});
-
-describe("startCatalogSync", () => {
-  it("stops with sign_in_redirect before ingest when the session is half-logged-in", async () => {
-    // 真机 2026-10-05:cookie 在、登录未完成的会话访问库页,HTTP 200 且
-    // 内容是登录页(finalUrl 恒空,只能按内容判定)——不投递解析
-    // (not_a_library_page 会掩盖成因),以专码停跑
-    const fetch: CatalogSyncFetch = async () => ({
-      status: 200,
-      body: '<html><head><title>Sign in - BOOTH</title></head>'
-        + '<body><form class="button_to" method="post" action="/users/auth/pixiv"></form></body></html>',
-      finalUrl: "",
-    });
-    const invoke: CatalogSyncInvoke = async () => {
-      throw new Error("ingest must not be called for a sign-in redirect");
-    };
-    const run = startCatalogSync({ fetch, invoke, ...noDelay });
-    const result = await run.result;
-    expect(result.status).toBe("failed");
+  it("never fetches when task registration fails", async () => {
+    const h = harness();
+    const result = await startCatalogSync({ ...h.options, begin: async () => ({ ok: false, error: { code: "vua.catalog.store_failed" } }) }).result;
+    expect(result).toMatchObject({ status: "failed", pages: 0 });
+    expect(h.calls).toEqual([]);
+  });
+  it("records first-fetch failure, including zero completed pages", async () => {
+    const h = harness();
+    const result = await startCatalogSync({ ...h.options, fetch: async () => { throw new Error("synthetic network failure"); } }).result;
+    expect(result).toMatchObject({ status: "failed", pages: 0, error: { code: "fetch_error" } });
+    expect(h.calls).toEqual(["begin", "finish:failed:fetch_error"]);
+  });
+  it("keeps completed-page counts when a later library fails", async () => {
+    const h = harness();
+    const result = await startCatalogSync({ ...h.options, fetch: async (url, signal) => url === GIFTS ? { status: 503, body: "", finalUrl: url } : h.options.fetch(url, signal) }, { segments }).result;
+    expect(result).toMatchObject({ status: "failed", pages: 1, upsertedCount: 2 });
+    expect(h.calls.at(-1)).toBe("finish:failed:http_status");
+    expect(h.calls.some((call) => call.includes(FREE))).toBe(false);
+  });
+  it("reports an expired sign-in session without ingesting its login page", async () => {
+    const h = harness();
+    const result = await startCatalogSync({ ...h.options, fetch: async (url) => ({ status: 200, body: '<form action="/users/auth/pixiv"></form>', finalUrl: url }) }).result;
     expect(result.error?.code).toBe("sign_in_redirect");
-    expect(result.pages).toBe(0);
+    expect(h.calls).toEqual(["begin", "finish:failed:sign_in_redirect"]);
   });
-
-  it("walks pages until the observed last page and accumulates counts", async () => {
-    const { fetch, urls } = makeFetch({
-      [CATALOG_SYNC_DEFAULT_START_URL]: { body: "<page1/>" },
-      "https://accounts.booth.pm/library?page=2": { body: "<page2/>" },
-    });
-    let call = 0;
-    const results = [
-      pageResult({ sourceUrl: CATALOG_SYNC_DEFAULT_START_URL, nextPageUrl: "https://accounts.booth.pm/library?page=2" }),
-      pageResult({ sourceUrl: "https://accounts.booth.pm/library?page=2", parsedCount: 3, upsertedCount: 1, nextPageUrl: null }),
-    ];
-    const invoke: CatalogSyncInvoke = async (params) => {
-      call += 1;
-      expect(params.schemaVersion).toBe("0.2");
-      expect(params.html).toBe(call === 1 ? "<page1/>" : "<page2/>");
-      expect(params.pageNumber).toBe(call);
-      expect(params.runId).toMatch(/^catalog-sync-/);
-      expect(params.fetchedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-      return { ok: true, value: results[call - 1] };
-    };
-
-    const run = startCatalogSync({ fetch, invoke, ...noDelay });
-    const result = await run.result;
-
-    expect(result.status).toBe("completed");
-    expect(result.pages).toBe(2);
-    expect(result.parsedCount).toBe(5);
-    expect(result.upsertedCount).toBe(3);
-    expect(result.nextPageUrl).toBeNull();
-    expect(urls).toEqual([
-      CATALOG_SYNC_DEFAULT_START_URL,
-      "https://accounts.booth.pm/library?page=2",
-    ]);
+  it("rejects a malformed page receipt instead of treating missing nextPageUrl as success", async () => {
+    const h = harness(() => ({ schemaVersion: "0.3" }));
+    expect(await startCatalogSync(h.options).result).toMatchObject({ status: "failed", error: { code: "invalid_receipt" } });
+    expect(h.calls.at(-1)).toBe("finish:failed:invalid_receipt");
   });
-
-  it("respects the injected start url and run id", async () => {
-    const { fetch } = makeFetch({ "https://booth.pm/ja/library?page=3": {} });
-    const invoke = okInvoke(pageResult({ nextPageUrl: null }));
-    const run = startCatalogSync(
-      { fetch, invoke, ...noDelay },
-      { runId: "sync-42", startUrl: "https://booth.pm/ja/library?page=3" },
-    );
-    const seen: string[] = [];
-    const spyingInvoke: CatalogSyncInvoke = async (params) => {
-      seen.push(params.runId ?? "");
-      return invoke(params);
-    };
-    await startCatalogSync(
-      { fetch, invoke: spyingInvoke, ...noDelay },
-      { runId: "sync-42", startUrl: "https://booth.pm/ja/library?page=3" },
-    ).result;
-    expect(seen).toEqual(["sync-42"]);
-    expect(await run.result.then((r) => r.runId)).toBe("sync-42");
+  it("stops a pagination loop before requesting the same URL again", async () => {
+    const h = harness((request) => receipt(request, { nextPageUrl: BOUGHT }));
+    expect(await startCatalogSync(h.options).result).toMatchObject({ status: "failed", pages: 1, error: { code: "pagination_loop" } });
+    expect(h.calls.filter((call) => call.startsWith("fetch:"))).toHaveLength(1);
   });
-
-  it("stops with page_limit_reached at the cap and reports the unfetched next page", async () => {
-    const { fetch } = makeFetch({
-      [CATALOG_SYNC_DEFAULT_START_URL]: {},
-      "https://accounts.booth.pm/library?page=2": {},
-    });
-    const invoke = okInvoke(pageResult({ nextPageUrl: "https://accounts.booth.pm/library?page=2" }));
-    const result = await startCatalogSync({ fetch, invoke, maxPages: 2, ...noDelay }).result;
-    expect(result.status).toBe("page_limit_reached");
-    expect(result.pages).toBe(2);
-    expect(result.nextPageUrl).toBe("https://accounts.booth.pm/library?page=2");
+  it.each(["https://example.invalid/library?page=2", GIFTS, "https://accounts.booth.pm/library?page=2#fragment", "//example.invalid/library?page=2"])("rejects continuation outside the selected library: %s", async (next) => {
+    const h = harness((request) => receipt(request, { nextPageUrl: next }));
+    expect(await startCatalogSync(h.options).result).toMatchObject({ status: "failed", pages: 1, error: { code: "next_page_url_not_allowed" } });
   });
-
-  it("fails honestly on a non-200 page", async () => {
-    const { fetch } = makeFetch({ [CATALOG_SYNC_DEFAULT_START_URL]: { status: 404 } });
-    const invoke = okInvoke(pageResult({}));
-    const result = await startCatalogSync({ fetch, invoke, ...noDelay }).result;
-    expect(result.status).toBe("failed");
-    expect(result.error?.code).toBe("http_status");
-    expect(result.pages).toBe(0);
+  it("records the page limit as incomplete", async () => {
+    const h = harness((request) => receipt(request, { nextPageUrl: "/library?page=2" }));
+    expect(await startCatalogSync({ ...h.options, maxPages: 1 }).result).toMatchObject({ status: "page_limit_reached", pages: 1 });
+    expect(h.calls.at(-1)).toBe("finish:page_limit_reached:page_limit_reached");
   });
-
-  it("fails honestly when the provider rejects the page", async () => {
-    const { fetch } = makeFetch({ [CATALOG_SYNC_DEFAULT_START_URL]: {} });
-    const invoke: CatalogSyncInvoke = async () => ({
-      ok: false,
-      error: { code: "vua.catalog.not_a_library_page" },
-    });
-    const result = await startCatalogSync({ fetch, invoke, ...noDelay }).result;
-    expect(result.status).toBe("failed");
-    expect(result.error?.code).toBe("vua.catalog.not_a_library_page");
-  });
-
-  it("fails honestly when fetch throws", async () => {
-    const fetch: CatalogSyncFetch = async () => {
-      throw new Error("network down");
-    };
-    const invoke = okInvoke(pageResult({}));
-    const result = await startCatalogSync({ fetch, invoke, ...noDelay }).result;
-    expect(result.status).toBe("failed");
-    expect(result.error?.code).toBe("fetch_error");
-  });
-
-  it("treats a receipt without nextPageUrl as the last page (no guessing)", async () => {
-    const { fetch } = makeFetch({ [CATALOG_SYNC_DEFAULT_START_URL]: {} });
-    const invoke: CatalogSyncInvoke = async () => ({ ok: true, value: { schemaVersion: "0.1" } });
-    const result = await startCatalogSync({ fetch, invoke, ...noDelay }).result;
-    expect(result.status).toBe("completed");
-    expect(result.pages).toBe(1);
-    expect(result.nextPageUrl).toBeNull();
-  });
-
-  it("aborts between pages on stop() and reports aborted with partial counts", async () => {
-    const { fetch } = makeFetch({
-      [CATALOG_SYNC_DEFAULT_START_URL]: {},
-      "https://accounts.booth.pm/library?page=2": {},
-    });
-    const invoke = okInvoke(pageResult({ nextPageUrl: "https://accounts.booth.pm/library?page=2" }));
-    let gate: (() => void) | null = null;
-    const sleep = () =>
-      new Promise<void>((resolve) => {
-        gate = resolve;
-      });
-    const run = startCatalogSync({ fetch, invoke, pageDelayMs: 0, sleep });
-    const settled = run.result.then((result) => result);
-    // 等第一页完成进入页间等待后停止
-    await vi.waitFor(() => expect(gate).not.toBeNull());
+  it("aborts an in-flight fetch and records confirmed cancellation", async () => {
+    const h = harness();
+    let started = false;
+    const run = startCatalogSync({ ...h.options, fetch: (_url, signal) => new Promise((_resolve, reject) => {
+      started = true; signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+    }) });
+    await vi.waitFor(() => expect(started).toBe(true));
     run.stop();
-    gate?.();
-    const result = await settled;
-    expect(result.status).toBe("aborted");
-    expect(result.pages).toBe(1);
-    expect(result.parsedCount).toBe(2);
+    expect(await run.result).toMatchObject({ status: "aborted", pages: 0 });
+    expect(h.calls.at(-1)).toBe("finish:cancelled:");
   });
-
-  it("paces pages with the configured delay", async () => {
-    const { fetch } = makeFetch({
-      [CATALOG_SYNC_DEFAULT_START_URL]: {},
-      "https://accounts.booth.pm/library?page=2": {},
-    });
-    const invoke = okInvoke(pageResult({ nextPageUrl: "https://accounts.booth.pm/library?page=2" }));
-    const sleeps: number[] = [];
-    await startCatalogSync({
-      fetch,
-      invoke,
-      pageDelayMs: 25,
-      maxPages: 2,
-      sleep: async (ms) => {
-        sleeps.push(ms);
-      },
-    }).result;
-    expect(sleeps).toEqual([25]);
+  it("cancels during the pacing interval without fetching the next page", async () => {
+    const h = harness((request) => receipt(request, { nextPageUrl: "/library?page=2" }));
+    const run = startCatalogSync({ ...h.options, pageDelayMs: 10_000 });
+    await vi.waitFor(() => expect(h.calls).toContain("page:bought:1"));
+    run.stop();
+    expect(await run.result).toMatchObject({ status: "aborted", pages: 1 });
+    expect(h.calls.filter((call) => call.startsWith("fetch:"))).toHaveLength(1);
   });
-
-  it("defaults to the canonical library start url", async () => {
-    const { fetch, urls } = makeFetch({ [CATALOG_SYNC_DEFAULT_START_URL]: {} });
-    const invoke = okInvoke(pageResult({}));
-    await startCatalogSync({ fetch, invoke, ...noDelay }).result;
-    expect(urls).toEqual([CATALOG_SYNC_DEFAULT_START_URL]);
+  it("honors cancellation reported by the task authority", async () => {
+    const h = harness((request) => receipt(request, { cancellationRequested: true }));
+    expect(await startCatalogSync(h.options).result).toMatchObject({ status: "aborted", pages: 1 });
+  });
+  it("does not claim success when final-result persistence fails", async () => {
+    const h = harness();
+    expect(await startCatalogSync({ ...h.options, finish: async () => ({ ok: false, error: { code: "vua.catalog.store_failed" } }) }).result)
+      .toMatchObject({ status: "failed", pages: 1, error: { code: "vua.catalog.store_failed" } });
+  });
+  it("keeps rejection counts from an early page after later pages succeed", async () => {
+    const h = harness((request) => receipt(request, { upsertedCount: request.pageNumber === 1 ? 1 : 2,
+      rejectedItems: request.pageNumber === 1 ? [{ index: 0, code: "synthetic_rejection", reason: "synthetic rejection" }] : [] }));
+    expect(await startCatalogSync(h.options, { segments }).result).toMatchObject({ status: "completed", pages: 3, upsertedCount: 5, rejectedCount: 1 });
   });
 });
 
-describe("multi-segment sync (all libraries, 2026-10-05)", () => {
-  it("walks all segments serially with per-segment libraryType and pacing", async () => {
-    const BOUGHT = CATALOG_SYNC_DEFAULT_START_URL;
-    const GIFTS = "https://accounts.booth.pm/library/gifts?page=1";
-    const FREE = "https://accounts.booth.pm/library/free_downloads?page=1";
-    const { fetch, urls } = makeFetch({
-      [BOUGHT]: { body: "<bought1/>" },
-      [GIFTS]: { body: "<gifts1/>" },
-      [FREE]: { body: "<free1/>" },
-    });
-    const invoked: Array<{ libraryType: string; html: string }> = [];
-    const invoke: CatalogSyncInvoke = async (params) => {
-      invoked.push({ libraryType: params.libraryType ?? "(none)", html: params.html });
-      return { ok: true, value: pageResult({ sourceUrl: params.sourceUrl, nextPageUrl: null }) };
-    };
-    const sleeps: number[] = [];
-
-    const run = startCatalogSync(
-      { fetch, invoke, pageDelayMs: 1500, sleep: async (ms) => { sleeps.push(ms); } },
-      {
-        segments: [
-          { startUrl: BOUGHT, libraryType: "bought" },
-          { startUrl: GIFTS, libraryType: "gifts" },
-          { startUrl: FREE, libraryType: "free_downloads" },
-        ],
-      },
-    );
-    const result = await run.result;
-
-    expect(result.status).toBe("completed");
-    expect(result.pages).toBe(3);
-    expect(urls).toEqual([BOUGHT, GIFTS, FREE]);
-    expect(invoked.map((entry) => entry.libraryType)).toEqual(["bought", "gifts", "free_downloads"]);
-    // 礼貌限速:首页不等待,段间/页间都等待(3 页 = 2 次间隔)
-    expect(sleeps).toEqual([1500, 1500]);
-  });
-
-  it("empty segments fall back to the single bought start", async () => {
-    const { fetch, urls } = makeFetch({
-      [CATALOG_SYNC_DEFAULT_START_URL]: { body: "<page1/>" },
-    });
-    const invoke: CatalogSyncInvoke = async () => ({
-      ok: true,
-      value: pageResult({ nextPageUrl: null }),
-    });
-    const run = startCatalogSync({ fetch, invoke, ...noDelay }, { segments: [] });
-    const result = await run.result;
-    expect(result.status).toBe("completed");
-    expect(urls).toEqual([CATALOG_SYNC_DEFAULT_START_URL]);
-  });
-});
-
-describe("relative next-page continuation (real library grammar)", () => {
-  it("resolves a relative rel=next href against the current page before fetching", async () => {
-    const { fetch, urls } = makeFetch({
-      "https://accounts.booth.pm/library?page=1": { body: "<page1/>" },
-      "https://accounts.booth.pm/library?page=2": { body: "<page2/>" },
-    });
-    let call = 0;
-    const results = [
-      pageResult({ nextPageUrl: "/library?page=2" }),
-      pageResult({ nextPageUrl: null }),
-    ];
-    const invoke: CatalogSyncInvoke = async () => ({ ok: true, value: results[call++] });
-    const result = await startCatalogSync({ fetch, invoke, ...noDelay }).result;
-    expect(result.status).toBe("completed");
-    expect(result.pages).toBe(2);
-    expect(urls).toEqual([
-      "https://accounts.booth.pm/library?page=1",
-      "https://accounts.booth.pm/library?page=2",
-    ]);
-  });
-
-  it("fails honestly when the next href cannot be resolved", async () => {
-    const { fetch } = makeFetch({ "https://accounts.booth.pm/library?page=1": {} });
-    const invoke = okInvoke(pageResult({ nextPageUrl: "http://[invalid" }));
-    const result = await startCatalogSync({ fetch, invoke, ...noDelay }).result;
-    expect(result.status).toBe("failed");
-    expect(result.error?.code).toBe("next_page_url_unresolvable");
+describe("sign-in detection", () => {
+  it("uses login-page structure rather than translated copy", () => {
+    expect(isSignInPage('<form action="/users/auth/pixiv"></form>')).toBe(true);
+    expect(isSignInPage('<a href="/users/sign_in_by_password">help</a>')).toBe(true);
+    expect(isSignInPage('<a href="https://synthetic.booth.pm/items/901">Synthetic</a>')).toBe(false);
   });
 });

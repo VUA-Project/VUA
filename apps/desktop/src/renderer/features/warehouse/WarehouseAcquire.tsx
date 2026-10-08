@@ -96,6 +96,7 @@ export function ArtifactCard({
       role="listitem"
       tabIndex={0}
       onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           onOpen();
@@ -120,6 +121,7 @@ export function ArtifactCard({
           <Badge tone={stateTone(artifact.state)}>{copy.verdict[artifact.state]}</Badge>
           <Badge tone="neutral">{copy.role[artifact.role]}</Badge>
         </div>
+        <Button variant="subtle" aria-label={cloudCopy.removeFiles.actions} aria-haspopup="menu" onClick={(event) => { event.stopPropagation(); onMenu(event); }}>⋯</Button>
       </div>
     </article>
   );

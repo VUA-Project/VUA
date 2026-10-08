@@ -57,7 +57,7 @@ fn seed_product(store: &BdlStore, id: &str) {
 #[test]
 fn fresh_store_is_v04_with_empty_downloadables_read() {
     let store = BdlStore::open_in_memory().unwrap();
-    assert_eq!(vua_bdl_store::BDL_FORMAT_VERSION, "0.4");
+    assert_eq!(vua_bdl_store::BDL_FORMAT_VERSION, "0.5");
     seed_product(&store, "1001");
     assert!(store.downloadables_for_product("booth:1001").unwrap().is_empty());
     // Unknown product is an honest empty read (the download-time flow

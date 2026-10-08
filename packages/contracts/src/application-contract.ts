@@ -3,6 +3,12 @@ import { isNetworkParams, type NetworkIntent, type NetworkResult } from "./envir
 import { isWebsiteTestParams, type WebsiteTestParams, type WebsiteTestResult } from "./website-test.js";
 import { isDownloadEventV01 } from "./download-events.js";
 import { isCatalogSyncPageRequestV01, type CatalogSyncPageRequestV01 } from "./catalog-sync.js";
+import { isCatalogSyncParamsV03, type CatalogSyncBeginV03, type CatalogSyncPageV03, type CatalogSyncFinishV03, type CatalogSyncStatusV03 } from "./catalog-sync-v03.js";
+import { isLibraryDownloadParamsV01, type LibraryDownloadBeginV01, type LibraryDownloadObservationV01, type LibraryDownloadStatusV01 } from "./library-download-v01.js";
+import { isLibraryViewParamsV01, type LibraryListParamsV01, type LibraryProductFilesParamsV01, type LibraryListV01, type LibraryProductFilesV01 } from "./library-view-v01.js";
+import { isRecipeDraftParamsV01, type RecipeDraftListParamsV01, type RecipeDraftGetParamsV01, type RecipeDraftSaveParamsV01, type RecipeDraftAddParamsV01, type RecipeDraftListV01, type RecipeDraftReadV01 } from "./recipe-selection-draft-v01.js";
+import { isLibraryMaintenanceParamsV01, type LibraryRemovalPreviewParamsV01, type LibraryRemoveFilesParamsV01, type LibraryRemovalStatusParamsV01, type LibraryRemovalPreviewV01, type LibraryRemovalSnapshotV01 } from "./library-maintenance-v01.js";
+import type { RecipeDraftSelectionStatusV01 } from "./recipe-selection-draft-v01.js";
 
 export const APPLICATION_CONTRACT_VERSION = "0.1" as const;
 
@@ -1967,8 +1973,45 @@ export interface CatalogIngestLibraryPageCommandV01 extends ApplicationRequestBa
   readonly kind: "command";
   readonly method: "catalog.ingestLibraryPage";
   readonly commandId: string;
-  readonly params: CatalogSyncPageRequestV01;
+  readonly params: CatalogSyncPageRequestV01 | CatalogSyncPageV03;
 }
+
+export type CatalogSyncControlCommandV03 = ApplicationRequestBaseV01 & { readonly kind: "command"; readonly commandId: string } & (
+  | { readonly method: "catalog.beginLibrarySync"; readonly params: CatalogSyncBeginV03 }
+  | { readonly method: "catalog.finishLibrarySync"; readonly params: CatalogSyncFinishV03 }
+);
+
+export interface CatalogSyncStatusQueryV03 extends ApplicationRequestBaseV01 {
+  readonly kind: "query";
+  readonly method: "catalog.librarySyncStatus";
+  readonly params: CatalogSyncStatusV03;
+}
+export type LibraryDownloadCommandV01 = ApplicationRequestBaseV01 & { readonly kind: "command"; readonly commandId: string } & (
+  | { readonly method: "library.beginDownload"; readonly params: LibraryDownloadBeginV01 }
+  | { readonly method: "library.observeDownload"; readonly params: LibraryDownloadObservationV01 }
+);
+export interface LibraryDownloadQueryV01 extends ApplicationRequestBaseV01 {
+  readonly kind: "query"; readonly method: "library.downloadStatus"; readonly params: LibraryDownloadStatusV01;
+}
+export type LibraryViewQueryV01 = ApplicationRequestBaseV01 & { readonly kind: "query" } & (
+  | { readonly method: "library.list"; readonly params: LibraryListParamsV01 }
+  | { readonly method: "library.productFiles"; readonly params: LibraryProductFilesParamsV01 }
+);
+export type RecipeDraftQueryV01 = ApplicationRequestBaseV01 & { readonly kind: "query" } & (
+  | { readonly method: "recipeDraft.list"; readonly params: RecipeDraftListParamsV01 }
+  | { readonly method: "recipeDraft.get" | "recipeDraft.selectionStatus"; readonly params: RecipeDraftGetParamsV01 }
+);
+export type LibraryMaintenanceQueryV01 = ApplicationRequestBaseV01 & { readonly kind: "query" } & (
+  | { readonly method: "library.removalPreview"; readonly params: LibraryRemovalPreviewParamsV01 }
+  | { readonly method: "library.removalStatus"; readonly params: LibraryRemovalStatusParamsV01 }
+);
+export interface LibraryMaintenanceCommandV01 extends ApplicationRequestBaseV01 {
+  readonly kind: "command"; readonly method: "library.removeFiles"; readonly commandId: string; readonly params: LibraryRemoveFilesParamsV01;
+}
+export type RecipeDraftCommandV01 = ApplicationRequestBaseV01 & { readonly kind: "command"; readonly commandId: string } & (
+  | { readonly method: "recipeDraft.save"; readonly params: RecipeDraftSaveParamsV01 }
+  | { readonly method: "recipeDraft.addSelection"; readonly params: RecipeDraftAddParamsV01 }
+);
 
 // ---- warehouse 写命令(bdl-commands v0.1 冻结业务词表的 TS 面,proposal 005;
 //      wire 信封 schemaVersion/operation 由应用契约 response 层承载,镜像按
@@ -2788,6 +2831,13 @@ export type ApplicationRequestV01 =
   | CatalogDetailQueryV03
   | CatalogStatusQueryV03
   | CatalogIngestLibraryPageCommandV01
+  | CatalogSyncControlCommandV03
+  | CatalogSyncStatusQueryV03
+  | LibraryDownloadCommandV01
+  | LibraryDownloadQueryV01
+  | LibraryViewQueryV01
+  | LibraryMaintenanceQueryV01 | LibraryMaintenanceCommandV01
+  | RecipeDraftQueryV01 | RecipeDraftCommandV01
   | WarehouseListEntriesQueryV03
   | WarehouseEntryDetailQueryV03
   | DownloadsListCompletedQueryV04
@@ -2924,6 +2974,9 @@ export interface DemoTaskStartedV01 {
 export type ApplicationSuccessValueV01 =
   | NetworkResult
   | WebsiteTestResult
+  | LibraryListV01 | LibraryProductFilesV01
+  | RecipeDraftListV01 | RecipeDraftReadV01
+  | LibraryRemovalPreviewV01 | LibraryRemovalSnapshotV01 | RecipeDraftSelectionStatusV01
   | DeploymentPlanResult
   | DeploymentAccepted
   | ApplicationSnapshotV01
@@ -3596,10 +3649,40 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
       return false;
     }
     const ingestPageParams = value.params as Record<string, unknown>;
+    if (ingestPageParams.schemaVersion === "0.3") return isCatalogSyncParamsV03(value.method, value.params);
     const ingestPageKeys = ["schemaVersion", "sourceUrl", "html", "fetchedAt"];
     if (ingestPageParams.pageNumber !== undefined) ingestPageKeys.push("pageNumber");
     if (ingestPageParams.runId !== undefined) ingestPageKeys.push("runId");
+    if (ingestPageParams.libraryType !== undefined) ingestPageKeys.push("libraryType");
     return hasExactKeys(ingestPageParams, ingestPageKeys) && isCatalogSyncPageRequestV01(value.params);
+  }
+  if (value.kind === "command" && (value.method === "catalog.beginLibrarySync" || value.method === "catalog.finishLibrarySync")) {
+    return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "commandId", "params"])
+      && isIdentifier(value.commandId) && isCatalogSyncParamsV03(value.method, value.params);
+  }
+  if (typeof value.method === "string" && value.method.startsWith("recipeDraft.")) {
+    const query = value.method === "recipeDraft.list" || value.method === "recipeDraft.get" || value.method === "recipeDraft.selectionStatus";
+    return value.kind === (query ? "query" : "command") && hasExactKeys(value, query ? ["contractVersion", "requestId", "correlationId", "kind", "method", "params"] : ["contractVersion", "requestId", "correlationId", "kind", "method", "params", "commandId"])
+      && (query || isIdentifier(value.commandId)) && isRecipeDraftParamsV01(value.method, value.params);
+  }
+  if (value.method === "library.removalPreview" || value.method === "library.removeFiles" || value.method === "library.removalStatus") {
+    const query = value.method !== "library.removeFiles";
+    return value.kind === (query ? "query" : "command") && hasExactKeys(value, query ? ["contractVersion", "requestId", "correlationId", "kind", "method", "params"] : ["contractVersion", "requestId", "correlationId", "kind", "method", "params", "commandId"])
+      && (query || isIdentifier(value.commandId)) && isLibraryMaintenanceParamsV01(value.method, value.params);
+  }
+  if (value.method === "library.list" || value.method === "library.productFiles") {
+    return value.kind === "query" && hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
+      && isLibraryViewParamsV01(value.method, value.params);
+  }
+  if (value.method === "library.beginDownload" || value.method === "library.observeDownload" || value.method === "library.downloadStatus") {
+    const query = value.method === "library.downloadStatus";
+    return value.kind === (query ? "query" : "command")
+      && hasExactKeys(value, query ? ["contractVersion", "requestId", "correlationId", "kind", "method", "params"] : ["contractVersion", "requestId", "correlationId", "kind", "method", "commandId", "params"])
+      && (query || isIdentifier(value.commandId)) && isLibraryDownloadParamsV01(value.method, value.params);
+  }
+  if (value.kind === "query" && value.method === "catalog.librarySyncStatus") {
+    return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
+      && isCatalogSyncParamsV03(value.method, value.params);
   }
   if (value.kind === "command" && value.method === "download.retry") {
     return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "commandId", "params"])

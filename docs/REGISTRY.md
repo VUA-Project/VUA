@@ -8,7 +8,7 @@ Current owners, versions and statuses only. [Governance](meta/documentation-gove
 | Path | Document version | Status | Maintainer | Last review |
 | --- | --- | --- | --- | --- |
 | AGENTS.md | 2.1.0 | Accepted | Integration | 2026-09-28 |
-| docs/product-boundary.md | 2.10.0 | Accepted | Integration | 2026-10-05 |
+| docs/product-boundary.md | 2.13.0 | Accepted | Integration | 2026-10-08 |
 | docs/compatibility/unity-editor.md | 2.0.1 | Accepted | Integration | 2026-10-02 |
 | docs/compatibility/alcom-vcc.md | 1.3.2 | Accepted | Environment | 2026-10-01 |
 | schemas/project-inspection/v0.1 | 0.1 | Superseded | Environment | 2026-09-09 |
@@ -33,6 +33,8 @@ Current owners, versions and statuses only. [Governance](meta/documentation-gove
 | docs/decisions/orchestrator-supervised-provider.md | ADR | Accepted | Integration | 2026-09-06 |
 | docs/decisions/vua-instance-identity.md | ADR | Accepted | Integration | 2026-09-06 |
 | docs/decisions/warehouse-layout.md | ADR | Accepted | Integration | 2026-09-06 |
+| docs/decisions/library-download-replacement.md | ADR | Accepted | AMF | 2026-10-08 |
+| docs/decisions/library-file-maintenance.md | ADR | Accepted | AMF | 2026-10-08 |
 | docs/decisions/path-configuration.md | ADR | Accepted | Integration | 2026-09-12 |
 | docs/protocols/application-contract-v0.1.md | 0.1 | Frozen | Core | 2026-09-06 |
 | schemas/application-contract/v0.1 | 0.1 | Frozen | Core | 2026-09-15 |
@@ -58,6 +60,17 @@ Current owners, versions and statuses only. [Governance](meta/documentation-gove
 | docs/protocols/catalog-sync-v0.1.md | 0.1 | Frozen | Data | 2026-10-02 |
 | docs/protocols/catalog-sync-v0.2.md | 0.2 | Frozen | Data | 2026-10-02 |
 | schemas/catalog-sync/v0.2 | 0.2 | Frozen | Data | 2026-10-02 |
+| docs/protocols/catalog-sync-v0.3.md | 0.3 | Implementation baseline | AMF | 2026-10-07 |
+| schemas/catalog-sync/v0.3 | 0.3 | Implementation baseline | AMF | 2026-10-07 |
+| schemas/library-download/v0.1 | 0.1 | Implementation baseline | AMF | 2026-10-08 |
+| docs/protocols/library-download-v0.1.md | 0.1 | Implementation baseline | AMF | 2026-10-08 |
+| schemas/library-view/v0.1 | 0.1 | Implementation baseline | AMF | 2026-10-08 |
+| docs/protocols/library-view-v0.1.md | 0.1 | Implementation baseline | AMF | 2026-10-08 |
+| schemas/library-maintenance/v0.1 | 0.1 | Implementation baseline | AMF | 2026-10-08 |
+| docs/protocols/library-maintenance-v0.1.md | 0.1.0 | Implementation baseline | AMF | 2026-10-08 |
+| schemas/recipe-selection-draft/v0.1 | 0.1 | Implementation baseline | AMF | 2026-10-08 |
+| docs/protocols/recipe-selection-draft-v0.1.md | 0.1 | Implementation baseline | AMF | 2026-10-08 |
+| schemas/bdl/v0.5 | 0.5 | Implementation baseline | Data | 2026-10-08 |
 | docs/protocols/download-events-v0.1.md | 0.1 | Frozen | Data | 2026-09-06 |
 | docs/protocols/material-intake-v0.1.md | 0.1 | Implementation baseline | Production | 2026-09-06 |
 | docs/protocols/material-intake-v0.2.md | 0.2.1 | Frozen | Core | 2026-09-21 |
@@ -115,14 +128,14 @@ Current owners, versions and statuses only. [Governance](meta/documentation-gove
 | CONTRIBUTING.md | 2.1.0 | Accepted | Integration | 2026-09-28 |
 | docs/REGISTRY.md | event-driven | Accepted | Integration | 2026-10-01 |
 | docs/architecture/evolution.md | 1.6.0 | Accepted | Integration | 2026-10-05 |
-| docs/protocols/README.md | 1.4.0 | Accepted | Integration | 2026-10-03 |
+| docs/protocols/README.md | 1.6.0 | Accepted | Integration | 2026-10-08 |
 | docs/protocols/environment-deployment-v0.1.md | 0.1 | Candidate | Environment | 2026-09-30 |
 | docs/meta/document-audit-2026-09-28.md | 1.0.0 | Accepted | Integration | 2026-09-28 |
 | docs/meta/protected-main.md | 1.2.0 | Accepted | Integration | 2026-09-28 |
 | docs/development/engineering-rules.md | 1.0.0 | Accepted | Integration | 2026-09-29 |
 | docs/architecture/unity-deployment.md | 2.3.0 | Accepted | Environment | 2026-10-02 |
 | docs/development/n5-capability-audit.md | 1.0.0 | Draft | Data | 2026-10-02 |
-| docs/development/n5-rework-plan.md | 1.3.0 | Accepted | Data | 2026-10-03 |
+| docs/development/n5-rework-plan.md | 1.5.0 | Accepted | AMF | 2026-10-08 |
 | docs/README.md | 1.2.1 | Accepted | Integration | 2026-10-07 |
 | docs/development/n1-delivery-plan.md | 1.6.1 | Accepted | Environment | 2026-10-07 |
 | docs/development/first-play-delivery-plan.md | 1.1.0 | Accepted | Integration | 2026-10-07 |

@@ -1,319 +1,145 @@
-import type {
-  CatalogSyncPageRequestV01,
-  CatalogSyncPageResultV01,
+import { randomUUID } from "node:crypto";
+import {
+  isCatalogSyncPageResultV03, isCatalogSyncSnapshotV03,
+  type CatalogLibraryType, type CatalogSyncBeginV03, type CatalogSyncFinishV03,
+  type CatalogSyncPageV03, type CatalogSyncSnapshotV03,
 } from "@vua/contracts";
 
-/**
- * 账号库同步运行器（N5 S1，计划 D4）：用分区会话逐页抓取 BOOTH 账号库，
- * 把每页归档 HTML 原样投递给 provider `catalog.ingestLibraryPage`，按回执
- * 的 `nextPageUrl` 续页，直到末页/上限/中止。
- *
- * 边界（与 download-ingest 同风格，全部依赖注入，模块不 import Electron）：
- * - 会话与凭据留在注入的 fetch 闭包内（Main 侧用 RemoteContentManager 的
- *   分区会话构造）；本模块只见 URL/HTML 文本，Cookie 永不经过这里；
- * - 礼貌限速：页间默认 `pageDelayMs`（1500ms）等待，`maxPages`（默认 50）
- *   兜底——只翻账号自己的库分页，不做整站遍历；
- * - 诚实结果：HTTP 非 200 / 投递失败 / 契约错误立即停并如实报告错误码，
- *   不把部分完成伪装成成功；`aborted` 只由显式 stop() 产生；
- * - 每页的 `fetchedAt` 在抓取后立刻取自注入时钟，`runId` 贯穿全run（provider
- *   侧用它折叠九态任务）。
- */
-
-export interface CatalogSyncFetchOutcome {
-  readonly status: number;
-  readonly body: string;
-  readonly finalUrl: string;
-}
-
-export type CatalogSyncFetch = (url: string) => Promise<CatalogSyncFetchOutcome>;
-
-export interface CatalogSyncInvokeError {
-  readonly code?: string;
-}
-
-export interface CatalogSyncInvokeResult {
-  readonly ok: boolean;
-  readonly value?: unknown;
-  readonly error?: CatalogSyncInvokeError;
-}
-
-export type CatalogSyncInvoke = (
-  params: CatalogSyncPageRequestV01,
-) => Promise<CatalogSyncInvokeResult>;
-
+export const CATALOG_SYNC_DEFAULT_START_URL = "https://accounts.booth.pm/library?page=1";
+export interface CatalogSyncFetchOutcome { readonly status: number; readonly body: string; readonly finalUrl: string }
+export type CatalogSyncFetch = (url: string, signal: AbortSignal) => Promise<CatalogSyncFetchOutcome>;
+export interface CatalogSyncInvokeResult { readonly ok: boolean; readonly value?: unknown; readonly error?: { readonly code?: string } }
+export type CatalogSyncInvoke = (params: CatalogSyncPageV03) => Promise<CatalogSyncInvokeResult>;
 export interface CatalogSyncRunnerOptions {
   readonly fetch: CatalogSyncFetch;
+  readonly begin: (params: CatalogSyncBeginV03) => Promise<CatalogSyncInvokeResult>;
   readonly invoke: CatalogSyncInvoke;
-  /** 页间等待（默认 1500ms，礼貌限速） */
+  readonly finish: (params: CatalogSyncFinishV03) => Promise<CatalogSyncInvokeResult>;
   readonly pageDelayMs?: number;
-  /** 单次运行页数上限（默认 50） */
   readonly maxPages?: number;
-  /** 诊断通道（默认 stderr 单行 JSON；测试注入捕获） */
-  readonly log?: (line: string) => void;
-  /** 可注入时钟与睡眠（测试用） */
   readonly now?: () => Date;
-  readonly sleep?: (ms: number) => Promise<void>;
+  readonly sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
 }
-
-export type CatalogSyncRunStatus =
-  | "completed"
-  | "failed"
-  | "aborted"
-  | "page_limit_reached";
-
+export type CatalogSyncRunStatus = "completed" | "failed" | "aborted" | "page_limit_reached";
 export interface CatalogSyncRunResult {
-  readonly status: CatalogSyncRunStatus;
-  readonly runId: string;
-  readonly pages: number;
-  readonly parsedCount: number;
-  readonly upsertedCount: number;
-  readonly rejectedCount: number;
-  /** 停止时观察到的下一页（completed 时恒为 null） */
-  readonly nextPageUrl: string | null;
-  readonly error?: { readonly code: string };
+  readonly status: CatalogSyncRunStatus; readonly runId: string; readonly pages: number;
+  readonly parsedCount: number; readonly upsertedCount: number; readonly rejectedCount: number;
+  readonly nextPageUrl: string | null; readonly error?: { readonly code: string };
 }
-
 export interface CatalogSyncRun {
   readonly runId: string;
+  /** Durable registration precedes the first fetch and the desktop's started receipt. */
+  readonly ready: Promise<CatalogSyncSnapshotV03>;
   readonly result: Promise<CatalogSyncRunResult>;
   stop(): void;
 }
+export interface CatalogSyncSegment { readonly startUrl: string; readonly libraryType: CatalogLibraryType }
 
-/**
- * 默认起始页 = 已购素材库(账号库三类型之一,真机验证 2026-10-02:库页位于
- * accounts.booth.pm,而非早先假设的 booth.pm/en/library——后者未登录 404
- * 掩盖了错误路径)。gifts 与 free_downloads 两库经 start.startUrl 指定。
- */
-export const CATALOG_SYNC_DEFAULT_START_URL = "https://accounts.booth.pm/library?page=1";
-
-/** 登录页内容判定(真机 2026-10-05 确诊,两轮取证):「访问过登录页」的
- * 会话在账户域有 Cookie,启动门旧判据(cookie 存在)会放行;未真正登录
- * 的会话访问账号库被 302 到登录页——HTTP 层已是跟随后的 200,且 Electron
- * session.fetch 的 Response.url 不回填(finalUrl 恒空),只能按内容判定。
- * 标记取登录页独有的结构路径(pixiv 认证表单/密码登录帮助链接),与界面
- * 语言无关;真实库页语法(/items/、店铺子域、/downloadables/)不含它们。 */
 export function isSignInPage(html: string): boolean {
-  return html.includes('action="/users/auth/pixiv"')
-    || html.includes("users/sign_in_by_password");
+  return html.includes('action="/users/auth/pixiv"') || html.includes("users/sign_in_by_password");
 }
 
-/** 同步段:一个账号库的起始地址 + 类型;「全部」同步 = 三段串行
- * (用户期望 2026-10-05:一次点击覆盖已购/礼物/免费三库,~35 件)。 */
-export interface CatalogSyncSegment {
-  readonly startUrl: string;
-  readonly libraryType: "bought" | "gifts" | "free_downloads";
+function delay(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal.aborted) { resolve(); return; }
+    const finish = () => { clearTimeout(timer); signal.removeEventListener("abort", finish); resolve(); };
+    const timer = setTimeout(finish, ms);
+    signal.addEventListener("abort", finish, { once: true });
+  });
 }
 
-export function startCatalogSync(
-  options: CatalogSyncRunnerOptions,
-  start?: {
-    readonly runId?: string;
-    readonly startUrl?: string;
-    readonly libraryType?: "bought" | "gifts" | "free_downloads";
-    /** 多段串行(覆盖「全部」);单段 start 参数是它的单段退化形 */
-    readonly segments?: readonly CatalogSyncSegment[];
-  },
-): CatalogSyncRun {
-  const pageDelayMs = options.pageDelayMs ?? 1_500;
-  const maxPages = options.maxPages ?? 50;
-  const log = options.log ?? ((line: string) => process.stderr.write(`${line}\n`));
+function nextLibraryUrl(raw: string, current: string, kind: CatalogLibraryType): string | null {
+  try {
+    const url = new URL(raw, current);
+    const path = kind === "bought" ? "/library" : `/library/${kind}`;
+    return url.origin === "https://accounts.booth.pm" && url.pathname === path
+      && url.username === "" && url.password === "" && url.hash === ""
+      && /^\?page=[1-9][0-9]*$/.test(url.search) ? url.href : null;
+  } catch { return null; }
+}
+
+/** Electron owns session transport; acquisition owns counts and terminal task state. */
+export function startCatalogSync(options: CatalogSyncRunnerOptions, start?: {
+  readonly runId?: string; readonly startUrl?: string; readonly libraryType?: CatalogLibraryType;
+  readonly segments?: readonly CatalogSyncSegment[];
+}): CatalogSyncRun {
+  const runId = start?.runId ?? `catalog-sync-${randomUUID()}`;
+  const segments = start?.segments ?? [{ startUrl: start?.startUrl ?? CATALOG_SYNC_DEFAULT_START_URL, libraryType: start?.libraryType ?? "bought" }];
+  const abort = new AbortController();
   const now = options.now ?? (() => new Date());
-  const sleep =
-    options.sleep ??
-    ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
-
-  const runId = start?.runId ?? `catalog-sync-${now().toISOString()}`;
-  let stopped = false;
-
-  const segments: readonly CatalogSyncSegment[] =
-    start?.segments !== undefined && start.segments.length > 0
-      ? start.segments
-      : [{
-          startUrl: start?.startUrl ?? CATALOG_SYNC_DEFAULT_START_URL,
-          libraryType: start?.libraryType ?? "bought",
-        }];
-
-  const result = (async (): Promise<CatalogSyncRunResult> => {
-    let pageNumber = 0;
-    // 完成页计数:跨段累计(只有抓取+投递都成功的页才计入;中止/失败时
-    // 报告的是已完成的部分)。
-    let pages = 0;
-    let parsedCount = 0;
-    let upsertedCount = 0;
-    let rejectedCount = 0;
-    let firstPageOfRun = true;
-
-    for (const segment of segments) {
-      if (stopped) break;
-      let url: string | null = segment.startUrl;
-
-      while (url !== null && !stopped) {
-        pageNumber += 1;
-        if (pageNumber > maxPages) {
-          return {
-            status: "page_limit_reached",
-            runId,
-            pages,
-            parsedCount,
-            upsertedCount,
-            rejectedCount,
-            nextPageUrl: url,
-          };
-        }
-        // 礼貌限速:页间与段间都等待(段切换也是一次新的库页请求)
-        if (!firstPageOfRun) {
-          await sleep(pageDelayMs);
-          if (stopped) break;
-        }
-        firstPageOfRun = false;
-
-        const fetchedAt = now().toISOString();
-        let outcome: CatalogSyncFetchOutcome;
-        try {
-          outcome = await options.fetch(url);
-        } catch (error) {
-          log(JSON.stringify({ channel: "catalog-sync", runId, fetchError: String(error), url }));
-          return failure("fetch_error", url);
-        }
-      if (outcome.status !== 200) {
-        log(
-          JSON.stringify({
-            channel: "catalog-sync",
-            runId,
-            httpStatus: outcome.status,
-            url,
-          }),
-        );
-        return failure("http_status", url);
-      }
-      // 一次性取证开关:VUA_CATALOG_SYNC_DUMP_BODY=1 时落盘首抓页原文,
-      // 供解析语法排查(生产不开)
-      if (process.env.VUA_CATALOG_SYNC_DUMP_BODY === "1" && pageNumber === 1) {
-        try {
-          const fs = await import("node:fs/promises");
-          const os = await import("node:os");
-          const path = await import("node:path");
-          await fs.writeFile(
-            path.join(os.tmpdir(), "catalog-sync-page1.html"),
-            outcome.body,
-            "utf8",
-          );
-        } catch {
-          /* 取证失败不影响同步 */
-        }
-      }
-      // 未登录会话的库页 = 登录页(302 已被跟随):按内容判定,专码停跑,
-      // 不投递解析(投递只会以 not_a_library_page 拒绝,掩盖真实成因)
-      if (isSignInPage(outcome.body)) {
-        log(
-          JSON.stringify({
-            channel: "catalog-sync",
-            runId,
-            signInRedirect: true,
-            url,
-            bodyBytes: outcome.body.length,
-          }),
-        );
-        return failure("sign_in_redirect", url);
-      }
-
-      let invokeResult: CatalogSyncInvokeResult;
-      try {
-        invokeResult = await options.invoke({
-          schemaVersion: "0.2",
-          sourceUrl: url,
-          html: outcome.body,
-          fetchedAt,
-          pageNumber,
-          runId,
-          libraryType: segment.libraryType,
-        });
-      } catch (error) {
-        log(JSON.stringify({ channel: "catalog-sync", runId, invokeError: String(error), url }));
-        return failure("invoke_error", url);
-      }
-      if (!invokeResult.ok) {
-        const code = invokeResult.error?.code ?? "ingest_error";
-        log(
-          JSON.stringify({
-            channel: "catalog-sync",
-            runId,
-            ingestError: code,
-            url,
-            bodyTitle: /<title[^>]*>([^<]{0,120})/i.exec(outcome.body)?.[1] ?? null,
-            bodyBytes: outcome.body.length,
-          }),
-        );
-        // 一次性取证开关:VUA_CATALOG_SYNC_DUMP_BODY=1 时把被拒页面落盘,
-        // 供结构标记排查(生产不开)
-        if (process.env.VUA_CATALOG_SYNC_DUMP_BODY === "1") {
-          try {
-            const fs = await import("node:fs/promises");
-            const os = await import("node:os");
-            const path = await import("node:path");
-            await fs.writeFile(
-              path.join(os.tmpdir(), `catalog-sync-rejected-${pageNumber}.html`),
-              outcome.body,
-              "utf8",
-            );
-          } catch {
-            /* 取证失败不影响失败面 */
-          }
-        }
-        return failure(code, url);
-      }
-
-      const value = invokeResult.value as Partial<CatalogSyncPageResultV01> | undefined;
-      pages += 1;
-      parsedCount += value?.parsedCount ?? 0;
-      upsertedCount += value?.upsertedCount ?? 0;
-      rejectedCount += value?.rejectedItems?.length ?? 0;
-      // 回执缺 nextPageUrl 字段视同末页（保守停止，不猜测续页）。
-      // 真实库页的 rel="next" 是相对地址(/library?page=2)——按当前页解析为
-      // 绝对地址再抓取;解析不了就诚实失败,不猜协议与主机。
-      const rawNext = value?.nextPageUrl ?? null;
-      if (rawNext === null) {
-        url = null;
-      } else {
-        try {
-          url = new URL(rawNext, url).href;
-        } catch {
-          log(JSON.stringify({ channel: "catalog-sync", runId, badNextPageUrl: rawNext }));
-          return failure("next_page_url_unresolvable", url);
-        }
-      }
-      }
-    }
-
-    return {
-      status: stopped ? "aborted" : "completed",
-      runId,
-      pages,
-      parsedCount,
-      upsertedCount,
-      rejectedCount,
-      nextPageUrl: null,
-    };
-
-    function failure(code: string, atUrl: string): CatalogSyncRunResult {
-      return {
-        status: "failed",
-        runId,
-        pages,
-        parsedCount,
-        upsertedCount,
-        rejectedCount,
-        nextPageUrl: atUrl,
-        error: { code },
-      };
-    }
+  const sleep = options.sleep ?? delay;
+  const maxPages = Math.min(options.maxPages ?? 50, 50);
+  let pages = 0, parsedCount = 0, upsertedCount = 0, rejectedCount = 0;
+  let nextPageUrl: string | null = null;
+  const facts = (): Omit<CatalogSyncRunResult, "status"> => ({ runId, pages, parsedCount, upsertedCount, rejectedCount, nextPageUrl });
+  const failure = (code: string): CatalogSyncRunResult => ({ ...facts(), status: "failed", error: { code } });
+  const ready = (async () => {
+    const response = await options.begin({ schemaVersion: "0.3", runId, libraryTypes: segments.map((segment) => segment.libraryType) });
+    if (!response.ok) throw new Error(response.error?.code ?? "begin_error");
+    if (!isCatalogSyncSnapshotV03(response.value) || response.value.runId !== runId
+      || response.value.state !== "running" || response.value.pages !== 0 || response.value.recoveryDisposition !== "none"
+      || response.value.libraryTypes.length !== segments.length || response.value.libraryTypes.some((kind, index) => kind !== segments[index]?.libraryType)) throw new Error("invalid_begin_receipt");
+    return response.value;
   })();
 
-  return {
-    runId,
-    result,
-    stop(): void {
-      stopped = true;
-    },
-  };
+  const result = (async (): Promise<CatalogSyncRunResult> => {
+    try { await ready; } catch (error) { return failure(error instanceof Error ? error.message : "begin_error"); }
+    let transport: CatalogSyncRunResult;
+    try { transport = await readPages(); } catch { transport = abort.signal.aborted ? { ...facts(), status: "aborted" } : failure("fetch_error"); }
+    try {
+      const response = await options.finish({
+        schemaVersion: "0.3", runId,
+        outcome: transport.status === "aborted" ? "cancelled" : transport.status,
+        ...(transport.error === undefined ? {} : { errorCode: transport.error.code }),
+      });
+      if (!response.ok) return failure(response.error?.code ?? "finish_error");
+      if (!isCatalogSyncSnapshotV03(response.value) || response.value.runId !== runId || response.value.state === "running") return failure("invalid_finish_receipt");
+      const final = response.value;
+      return { ...transport, pages: final.pages, parsedCount: final.parsedCount, upsertedCount: final.upsertedCount,
+        rejectedCount: final.rejectedCount, nextPageUrl: final.nextPageUrl,
+        status: final.state === "cancelled" ? "aborted" : final.state === "failed" ? (transport.status === "page_limit_reached" ? "page_limit_reached" : "failed") : "completed" };
+    } catch { return failure("finish_error"); }
+  })();
+
+  async function readPages(): Promise<CatalogSyncRunResult> {
+    const seen = new Set<string>();
+    for (const segment of segments) {
+      let url: string | null = segment.startUrl;
+      while (url !== null) {
+        nextPageUrl = url;
+        if (abort.signal.aborted) return { ...facts(), status: "aborted" };
+        if (pages >= maxPages) return { ...facts(), status: "page_limit_reached", error: { code: "page_limit_reached" } };
+        if (seen.has(url)) return failure("pagination_loop");
+        if (nextLibraryUrl(url, url, segment.libraryType) === null) return failure("next_page_url_not_allowed");
+        if (pages > 0) await sleep(options.pageDelayMs ?? 1_500, abort.signal);
+        if (abort.signal.aborted) return { ...facts(), status: "aborted" };
+        seen.add(url);
+        let fetched: CatalogSyncFetchOutcome;
+        try { fetched = await options.fetch(url, AbortSignal.any([abort.signal, AbortSignal.timeout(30_000)])); }
+        catch { return abort.signal.aborted ? { ...facts(), status: "aborted" } : failure("fetch_error"); }
+        if (abort.signal.aborted) return { ...facts(), status: "aborted" };
+        if (fetched.status !== 200) return failure("http_status");
+        if (isSignInPage(fetched.body)) return failure("sign_in_redirect");
+        let response: CatalogSyncInvokeResult;
+        try { response = await options.invoke({ schemaVersion: "0.3", runId, libraryType: segment.libraryType,
+          pageNumber: pages + 1, sourceUrl: url, html: fetched.body, fetchedAt: now().toISOString() }); }
+        catch { return failure("invoke_error"); }
+        if (!response.ok) return response.error?.code === "vua.catalog.cancelled" ? { ...facts(), status: "aborted" } : failure(response.error?.code ?? "ingest_error");
+        if (!isCatalogSyncPageResultV03(response.value) || response.value.sourceUrl !== url) return failure("invalid_receipt");
+        const page = response.value;
+        pages += 1; parsedCount += page.parsedCount; upsertedCount += page.upsertedCount; rejectedCount += page.rejectedItems.length;
+        if (page.cancellationRequested || abort.signal.aborted) return { ...facts(), status: "aborted" };
+        if (page.nextPageUrl === null) url = null;
+        else {
+          const next = nextLibraryUrl(page.nextPageUrl, url, segment.libraryType);
+          if (next === null) return failure("next_page_url_not_allowed");
+          url = next;
+        }
+      }
+    }
+    nextPageUrl = null;
+    return { ...facts(), status: "completed" };
+  }
+
+  return { runId, ready, result, stop: () => abort.abort() };
 }

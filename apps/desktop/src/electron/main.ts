@@ -4,6 +4,9 @@ import fs from "node:fs";
 import path from "node:path";
 import type {
   ApplicationEventV01,
+  CatalogSyncBeginV03,
+  CatalogSyncFinishV03,
+  CatalogSyncPageV03,
   DownloadEventV01,
   EditorSettingsV1,
   GuideTargetV1,
@@ -11,7 +14,7 @@ import type {
   OverlayViewV1,
   RemoteContentEventV1,
 } from "@vua/contracts";
-import { APPLICATION_CONTRACT_VERSION } from "@vua/contracts";
+import { APPLICATION_CONTRACT_VERSION, isLibraryDownloadParamsV01, isLibraryDownloadSnapshotV01 } from "@vua/contracts";
 import type { OrchestratorProviderV01 } from "@vua/orchestrator-provider";
 import { routeDesktopGatewayInvoke } from "./gateway-router.js";
 import { DownloadPort } from "./download-port.js";
@@ -21,7 +24,6 @@ import {
   CATALOG_SYNC_DEFAULT_START_URL,
   isSignInPage,
   startCatalogSync,
-  type CatalogSyncInvoke,
   type CatalogSyncRun,
 } from "./catalog-sync.js";
 import { registerImageCacheProtocol, registerImageCacheScheme } from "./image-cache.js";
@@ -589,6 +591,11 @@ function registerIpc(provider: OrchestratorProviderV01): void {
       return { status: "already_running", runId: catalogSyncRun.runId };
     }
     const hint = await remoteContent.signInHint();
+    // The awaited probe lets another start install the global run.
+    const concurrentRun = catalogSyncRun as CatalogSyncRun | null;
+    if (concurrentRun !== null) {
+      return { status: "already_running", runId: concurrentRun.runId };
+    }
     if (hint === "none") {
       return { status: "blocked", reason: "sign-in-required" };
     }
@@ -614,22 +621,12 @@ function registerIpc(provider: OrchestratorProviderV01): void {
           : libraryType === "free_downloads"
             ? [{ startUrl: "https://accounts.booth.pm/library/free_downloads?page=1", libraryType: "free_downloads" as const }]
             : [{ startUrl: CATALOG_SYNC_DEFAULT_START_URL, libraryType: "bought" as const }];
-    // 真实登录预检(真机 2026-10-05 确诊):「访问过登录页」的会话在账户域
-    // 有 Cookie,hint 为 "stored" 但并未登录——旧门会放行,首页被 302 到
-    // 登录页,任务在 provider 侧从未创建,通知中心静默、提示卡在“已开始”。
-    // 预检首段地址并按内容识别登录页(finalUrl 恒空,见 isSignInPage 注);
-    // 探测异常不拦截(网络失败由运行器如实报告,不猜因)
-    try {
-      const probeStart = segments[0]?.startUrl ?? CATALOG_SYNC_DEFAULT_START_URL;
-      const probe = await remoteContent.fetchWithSession(probeStart);
-      if (isSignInPage(probe.body)) {
-        return { status: "blocked", reason: "sign-in-required" };
-      }
-    } catch {
-      /* 探测不可达不拦截;运行器会以真实失败面报告 */
-    }
     const content = remoteContent;
-    const invokeCatalogSyncPage: CatalogSyncInvoke = (params) => {
+    const invokeCatalogSync = (command:
+      | { readonly method: "catalog.beginLibrarySync"; readonly params: CatalogSyncBeginV03 }
+      | { readonly method: "catalog.ingestLibraryPage"; readonly params: CatalogSyncPageV03 }
+      | { readonly method: "catalog.finishLibrarySync"; readonly params: CatalogSyncFinishV03 }
+    ) => {
       if (provider === null) {
         return Promise.reject(new Error("provider is not running"));
       }
@@ -640,8 +637,7 @@ function registerIpc(provider: OrchestratorProviderV01): void {
           correlationId: crypto.randomUUID(),
           commandId: crypto.randomUUID(),
           kind: "command",
-          method: "catalog.ingestLibraryPage",
-          params,
+          ...command,
         })
         .then((response) =>
           response.ok
@@ -651,8 +647,10 @@ function registerIpc(provider: OrchestratorProviderV01): void {
     };
     const run = startCatalogSync(
       {
-        fetch: (url) => content.fetchWithSession(url),
-        invoke: invokeCatalogSyncPage,
+        fetch: (url, signal) => content.fetchWithSession(url, signal),
+        begin: (params) => invokeCatalogSync({ method: "catalog.beginLibrarySync", params }),
+        invoke: (params) => invokeCatalogSync({ method: "catalog.ingestLibraryPage", params }),
+        finish: (params) => invokeCatalogSync({ method: "catalog.finishLibrarySync", params }),
       },
       { segments },
     );
@@ -662,7 +660,7 @@ function registerIpc(provider: OrchestratorProviderV01): void {
       (result) => {
         catalogSyncLastTerminal = {
           runId: run.runId,
-          code: result.status === "failed" ? (result.error?.code ?? "failed") : null,
+          code: result.status === "completed" ? null : (result.error?.code ?? result.status),
         };
       },
       () => {
@@ -672,6 +670,7 @@ function registerIpc(provider: OrchestratorProviderV01): void {
     void run.result.finally(() => {
       if (catalogSyncRun === run) catalogSyncRun = null;
     });
+    await run.ready;
     return { status: "started", runId: run.runId };
   });
   ipcMain.handle("vua:catalog-sync:stop", (event) => {
@@ -682,22 +681,37 @@ function registerIpc(provider: OrchestratorProviderV01): void {
   // 传入 BDL 捕获的文件 id 批;入队即受理,进度与终态走下载任务面(通知中心)
   ipcMain.handle(
     "vua:silent-download:start",
-    (event, productId: unknown, downloadableIds: unknown) => {
+    async (event, productId: unknown, downloadableIds: unknown, replacementTargets: unknown) => {
       assertLocalSender(senderFrameUrl(event));
-      if (silentDownloadQueue === null) throw new Error("silent download is unavailable");
-      if (typeof productId !== "string" || !/^booth:[0-9]+$/.test(productId)) {
-        throw new Error("invalid product id");
+      if (silentDownloadQueue === null || provider === null || providerHandshake?.downloadIngest !== true) return { errorCode: "vua.library.unavailable" };
+      const queue = silentDownloadQueue;
+      const currentProvider = provider;
+      const batchId = `library-download-${crypto.randomUUID()}`;
+      const params = { schemaVersion: "0.1" as const, batchId, productId, downloadableIds, ...(replacementTargets === undefined ? {} : { replacementTargets }) };
+      if (!isLibraryDownloadParamsV01("library.beginDownload", params)) throw new Error("invalid library download selection");
+      const beginParams = params as import("@vua/contracts").LibraryDownloadBeginV01;
+      if (await remoteContent?.signInHint() === "none") return { blocked: "sign-in-required" };
+      const response = await currentProvider.invoke({
+        contractVersion: APPLICATION_CONTRACT_VERSION, requestId: crypto.randomUUID(), correlationId: batchId,
+        kind: "command", method: "library.beginDownload", commandId: batchId,
+        params: beginParams,
+      });
+      if (!response.ok) return { errorCode: response.error.code };
+      if (!isLibraryDownloadSnapshotV01(response.value) || response.value.batchId !== batchId || response.value.state !== "running"
+        || response.value.productId !== beginParams.productId || response.value.files.length !== beginParams.downloadableIds.length
+        || response.value.files.some((file) => !beginParams.downloadableIds.includes(file.downloadableId))) throw new Error("library download receipt unconfirmed");
+      const accepted = queue.enqueue({ batchId, productId: response.value.productId, downloadableIds: response.value.files.map((file) => file.downloadableId) });
+      if (accepted === 0) {
+        for (const file of response.value.files) {
+          await currentProvider.invoke({
+            contractVersion: APPLICATION_CONTRACT_VERSION, requestId: crypto.randomUUID(), correlationId: batchId,
+            kind: "command", method: "library.observeDownload", commandId: crypto.randomUUID(),
+            params: { schemaVersion: "0.1", batchId, downloadableId: file.downloadableId, outcome: "initiation_failed" },
+          });
+        }
+        return { errorCode: "vua.library.initiation_failed" };
       }
-      if (
-        !Array.isArray(downloadableIds)
-        || downloadableIds.length === 0
-        || !downloadableIds.every((id) => Number.isInteger(id) && id > 0)
-      ) {
-        throw new Error("invalid downloadable ids");
-      }
-      return {
-        accepted: silentDownloadQueue.enqueue(productId, downloadableIds),
-      };
+      return { accepted, batchId, taskId: response.value.taskId };
     },
   );
   // 运行状态探针(任务前失败可见性):渲染层轮询 provider 任务之外,经此面
@@ -1071,6 +1085,9 @@ async function createWindow(): Promise<void> {
   // download-ingest.ts,行为有单测)。握手未声明下载域时诚实降级写诊断
   // 通道。暂存根跟随用户数据目录布局,由注入决定,端口不自选策略
   const ingestSink = createDownloadEventSink({
+    onPersisted: (event) => silentDownloadQueue?.notifyPersisted(event),
+    onRejected: (event) => silentDownloadQueue?.notifyUnconfirmed(event),
+    onDropped: (event) => silentDownloadQueue?.notifyUnconfirmed(event),
     invoke: (params) => {
       if (provider === null) {
         return Promise.reject(new Error("provider is not running"));
@@ -1094,26 +1111,11 @@ async function createWindow(): Promise<void> {
   });
   const downloadSink = {
     emit: (event: DownloadEventV01): void => {
-      if (providerHandshake?.downloadIngest === true) {
-        ingestSink.emit(event);
-      } else {
-        process.stderr.write(`${JSON.stringify({ channel: "download-events", ...event })}\n`);
-      }
-      // 静默下载落定回喂(人审 E18 修复 2026-10-06/07):终态事件按
-      // sourceUrl+urlChain 候选关联回编排器——重定向后 sourceUrl 是
-      // s*.booth.pm 签名地址,原始 downloadables 直链在链首;商品全落定
-      // 后自动发 warehouse.importDownloads(下载即入库)
-      if (
-        silentDownloadQueue !== null
-        && (event.kind === "download.completed"
-          || event.kind === "download.failed"
-          || event.kind === "download.cancelled")
-      ) {
-        silentDownloadQueue.notifySettled(
-          [event.sourceUrl, ...(event.urlChain ?? [])],
-          event.downloadId,
-          event.kind === "download.completed" ? "completed" : event.kind === "download.failed" ? "failed" : "cancelled",
-        );
+      silentDownloadQueue?.notifyTransport(event);
+      if (providerHandshake?.downloadIngest === true) ingestSink.emit(event);
+      else {
+        silentDownloadQueue?.notifyUnconfirmed(event);
+        process.stderr.write(JSON.stringify({ channel: "download-events", kind: event.kind, downloadId: event.downloadId, persistenceUnavailable: true }) + "\n");
       }
     },
   };
@@ -1122,75 +1124,24 @@ async function createWindow(): Promise<void> {
     partitionSession: session.fromPartition("persist:vua-remote"),
     allowedOrigins: ["https://booth.pm"],
     sink: downloadSink,
+    isAwaitingLibraryRequest: (originalUrl) => silentDownloadQueue?.isAwaitingNative(originalUrl) === true,
   });
   // 静默下载编排(N5,2026-10-05 用户裁决):串行 + 6s 源站礼貌间隔,经
   // downloadURL 走 will-download 管道(暂存/事件/九态任务/采纳全复用)
   silentDownloadQueue = createSilentDownloadQueue({
     partitionSession: session.fromPartition("persist:vua-remote"),
-    onProductSettled: (productId, downloadIds) => {
-      if (downloadIds.length === 0 || provider === null) return;
-      // 采纳是任务化命令:受理即 ok,成败在任务执行层(实机 2026-10-07
-      // 两轮确诊)。且事件入库是异步缓批投递,任务可能仍跑在事件入库前,
-      // 执行器答 downloadNotCompleted——时序型失败,重发即愈。循环:
-      // 受理 → 轮询任务终态 → 时序型失败重发(有界),其余失败如实落日志
-      const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-      const pollTerminal = async (taskId: string): Promise<
-        { ok: true } | { ok: false; code: string } | { ok: false; code: "poll-timeout" }
-      > => {
-        for (let i = 0; i < 10; i += 1) {
-          await sleep(800);
-          const probe = await provider!.invoke({
-            contractVersion: APPLICATION_CONTRACT_VERSION,
-            requestId: crypto.randomUUID(),
-            correlationId: crypto.randomUUID(),
-            kind: "query",
-            method: "task.get",
-            params: { taskId },
-          });
-          if (!probe.ok) return { ok: false, code: probe.error.code };
-          const task = probe.value as { state?: unknown; error?: { code?: unknown } } | undefined;
-          const state = typeof task?.state === "string" ? task.state : null;
-          if (state === "succeeded" || state === "succeeded_with_warnings") {
-            return { ok: true };
-          }
-          if (state === "failed" || state === "cancelled") {
-            const code = typeof task?.error?.code === "string" ? task.error.code : "unknown";
-            return { ok: false, code };
-          }
-        }
-        return { ok: false, code: "poll-timeout" };
-      };
-      const adopt = async (round: number): Promise<void> => {
-        const response = await provider!.invoke({
-          contractVersion: APPLICATION_CONTRACT_VERSION,
-          requestId: crypto.randomUUID(),
-          correlationId: crypto.randomUUID(),
-          kind: "command",
-          method: "warehouse.importDownloads",
-          commandId: crypto.randomUUID(),
-          params: { downloadIds: [...downloadIds] },
-        });
-        if (!response.ok) {
-          process.stderr.write(`${JSON.stringify({ channel: "silent-download", productId, adoptError: response.error.code })}
-`);
-          return;
-        }
-        const taskId = (response.value as { taskId?: unknown }).taskId;
-        if (typeof taskId !== "string") return;
-        const outcome = await pollTerminal(taskId);
-        if (outcome.ok) return;
-        if (outcome.code === "vua.warehouse.downloadNotCompleted" && round < 5) {
-          await sleep(1_000);
-          return adopt(round + 1);
-        }
-        process.stderr.write(`${JSON.stringify({ channel: "silent-download", productId, adoptError: outcome.code })}
-`);
-      };
-      adopt(0).catch(() => {
-        /* 传输失败如实留在已完成下载列表,用户可手动采纳 */
+    abandon: (downloadId) => downloadPort?.applyIntent(downloadId, "abandon"),
+    observe: async (params) => {
+      if (provider === null) throw new Error("provider unavailable");
+      const response = await provider.invoke({
+        contractVersion: APPLICATION_CONTRACT_VERSION, requestId: crypto.randomUUID(), correlationId: params.batchId,
+        kind: "command", method: "library.observeDownload", commandId: crypto.randomUUID(), params,
       });
+      if (!response.ok || !isLibraryDownloadSnapshotV01(response.value)
+        || response.value.batchId !== params.batchId) throw new Error("library receipt unconfirmed");
     },
   });
+  mainWindow.on("closed", () => { ingestSink.dispose(); silentDownloadQueue?.dispose(); silentDownloadQueue = null; });
 
   // 远程内容管理器(F4-2):独立 partition Session;目录浏览域为种子允许清单,
   // 真实值随 catalog 契约冻结(F4-1②)调整;违规事件广播到本地来源窗口;
@@ -1255,6 +1206,10 @@ app.whenReady().then(async () => {
     console.error("[vua] provider start failed; main window still opens:", error);
   }
   provider.subscribe((event) => {
+    if (event.kind === "task.cancellationRequested" && event.taskId === catalogSyncRun?.runId) {
+      catalogSyncRun.stop();
+    }
+    if (event.kind === "task.cancellationRequested" && event.taskId.startsWith("library-download-")) silentDownloadQueue?.cancel(event.taskId);
     if (event.kind === "download.intent") {
       // 端口意图:intentSeq 去重后串行解释;Main 内部消费,不广播渲染层
       const { downloadId, intent, intentSeq } = event.payload;

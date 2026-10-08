@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "0.3",
+  "runId": "catalog-sync-synthetic",
+  "taskId": "catalog-sync-synthetic",
+  "revision": 4,
+  "state": "running",
+  "cancellationRequested": false,
+  "recoveryDisposition": "none",
+  "libraryTypes": [
+    "bought",
+    "gifts",
+    "free_downloads"
+  ],
+  "completedLibraryTypes": [
+    "bought"
+  ],
+  "pages": 1,
+  "parsedCount": 1,
+  "upsertedCount": 1,
+  "rejectedCount": 0,
+  "nextPageUrl": null,
+  "errorCode": null
+}

@@ -16,7 +16,7 @@ pub use bdl_store::{
     ArtifactInspectionState, ArtifactMappingOutcome, ArtifactMode, ArtifactRecording,
     ArtifactRecordingOutcome, BdlStore, BdlStoreError, CopyRole, DependencyProductRow,
     DependencyResolutionEvidence, EventAppendence, NewDependencyObservation,
-    NewLocalArtifact, ProductObservation, ProductObservationStatus, StoredArtifact,
+    NewLocalArtifact, ManagedLibraryFile, ManagedLibraryDelivery, LibraryCopyEvidence, ProductObservation, ProductObservationStatus, StoredArtifact,
     StoredArtifactCopy, StoredDependencyObservation, StoredDownloadEvent,
     StoredWarehouseItem, SubproductObservation, WarehouseArtifactFact,
     WarehouseArtifactRef, WarehouseEntryCard, WarehouseEntryDetail, WAREHOUSE_ITEM_KINDS,

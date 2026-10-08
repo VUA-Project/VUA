@@ -1,145 +1,166 @@
 import type { Session } from "electron";
+import type { DownloadEventV01, LibraryDownloadObservationV01 } from "@vua/contracts";
 
-/**
- * 静默下载编排器(N5,用户裁决 2026-10-05:Steam 式——不打开页面,右键即下)。
- *
- * 数据面:BDL v0.4 捕获的稳定直链 `https://booth.pm/downloadables/{id}`;
- * 传输面:分区会话 `session.downloadURL` 经 will-download 管道接管——
- * 暂存、download-events、逐 attempt 九态任务(fold_download_task)、完成
- * 后的采纳列表全部复用既有机器,本模块只做发起与限速。
- *
- * 限速(用户裁决 2026-10-05):BOOTH 对爬虫的公开守则是 6s/页,文件下载的
- * 速率限制未知——按最保守形态:全局串行,相邻发起间隔 ≥ minIntervalMs
- * (默认 6000ms)。每个文件的发起 = 一次 booth.pm 源站请求(302 到签名
- * CDN 由 Chromium 跟随),间隔即源站礼貌。传输失败经下载任务面如实呈现,
- * 本模块不重试不吞错。
- */
+export interface SilentDownloadBatch {
+  readonly batchId: string; readonly productId: string; readonly downloadableIds: readonly number[];
+}
 export interface SilentDownloadQueueOptions {
-  readonly partitionSession: Session;
-  /** 相邻发起的最小间隔(默认 6000ms;BOOTH 爬虫守则) */
+  readonly partitionSession: Pick<Session, "downloadURL">;
+  readonly observe: (observation: LibraryDownloadObservationV01) => Promise<void>;
+  readonly abandon: (downloadId: string) => void;
   readonly minIntervalMs?: number;
+  readonly initiationTimeoutMs?: number;
   readonly log?: (line: string) => void;
   readonly sleep?: (ms: number) => Promise<void>;
   readonly now?: () => number;
-  /** 商品自动采纳钩子(人审 E18 修复 2026-10-06,Steam 式"下载即入库"):
-   *  该商品入队的全部文件落定后回调,携带**成功**文件的 downloadId 批,
-   *  调用方据此发 warehouse.importDownloads;有失败文件时同样回调成功批,
-   *  失败事实由下载任务面如实呈现 */
-  readonly onProductSettled?: (
-    productId: string,
-    completedDownloadIds: readonly string[],
-  ) => void;
 }
-
 export interface SilentDownloadQueue {
-  /** 入队一批文件(同一商品);返回受理工 */
-  enqueue(productId: string, downloadableIds: readonly number[]): number;
-  /** 队列中未发起的数量(诊断面) */
+  enqueue(batch: SilentDownloadBatch): number;
   pending(): number;
-  /** 下载事件汇回执:main 的 downloadSink 收到终态事件时回喂。urls =
-   *  事件的 sourceUrl + urlChain 候选(实机 2026-10-07 确诊:重定向后
-   *  sourceUrl 是 s*.booth.pm 签名地址,原始 downloadables 直链只在
-   *  urlChain 链首)——命中任一候选即推进商品落定 */
-  notifySettled(urls: readonly string[], downloadId: string, kind: "completed" | "failed" | "cancelled"): void;
+  /** Admission for one native binding of an already initiated selected file. */
+  isAwaitingNative(originalUrl: string): boolean;
+  /** Native binding only, never evidence that a delivery has been persisted. */
+  notifyTransport(event: DownloadEventV01): void;
+  notifyPersisted(event: DownloadEventV01): void;
+  notifyUnconfirmed(event: DownloadEventV01): void;
+  cancel(batchId: string): void;
+  dispose(): void;
 }
 
+/** Transport pacing and correlation only. Acquisition owns file verification,
+ * replacement, batch finality and all durable results. */
 export function createSilentDownloadQueue(options: SilentDownloadQueueOptions): SilentDownloadQueue {
   const minIntervalMs = options.minIntervalMs ?? 6_000;
+  const initiationTimeoutMs = options.initiationTimeoutMs ?? 30_000;
   const log = options.log ?? ((line: string) => process.stderr.write(`${line}\n`));
-  const sleep =
-    options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
-  const now = options.now ?? (() => Date.now());
-
+  const sleep = options.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  const now = options.now ?? Date.now;
   interface Entry {
-    readonly productId: string;
-    readonly downloadableId: number;
+    readonly batchId: string; readonly downloadableId: number;
+    initiated: boolean; settled: boolean; downloadId: string | null;
+    cancellationRequested: boolean; timer: ReturnType<typeof setTimeout> | null;
   }
-  const queue: Entry[] = [];
-  let running = false;
-  let lastInitiatedAt = 0;
+  const entries: Entry[] = [];
+  const batches = new Map<string, readonly Entry[]>();
+  const inFlight = new Map<string, Entry>();
+  const reports: LibraryDownloadObservationV01[] = [];
+  let disposed = false; let draining = false; let reporting = false;
+  let lastInitiatedAt: number | null = null;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let failures = 0;
+  const urlOf = (entry: Entry): string => `https://booth.pm/downloadables/${entry.downloadableId}`;
 
-  /** 发起后的在途跟踪:url → 条目;商品聚合:remaining / 成功 downloadId 批 */
-  const inFlight = new Map<string, { productId: string; downloadableId: number }>();
-  const products = new Map<
-    string,
-    { remaining: Set<number>; completed: string[] }
-  >();
-
-  function settle(url: string, downloadId: string, ok: boolean): void {
-    const tracked = inFlight.get(url);
-    if (tracked === undefined) return;
-    inFlight.delete(url);
-    const group = products.get(tracked.productId);
-    if (group === undefined) return;
-    group.remaining.delete(tracked.downloadableId);
-    if (ok) group.completed.push(downloadId);
-    if (group.remaining.size > 0) return;
-    products.delete(tracked.productId);
-    options.onProductSettled?.(tracked.productId, group.completed);
-  }
-
-  async function drain(): Promise<void> {
-    if (running) return;
-    running = true;
+  const sendReports = async (): Promise<void> => {
+    if (reporting || disposed) return;
+    reporting = true;
     try {
-      for (;;) {
-        const entry = queue.shift();
-        if (entry === undefined) return;
-        // 全局串行 + 源站礼貌间隔:首个发起前不等待
-        const sinceLast = now() - lastInitiatedAt;
-        if (lastInitiatedAt > 0 && sinceLast < minIntervalMs) {
-          await sleep(minIntervalMs - sinceLast);
-        }
-        lastInitiatedAt = now();
-        const url = `https://booth.pm/downloadables/${entry.downloadableId}`;
-        inFlight.set(url, entry);
-        const group = products.get(entry.productId);
-        if (group !== undefined) group.remaining.add(entry.downloadableId);
-        else products.set(entry.productId, { remaining: new Set([entry.downloadableId]), completed: [] });
+      while (reports.length > 0 && !disposed) {
         try {
-          // 经 will-download 管道:暂存/事件/任务/采纳全在既有面
-          options.partitionSession.downloadURL(url);
-          log(
-            JSON.stringify({
-              channel: "silent-download",
-              productId: entry.productId,
-              downloadableId: entry.downloadableId,
-              initiated: true,
-            }),
-          );
-        } catch (error) {
-          // downloadURL 触发失败(会话已销毁等):如实记录,不重试
-          log(
-            JSON.stringify({
-              channel: "silent-download",
-              productId: entry.productId,
-              downloadableId: entry.downloadableId,
-              error: String(error),
-            }),
-          );
+          await options.observe(reports[0]!);
+          reports.shift(); failures = 0;
+        } catch {
+          failures += 1;
+          const delay = Math.min(1_000 * 2 ** Math.min(failures - 1, 5), 30_000);
+          log(JSON.stringify({ channel: "silent-download", receiptUnconfirmed: true, batchId: reports[0]!.batchId }));
+          retryTimer = setTimeout(() => { retryTimer = null; void sendReports(); }, delay);
+          return;
         }
       }
-    } finally {
-      running = false;
+      for (const [batchId, group] of batches) {
+        if (group.every((entry) => entry.settled) && !reports.some((report) => report.batchId === batchId)) batches.delete(batchId);
+      }
+    } finally { reporting = false; }
+  };
+  const report = (entry: Entry, outcome: LibraryDownloadObservationV01["outcome"], downloadId?: string): void => {
+    reports.push({ schemaVersion: "0.1", batchId: entry.batchId, downloadableId: entry.downloadableId, outcome, ...(downloadId === undefined ? {} : { downloadId }) });
+    if (retryTimer === null) void sendReports();
+  };
+  const clearTimer = (entry: Entry): void => {
+    if (entry.timer !== null) clearTimeout(entry.timer);
+    entry.timer = null;
+  };
+  const settle = (entry: Entry, outcome: LibraryDownloadObservationV01["outcome"], downloadId?: string): void => {
+    if (entry.settled) return;
+    entry.settled = true; clearTimer(entry);
+    if (inFlight.get(urlOf(entry)) === entry) inFlight.delete(urlOf(entry));
+    report(entry, outcome, downloadId);
+  };
+  const matching = (event: DownloadEventV01): Entry | undefined => {
+    for (const url of [event.sourceUrl, ...(event.urlChain ?? [])]) {
+      const entry = inFlight.get(url);
+      if (entry !== undefined && (entry.downloadId === null || entry.downloadId === event.downloadId)) return entry;
     }
-  }
+    return undefined;
+  };
+  const terminal = (event: DownloadEventV01): boolean => ["download.completed", "download.failed", "download.cancelled"].includes(event.kind);
+
+  const drain = async (): Promise<void> => {
+    if (draining || disposed) return;
+    draining = true;
+    try {
+      while (entries.length > 0 && !disposed) {
+        const entry = entries.shift()!;
+        if (entry.settled) continue;
+        if (lastInitiatedAt !== null) {
+          const wait = minIntervalMs - (now() - lastInitiatedAt);
+          if (wait > 0) await sleep(wait);
+        }
+        if (disposed || entry.settled) continue;
+        const url = urlOf(entry);
+        // Server admission prevents concurrent acquisition of the same file;
+        // refuse local collisions too, rather than overwriting correlation.
+        if (inFlight.has(url)) { settle(entry, "initiation_failed"); continue; }
+        lastInitiatedAt = now(); entry.initiated = true; inFlight.set(url, entry);
+        entry.timer = setTimeout(() => settle(entry, entry.cancellationRequested ? "cancelled" : "initiation_failed"), initiationTimeoutMs);
+        try { options.partitionSession.downloadURL(url); }
+        catch { settle(entry, "initiation_failed"); }
+      }
+    } finally { draining = false; }
+  };
 
   return {
-    enqueue(productId, downloadableIds) {
-      const fresh = downloadableIds.filter((id) => Number.isInteger(id) && id > 0);
-      for (const downloadableId of fresh) {
-        queue.push({ productId, downloadableId });
-      }
-      if (fresh.length > 0) void drain();
-      return fresh.length;
+    enqueue(batch) {
+      if (disposed || batches.has(batch.batchId) || batch.downloadableIds.length === 0
+        || new Set(batch.downloadableIds).size !== batch.downloadableIds.length
+        || batch.downloadableIds.some((id) => !Number.isSafeInteger(id) || id <= 0)) return 0;
+      // Register ALL selected files before the first downloadURL call.
+      const group = batch.downloadableIds.map((downloadableId): Entry => ({ batchId: batch.batchId, downloadableId, initiated: false, settled: false, downloadId: null, cancellationRequested: false, timer: null }));
+      batches.set(batch.batchId, group); entries.push(...group); void drain(); return group.length;
     },
-    pending() {
-      return queue.length;
+    pending: () => entries.filter((entry) => !entry.settled).length,
+    isAwaitingNative(originalUrl) {
+      const entry = inFlight.get(originalUrl);
+      return !disposed && entry !== undefined && !entry.settled
+        && !entry.cancellationRequested && entry.downloadId === null;
     },
-    notifySettled(urls, downloadId, kind) {
-      for (const url of urls) {
-        settle(url, downloadId, kind === "completed");
+    notifyTransport(event) {
+      const entry = matching(event); if (entry === undefined) return;
+      if (event.kind === "download.started" || terminal(event)) {
+        clearTimer(entry); entry.downloadId = event.downloadId;
+        if (entry.cancellationRequested && !terminal(event)) options.abandon(event.downloadId);
       }
+    },
+    notifyPersisted(event) {
+      const entry = matching(event); if (entry === undefined) return;
+      if (terminal(event)) settle(entry, "settled", event.downloadId);
+      else if (event.kind === "download.started") report(entry, "started", event.downloadId);
+    },
+    notifyUnconfirmed(event) {
+      const entry = matching(event); if (entry !== undefined && (terminal(event) || event.kind === "download.started")) settle(entry, "unconfirmed");
+    },
+    cancel(batchId) {
+      for (const entry of batches.get(batchId) ?? []) {
+        if (entry.settled) continue;
+        entry.cancellationRequested = true;
+        if (!entry.initiated) settle(entry, "cancelled");
+        else if (entry.downloadId !== null) options.abandon(entry.downloadId);
+      }
+    },
+    dispose() {
+      disposed = true;
+      if (retryTimer !== null) clearTimeout(retryTimer);
+      for (const group of batches.values()) for (const entry of group) clearTimer(entry);
+      entries.length = 0; reports.length = 0; batches.clear(); inFlight.clear();
     },
   };
 }

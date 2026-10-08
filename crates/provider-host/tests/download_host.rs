@@ -165,6 +165,43 @@ const DOWNLOAD: &str = "01hexample0000000000000a";
 const TASK_A1: &str = "dl-01hexample0000000000000a-a1";
 
 #[test]
+fn duplicate_receipt_repairs_a_missing_task_journal_without_repeating_delivery() {
+    use vua_bdl_store::{DownloadEventConsumer, DownloadEventV01};
+    let world = make_world("journal-repair");
+    let started = download_event(DOWNLOAD, "download.started", 1, "2026-10-08T00:00:00Z", serde_json::json!({"receivedBytes":0}));
+    let completed = download_event(DOWNLOAD, "download.completed", 1, "2026-10-08T00:00:01Z", serde_json::json!({"receivedBytes":10,"storedPath":"C:\\synthetic\\staging\\file.zip"}));
+    {
+        let bdl = BdlStore::open(&world.bdl_path).unwrap();
+        for value in [&started, &completed] {
+            DownloadEventConsumer::new(&bdl).ingest(&serde_json::from_value::<DownloadEventV01>(value.clone()).unwrap()).unwrap();
+        }
+    }
+    let frames = run(&world, vec![frame("f1", ingest_request("repair", vec![completed.clone(), completed]))]);
+    let receipt = response_payload(&frames, "repair");
+    assert_eq!(receipt["folded"], 0);
+    assert_eq!(receipt["duplicates"], 2);
+    assert_eq!(receipt["rejected"], serde_json::json!([]));
+    let tasks = vua_orchestrator::SqliteTaskStore::open(&world.database).unwrap();
+    assert_eq!(tasks.task(TASK_A1).unwrap().unwrap().state, vua_orchestrator::TaskState::Succeeded);
+    assert_eq!(tasks.events_after(TASK_A1, 0).unwrap().len(), 4);
+    assert_eq!(BdlStore::open(&world.bdl_path).unwrap().download_events(DOWNLOAD).unwrap().len(), 2);
+    drop(tasks);
+    fs::remove_dir_all(&world.base).ok();
+}
+
+#[test]
+fn a_policy_failure_before_started_still_has_a_visible_failed_task() {
+    let world = make_world("early-policy");
+    let denied = download_event(DOWNLOAD, "download.failed", 1, "2026-10-08T00:00:00Z", serde_json::json!({"failureKind":"policy","resumable":false}));
+    let frames = run(&world, vec![frame("f1", ingest_request("deny", vec![denied]))]);
+    assert_eq!(response_payload(&frames, "deny")["rejected"], serde_json::json!([]));
+    let tasks = vua_orchestrator::SqliteTaskStore::open(&world.database).unwrap();
+    assert_eq!(tasks.task(TASK_A1).unwrap().unwrap().state, vua_orchestrator::TaskState::Failed);
+    drop(tasks);
+    fs::remove_dir_all(&world.base).ok();
+}
+
+#[test]
 fn b4_dl_001_ingest_folds_events_creates_tasks_and_answers_receipts() {
     let world = make_world("fold");
     let frames = run(

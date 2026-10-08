@@ -1,0 +1,9 @@
+{
+  "method": "catalog.finishLibrarySync",
+  "params": {
+    "schemaVersion": "0.3",
+    "runId": "catalog-sync-synthetic",
+    "outcome": "failed",
+    "errorCode": "http_status"
+  }
+}

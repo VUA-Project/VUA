@@ -199,6 +199,28 @@ function toApplicationRequest(
     // bdl-queries v0.2 只读查询面:查询闭集已由信封守卫验证,参数原样透传
     case "catalog.list":
       return { ...base, kind: "query", method: "catalog.list", params: request.params };
+    case "catalog.librarySyncStatus":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "library.downloadStatus":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "library.list":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "library.productFiles":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "library.removalPreview":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "library.removalStatus":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "library.removeFiles":
+      return { ...base, kind: "command", commandId: request.params.removalId, method: request.method, params: request.params };
+    case "recipeDraft.list":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "recipeDraft.get": case "recipeDraft.selectionStatus":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "recipeDraft.save":
+      return { ...base, kind: "command", commandId: request.requestId, method: request.method, params: request.params };
+    case "recipeDraft.addSelection":
+      return { ...base, kind: "command", commandId: request.requestId, method: request.method, params: request.params };
     case "catalog.detail":
       return { ...base, kind: "query", method: "catalog.detail", params: request.params };
     case "catalog.status":

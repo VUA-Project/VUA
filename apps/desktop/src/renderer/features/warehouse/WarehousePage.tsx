@@ -6,7 +6,10 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { createPortal } from "react-dom";
+import { isCatalogSyncSnapshotV03, isLibraryDownloadSnapshotV01, type CatalogSyncSnapshotV03 } from "@vua/contracts";
+import { catalogSyncNotice, type CatalogSyncNotice } from "./catalog-sync-model.ts";
 import { catalogBrowser } from "../../app/catalog-browser-instance.ts";
+import { libraryBrowser } from "../../app/library-browser-instance.ts";
 import { browseWindowSupported, openBrowseWindow } from "../../app/browse-window.ts";
 import { openExternalUrl } from "../../app/open-external.ts";
 import { Badge } from "../../components/primitives/Badge.tsx";
@@ -22,6 +25,8 @@ import {
   useAcquireView,
   useGateway,
   useDataSource,
+  type LibraryPageView,
+  type LibraryCardFacts,
   type CatalogAvailabilityStatus,
   type CatalogDetailView,
   type CatalogErrorKey,
@@ -35,11 +40,10 @@ import type { PageId } from "../../app/nav-model.ts";
 import { ProductionFlowSectionHost } from "../workshop/ProductionFlowSectionHost.tsx";
 import { useDebugMode } from "../../app/debug-mode.ts";
 import { useCardSpotlight } from "./use-card-spotlight.ts";
-import type { RecipeAssetRef } from "../../gateway/recipe-port.ts";
-import type { TaskItem } from "../../gateway/task-port.ts";
+import type { RecipeAssetRef } from "../../gateway/index.ts";
 import { AddToRecipeDialog } from "./AddToRecipeDialog.tsx";
 import { CompatibleItemsDialog } from "./CompatibleItemsDialog.tsx";
-import { registerTaskIdentity } from "../../gateway/task-identity.ts";
+import { registerTaskIdentity } from "../../gateway/index.ts";
 import { CardAlbumMedia, DetailAlbum } from "./WarehouseAlbum.tsx";
 import { ArtifactCard, EntryDetail } from "./WarehouseAcquire.tsx";
 import { artifactCardMatches, artifactCards, inferGlobalDefaultMode } from "./acquire-model.ts";
@@ -57,6 +61,7 @@ import { BOOTH_SIGN_IN_URL } from "../import/import-model.ts";
 import { openLoginBrowser, useLoginBrowserRequest } from "../../app/login-browser-store.ts";
 import { useDownloadChecklist } from "../../app/download-checklist-flag.ts";
 import { DownloadChecklistDialog } from "./DownloadChecklistDialog.tsx";
+import { RemoveFilesDialog, type RemovalDialogTarget } from "./RemoveFilesDialog.tsx";
 import "./warehouse.css";
 
 const copy = strings.warehouse;
@@ -129,17 +134,34 @@ function priceText(product: {
 
 /* ---- 商品卡片 ---- */
 
+function LibraryBadges({ facts }: { facts: LibraryCardFacts | undefined }) {
+  if (facts === undefined) return null;
+  return <>
+    <Badge tone={facts.storage.state === "present" || facts.storage.state === "cloud_only" ? "neutral" : "warning"}>
+      {copy.libraryState[facts.storage.state]}
+    </Badge>
+    {facts.storage.supersededGeneratedCopies > 0 ? <Badge tone="neutral">{copy.removeFiles.oldVersion}</Badge> : null}
+    {facts.storage.supersededGeneratedCopies > 0 && facts.storage.currentGeneratedCopies === 0 ? <Badge tone="warning">{copy.removeFiles.regenerate}</Badge> : null}
+    {facts.operation?.inspectRequired ? <Badge tone="warning">{copy.libraryState.inspectRequired}</Badge>
+      : facts.operation?.state === "running" ? <Badge tone="neutral">{copy.libraryState.downloading}</Badge>
+      : facts.operation?.state === "failed" ? <Badge tone="warning">{copy.libraryState.downloadFailed}</Badge>
+      : facts.operation?.state === "succeeded_with_warnings" ? <Badge tone="warning">{copy.libraryState.downloadPartial}</Badge> : null}
+  </>;
+}
+
 /** 卡/行交互基座(Explorer 语义,用户裁决 2026-10-05):单击 = 选中该卡,
  * 双击/Enter = 打开详情,右键 = 交页面菜单(按选区约定裁决作用域)。
  * data-product-id 既是选区归属标记,也是框选命中测试的锚点。 */
 function WarehouseListRow({
   item,
+  facts,
   selected,
   onSelect,
   onOpen,
   onMenu,
 }: {
   item: CatalogProductSummary;
+  facts?: LibraryCardFacts | undefined;
   selected: boolean;
   onSelect: () => void;
   onOpen: () => void;
@@ -156,6 +178,7 @@ function WarehouseListRow({
       onDoubleClick={onOpen}
       onContextMenu={onMenu}
       onKeyDown={(e) => {
+        if (e.target !== e.currentTarget) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onOpen();
@@ -167,21 +190,24 @@ function WarehouseListRow({
         <span className="vua-warehouse-list-row__variant">{item.variantName}</span>
       ) : null}
       <span className="vua-warehouse-list-row__shop">{item.shopName ?? copy.card.unknownShop}</span>
-      {item.importedArtifacts > 0 ? (
+      {facts !== undefined ? <LibraryBadges facts={facts} /> : item.importedArtifacts > 0 ? (
         <span className="vua-caption">{copy.importedBadge}</span>
       ) : null}
+      <Button variant="subtle" aria-label={copy.removeFiles.actions} aria-haspopup="menu" onClick={(event) => { event.stopPropagation(); onMenu(event); }}>⋯</Button>
     </div>
   );
 }
 
 function WarehouseCard({
   item,
+  facts,
   selected,
   onSelect,
   onOpen,
   onMenu,
 }: {
   item: CatalogProductSummary;
+  facts?: LibraryCardFacts | undefined;
   selected: boolean;
   onSelect: () => void;
   onOpen: () => void;
@@ -200,6 +226,7 @@ function WarehouseCard({
       role="listitem"
       tabIndex={0}
       onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           onOpen();
@@ -237,10 +264,11 @@ function WarehouseCard({
           {item.availability !== "available" && item.availability !== "unknown" ? (
             <Badge tone="neutral">{copy.availability[item.availability]}</Badge>
           ) : null}
-        {item.importedArtifacts > 0 ? (
+        {facts !== undefined ? <LibraryBadges facts={facts} /> : item.importedArtifacts > 0 ? (
           <Badge tone="neutral">{copy.importedBadge}</Badge>
         ) : null}
         </div>
+        <Button variant="subtle" aria-label={copy.removeFiles.actions} aria-haspopup="menu" onClick={(event) => { event.stopPropagation(); onMenu(event); }}>⋯</Button>
       </div>
     </article>
   );
@@ -547,14 +575,13 @@ export function WarehousePage({
     productId: string;
     title: string;
   } | null>(null);
-  // 按商品删除受理回执(诚实短提示;各条目任务进度在通知中心呈现)
-  const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
+  const [removalTarget, setRemovalTarget] = useState<RemovalDialogTarget | null>(null);
   const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
   // 静默下载观察(人审 E18 修复):受理后记住商品,下载任务静默 + 目录里
   // 该商品已入库(自动采纳完成写 mappings)即刷新卡片墙并提示——用户看
   // 得到"下到哪了"。不按采纳任务 id 判定:main 发起的采纳任务是时间戳
   // id,渲染层无登记身份可认
-  const [downloadWatchProduct, setDownloadWatchProduct] = useState<string | null>(null);
+  const [downloadWatchBatch, setDownloadWatchBatch] = useState<string | null>(null);
   // 静默下载(N5):清单对话的打开意图 + 受理回执提示
   const [checklistProduct, setChecklistProduct] = useState<{
     productId: string;
@@ -567,7 +594,9 @@ export function WarehousePage({
   const [source, setSource] = useState<
     "all" | "bought" | "gifts" | "free" | "local"
   >("all");
-  const [downloadState, setDownloadState] = useState<"all" | "downloaded" | "not-downloaded">("all");
+  const [downloadState, setDownloadState] = useState<"all" | "downloaded" | "not-downloaded" | "missing" | "in_progress" | "attention">("all");
+  const [libraryPage, setLibraryPage] = useState<LibraryPageView | null>(null);
+  const [pageOffset, setPageOffset] = useState(0);
 
   const [query, setQuery] = useState<WarehouseQueryState>(emptyWarehouseQuery);
   const [listState, setListState] = useState<ListState>({ kind: "loading" });
@@ -587,9 +616,9 @@ export function WarehousePage({
    * 任务面(通知中心),本页只回触发结果,不伪造运行过程 */
   const remoteBrowser = window.vua?.capabilities?.remoteBrowser === true;
   const [signInHint, setSignInHint] = useState<"stored" | "none" | "unknown" | null>(null);
-  const [syncNotice, setSyncNotice] = useState<
-    "started" | "already" | "blocked" | "done" | "failed" | null
-  >(null);
+  const [syncNotice, setSyncNotice] = useState<CatalogSyncNotice | null>(null);
+  const [syncProgress, setSyncProgress] = useState<CatalogSyncSnapshotV03 | null>(null);
+  const [syncReadFailed, setSyncReadFailed] = useState(false);
   const [syncRunId, setSyncRunId] = useState<string | null>(null);
   /** 统一卡片墙:选中的本地条目(云端商品用 selectedId,两者互斥呈现) */
   const [selectedLocalId, setSelectedLocalId] = useState<string | null>(null);
@@ -641,7 +670,11 @@ export function WarehousePage({
             : "bought";
     // 显式携带类型(含 bought):wire 请求不带 libraryType 会让观察 upsert
     // 把该列覆盖为 NULL(真机 2026-10-03:14 条已购行被清空的根因)
-    const outcome = await catalogSync.start({ libraryType });
+    setSyncProgress(null);
+    setSyncReadFailed(false);
+    let outcome;
+    try { outcome = await catalogSync.start({ libraryType }); }
+    catch { setSyncNotice("failed"); return; }
     if (outcome.status === "blocked") {
       // 登录引导:门已升级为真实预检(2026-10-05)——「访问过登录页」的
       // 半登录会话(cookie 在、登录未完成)也会被拦截;空态卡翻为登录
@@ -663,6 +696,7 @@ export function WarehousePage({
       setSyncNotice("started");
     } else {
       setSyncNotice("already");
+      setSyncRunId(outcome.runId);
     }
   };
 
@@ -672,114 +706,96 @@ export function WarehousePage({
   const gateway = useGateway();
   // 统一卡片墙数据源:本地条目(经 acquire 快照,与云端卡同一墙渲染)
   const acquireView = useAcquireView();
-  const localEntries = acquireView !== null && acquireView.kind === "entries" ? acquireView.entries : [];
+  const localEntries = dataSource === "fixture"
+    ? acquireView !== null && acquireView.kind === "entries" ? acquireView.entries : []
+    : libraryPage?.localEntries ?? [];
   const localCards = artifactCards(localEntries).filter((card) =>
-    artifactCardMatches(card, query.text.trim()),
+    dataSource !== "fixture" || artifactCardMatches(card, query.text.trim()),
   );
   const selectedLocalEntry =
     selectedLocalId === null
       ? null
       : (localEntries.find((entry) => entry.warehouseItemId === selectedLocalId) ?? null);
   useEffect(() => {
-    if (syncNotice !== "started" || syncRunId === null) return;
+    if ((syncNotice !== "started" && syncNotice !== "already") || syncRunId === null) return;
     let active = true;
-    const timer = window.setInterval(() => {
-      void gateway.task
-        .snapshot()
-        .then((view) => {
-          if (!active) return;
-          const run = view.tasks.find((task) => task.id === syncRunId);
-          if (run !== undefined) {
-            if (run.status === "completed" || run.status === "completedWithWarnings") {
-              setSyncNotice("done");
-              setSyncRunId(null);
-              setReloadKey((key) => key + 1);
-            } else if (run.status === "failed" || run.status === "cancelled") {
-              setSyncNotice("failed");
-              setSyncRunId(null);
-              setReloadKey((key) => key + 1);
-            }
-            return;
+    let busy = false;
+    const poll = async () => {
+      if (busy || !active) return;
+      busy = true;
+      try {
+        const result = await window.vua?.gateway.invoke({ schemaVersion: 1, requestId: crypto.randomUUID(),
+          method: "catalog.librarySyncStatus", params: { schemaVersion: "0.3", runId: syncRunId } });
+        if (!active) return;
+        if (!result?.ok || !isCatalogSyncSnapshotV03(result.value) || result.value.runId !== syncRunId) throw new Error("sync_status_unavailable");
+        const snapshot = result.value;
+        setSyncReadFailed(false);
+        setSyncProgress(snapshot);
+        const notice = catalogSyncNotice(snapshot);
+        if (notice !== "started") {
+          setSyncNotice(notice);
+          setSyncRunId(null);
+          if (notice === "blocked") setSignInHint("none");
+          setReloadKey((key) => key + 1);
+        } else {
+          // An undelivered final receipt cannot turn the durable task into success/failure.
+          const transport = await window.vua?.catalogSync?.probe();
+          if (active && transport?.status === "idle" && transport.runId === syncRunId && transport.lastFailureCode !== null) {
+            setSyncNotice("unconfirmed");
+            setSyncRunId(null);
+            setReloadKey((key) => key + 1);
           }
-          // 任务面没有该运行(首页即失败,provider 从未折叠任务):查探针的
-          // 终态事实收口提示,不让“已开始”永远挂着(真机 2026-10-05)
-          void window.vua?.catalogSync
-            ?.probe()
-            .then((probe) => {
-              if (
-                !active ||
-                probe.status !== "idle" ||
-                probe.runId !== syncRunId ||
-                probe.lastFailureCode === null
-              ) {
-                return;
-              }
-              setSyncNotice("failed");
-              setSyncRunId(null);
-            })
-            .catch(() => {});
-        })
-        .catch(() => {});
-    }, 2000);
+        }
+      } catch { if (active) setSyncReadFailed(true); }
+      finally { busy = false; }
+    };
+    void poll();
+    const timer = window.setInterval(() => void poll(), 2000);
     return () => {
       active = false;
       window.clearInterval(timer);
     };
-  }, [syncNotice, syncRunId, gateway]);
-
-  // 终态判定与任务中心同表(九态闭集)
-  const isTerminalTaskStatus = (status: TaskItem["status"]): boolean =>
-    status === "completed"
-    || status === "completedWithWarnings"
-    || status === "failed"
-    || status === "cancelled";
+  }, [syncNotice, syncRunId]);
 
   useEffect(() => {
-    if (downloadWatchProduct === null) return;
-    let active = true;
-    let polls = 0;
-    const timer = window.setInterval(() => {
-      polls += 1;
-      void gateway.task
-        .snapshot()
-        .then((view) => {
-          if (!active) return;
-          const downloading = view.tasks.some(
-            (task) => task.id.startsWith("dl-") && !isTerminalTaskStatus(task.status),
-          );
-          if (downloading) return;
-          // 下载静默后查目录:该商品 importedArtifacts > 0 = 自动采纳落库
-          return catalogBrowser
-            .list()
-            .then((list) => {
-              if (!active) return;
-              const card =
-                list.kind === "results"
-                  ? list.items.find((item) => item.productId === downloadWatchProduct)
-                  : undefined;
-              if (card !== undefined && card.importedArtifacts > 0) {
-                window.clearInterval(timer);
-                setDownloadWatchProduct(null);
-                setReloadKey((key) => key + 1);
-                setDownloadNotice(copy.cardMenu.downloadAdoptedHint);
-              } else if (polls > 10) {
-                // ~25s 仍未入库:如实收口(失败详情在任务面/已完成下载)
-                window.clearInterval(timer);
-                setDownloadWatchProduct(null);
-                setReloadKey((key) => key + 1);
-                setDownloadNotice(copy.cardMenu.downloadFailedHint);
-              }
-            })
-            .catch(() => {});
-        })
-        .catch(() => {});
-    }, 2500);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
+    if (downloadWatchBatch === null) return;
+    let active = true; let busy = false;
+    let lastRevision: number | null = null;
+    const poll = async (): Promise<void> => {
+      if (!active || busy) return;
+      busy = true;
+      try {
+        const response = await window.vua?.gateway.invoke({
+          schemaVersion: 1, requestId: crypto.randomUUID(), method: "library.downloadStatus",
+          params: { schemaVersion: "0.1", batchId: downloadWatchBatch },
+        });
+        if (!active) return;
+        if (response === undefined || !response.ok || !isLibraryDownloadSnapshotV01(response.value) || response.value.batchId !== downloadWatchBatch) {
+          setDownloadNotice(copy.cardMenu.downloadReadFailedHint); return;
+        }
+        const snapshot = response.value;
+        if (snapshot.revision !== lastRevision) {
+          lastRevision = snapshot.revision;
+          setReloadKey((key) => key + 1);
+        }
+        const counts = {
+          stored: snapshot.files.filter((file) => file.phase === "stored").length,
+          failed: snapshot.files.filter((file) => file.phase === "failed" || file.phase === "unconfirmed").length,
+          cancelled: snapshot.files.filter((file) => file.phase === "cancelled").length,
+          total: snapshot.files.length,
+        };
+        if (snapshot.recoveryDisposition === "inspect_required") {
+          setDownloadNotice(copy.cardMenu.downloadInspectHint); setDownloadWatchBatch(null);
+        } else if (snapshot.state !== "running") {
+          setDownloadNotice(format(copy.cardMenu.downloadTerminalHint, counts));
+          setDownloadWatchBatch(null); setReloadKey((key) => key + 1);
+        } else setDownloadNotice(format(copy.cardMenu.downloadProgressHint, counts));
+      } catch { if (active) setDownloadNotice(copy.cardMenu.downloadReadFailedHint); }
+      finally { busy = false; }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 受理商品驱动的一次性观察
-  }, [downloadWatchProduct]);
+    void poll(); const timer = window.setInterval(() => void poll(), 2000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [downloadWatchBatch]);
 
   // Esc 清空选区(菜单打开时先关菜单,选区保留——Esc 一次只收一层)
   useEffect(() => {
@@ -916,15 +932,19 @@ export function WarehousePage({
     if (!connected) return;
     let active = true;
     setListState((prev) => (prev.kind === "loaded" ? prev : { kind: "loading" }));
-    catalogBrowser
-      .list(
-        source === "bought" || source === "gifts" || source === "free"
-          ? { ...toPortQuery(query), libraryType: source === "free" ? "free_downloads" : source }
-          : toPortQuery(query),
-      )
-      .then(
-      (view) => {
-        if (active) setListState({ kind: "loaded", view });
+    const read = dataSource === "fixture"
+      ? catalogBrowser.list(toPortQuery(query)).then((catalog) => ({ catalog, localEntries: [], facts: new Map(), total: catalog.kind === "results" ? catalog.total : 0, offset: 0, limit: 50 }))
+      : libraryBrowser.list({ schemaVersion: "0.1", source: source === "free" ? "free_downloads" : source,
+        state: downloadState === "not-downloaded" ? "cloud_only" : downloadState, text: query.text.trim(),
+        ...(query.availabilityStatus === "" ? {} : { availabilityStatus: query.availabilityStatus }), limit: 50, offset: pageOffset });
+    read.then(
+      (page) => {
+        if (!active) return;
+        if (pageOffset > 0 && pageOffset >= page.total) {
+          setPageOffset(Math.max(0, Math.floor((page.total - 1) / 50) * 50));
+          return;
+        }
+        setLibraryPage(page); setListState({ kind: "loaded", view: page.catalog });
       },
       () => {
         if (active) setListState({ kind: "failed" });
@@ -933,7 +953,20 @@ export function WarehousePage({
     return () => {
       active = false;
     };
-  }, [query, connected, reloadKey, source]);
+  }, [query, connected, reloadKey, source, downloadState, pageOffset, dataSource]);
+
+  useEffect(() => { setPageOffset(0); setSelectedIds(new Set()); }, [query, source, downloadState]);
+  useEffect(() => { setSelectedIds(new Set()); }, [pageOffset]);
+  useEffect(() => {
+    const refresh = () => setReloadKey((key) => key + 1);
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+  }, []);
+  useEffect(() => window.vua?.events.subscribe((event) => {
+    if (event.kind === "task.completed" || event.kind === "task.persistenceFailed") {
+      setReloadKey((key) => key + 1); setDetailReloadKey((key) => key + 1);
+    }
+  }), []);
 
   // 详情查询
   useEffect(() => {
@@ -961,32 +994,42 @@ export function WarehousePage({
   const emptyCard = catalogEmptyCard({
     remoteBrowser,
     signInHint,
-    filtered: hasActiveFilter(query),
-    catalogEmpty: resultsView !== null && resultsView.items.length === 0,
+    filtered: hasActiveFilter(query) || source !== "all" || downloadState !== "all",
+    catalogEmpty: resultsView !== null && resultsView.items.length === 0 && localCards.length === 0,
   });
 
   /** 静默下载发起:ids = null 表示「全部已捕获文件」;受理后任务进度走
    *  通知中心,本页只给受理回执(动作无可见响应等同于坏) */
-  const startSilentDownload = async (productId: string, ids: readonly number[] | null): Promise<void> => {
+  const startSilentDownload = async (productId: string, ids: readonly number[] | null, targets?: readonly { downloadableId: number; copyId: string }[]): Promise<void> => {
     const face = window.vua?.silentDownload;
     if (face === undefined) return;
     let resolved = ids;
     if (resolved === null) {
-      const view = await catalogBrowser.productDownloadables(productId).catch(() => null);
-      if (view === null || view.kind !== "files" || view.items.length === 0) {
+      const view = await libraryBrowser.productFiles(productId).catch(() => null);
+      if (view === null || view.items.length === 0) {
         setDownloadNotice(copy.cardMenu.downloadNoCapture);
+        return;
+      }
+      if (view.items.some((file) => file.managedCopyId === null && file.copies.length > 1)) {
+        setChecklistProduct({ productId, title: resultsView?.items.find((item) => item.productId === productId)?.title ?? productId });
         return;
       }
       resolved = view.items.map((file) => file.downloadableId);
     }
     try {
-      const outcome = await face.start(productId, resolved);
-      if ("blocked" in outcome && outcome.blocked === "sign-in-required") {
+      const outcome = await face.start(productId, resolved, targets);
+      if ("blocked" in outcome) {
         setDownloadNotice(copy.cardMenu.downloadSessionExpired);
         return;
       }
+      if ("errorCode" in outcome) {
+        setDownloadNotice(outcome.errorCode === "vua.library.file_busy" ? copy.cardMenu.downloadBusyHint : outcome.errorCode === "vua.library.replacement_ambiguous" ? copy.cardMenu.downloadAmbiguousHint : copy.cardMenu.downloadFailedHint);
+        return;
+      }
       setDownloadNotice(format(copy.cardMenu.downloadQueuedHint, { count: outcome.accepted }));
-      setDownloadWatchProduct(productId);
+      registerTaskIdentity(outcome.taskId, { title: copy.cardMenu.download, originPage: "warehouse", notifyOnComplete: true });
+      setDownloadWatchBatch(outcome.batchId);
+      setReloadKey((key) => key + 1);
     } catch {
       setDownloadNotice(copy.cardMenu.downloadFailedHint);
     }
@@ -1045,7 +1088,7 @@ export function WarehousePage({
       { id: "open", label: copy.card.detailsCta, onSelect: () => setSelectedId(item.productId) },
         {
           id: "download",
-          label: copy.cardMenu.download,
+          label: (libraryPage?.facts.get(item.productId)?.storage.storedCopies ?? item.importedArtifacts) > 0 ? copy.cardMenu.reDownload : copy.cardMenu.download,
           onSelect: () => {
             // 静默下载(用户裁决 2026-10-05,Steam 式:不打开页面):按设置
             // 决定直下全部或先弹文件清单;文件 id 来自 BDL 捕获(v0.7 查询),
@@ -1072,22 +1115,12 @@ export function WarehousePage({
             setRecipeDialogOpen(true);
           },
         },
-        ...(item.importedArtifacts > 0
+        ...((libraryPage?.facts.get(item.productId)?.storage.storedCopies ?? item.importedArtifacts) > 0 && dataSource === "live"
           ? [{
               id: "deleteLocal",
               label: copy.cardMenu.deleteLocal,
               onSelect: () => {
-                if (!window.confirm(copy.cardMenu.deleteConfirm)) return;
-                void gateway.warehouseCommands
-                  .deleteOriginalsByProduct(item.productId)
-                  .then((outcome) => {
-                    setDeleteNotice(
-                      outcome.ok && "deleted" in outcome
-                        ? format(copy.cardMenu.deleteSubmittedHint, { count: outcome.deleted.deletedItemCount })
-                        : copy.cardMenu.deleteFailedHint,
-                    );
-                  })
-                  .catch(() => setDeleteNotice(copy.cardMenu.deleteFailedHint));
+                setRemovalTarget({ target: { kind: "product", id: item.productId }, title: item.title ?? item.productId });
               },
             }]
           : []),
@@ -1099,7 +1132,8 @@ export function WarehousePage({
           },
         },
     ];
-    setCardMenu({ x: event.clientX, y: event.clientY, items: menuItems });
+    const anchor = event.currentTarget.getBoundingClientRect();
+    setCardMenu({ x: event.detail === 0 ? anchor.left : event.clientX, y: event.detail === 0 ? anchor.bottom : event.clientY, items: menuItems });
   };
 
   return (
@@ -1155,6 +1189,9 @@ export function WarehousePage({
           <option value="all">{copy.filters.downloadAll}</option>
           <option value="downloaded">{copy.filters.downloaded}</option>
           <option value="not-downloaded">{copy.filters.notDownloaded}</option>
+          <option value="missing">{copy.libraryState.missing}</option>
+          <option value="in_progress">{copy.libraryState.downloading}</option>
+          <option value="attention">{copy.libraryState.attention}</option>
         </select>
         <p className="vua-text-secondary">{copy.subtitle}</p>
         {/* 素材导入入口(2026-09-20 导航重构):原独立页(设计标准 §8.3)收敛为
@@ -1185,12 +1222,23 @@ export function WarehousePage({
                     ? copy.catalogSync.signInRequired
                     : syncNotice === "done"
                       ? copy.catalogSync.completedHint
+                      : syncNotice === "warning"
+                        ? copy.catalogSync.warningHint
+                        : syncNotice === "cancelled"
+                          ? copy.catalogSync.cancelledHint
+                          : syncNotice === "inspect"
+                            ? copy.catalogSync.inspectHint
+                            : syncNotice === "unconfirmed"
+                              ? copy.catalogSync.unconfirmedHint
                       : copy.catalogSync.failedHint}
             </span>
           ) : null}
-          {deleteNotice !== null ? (
-            <span className="vua-caption vua-text-secondary" role="status">{deleteNotice}</span>
+          {syncProgress !== null ? (
+            <span className="vua-caption vua-text-secondary" role="status">
+              {format(copy.catalogSync.progressHint, { pages: syncProgress.pages, count: syncProgress.upsertedCount, rejected: syncProgress.rejectedCount })}
+            </span>
           ) : null}
+          {syncReadFailed ? <span className="vua-caption vua-text-secondary" role="status">{copy.catalogSync.readFailedHint}</span> : null}
           {downloadNotice !== null ? (
             <span className="vua-caption vua-text-secondary" role="status">{downloadNotice}</span>
           ) : null}
@@ -1301,12 +1349,17 @@ export function WarehousePage({
                 <span className="vua-caption vua-text-secondary">
                   {hasActiveFilter(query)
                     ? format(copy.resultCount, {
-                        shown: resultsView.items.length,
+                        shown: resultsView.items.length + localEntries.length,
                         total: resultsView.total,
                       })
                     : format(copy.resultCountAll, { total: resultsView.total })}
                 </span>
               ) : null}
+              {libraryPage !== null ? <div className="vua-library-pagination">
+                <Button variant="subtle" disabled={pageOffset === 0} onClick={() => setPageOffset((offset) => Math.max(0, offset - 50))}>{copy.libraryState.previousPage}</Button>
+                <span className="vua-caption">{format(copy.libraryState.page, { page: Math.floor(pageOffset / 50) + 1, total: Math.max(1, Math.ceil(libraryPage.total / 50)) })}</span>
+                <Button variant="subtle" disabled={pageOffset + 50 >= libraryPage.total} onClick={() => setPageOffset((offset) => offset + 50)}>{copy.libraryState.nextPage}</Button>
+              </div> : null}
             </div>
 
             {/* 滚动限定在本容器:工具栏/hero 不随图片墙滚动(用户反馈 #2) */}
@@ -1349,7 +1402,7 @@ export function WarehousePage({
                     </div>
                   ))}
                 </div>
-              ) : resultsView !== null && resultsView.items.length === 0 ? (
+              ) : resultsView !== null && resultsView.items.length === 0 && localCards.length === 0 ? (
                 /* 目录空态(N5 S1):登录引导卡/同步引导卡/通用空态三态 */
                 emptyCard.kind === "sign-in" ? (
                   <EmptyState
@@ -1395,20 +1448,13 @@ export function WarehousePage({
                   }
                   role="list"
                 >
-                  {source !== "local"
-                    ? resultsView?.items
-                      .filter((item) =>
-                        downloadState === "all"
-                          ? true
-                          : downloadState === "downloaded"
-                            ? item.importedArtifacts > 0
-                            : item.importedArtifacts === 0,
-                      )
+                  {resultsView?.items
                       .map((item) =>
                         viewMode === "cards" ? (
                           <WarehouseCard
                             key={item.productId}
                             item={item}
+                            facts={libraryPage?.facts.get(item.productId)}
                             selected={selectedIds.has(item.productId)}
                             onSelect={() => selectSingle(item.productId)}
                             onOpen={() => {
@@ -1421,6 +1467,7 @@ export function WarehousePage({
                           <WarehouseListRow
                             key={item.productId}
                             item={item}
+                            facts={libraryPage?.facts.get(item.productId)}
                             selected={selectedIds.has(item.productId)}
                             onSelect={() => selectSingle(item.productId)}
                             onOpen={() => {
@@ -1431,9 +1478,11 @@ export function WarehousePage({
                           />
                         )
                       )
-                    : null}
+                  }
                   {source !== "gifts" && source !== "bought" && source !== "free"
                     ? localCards.map((card) => (
+                        <div key={card.key}>
+                        <LibraryBadges facts={libraryPage?.facts.get(card.entry.warehouseItemId)} />
                         <ArtifactCard
                           key={card.key}
                           card={card}
@@ -1444,9 +1493,10 @@ export function WarehousePage({
                           }}
                           onMenu={(event) => {
                             event.preventDefault();
+                            const anchor = event.currentTarget.getBoundingClientRect();
                             setCardMenu({
-                              x: event.clientX,
-                              y: event.clientY,
+                              x: event.detail === 0 ? anchor.left : event.clientX,
+                              y: event.detail === 0 ? anchor.bottom : event.clientY,
                               items: [
                                 {
                                   id: "open",
@@ -1456,10 +1506,26 @@ export function WarehousePage({
                                     setSelectedLocalId(card.entry.warehouseItemId);
                                   },
                                 },
+                                {
+                                  id: "addToDraft",
+                                  label: copy.recipeDialog.title,
+                                  onSelect: () => {
+                                    setContextSelection([{
+                                      identity: card.artifact.artifactSha256,
+                                      displayName: `${card.entry.displayName} / ${card.artifact.relativePath}`,
+                                      source: "local",
+                                      warehouseItemId: card.entry.warehouseItemId,
+                                    }]);
+                                    setRecipeDialogOpen(true);
+                                  },
+                                },
+                                ...(dataSource === "live" ? [{ id: "removeFiles", label: copy.cardMenu.deleteLocal,
+                                  onSelect: () => setRemovalTarget({ target: { kind: "entry", id: card.entry.warehouseItemId }, title: card.entry.displayName }),
+                                }] : []),
                               ],
                             });
                           }}
-                        />
+                        /></div>
                       ))
                     : null}
                 </div>
@@ -1514,11 +1580,15 @@ export function WarehousePage({
                 </div>
               ) : detailState.view.kind === "detail" ? (
                 /* key=productId:切换商品时重置组件内状态(如来源跳转失败标记) */
-                <DetailContent
+                <><div className="vua-warehouse-detail__content">
+                  <LibraryBadges facts={libraryPage?.facts.get(selectedId)} />
+                  <p className="vua-caption vua-text-secondary">{copy.libraryState.productionUnchecked}</p>
+                  <Button variant="default" onClick={() => setChecklistProduct({ productId: selectedId, title: detailState.view.kind === "detail" ? detailState.view.product.title ?? selectedId : selectedId })}>{copy.libraryState.manageFiles}</Button>
+                </div><DetailContent
                   key={detailState.view.product.productId}
                   product={detailState.view.product}
                   onEnriched={() => setDetailReloadKey((key) => key + 1)}
-                />
+                /></>
               ) : detailState.view.kind === "error" ? (
                 /* W17 透传呈现:application 错误文案 + 重试;与 not-found/断连区分 */
                 <div className="vua-warehouse-detail__content">
@@ -1605,12 +1675,14 @@ export function WarehousePage({
         onClose={() => setRecipeDialogOpen(false)}
         selections={contextSelection}
       />
+      {removalTarget !== null ? <RemoveFilesDialog key={`${removalTarget.target.kind}:${removalTarget.target.id}`} item={removalTarget}
+        onClose={() => setRemovalTarget(null)} onChanged={() => { setReloadKey((key) => key + 1); setDetailReloadKey((key) => key + 1); }} /> : null}
       <DownloadChecklistDialog
         product={checklistProduct}
         onClose={() => setChecklistProduct(null)}
-        onStart={(productId, downloadableIds) => {
+        onStart={(productId, downloadableIds, targets) => {
           setChecklistProduct(null);
-          void startSilentDownload(productId, downloadableIds);
+          void startSilentDownload(productId, downloadableIds, targets);
         }}
       />
       <CompatibleItemsDialog

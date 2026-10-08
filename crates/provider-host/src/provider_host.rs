@@ -196,6 +196,9 @@ struct WarehouseServices {
     /// task authority: existing nonterminal tasks register for explicit
     /// Inspect/recovery and are never resumed implicitly.
     runtime: TaskRuntime,
+    library_downloads: Arc<vua_acquisition::library_download::LibraryDownloadService>,
+    library_maintenance: vua_acquisition::library_maintenance::LibraryMaintenance,
+    selection_drafts: vua_acquisition::recipe_selection_drafts::RecipeSelectionDrafts,
 }
 
 /// Project-domain write-command wiring (proposal 014, `project.import-copy`):
@@ -829,15 +832,25 @@ pub fn run_provider_host_full(
                 Arc::new(SystemClock),
                 Arc::new(NanosTaskIdGenerator::default()),
             )
-            .map(|runtime| {
-                Arc::new(WarehouseServices {
+            .and_then(|runtime| {
+                let staging_root = config.warehouse_root.parent().unwrap_or(&config.warehouse_root).join("downloads-staging");
+                let library_downloads = Arc::new(vua_acquisition::library_download::LibraryDownloadService::new(
+                    store.clone(), config.bdl.clone(), runtime.clone(), config.warehouse_root.clone(), staging_root,
+                )?);
+                let draft_root=config.warehouse_root.parent().unwrap_or(&config.warehouse_root).join("recipe-selection-drafts");
+                let library_maintenance = vua_acquisition::library_maintenance::LibraryMaintenance::new(
+                    store.clone(),config.bdl.clone(),runtime.clone(),config.warehouse_root.clone(),library_downloads.clone());
+                Ok(Arc::new(WarehouseServices {
                     bdl: config.bdl,
                     warehouse_root: config.warehouse_root,
                     global_default: config.global_default,
                     executor: config.executor,
                     dependencies_queries: config.dependencies_queries,
                     runtime,
-                })
+                    library_downloads,
+                    library_maintenance,
+                    selection_drafts: vua_acquisition::recipe_selection_drafts::RecipeSelectionDrafts::new(draft_root),
+                }))
             })
         })
         .transpose()?;
@@ -943,11 +956,13 @@ pub fn run_provider_host_full(
         if let Some(environment) = &state.environment { driven_runtimes.push(environment.deployment.runtime.clone()); }
         for runtime in driven_runtimes {
             let sink = sink.clone();
+            let library_downloads = state.warehouse.as_ref().map(|warehouse| Arc::downgrade(&warehouse.library_downloads));
             // Register before dispatch starts: even a short deployment/manual handoff must
             // publish acceptance and progress without a subscriber-thread startup race.
             let receiver = runtime.subscribe();
             std::thread::spawn(move || {
                 for event in receiver {
+                    let parent_id = event.correlation_id.clone();
                     let stored = StoredTaskEvent {
                         task_id: event.task_id,
                         revision: event.revision,
@@ -960,6 +975,9 @@ pub fn run_provider_host_full(
                     sink.lock()
                         .expect("runtime events poisoned")
                         .push(stored);
+                    if let Some(downloads) = library_downloads.as_ref().and_then(|downloads| downloads.upgrade()) {
+                        let _ = downloads.reconcile(&parent_id, |event| sink.lock().expect("runtime events poisoned").push(event));
+                    }
                 }
             });
         }
@@ -1291,6 +1309,9 @@ fn handle_application_request(state: &mut HostState, request: &Value) -> FrameOu
     if method.starts_with("catalog.") {
         return catalog_request(state, method, request, request_id, correlation_id);
     }
+    if method.starts_with("library.") {
+        return library_download_request(state, method, request, request_id, correlation_id);
+    }
     if method.starts_with("dependencies.") {
         // bdl-queries v0.5 (proposal 030 §5.7 case A): its own method
         // prefix inside the bdl-queries family — the route arms reuse the
@@ -1299,6 +1320,9 @@ fn handle_application_request(state: &mut HostState, request: &Value) -> FrameOu
     }
     if method.starts_with("downloads.") {
         return downloads_query_request(state, method, request, request_id, correlation_id);
+    }
+    if method.starts_with("recipeDraft.") {
+        return recipe_selection_draft_request(state,method,request,request_id,correlation_id);
     }
     if method.starts_with("recipe.") {
         // Proposal 029 B-face loop 2: the export face is its own word-row
@@ -1675,6 +1699,22 @@ fn served_capabilities(state: &HostState) -> Value {
                 "unavailable"
             },
         },
+        {"operationId": "catalog.beginLibrarySync", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "catalog.finishLibrarySync", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "catalog.librarySyncStatus", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.beginDownload", "availability": if state.warehouse.is_some() && state.downloads.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.observeDownload", "availability": if state.warehouse.is_some() && state.downloads.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.downloadStatus", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.list", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.removalPreview", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.removeFiles", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.removalStatus", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "recipeDraft.selectionStatus", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.productFiles", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "recipeDraft.list", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "recipeDraft.get", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "recipeDraft.save", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "recipeDraft.addSelection", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "project.import-copy", "availability": project_ops_availability},
         {"operationId": "project.setNote", "availability": project_ops_availability},
         {"operationId": "packages.query", "availability": packages_availability},
@@ -1874,6 +1914,9 @@ fn handle_cancellation(
     // accepted the request — a request rejected by idempotency or revision
     // validation must not cancel anything as a side effect.
     if matches!(cancellation, IdempotentCancellation::Applied { .. }) {
+        if let Some(warehouse) = &state.warehouse {
+            let _ = warehouse.library_downloads.cancel_child(task_id, |event| publish_task_event(state, Some(event)));
+        }
         if let Some(services) = &state.production {
             if let Some(token) =
                 services.running.lock().expect("running poisoned").get(task_id)
@@ -2612,10 +2655,15 @@ fn run_local_resolution(
                 // back to the original copy - the fallback is honest
                 // (fallbackUsed on the plan), never invented.
                 let original = detail.artifacts.iter().find(|fact| fact.role.name() == "original");
-                let clean_vpm = detail.artifacts.iter().find(|fact| {
-                    fact.role.name() == "generated_vpm"
+                let mut clean_vpm = None;
+                for fact in &detail.artifacts {
+                    if fact.role.name() == "generated_vpm"
                         && matches!(fact.state, ArtifactInspectionVerdict::Clean)
-                });
+                        && !store.generated_copy_is_superseded(warehouse_item_id,&fact.artifact_sha256)
+                            .map_err(|error|bdl_store_failed(correlation_id,&error))? {
+                        clean_vpm = Some(fact); break;
+                    }
+                }
                 let chosen = match detail.effective_artifact_mode {
                     vua_bdl_store::ArtifactMode::GenerateVpm => clean_vpm
                         .map(|fact| (fact, false))
@@ -5380,6 +5428,57 @@ fn handoff_editor_candidates(
     }
 }
 
+fn recipe_selection_draft_request(state: &HostState, method: &str, request: &Value, request_id: &str, correlation_id: &str) -> FrameOutcome {
+    let Some(warehouse)=&state.warehouse else { return FrameOutcome::Response(application_error(request_id,correlation_id,"vua.recipe_draft.unavailable","errors.recipe.draftFailed","unavailable")); };
+    let expected_kind=if matches!(method,"recipeDraft.list"|"recipeDraft.get"|"recipeDraft.selectionStatus") { "query" } else { "command" };
+    if request["kind"]!=expected_kind { return FrameOutcome::Response(application_error(request_id,correlation_id,"vua.recipe_draft.invalid_params","errors.recipe.draftFailed","validation")); }
+    let params = request.get("params").cloned().unwrap_or(Value::Null);
+    let result = if method == "recipeDraft.selectionStatus" {
+        vua_acquisition::library_maintenance::draft_selection_status(&warehouse.bdl,&warehouse.warehouse_root,&warehouse.selection_drafts,params).map_err(|error|vua_acquisition::recipe_selection_drafts::DraftError(error.0))
+    } else { warehouse.selection_drafts.apply(method,params) };
+    match result {
+        Ok(value)=>FrameOutcome::Response(application_success(request_id,value)),
+        Err(error)=>FrameOutcome::Response(application_error(request_id,correlation_id,&format!("vua.recipe_draft.{}",error.0),"errors.recipe.draftFailed",if error.0=="store_failed" {"internal"} else {"validation"})),
+    }
+}
+
+fn library_download_request(state: &HostState, method: &str, request: &Value, request_id: &str, correlation_id: &str) -> FrameOutcome {
+    let Some(warehouse) = &state.warehouse else {
+        return FrameOutcome::Response(application_error(request_id, correlation_id, "vua.library.unavailable", "errors.library.downloadFailed", "unavailable"));
+    };
+    if matches!(method,"library.removalPreview"|"library.removeFiles"|"library.removalStatus") {
+        if request["kind"] != if method == "library.removeFiles" {"command"} else {"query"} {
+            return FrameOutcome::Response(application_error(request_id,correlation_id,"vua.library.invalid_params","errors.library.removalFailed","validation"));
+        }
+        let result = warehouse.library_maintenance.apply(method,request.get("params").cloned().unwrap_or(Value::Null),&warehouse.selection_drafts,state.use_cases.as_ref().map(|services|services.recipes.as_ref()));
+        return FrameOutcome::Response(match result {
+            Ok(value) => application_success(request_id,value),
+            Err(error) => application_error(request_id,correlation_id,&format!("vua.library.{}",error.0),"errors.library.removalFailed",match error.0 { "store_failed"|"reference_read_failed"=>"internal", "preview_changed"|"file_busy"|"removal_conflict"=>"conflict", _=>"validation" }),
+        });
+    }
+    if method == "library.list" || method == "library.productFiles" {
+        if request["kind"] != "query" {
+            return FrameOutcome::Response(application_error(request_id, correlation_id, "vua.library.invalid_params", "errors.library.downloadFailed", "validation"));
+        }
+        let params = request.get("params").cloned().unwrap_or(Value::Null);
+        let result = if method == "library.list" {
+            vua_acquisition::library_view::list(&warehouse.bdl, &warehouse.warehouse_root, warehouse.global_default, &warehouse.library_downloads, params)
+        } else { vua_acquisition::library_view::product_files(&warehouse.bdl, &warehouse.warehouse_root, params) };
+        return FrameOutcome::Response(match result {
+            Ok(value) => application_success(request_id, value),
+            Err(error) => application_error(request_id, correlation_id, &format!("vua.library.{}",error.0), "errors.library.downloadFailed", if error.0 == "store_failed" { "internal" } else { "validation" }),
+        });
+    }
+    let expected_kind = if method == "library.downloadStatus" { "query" } else { "command" };
+    if request["kind"] != expected_kind || (method != "library.downloadStatus" && state.downloads.is_none()) {
+        return FrameOutcome::Response(application_error(request_id, correlation_id, "vua.library.invalid_params", "errors.library.downloadFailed", "validation"));
+    }
+    match warehouse.library_downloads.apply(method, request.get("params").cloned().unwrap_or(Value::Null), |event| publish_task_event(state, Some(event))) {
+        Ok(value) => FrameOutcome::Response(application_success(request_id, value)),
+        Err(error) => FrameOutcome::Response(application_error(request_id, correlation_id, &format!("vua.library.{}", error.0), "errors.library.downloadFailed", if error.0 == "store_failed" { "internal" } else { "validation" })),
+    }
+}
+
 fn catalog_request(
     state: &HostState,
     method: &str,
@@ -5397,6 +5496,9 @@ fn catalog_request(
         ));
     };
     match method {
+        "catalog.beginLibrarySync" | "catalog.finishLibrarySync" | "catalog.librarySyncStatus" => {
+            catalog_sync_run_request(state, warehouse, method, request, request_id, correlation_id)
+        }
         "catalog.ingestLibraryPage" => {
             catalog_ingest_library_page(state, warehouse, request, request_id, correlation_id)
         }
@@ -5875,6 +5977,9 @@ fn catalog_ingest_library_page(
     request_id: &str,
     correlation_id: &str,
 ) -> FrameOutcome {
+    if request.pointer("/params/schemaVersion").and_then(Value::as_str) == Some("0.3") {
+        return catalog_sync_run_request(state, warehouse, "catalog.ingestLibraryPage", request, request_id, correlation_id);
+    }
     // v0.2 增补可选 libraryType;v0.1 请求(无该字段)继续接受
     const CATALOG_SYNC_SCHEMA_VERSIONS: [&str; 2] = ["0.1", "0.2"];
     let request_schema_version = request.pointer("/params/schemaVersion").and_then(Value::as_str);
@@ -6060,6 +6165,32 @@ fn catalog_ingest_library_page(
             "nextPageUrl": page.next_page_url,
         }),
     ))
+}
+
+/// The acquisition use case owns run decisions; the host only dispatches and publishes.
+fn catalog_sync_run_request(
+    state: &HostState,
+    warehouse: Arc<WarehouseServices>,
+    method: &str,
+    request: &Value,
+    request_id: &str,
+    correlation_id: &str,
+) -> FrameOutcome {
+    let expected_kind = if method == "catalog.librarySyncStatus" { "query" } else { "command" };
+    if request["kind"] != expected_kind { return catalog_invalid_params(request_id, correlation_id); }
+    let params = request.get("params").cloned().unwrap_or(Value::Null);
+    let recovered = params.get("runId").and_then(Value::as_str)
+        .is_some_and(|id| state.recovered_nonterminal_tasks.contains(id));
+    match vua_acquisition::catalog_sync::apply_catalog_sync(
+        &state.store, &warehouse.bdl, method, params, &now_rfc3339(), recovered,
+        |event| publish_task_event(state, Some(event)),
+    ) {
+        Ok(value) => FrameOutcome::Response(application_success(request_id, value)),
+        Err(error) => FrameOutcome::Response(application_error(
+            request_id, correlation_id, &format!("vua.catalog.{}", error.0),
+            "errors.catalog.syncFailed", if error.0 == "store_failed" { "internal" } else { "validation" },
+        )),
+    }
 }
 
 /// 商品详情页 → 全量 ProductObservation(既有 booth_extraction 语法,
@@ -9245,7 +9376,35 @@ fn download_ingest(
                     }));
                 }
             }
-            Ok(IngestOutcome::Duplicate { .. }) => duplicates += 1,
+            Ok(IngestOutcome::Duplicate { .. }) => {
+                duplicates += 1;
+                // BDL and the task journal are separate stores. A previous
+                // journal failure must remain repairable after BDL deduplication.
+                let repaired = downloads.bdl.download_events(&event.download_id)
+                    .map_err(|_| "delivery_history_unavailable".to_owned())
+                    .and_then(|history| {
+                        let attempt: Vec<_> = history.into_iter()
+                            .filter(|stored| stored.attempt == event.attempt).collect();
+                        let latest_progress = attempt.iter().rposition(|stored| stored.kind == vua_bdl_store::download_events::DownloadEventKind::Progress);
+                        for (position, stored) in attempt.into_iter().enumerate() {
+                            if stored.kind == vua_bdl_store::download_events::DownloadEventKind::Progress && latest_progress != Some(position) { continue; }
+                            let normalized = DownloadEventV01 {
+                                schema_version: vua_bdl_store::download_events::DOWNLOAD_EVENT_SCHEMA_VERSION.into(),
+                                kind: stored.kind, download_id: stored.download_id, attempt: stored.attempt,
+                                source_url: stored.source_url, initiated_from_page_url: stored.initiated_from_page_url,
+                                url_chain: stored.url_chain, suggested_file_name: stored.suggested_file_name,
+                                stored_path: stored.stored_path, expected_bytes: stored.expected_bytes,
+                                received_bytes: stored.received_bytes, resumable: stored.resumable,
+                                failure_kind: stored.failure_kind, occurred_at: stored.occurred_at,
+                            };
+                            fold_download_task(state, &normalized).map_err(|_| "task_journal_unavailable".to_owned())?;
+                        }
+                        Ok(())
+                    });
+                if let Err(reason) = repaired {
+                    rejected.push(json!({ "index": index, "code": "vua.download.store_failed", "reason": reason }));
+                }
+            }
             Err(error) => rejected.push(json!({
                 "index": index,
                 "code": consumer_error_code(&error),
@@ -9274,57 +9433,39 @@ fn fold_download_task(
 ) -> Result<(), SqliteStoreError> {
     let task_id = format!("dl-{}-a{}", event.download_id, event.attempt);
     let occurred_at = event.occurred_at.as_str();
+    use vua_bdl_store::download_events::DownloadEventKind;
+    if matches!(event.kind, DownloadEventKind::Started | DownloadEventKind::Completed | DownloadEventKind::Failed | DownloadEventKind::Cancelled)
+        && state.store.task(&task_id)?.is_none()
+    {
+        let (_, accepted) = state.store.accept_task(&NewTask {
+            task_id: task_id.clone(), correlation_id: event.download_id.clone(), occurred_at: occurred_at.to_owned(),
+        })?;
+        publish_task_event(state, Some(accepted));
+    }
+    // A policy denial can terminate before the port emits Started. The task
+    // still records execution through the frozen nine-state transition table.
+    if matches!(event.kind, DownloadEventKind::Started | DownloadEventKind::Completed | DownloadEventKind::Failed) {
+        for (from, to) in [(TaskState::Queued, TaskState::Preparing), (TaskState::Preparing, TaskState::Running)] {
+            if let Some(task) = state.store.task(&task_id)? {
+                if task.state == from {
+                    let changed = state.store.mutate_task(&task_id, task.revision, occurred_at, TaskMutation::Transition {
+                        state: to, payload: json!({ "receivedBytes": event.received_bytes, "expectedBytes": event.expected_bytes }),
+                    })?;
+                    publish_task_event(state, changed);
+                }
+            }
+        }
+    }
     match event.kind {
         vua_bdl_store::download_events::DownloadEventKind::Started => {
-            if state.store.task(&task_id)?.is_none() {
-                let (_, event) = state.store.accept_task(&NewTask {
-                    task_id: task_id.clone(),
-                    correlation_id: event.download_id.clone(),
-                    occurred_at: occurred_at.to_owned(),
-                })?;
-                publish_task_event(state, Some(event));
-            }
-            // The nine-state machine walks Queued -> Preparing -> Running;
-            // a started download is already transferring, so it walks both
-            // steps immediately (idempotently for redeliveries).
-            let payload = || {
-                json!({
-                    "receivedBytes": event.received_bytes,
-                    "expectedBytes": event.expected_bytes,
-                })
-            };
-            if let Some(task) = state.store.task(&task_id)? {
-                if task.state == TaskState::Queued {
-                    let event = state.store.mutate_task(
-                        &task_id,
-                        task.revision,
-                        occurred_at,
-                        TaskMutation::Transition {
-                            state: TaskState::Preparing,
-                            payload: payload(),
-                        },
-                    )?;
-                    publish_task_event(state, event);
-                }
-            }
-            if let Some(task) = state.store.task(&task_id)? {
-                if task.state == TaskState::Preparing {
-                    let event = state.store.mutate_task(
-                        &task_id,
-                        task.revision,
-                        occurred_at,
-                        TaskMutation::Transition {
-                            state: TaskState::Running,
-                            payload: payload(),
-                        },
-                    )?;
-                    publish_task_event(state, event);
-                }
-            }
         }
         vua_bdl_store::download_events::DownloadEventKind::Progress => {
             if let Some(task) = state.store.task(&task_id)? {
                 if task.state == TaskState::Running {
+                    let latest = state.store.events_after(&task_id, 0)?.into_iter().last();
+                    if latest.is_some_and(|stored| stored.payload["receivedBytes"] == json!(event.received_bytes) && stored.payload["expectedBytes"] == json!(event.expected_bytes)) {
+                        return Ok(());
+                    }
                     let event = state.store.mutate_task(
                         &task_id,
                         task.revision,

@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vua.local/schemas/library-maintenance/v0.1/request.schema.json",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "params"
+      ],
+      "properties": {
+        "method": {
+          "const": "library.removalPreview"
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schemaVersion",
+            "target"
+          ],
+          "properties": {
+            "schemaVersion": {
+              "const": "0.1"
+            },
+            "target": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "kind",
+                    "id"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "product"
+                    },
+                    "id": {
+                      "type": "string",
+                      "pattern": "^booth:[0-9]+$"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "kind",
+                    "id"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "entry"
+                    },
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+                    }
+                  }
+                }
+              ]
+            },
+            "copyIds": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 200,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "params"
+      ],
+      "properties": {
+        "method": {
+          "const": "library.removeFiles"
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schemaVersion",
+            "removalId",
+            "target",
+            "copyIds",
+            "previewHash"
+          ],
+          "properties": {
+            "schemaVersion": {
+              "const": "0.1"
+            },
+            "removalId": {
+              "type": "string",
+              "pattern": "^library-removal-[A-Za-z0-9_.:-]{1,100}$"
+            },
+            "target": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "kind",
+                    "id"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "product"
+                    },
+                    "id": {
+                      "type": "string",
+                      "pattern": "^booth:[0-9]+$"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "kind",
+                    "id"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "entry"
+                    },
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+                    }
+                  }
+                }
+              ]
+            },
+            "copyIds": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 200,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+              }
+            },
+            "previewHash": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "params"
+      ],
+      "properties": {
+        "method": {
+          "const": "library.removalStatus"
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schemaVersion",
+            "removalId"
+          ],
+          "properties": {
+            "schemaVersion": {
+              "const": "0.1"
+            },
+            "removalId": {
+              "type": "string",
+              "pattern": "^library-removal-[A-Za-z0-9_.:-]{1,100}$"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

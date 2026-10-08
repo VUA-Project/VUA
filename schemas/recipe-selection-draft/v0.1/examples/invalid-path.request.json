@@ -1,0 +1,18 @@
+{
+  "method": "recipeDraft.addSelection",
+  "params": {
+    "schemaVersion": "0.1",
+    "draftId": "recipe-draft-synthetic",
+    "baseRevision": 1,
+    "selections": [
+      {
+        "identity": "C:/private/file.pdf",
+        "displayName": "Synthetic manual.pdf",
+        "source": "local",
+        "variantName": null,
+        "shopName": null,
+        "warehouseItemId": "warehouse-synthetic"
+      }
+    ]
+  }
+}

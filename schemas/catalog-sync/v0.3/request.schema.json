@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Catalog sync v0.3 commands and status query",
+  "$defs": {
+    "begin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "runId",
+        "libraryTypes"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "0.3"
+        },
+        "runId": {
+          "type": "string",
+          "pattern": "^catalog-sync-[A-Za-z0-9_.:-]{1,115}$"
+        },
+        "libraryTypes": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "bought",
+              "gifts",
+              "free_downloads"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true
+        }
+      }
+    },
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "runId",
+        "libraryType",
+        "pageNumber",
+        "sourceUrl",
+        "html",
+        "fetchedAt"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "0.3"
+        },
+        "runId": {
+          "type": "string",
+          "pattern": "^catalog-sync-[A-Za-z0-9_.:-]{1,115}$"
+        },
+        "libraryType": {
+          "enum": [
+            "bought",
+            "gifts",
+            "free_downloads"
+          ]
+        },
+        "pageNumber": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "sourceUrl": {
+          "type": "string",
+          "pattern": "^https://accounts\\.booth\\.pm/library(?:/gifts|/free_downloads)?\\?page=[1-9][0-9]*$"
+        },
+        "html": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fetchedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "finish": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "runId",
+        "outcome"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "0.3"
+        },
+        "runId": {
+          "type": "string",
+          "pattern": "^catalog-sync-[A-Za-z0-9_.:-]{1,115}$"
+        },
+        "outcome": {
+          "enum": [
+            "completed",
+            "failed",
+            "cancelled",
+            "page_limit_reached"
+          ]
+        },
+        "errorCode": {
+          "type": "string",
+          "pattern": "^[a-z0-9_.]{1,128}$"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "failed"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "errorCode"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "completed"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "errorCode"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "runId"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "0.3"
+        },
+        "runId": {
+          "type": "string",
+          "pattern": "^catalog-sync-[A-Za-z0-9_.:-]{1,115}$"
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "params"
+      ],
+      "properties": {
+        "method": {
+          "const": "catalog.beginLibrarySync"
+        },
+        "params": {
+          "$ref": "#/$defs/begin"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "params"
+      ],
+      "properties": {
+        "method": {
+          "const": "catalog.ingestLibraryPage"
+        },
+        "params": {
+          "$ref": "#/$defs/page"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "params"
+      ],
+      "properties": {
+        "method": {
+          "const": "catalog.finishLibrarySync"
+        },
+        "params": {
+          "$ref": "#/$defs/finish"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "params"
+      ],
+      "properties": {
+        "method": {
+          "const": "catalog.librarySyncStatus"
+        },
+        "params": {
+          "$ref": "#/$defs/status"
+        }
+      }
+    }
+  ]
+}

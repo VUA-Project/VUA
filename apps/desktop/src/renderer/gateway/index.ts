@@ -14,6 +14,8 @@ export type {
   Unsubscribe,
 } from "./types.ts";
 export { capabilityDetailKeys, capabilityStates } from "./types.ts";
+export { createLibraryBrowser, createLiveLibraryBrowserPort, type LibraryBrowserPort, type LibraryPageView, type LibraryCardFacts, type LibraryFileInventory } from "./library-browser-port.ts";
+export { createRecipeDraftPort, RecipeDraftError, type RecipeDraftPort, type RecipeDraftSummary, type RecipeDraftRead } from "./recipe-draft-port.ts";
 export {
   catalogProductRef,
   entityRef,
@@ -230,6 +232,9 @@ export type {
   RepoInfoRowV02,
 } from "./packages-port.ts";
 export type { SettingsPort, SettingsView } from "./settings-port.ts";
+export type { RecipeAssetRef, RecipeDocument, RecipeListItem } from "./recipe-port.ts";
+export type { DependencyKindV05 } from "./dependencies-port.ts";
+export type { ProductDownloadablesView } from "./catalog-browser-port.ts";
 export { createSignal } from "./signal.ts";
 export type { CancelTaskResult, TaskCenterView, TaskItem, TaskPort } from "./task-port.ts";
 export { registerTaskIdentity, taskIdentityOf } from "./task-identity.ts";
@@ -239,6 +244,8 @@ export type { DispatchResult, TutorialAction, TutorialPort, TutorialSnapshot } f
 export type { VuaGateway } from "./gateway.ts";
 export type { GatewayClient } from "./gateway-client.ts";
 export { createGatewayClient } from "./gateway-client.ts";
+export { createLibraryMaintenancePort, LibraryMaintenanceError } from "./library-maintenance-port.ts";
+export type { LibraryMaintenancePort } from "./library-maintenance-port.ts";
 export { emptyGateway } from "./empty-gateway.ts";
 export { createGatewayState } from "./create.ts";
 export type { GatewayStateName } from "./create.ts";

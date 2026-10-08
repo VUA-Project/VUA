@@ -27,6 +27,10 @@ export type DownloadIngestInvoke = (params: {
 
 export interface DownloadEventSinkOptions {
   readonly invoke: DownloadIngestInvoke;
+  /** Only acknowledged records may drive adoption or batch settlement. */
+  readonly onPersisted?: (event: DownloadEventV01) => void;
+  readonly onRejected?: (event: DownloadEventV01, code: string) => void;
+  readonly onDropped?: (event: DownloadEventV01) => void;
   /** 定时冲刷间隔（默认 1000ms） */
   readonly flushIntervalMs?: number;
   /** 立即冲刷阈值（默认 20 条） */
@@ -49,6 +53,24 @@ interface QueuedEvent {
   readonly event: DownloadEventV01;
 }
 
+function validReceipt(value: unknown, batchLength: number): value is DownloadIngestReceiptV03 {
+  if (typeof value !== "object" || value === null) return false;
+  const receipt = value as Record<string, unknown>;
+  const count = (n: unknown): n is number => typeof n === "number" && Number.isSafeInteger(n) && n >= 0;
+  if (!count(receipt.folded) || !count(receipt.duplicates) || !Array.isArray(receipt.rejected)) return false;
+  const indexes = new Set<number>();
+  for (const value of receipt.rejected) {
+    if (typeof value !== "object" || value === null) return false;
+    const item = value as Record<string, unknown>;
+    if (!count(item.index) || item.index >= batchLength || indexes.has(item.index)
+      || typeof item.code !== "string" || item.code.length === 0 || typeof item.reason !== "string") return false;
+    indexes.add(item.index);
+  }
+  // The frozen receipt counts ledger writes even when task folding is rejected.
+  const acknowledged = receipt.folded + receipt.duplicates;
+  return acknowledged <= batchLength && acknowledged >= batchLength - indexes.size;
+}
+
 export function createDownloadEventSink(options: DownloadEventSinkOptions): DownloadEventSink {
   const flushIntervalMs = options.flushIntervalMs ?? 1_000;
   const flushThreshold = options.flushThreshold ?? 20;
@@ -62,6 +84,12 @@ export function createDownloadEventSink(options: DownloadEventSinkOptions): Down
   let disposed = false;
   let flushing = false;
 
+  const trimBuffer = (): void => {
+    if (buffer.length <= bufferCap) return;
+    const dropped = buffer.splice(0, buffer.length - bufferCap);
+    for (const item of dropped) options.onDropped?.(item.event);
+  };
+
   const flushIngest = async (): Promise<void> => {
     if (flushing || buffer.length === 0) return;
     flushing = true;
@@ -74,22 +102,35 @@ export function createDownloadEventSink(options: DownloadEventSinkOptions): Down
       if (!result.ok) {
         throw new Error("download.ingest returned an application error");
       }
-      const receipt = result.value as Partial<DownloadIngestReceiptV03> | undefined;
-      for (const rejected of receipt?.rejected ?? []) {
-        // 单条非法事件死信（不毒化整批）；诊断通道留痕
-        log(JSON.stringify({ channel: "download-events", deadLetter: rejected }));
+      if (!validReceipt(result.value, batch.length)) throw new Error("download.ingest returned an invalid receipt");
+      const rejectedIndexes = new Set(result.value.rejected.map((item) => item.index));
+      const retry: QueuedEvent[] = [];
+      for (const rejected of result.value.rejected) {
+        const item = batch[rejected.index]!;
+        if (rejected.code === "vua.download.store_failed") retry.push(item);
+        else {
+          // Diagnostic codes only: reasons can contain private paths or URLs.
+          log(JSON.stringify({ channel: "download-events", deadLetter: rejected.code, downloadId: item.event.downloadId }));
+          options.onRejected?.(item.event, rejected.code);
+        }
       }
+      for (const [index, item] of batch.entries()) {
+        if (!rejectedIndexes.has(index) && !disposed) options.onPersisted?.(item.event);
+      }
+      buffer.unshift(...retry);
+      trimBuffer();
       consecutiveFailures = 0;
+      if (retry.length > 0) scheduleFlush(flushIntervalMs);
     } catch (error) {
       // 投递失败:整批回灌,排定退避重试——不等新事件(at-least-once 自驱)
       buffer.unshift(...batch);
-      if (buffer.length > bufferCap) buffer.splice(0, buffer.length - bufferCap);
+      trimBuffer();
       consecutiveFailures += 1;
       const backoff = Math.min(flushIntervalMs * 2 ** (consecutiveFailures - 1), maxBackoffMs);
       log(
         JSON.stringify({
           channel: "download-events",
-          ingestRetry: String(error),
+          ingestRetry: "receipt_unconfirmed",
           attempt: consecutiveFailures,
           nextRetryMs: backoff,
         }),
@@ -97,6 +138,8 @@ export function createDownloadEventSink(options: DownloadEventSinkOptions): Down
       scheduleFlush(backoff);
     } finally {
       flushing = false;
+      // Events arriving while an invoke is pending still need a driver.
+      scheduleFlush(flushIntervalMs);
     }
   };
 
@@ -112,7 +155,7 @@ export function createDownloadEventSink(options: DownloadEventSinkOptions): Down
     emit(event: DownloadEventV01): void {
       if (disposed) return;
       buffer.push({ event });
-      if (buffer.length > bufferCap) buffer.splice(0, buffer.length - bufferCap);
+      trimBuffer();
       if (buffer.length >= flushThreshold) {
         if (flushTimer !== null) {
           clearTimeout(flushTimer);

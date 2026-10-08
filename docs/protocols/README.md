@@ -1,8 +1,8 @@
 # Protocol reading guide
 
-> Document version: 1.4.0
+> Document version: 1.6.0
 > Status: Accepted
-> Updated: 2026-10-02
+> Updated: 2026-10-08
 > Scope: Navigation and retention guidance; no wire-format changes
 
 **For people:** use this index when a contribution affects an API or stored format; read only
@@ -25,6 +25,7 @@ separate concurrently served operations, and some newer documents extend an earl
 | Materials/production | [Material v0.2](material-intake-v0.2.md), [production v0.2](production-use-case-v0.2.md), [evidence](production-evidence-v0.1.md), [inspection queries](inspection-queries-v0.1.md), [inspection evidence](inspection-evidence-v0.1.md) | Earlier baselines may be needed for incremental definitions and tests; not archived by date |
 | Recipe/SDK | [Recipe export](recipe-export-v0.1.md), [handoff v0.2](release-handoff-v0.2.md) | Check stored-format and consumer compatibility before retiring the earlier handoff face |
 | BDL/acquisition | [Queries v0.6](bdl-queries-v0.6.md), [v0.5](bdl-queries-v0.5.md), [commands v0.4](bdl-commands-v0.4.md), [observations](bdl-dependency-observations-v0.2.md), [downloads](download-events-v0.1.md) | Follow actual schema/route versions; N5 audit is still required |
+| Managed library | [Whole-run sync v0.3](catalog-sync-v0.3.md), [download v0.1](library-download-v0.1.md), [joined view v0.1](library-view-v0.1.md), [file maintenance v0.1](library-maintenance-v0.1.md), [selection drafts v0.1](recipe-selection-draft-v0.1.md) | New implementation baselines coexist with frozen catalog, copy-in and production Recipe faces; N5 acceptance is separate |
 | Unity | [v4](unity-bridge-v4.md), [v3](unity-bridge-v3.md), [v2](unity-bridge-v2.md), [v1](unity-bridge-v1.md) | Newest frozen operation set does not prove every production path migrated; inspect actual command consumers |
 | Previously superseded | [superseded/](superseded/) | Historical version lookup only; retaining these files does not reactivate their implementation |
 
@@ -68,6 +69,8 @@ For upstream-driven changes, follow the [third-party compatibility and licensing
 
 ## Document changelog
 
+- 1.6.0 (2026-10-08): index selected-file maintenance and reference-presence reads, retaining the merged N1 protocol routes.
+- 1.5.0 (2026-10-08): index the whole-run sync, managed download, unified library and separate selection-draft baselines.
 - 1.4.0 (2026-10-03): add the implemented first-play network query and its code routes.
 
 - 1.3.1 (2026-10-02): index inspection-queries/inspection-evidence in the Materials/production row; disambiguate the packages-repos-catalog / packages-repo-catalog / packages-repos labels (v0.1 combined base spec vs per-repository inventory vs v0.2 increment).

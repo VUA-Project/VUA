@@ -146,7 +146,7 @@ function projectAvailabilityStatus(value: unknown): CatalogAvailabilityStatus | 
   return word(value, AVAILABILITY_STATUSES);
 }
 
-function projectSummary(value: unknown): CatalogProductSummary | null {
+export function projectSummary(value: unknown): CatalogProductSummary | null {
   const record = asRecord(value);
   if (record === null) return null;
   const productId = asString(record.productId);

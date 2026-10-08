@@ -1812,6 +1812,88 @@ fn seeded_production_world(
 }
 
 #[test]
+fn changed_original_excludes_superseded_vpm_without_rewriting_prior_plan_or_recipe() {
+    use sha2::Digest;
+    use vua_bdl_store::{ArtifactInspectionState, CopyRole, NewLocalArtifact};
+
+    let (world, use_cases, warehouse) = seeded_production_world("superseded-vpm");
+    let entry_ids = seed_imported_entries(&world);
+    let original = world.bdl.entry_copies(&entry_ids[0]).unwrap().remove(0);
+    let fixture: Value = serde_json::from_slice(&fs::read(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../schemas/catalog-sync/v0.3/examples/page.request.json"),
+    ).unwrap()).unwrap();
+    let page = vua_acquisition::extract_library_page(
+        &fixture["params"]["html"].as_str().unwrap().replace("901", "90"),
+    ).unwrap();
+    let now = "2026-10-08T00:00:00Z";
+    world.bdl.record_product_observation(&vua_acquisition::library_item_to_observation(
+        &page.items[0], &format!("sha256:{}", "0".repeat(64)), now, None, Some("bought"),
+    )).unwrap();
+    world.bdl.upsert_product_downloadables(
+        "booth:90", &[(901, "material-pack.unitypackage".into())], now, None, Some("bought"),
+    ).unwrap();
+    world.bdl.bind_managed_library_file(901, &original, &original.artifact_sha256, "dl-initial", now).unwrap();
+
+    let generated_path = world.base.join("warehouse").join("synthetic-old-vpm.zip");
+    let generated_bytes = b"synthetic generated package";
+    fs::write(&generated_path, generated_bytes).unwrap();
+    let generated_sha = format!("sha256:{}", sha2::Sha256::digest(generated_bytes).iter().map(|byte| format!("{byte:02x}")).collect::<String>());
+    world.bdl.record_untrusted_artifact(&NewLocalArtifact {
+        artifact_sha256: generated_sha.clone(), size_bytes: generated_bytes.len() as u64,
+        suggested_file_name: Some("synthetic-old-vpm.zip".into()), download_id: None,
+        first_seen_at: now.into(),
+    }).unwrap();
+    // Synthetic inspection facts isolate resolution policy; no Unity execution is claimed.
+    for state in [ArtifactInspectionState::Inspected, ArtifactInspectionState::Admitted] {
+        world.bdl.transition_artifact(&generated_sha, state, now, None).unwrap();
+    }
+    world.bdl.record_artifact_copy(
+        &original.warehouse_item_id, &generated_sha, "vpm/old.zip",
+        generated_path.to_str().unwrap(), CopyRole::GeneratedVpm, now,
+    ).unwrap();
+    world.bdl.set_global_default_mode(ArtifactMode::GenerateVpm).unwrap();
+    let recipe_id = "019e0000-0000-7000-8000-000000000001";
+    let recipe = json!({
+        "formatVersion":"0.3", "recipeId":recipe_id, "revision":1, "title":"Synthetic versions",
+        "target":{"avatarInstanceId":"avatar_root"},
+        "assets":[{"id":"avatar_asset","sourceRef":{"warehouseItemId":original.warehouse_item_id,"role":"original"}}],
+        "instances":[{"id":"avatar_root","assetId":"avatar_asset"}],
+        "relations":[{"id":"install_asset","kind":"install_modular_asset","assetInstanceId":"avatar_root"}]
+    });
+    let first = save_and_resolve(&world, &use_cases, &warehouse, recipe.clone());
+    let first_plan_id = first["planId"].as_str().unwrap();
+    use_cases.plans.approve(first_plan_id).unwrap();
+    let pinned = use_cases.plans.get(first_plan_id).unwrap().unwrap();
+    assert_eq!(pinned["jobs"][0]["inputs"]["resolvedSource"]["sourceKind"], "generated_vpm");
+    assert_eq!(pinned["jobs"][0]["inputs"]["resolvedSource"]["artifactSha256"], generated_sha);
+
+    let new_bytes = b"changed synthetic source";
+    let new_sha = format!("sha256:{}", sha2::Sha256::digest(new_bytes).iter().map(|byte| format!("{byte:02x}")).collect::<String>());
+    world.bdl.record_untrusted_artifact(&NewLocalArtifact {
+        artifact_sha256:new_sha.clone(), size_bytes:new_bytes.len() as u64,
+        suggested_file_name:Some("material-pack.unitypackage".into()), download_id:None,
+        first_seen_at:now.into(),
+    }).unwrap();
+    fs::write(&original.stored_path, new_bytes).unwrap();
+    world.bdl.bind_managed_library_file(901, &original, &new_sha, "dl-changed", now).unwrap();
+    let frames = run_frames_with_use_cases(&world, &use_cases, Some(&warehouse), "corr-resolve-changed", &[
+        json!({"operation":"recipe.resolve","params":{"recipeId":recipe_id}}),
+    ]);
+    let task_id = frames[0]["payload"]["value"]["taskId"].as_str().unwrap();
+    let completed = wait_terminal(&world, task_id);
+    assert_eq!(serde_json::to_value(completed.state).unwrap(), "succeeded");
+    let result = completed.result.unwrap();
+    let current = use_cases.plans.get(result["planId"].as_str().unwrap()).unwrap().unwrap();
+    assert_eq!(current["jobs"][0]["inputs"]["resolvedSource"]["sourceKind"], "original");
+    assert_eq!(current["jobs"][0]["inputs"]["resolvedSource"]["artifactSha256"], new_sha);
+    assert_eq!(current["jobs"][0]["inputs"]["resolvedSource"]["fallbackUsed"], true);
+    assert_eq!(use_cases.plans.get(first_plan_id).unwrap().unwrap(), pinned);
+    assert_eq!(use_cases.recipes.get(recipe_id).unwrap().unwrap().recipe, recipe);
+    assert_eq!(fs::read(generated_path).unwrap(), generated_bytes);
+}
+
+#[test]
 fn job_execute_writes_the_full_schema_shaped_record() {
     let (world, use_cases, warehouse) = seeded_production_world("job-execute-full");
     let entry_ids = seed_imported_entries(&world);

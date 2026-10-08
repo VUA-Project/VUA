@@ -111,7 +111,7 @@ function projectArtifactFact(value: unknown): WarehouseArtifactFact | null {
   };
 }
 
-function projectEntry(value: unknown): WarehouseEntry | null {
+export function projectEntry(value: unknown): WarehouseEntry | null {
   const record = asRecord(value);
   if (record === null) return null;
   const warehouseItemId = asString(record.warehouseItemId);

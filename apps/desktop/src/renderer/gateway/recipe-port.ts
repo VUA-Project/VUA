@@ -1,16 +1,7 @@
 import type { GatewayClient } from "./gateway-client.ts";
 
-/**
- * Recipe 读/写端口(012 数据立场,2026-10-04 接通):
- * - list: 获取现有 Recipe 列表(供"加入 Recipe"小窗)
- * - get: 读取完整 Recipe 文档(含 assets 数组)
- * - save: 整文档提交 + baseRevision 乐观并发
- * - createFromSelection: 从选中的卡片墙条目新建 Recipe
- *
- * Recipe 文档是 AMF 生产域的声明式意图:assets 引用素材身份(云端商品
- * 引用 booth:ID 或本地工件引用 sha256),不含素材本体。写路径走既有
- * recipe.save 版本链,零新 wire 面。
- */
+/** Legacy Recipe adapter retained in Gateway composition. Library selections
+ * use RecipeDraftPort; this permissive legacy shape is not a production schema. */
 
 export interface RecipeListItem {
   readonly recipeId: string;
@@ -38,6 +29,8 @@ export interface RecipeAssetRef {
   readonly variantName?: string | null;
   /** 可选商店名 */
   readonly shopName?: string | null;
+  /** Local selection identity; production conversion is still required. */
+  readonly warehouseItemId?: string | null;
 }
 
 export interface RecipeSaveResult {

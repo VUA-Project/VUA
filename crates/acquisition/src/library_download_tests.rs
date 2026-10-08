@@ -1,0 +1,658 @@
+use super::*;
+use crate::test_support::unique_dir;
+use vua_bdl_store::{ArtifactMode, DownloadEventKind, DownloadEventV01};
+use vua_orchestrator::NanosTaskIdGenerator;
+
+struct Cleanup(PathBuf);
+impl Drop for Cleanup {
+    fn drop(&mut self) {
+        if self.0.starts_with(std::env::temp_dir()) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+}
+struct World {
+    base: PathBuf,
+    bdl: Arc<BdlStore>,
+    store: Arc<SqliteTaskStore>,
+    runtime: TaskRuntime,
+    service: Arc<LibraryDownloadService>,
+    _cleanup: Cleanup,
+}
+
+fn library_view(w: &World, query: Value) -> Value {
+    crate::library_view::list(
+        &w.bdl,
+        &w.base.join("warehouse"),
+        ArtifactMode::UseOriginalUnitypackage,
+        &w.service,
+        query,
+    )
+    .unwrap()
+}
+
+#[test]
+fn library_presence_counts_current_copies_and_keeps_failed_redownload_separate() {
+    let w = World::new();
+    w.begin("first", &[901]);
+    w.delivery(901, "dl-old", b"old", "file.zip");
+    w.observe("first", 901, "settled", Some("dl-old")).unwrap();
+    w.wait("first");
+    w.begin("again", &[901]);
+    w.delivery(901, "dl-new", b"new", "file.zip");
+    w.observe("again", 901, "settled", Some("dl-new")).unwrap();
+    w.wait("again");
+    assert_eq!(
+        w.bdl.catalog_list(&Default::default()).unwrap().entries[0].imported_artifacts,
+        2
+    );
+    let query = json!({"schemaVersion":"0.1"});
+    let present = library_view(&w, query.clone());
+    assert_eq!(present["items"].as_array().unwrap().len(), 1);
+    assert_eq!(present["items"][0]["product"]["importedArtifacts"], 1);
+    assert_eq!(
+        present["items"][0]["storage"]["productionQualification"],
+        "not_evaluated"
+    );
+    w.begin("failure", &[901]);
+    w.observe("failure", 901, "initiation_failed", None)
+        .unwrap();
+    let failed = library_view(&w, query.clone());
+    assert_eq!(failed["items"][0]["storage"]["state"], "present");
+    assert_eq!(failed["items"][0]["operation"]["state"], "failed");
+    let bound = w.bdl.managed_library_file(901).unwrap().unwrap();
+    std::fs::remove_file(&bound.stored_path).unwrap();
+    let missing = library_view(&w, query.clone());
+    assert_eq!(missing["items"][0]["storage"]["state"], "missing");
+    assert_eq!(missing["items"][0]["product"]["importedArtifacts"], 0);
+    let files = crate::library_view::product_files(
+        &w.bdl,
+        &w.base.join("warehouse"),
+        json!({"schemaVersion":"0.1","productId":"booth:90"}),
+    )
+    .unwrap();
+    assert_eq!(files["items"][0]["copies"][0]["presence"], "missing");
+    assert!(!files.to_string().contains("storedPath"));
+    std::fs::write(&bound.stored_path, b"externally changed size").unwrap();
+    assert_eq!(
+        library_view(&w, query)["items"][0]["storage"]["state"],
+        "changed"
+    );
+}
+
+#[test]
+fn library_keeps_multiple_memberships_and_paginates_after_all_filters() {
+    let w = World::new();
+    let fixture: Value = serde_json::from_slice(
+        &std::fs::read(
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../schemas/catalog-sync/v0.3/examples/page.request.json"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let page = crate::library_page::extract_library_page(
+        &fixture["params"]["html"]
+            .as_str()
+            .unwrap()
+            .replace("901", "90"),
+    )
+    .unwrap();
+    let observation = crate::library_page::library_item_to_observation(
+        &page.items[0],
+        &format!("sha256:{}", "0".repeat(64)),
+        "2026-10-08T00:00:01Z",
+        None,
+        Some("gifts"),
+    );
+    w.bdl.record_product_observation(&observation).unwrap();
+    assert_eq!(
+        library_view(&w, json!({"schemaVersion":"0.1","source":"bought"}))["total"],
+        1
+    );
+    assert_eq!(
+        library_view(&w, json!({"schemaVersion":"0.1","source":"gifts"}))["total"],
+        1
+    );
+    assert_eq!(
+        library_view(&w, json!({"schemaVersion":"0.1"}))["items"][0]["sources"],
+        json!(["bought", "gifts"])
+    );
+    let after = library_view(&w, json!({"schemaVersion":"0.1","limit":1,"offset":1}));
+    assert_eq!(after["total"], 1);
+    assert!(after["items"].as_array().unwrap().is_empty());
+    let unmatched = library_view(&w, json!({"schemaVersion":"0.1","source":"free_downloads"}));
+    assert_eq!(unmatched["total"], 0);
+}
+
+#[test]
+fn library_keeps_unassociated_local_files_and_joins_only_the_associated_part() {
+    let w = World::new();
+    let staged = w.delivery(901, "dl-local", b"manual local file", "notes.pdf");
+    let completion = DownloadEventConsumer::new(&w.bdl)
+        .staging_completion("dl-local")
+        .unwrap()
+        .unwrap();
+    let inspected = ArtifactInspector::new(&w.bdl, &SystemClock)
+        .inspect_download_for_storage(&DownloadInspectionRequest {
+            staging_token: &completion.staging_token,
+            download_id: "dl-local",
+            expected_staging_root: &w.base.join("downloads-staging"),
+        })
+        .unwrap();
+    let DownloadInspectionOutcome::Inspected(artifact) = inspected else {
+        panic!("inspection")
+    };
+    let entry = w
+        .bdl
+        .create_warehouse_item("Local notes", "imported_material", "2026-10-08T00:00:00Z")
+        .unwrap();
+    let folder = w.base.join("warehouse").join(&entry.folder_name);
+    std::fs::create_dir_all(&folder).unwrap();
+    let local = folder.join("notes.pdf");
+    std::fs::copy(staged, &local).unwrap();
+    w.bdl
+        .record_artifact_copy(
+            &entry.warehouse_item_id,
+            &artifact.artifact_sha256,
+            "notes.pdf",
+            &local.to_string_lossy(),
+            CopyRole::Original,
+            "2026-10-08T00:00:00Z",
+        )
+        .unwrap();
+    let first = library_view(&w, json!({"schemaVersion":"0.1"}));
+    assert_eq!(first["total"], 2);
+    assert_eq!(first["items"][1]["kind"], "local");
+    assert_eq!(
+        library_view(&w, json!({"schemaVersion":"0.1","source":"local"}))["total"],
+        1
+    );
+    assert_eq!(
+        library_view(&w, json!({"schemaVersion":"0.1","text":"notes.pdf"}))["total"],
+        1
+    );
+    assert_eq!(
+        library_view(
+            &w,
+            json!({"schemaVersion":"0.1","text":entry.warehouse_item_id})
+        )["total"],
+        1
+    );
+    w.bdl
+        .record_artifact_mapping(
+            &artifact.artifact_sha256,
+            "booth:90",
+            None,
+            Some("user"),
+            "2026-10-08T00:00:01Z",
+        )
+        .unwrap();
+    let associated = library_view(&w, json!({"schemaVersion":"0.1"}));
+    assert_eq!(associated["total"], 1);
+    assert_eq!(associated["items"][0]["storage"]["presentCopies"], 1);
+}
+impl World {
+    fn new() -> Self {
+        let base = unique_dir("vua-library", "synthetic");
+        let bdl = Arc::new(BdlStore::open(base.join("bdl.db")).unwrap());
+        let fixture: Value = serde_json::from_slice(
+            &std::fs::read(
+                PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("../../schemas/catalog-sync/v0.3/examples/page.request.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        let page = crate::library_page::extract_library_page(
+            &fixture["params"]["html"]
+                .as_str()
+                .unwrap()
+                .replace("901", "90"),
+        )
+        .unwrap();
+        let observation = crate::library_page::library_item_to_observation(
+            &page.items[0],
+            &format!("sha256:{}", "0".repeat(64)),
+            "2026-10-08T00:00:00Z",
+            None,
+            Some("bought"),
+        );
+        bdl.record_product_observation(&observation).unwrap();
+        bdl.upsert_product_downloadables(
+            "booth:90",
+            &[(901, "synthetic.pdf".into()), (902, "synthetic.zip".into())],
+            "2026-10-08T00:00:00Z",
+            None,
+            Some("bought"),
+        )
+        .unwrap();
+        let store = Arc::new(SqliteTaskStore::open(base.join("tasks.db")).unwrap());
+        let runtime = TaskRuntime::with_sqlite(
+            store.clone(),
+            Arc::new(SystemClock),
+            Arc::new(NanosTaskIdGenerator::default()),
+        )
+        .unwrap();
+        let service = LibraryDownloadService::new(
+            store.clone(),
+            bdl.clone(),
+            runtime.clone(),
+            base.join("warehouse"),
+            base.join("downloads-staging"),
+        )
+        .unwrap();
+        Self {
+            base: base.clone(),
+            bdl,
+            store,
+            runtime,
+            service: Arc::new(service),
+            _cleanup: Cleanup(base),
+        }
+    }
+    fn begin(&self, name: &str, ids: &[i64]) -> Value {
+        self.service.apply("library.beginDownload", json!({ "schemaVersion":"0.1", "batchId":format!("library-download-{name}"), "productId":"booth:90", "downloadableIds":ids }), |_| {}).unwrap()
+    }
+    fn observe(
+        &self,
+        name: &str,
+        id: i64,
+        outcome: &str,
+        download_id: Option<&str>,
+    ) -> Result<Value, LibraryDownloadError> {
+        let mut p = json!({"schemaVersion":"0.1", "batchId":format!("library-download-{name}"), "downloadableId":id, "outcome":outcome});
+        if let Some(download_id) = download_id {
+            p["downloadId"] = json!(download_id);
+        }
+        self.service.apply("library.observeDownload", p, |_| {})
+    }
+    fn status(&self, name: &str) -> Value {
+        self.service
+            .apply(
+                "library.downloadStatus",
+                json!({"schemaVersion":"0.1", "batchId":format!("library-download-{name}")}),
+                |_| {},
+            )
+            .unwrap()
+    }
+    fn wait(&self, name: &str) -> Value {
+        let start = std::time::Instant::now();
+        loop {
+            let value = self.status(name);
+            if value["state"] != "running" {
+                return value;
+            }
+            assert!(
+                start.elapsed() < std::time::Duration::from_secs(5),
+                "batch stuck: {value}"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+    }
+    fn delivery(&self, id: i64, download_id: &str, bytes: &[u8], name: &str) -> PathBuf {
+        let root = self.base.join("downloads-staging");
+        std::fs::create_dir_all(&root).unwrap();
+        let file = root.join(format!("{download_id}.stage"));
+        std::fs::write(&file, bytes).unwrap();
+        for kind in [DownloadEventKind::Started, DownloadEventKind::Completed] {
+            let event = DownloadEventV01 {
+                schema_version: "0.1".into(),
+                kind,
+                download_id: download_id.into(),
+                attempt: 1,
+                source_url: "https://synthetic.booth.pm/delivery".into(),
+                initiated_from_page_url: None,
+                url_chain: Some(vec![
+                    format!("https://booth.pm/downloadables/{id}"),
+                    "https://synthetic.booth.pm/delivery".into(),
+                ]),
+                suggested_file_name: Some(name.into()),
+                stored_path: if kind == DownloadEventKind::Completed {
+                    Some(file.to_string_lossy().into())
+                } else {
+                    None
+                },
+                expected_bytes: Some(bytes.len() as u64),
+                received_bytes: if kind == DownloadEventKind::Completed {
+                    Some(bytes.len() as u64)
+                } else {
+                    None
+                },
+                resumable: false,
+                failure_kind: None,
+                occurred_at: if kind == DownloadEventKind::Completed {
+                    "2026-10-08T00:00:01Z".into()
+                } else {
+                    "2026-10-08T00:00:00Z".into()
+                },
+            };
+            DownloadEventConsumer::new(&self.bdl)
+                .ingest(&event)
+                .unwrap();
+        }
+        file
+    }
+}
+
+#[path = "library_maintenance_tests.rs"]
+mod maintenance;
+
+#[test]
+fn registers_all_files_and_preserves_partial_transfer_results() {
+    let w = World::new();
+    let initial = w.begin("partial", &[901, 902]);
+    assert_eq!(initial["files"].as_array().unwrap().len(), 2);
+    w.delivery(901, "dl-901", b"synthetic pdf", "instructions.pdf");
+    let completion = DownloadEventConsumer::new(&w.bdl)
+        .staging_completion("dl-901")
+        .unwrap()
+        .unwrap();
+    assert!(matches!(
+        ArtifactInspector::new(&w.bdl, &SystemClock)
+            .inspect_download(&DownloadInspectionRequest {
+                staging_token: &completion.staging_token,
+                download_id: "dl-901",
+                expected_staging_root: &w.base.join("downloads-staging")
+            })
+            .unwrap(),
+        DownloadInspectionOutcome::Rejected(_)
+    ));
+    let first = w
+        .observe("partial", 901, "settled", Some("dl-901"))
+        .unwrap();
+    assert_eq!(first["state"], "running");
+    assert!(w.bdl.managed_library_file(901).unwrap().is_none());
+    w.observe("partial", 902, "initiation_failed", None)
+        .unwrap();
+    let final_state = w.wait("partial");
+    assert_eq!(final_state["state"], "succeeded_with_warnings");
+    assert_eq!(final_state["files"][0]["phase"], "stored");
+    assert_eq!(final_state["files"][1]["phase"], "failed");
+    let managed = w.bdl.managed_library_file(901).unwrap().unwrap();
+    assert_eq!(
+        std::fs::read(managed.stored_path).unwrap(),
+        b"synthetic pdf"
+    );
+    assert_eq!(
+        w.bdl
+            .artifact(&managed.artifact_sha256)
+            .unwrap()
+            .unwrap()
+            .inspection_state,
+        ArtifactInspectionState::Inspected
+    );
+}
+
+#[test]
+fn redownload_replaces_without_new_entry_copy_or_identity() {
+    let w = World::new();
+    w.begin("first", &[901]);
+    w.delivery(901, "dl-old", b"old pdf", "instructions.pdf");
+    w.observe("first", 901, "settled", Some("dl-old")).unwrap();
+    w.wait("first");
+    let old = w.bdl.managed_library_file(901).unwrap().unwrap();
+    w.begin("second", &[901]);
+    w.delivery(901, "dl-new", b"new pdf", "different-server-name.pdf");
+    w.observe("second", 901, "settled", Some("dl-new")).unwrap();
+    let result = w.wait("second");
+    let new = w.bdl.managed_library_file(901).unwrap().unwrap();
+    assert_eq!(result["state"], "succeeded", "{result}");
+    assert_eq!(result["files"][0]["replaced"], true);
+    assert_eq!(old.copy_id, new.copy_id);
+    assert_eq!(old.warehouse_item_id, new.warehouse_item_id);
+    assert_eq!(old.stored_path, new.stored_path);
+    assert_ne!(old.artifact_sha256, new.artifact_sha256);
+    assert_eq!(std::fs::read(&new.stored_path).unwrap(), b"new pdf");
+    assert_eq!(
+        w.bdl
+            .warehouse_entry_cards(ArtifactMode::UseOriginalUnitypackage)
+            .unwrap()
+            .len(),
+        1
+    );
+    assert_eq!(w.bdl.entry_copies(&new.warehouse_item_id).unwrap().len(), 1);
+    assert_eq!(
+        std::fs::read_dir(w.base.join("downloads-staging"))
+            .unwrap()
+            .count(),
+        0
+    );
+    assert_eq!(
+        std::fs::read_dir(Path::new(&new.stored_path).parent().unwrap())
+            .unwrap()
+            .count(),
+        1
+    );
+    assert_eq!(result, w.status("second"));
+    assert_eq!(
+        w.store
+            .task("library-download-second")
+            .unwrap()
+            .unwrap()
+            .result
+            .unwrap(),
+        result
+    );
+    w.observe("second", 901, "settled", Some("dl-new")).unwrap();
+    assert_eq!(w.status("second"), result);
+}
+
+#[cfg(windows)]
+#[test]
+fn library_staging_cleanup_failure_keeps_confirmed_copy_and_reports_inspection() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let w = World::new();
+    w.begin("cleanup", &[901]);
+    let staged = w.delivery(901, "dl-readonly", b"synthetic", "notes.pdf");
+    // Allow the worker to read/copy bytes while a real Windows handle blocks deletion.
+    let lock = std::fs::OpenOptions::new()
+        .read(true)
+        .share_mode(0x00000001 | 0x00000002)
+        .open(&staged)
+        .unwrap();
+    w.observe("cleanup", 901, "settled", Some("dl-readonly"))
+        .unwrap();
+    let result = w.wait("cleanup");
+    drop(lock);
+    assert_eq!(result["state"], "succeeded_with_warnings");
+    assert_eq!(result["files"][0]["phase"], "stored");
+    assert_eq!(
+        result["files"][0]["errorCode"],
+        "vua.library.staging_cleanup_failed"
+    );
+    assert_eq!(result["recoveryDisposition"], "inspect_required");
+    let managed = w.bdl.managed_library_file(901).unwrap().unwrap();
+    assert_eq!(std::fs::read(managed.stored_path).unwrap(), b"synthetic");
+    assert!(staged.exists());
+}
+
+#[test]
+fn library_staging_cleanup_refuses_the_owned_copy_and_changed_content() {
+    let w = World::new();
+    let root = w.base.join("downloads-staging");
+    let staged = w.delivery(901, "dl-cleanup", b"original", "notes.pdf");
+    let expected = format!("sha256:{}", hex_lower(&sha256_file(&staged).unwrap()));
+    assert!(!consume_staging(&root, &staged, &staged, &expected));
+    assert!(staged.exists());
+    let owned = w.base.join("owned.pdf");
+    std::fs::write(&owned, b"original").unwrap();
+    std::fs::write(&staged, b"external edit").unwrap();
+    assert!(!consume_staging(&root, &staged, &owned, &expected));
+    assert!(staged.exists());
+    assert!(!consume_staging(&root, &owned, &staged, &expected));
+    assert!(owned.exists());
+}
+
+#[test]
+fn inspection_failure_and_transfer_failure_keep_the_previous_file() {
+    let w = World::new();
+    w.begin("first", &[901]);
+    w.delivery(901, "dl-old", b"original", "file.fbx");
+    w.observe("first", 901, "settled", Some("dl-old")).unwrap();
+    w.wait("first");
+    let old = w.bdl.managed_library_file(901).unwrap().unwrap();
+    w.begin("bad", &[901]);
+    let staged = w.delivery(901, "dl-bad", b"bad", "file.fbx");
+    std::fs::write(staged, b"size changed").unwrap();
+    w.observe("bad", 901, "settled", Some("dl-bad")).unwrap();
+    assert_eq!(w.wait("bad")["state"], "failed");
+    assert_eq!(std::fs::read(&old.stored_path).unwrap(), b"original");
+    assert_eq!(
+        w.bdl
+            .managed_library_file(901)
+            .unwrap()
+            .unwrap()
+            .download_id,
+        "dl-old"
+    );
+    w.begin("failed", &[901]);
+    w.observe("failed", 901, "initiation_failed", None).unwrap();
+    assert_eq!(w.status("failed")["state"], "failed");
+    assert_eq!(std::fs::read(old.stored_path).unwrap(), b"original");
+}
+
+#[test]
+fn external_change_refuses_replacement() {
+    let w = World::new();
+    w.begin("first", &[901]);
+    w.delivery(901, "dl-old", b"old", "file.zip");
+    w.observe("first", 901, "settled", Some("dl-old")).unwrap();
+    w.wait("first");
+    let old = w.bdl.managed_library_file(901).unwrap().unwrap();
+    std::fs::write(&old.stored_path, b"user edit").unwrap();
+    w.begin("changed", &[901]);
+    w.delivery(901, "dl-new", b"new", "file.zip");
+    w.observe("changed", 901, "settled", Some("dl-new"))
+        .unwrap();
+    assert_eq!(
+        w.wait("changed")["files"][0]["errorCode"],
+        "vua.library.replacement_file_changed"
+    );
+    assert_eq!(std::fs::read(old.stored_path).unwrap(), b"user edit");
+}
+
+#[test]
+fn missing_bound_file_is_restored_without_adding_a_copy() {
+    let w = World::new();
+    w.begin("first", &[901]);
+    w.delivery(901, "dl-old", b"old", "file.zip");
+    w.observe("first", 901, "settled", Some("dl-old")).unwrap();
+    w.wait("first");
+    let old = w.bdl.managed_library_file(901).unwrap().unwrap();
+    std::fs::remove_file(&old.stored_path).unwrap();
+    w.begin("missing", &[901]);
+    w.delivery(901, "dl-new", b"replacement", "file.zip");
+    w.observe("missing", 901, "settled", Some("dl-new"))
+        .unwrap();
+    assert_eq!(w.wait("missing")["state"], "succeeded");
+    assert_eq!(
+        w.bdl.managed_library_file(901).unwrap().unwrap().copy_id,
+        old.copy_id
+    );
+}
+
+#[test]
+fn an_unpersisted_or_foreign_delivery_cannot_trigger_adoption() {
+    let w = World::new();
+    w.begin("bound", &[901]);
+    assert_eq!(
+        w.observe("bound", 901, "settled", Some("dl-nothing"))
+            .unwrap_err()
+            .0,
+        "delivery_not_persisted"
+    );
+    w.delivery(902, "dl-other", b"other", "file.zip");
+    assert_eq!(
+        w.observe("bound", 901, "settled", Some("dl-other"))
+            .unwrap_err()
+            .0,
+        "delivery_not_persisted"
+    );
+    assert_eq!(w.status("bound")["files"][0]["phase"], "queued");
+}
+
+#[test]
+fn admission_is_idempotent_and_busy_or_uncaptured_selections_are_refused() {
+    let w = World::new();
+    let first = w.begin("one", &[901]);
+    assert_eq!(w.begin("one", &[901]), first);
+    for (batch, ids, code) in [
+        ("two", vec![901], "file_busy"),
+        ("three", vec![999], "file_not_captured"),
+        ("dup", vec![902, 902], "invalid_params"),
+    ] {
+        let result = w.service.apply("library.beginDownload", json!({"schemaVersion":"0.1","batchId":format!("library-download-{batch}"),"productId":"booth:90","downloadableIds":ids}), |_| {});
+        assert_eq!(result.unwrap_err().0, code);
+        assert!(w
+            .store
+            .task(&format!("library-download-{batch}"))
+            .unwrap()
+            .is_none());
+    }
+}
+
+#[test]
+fn restart_preserves_checkpoint_and_never_resumes_the_old_batch() {
+    let w = World::new();
+    w.begin("crash", &[901, 902]);
+    w.delivery(901, "dl-one", b"one", "file.zip");
+    w.observe("crash", 901, "settled", Some("dl-one")).unwrap();
+    let recovered = LibraryDownloadService::new(
+        w.store.clone(),
+        w.bdl.clone(),
+        w.runtime.clone(),
+        w.base.join("warehouse"),
+        w.base.join("downloads-staging"),
+    )
+    .unwrap();
+    let p = json!({"schemaVersion":"0.1","batchId":"library-download-crash"});
+    let snapshot = recovered
+        .apply("library.downloadStatus", p.clone(), |_| {})
+        .unwrap();
+    assert_eq!(snapshot["recoveryDisposition"], "inspect_required");
+    assert_eq!(snapshot["files"][0]["phase"], "downloaded");
+    assert!(w.bdl.managed_library_file(901).unwrap().is_none());
+    assert_eq!(recovered.apply("library.observeDownload", json!({"schemaVersion":"0.1","batchId":"library-download-crash","downloadableId":902,"outcome":"initiation_failed"}), |_| {}).unwrap_err().0, "inspect_required");
+    let task = w.store.task("library-download-crash").unwrap().unwrap();
+    w.store
+        .mutate_task(
+            &task.task_id,
+            task.revision,
+            &SystemClock.now_rfc3339(),
+            TaskMutation::RequestCancellation { payload: json!({}) },
+        )
+        .unwrap();
+    recovered
+        .cancel_child("library-download-crash", |_| {})
+        .unwrap();
+    let closed = recovered
+        .apply("library.downloadStatus", p, |_| {})
+        .unwrap();
+    assert_eq!(closed["state"], "cancelled");
+    assert_eq!(closed["files"][0]["phase"], "cancelled");
+    assert!(w.bdl.managed_library_file(901).unwrap().is_none());
+}
+
+#[test]
+fn recovery_material_is_never_overwritten_and_owned_temporary_files_are_cleaned() {
+    let w = World::new();
+    w.begin("first", &[901]);
+    w.delivery(901, "dl-old", b"old", "file.zip");
+    w.observe("first", 901, "settled", Some("dl-old")).unwrap();
+    w.wait("first");
+    let old = w.bdl.managed_library_file(901).unwrap().unwrap();
+    let folder = Path::new(&old.stored_path).parent().unwrap();
+    let backup = folder.join(".vua-old-library-download-again-901");
+    std::fs::write(&backup, b"previous recovery evidence").unwrap();
+    w.begin("again", &[901]);
+    w.delivery(901, "dl-new", b"new", "file.zip");
+    w.observe("again", 901, "settled", Some("dl-new")).unwrap();
+    assert_eq!(w.wait("again")["state"], "failed");
+    assert_eq!(
+        std::fs::read(&backup).unwrap(),
+        b"previous recovery evidence"
+    );
+    assert_eq!(std::fs::read(&old.stored_path).unwrap(), b"old");
+    assert!(!folder.join(".vua-new-library-download-again-901").exists());
+}

@@ -43,13 +43,21 @@ use serde_json::Value;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-pub const BDL_FORMAT_VERSION: &str = "0.4";
-const BDL_MIGRATION_VERSION: i64 = 5;
+#[path = "managed_library_files.rs"]
+mod managed_library_files;
+pub use managed_library_files::{ManagedLibraryFile, ManagedLibraryDelivery};
+#[path = "library_evidence.rs"]
+mod library_evidence;
+pub use library_evidence::LibraryCopyEvidence;
+
+pub const BDL_FORMAT_VERSION: &str = "0.5";
+const BDL_MIGRATION_VERSION: i64 = 6;
 const MIGRATION_001: &str = include_str!("../../../schemas/bdl/v0.1/001_initial.sql");
 const MIGRATION_002: &str = include_str!("../../../schemas/bdl/v0.2/002_dependency_observations.sql");
 const MIGRATION_003: &str = include_str!("../../../schemas/bdl/v0.3/003_library_type.sql");
 const MIGRATION_004: &str = include_str!("../../../schemas/bdl/v0.3/004_variant_name.sql");
 const MIGRATION_005: &str = include_str!("../../../schemas/bdl/v0.4/005_product_downloadables.sql");
+const MIGRATION_006: &str = include_str!("../../../schemas/bdl/v0.5/006_managed_library_files.sql");
 
 #[derive(Debug)]
 pub enum BdlStoreError {
@@ -861,6 +869,8 @@ pub struct StoredArtifactCopy {
     pub created_at: String,
 }
 
+
+
 /// `warehouse.listEntries` card (bdl-queries v0.3 wire shape).
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1010,60 +1020,13 @@ impl BdlStore {
                 "migration-{migration}"
             )));
         }
-        if migration == 0 {
-            // Fresh database: born v0.2 — the full executable chain (001
-            // then 002) runs in one transaction, so a half-migrated fresh
-            // database cannot exist.
-            let transaction =
-                connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-            transaction.execute_batch(MIGRATION_001)?;
-            transaction.execute_batch(MIGRATION_002)?;
-            transaction.execute_batch(MIGRATION_003)?;
-            transaction.execute_batch(MIGRATION_004)?;
-            transaction.execute_batch(MIGRATION_005)?;
-            transaction.pragma_update(None, "user_version", BDL_MIGRATION_VERSION)?;
-            transaction.commit()?;
-        }
-        if migration == 4 {
-            // Existing v0.3 database: 005 adds the product_downloadables
-            // table (additive CREATE, no rebuild) and bumps the stamp.
-            let transaction =
-                connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-            transaction.execute_batch(MIGRATION_005)?;
-            transaction.pragma_update(None, "user_version", BDL_MIGRATION_VERSION)?;
-            transaction.commit()?;
-        }
-        if migration == 3 {
-            let transaction =
-                connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-            transaction.execute_batch(MIGRATION_004)?;
-            transaction.execute_batch(MIGRATION_005)?;
-            transaction.pragma_update(None, "user_version", BDL_MIGRATION_VERSION)?;
-            transaction.commit()?;
-        }
-        if migration == 2 {
-            // Existing v0.2 database: 003 adds products.library_type
-            // (additive ALTER, no rebuild) and bumps the format stamp.
-            let transaction =
-                connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-            transaction.execute_batch(MIGRATION_003)?;
-            transaction.execute_batch(MIGRATION_004)?;
-            transaction.execute_batch(MIGRATION_005)?;
-            transaction.pragma_update(None, "user_version", BDL_MIGRATION_VERSION)?;
-            transaction.commit()?;
-        }
-        if migration == 1 {
-            // Existing v0.1 database: 002 is the persistent-format migration
-            // (compatibility_observations CHECK rebuild with verbatim row
-            // carry-over + the dependency_observations table). Any data loss
-            // aborts it; the user_version fencing stays host-owned, exactly
-            // as the v0.1 host set it after MIGRATION_001.
-            let transaction =
-                connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-            transaction.execute_batch(MIGRATION_002)?;
-            transaction.execute_batch(MIGRATION_003)?;
-            transaction.execute_batch(MIGRATION_004)?;
-            transaction.execute_batch(MIGRATION_005)?;
+        if migration < BDL_MIGRATION_VERSION {
+            // Execute the remaining frozen migrations atomically. Their guarded
+            // format stamps still refuse foreign metadata instead of repairing it.
+            let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+            for (index, sql) in [MIGRATION_001, MIGRATION_002, MIGRATION_003, MIGRATION_004, MIGRATION_005, MIGRATION_006].iter().enumerate() {
+                if migration <= index as i64 { transaction.execute_batch(sql)?; }
+            }
             transaction.pragma_update(None, "user_version", BDL_MIGRATION_VERSION)?;
             transaction.commit()?;
         }
@@ -2047,6 +2010,13 @@ impl BdlStore {
                 observation.variant_name,
             ],
         )?;
+        if let Some(kind) = observation.library_type.as_deref() {
+            transaction.execute(
+                "INSERT INTO product_library_memberships(product_id,library_type,first_seen_at,last_seen_at) VALUES (?1,?2,?3,?3)
+                 ON CONFLICT(product_id,library_type) DO UPDATE SET last_seen_at=excluded.last_seen_at",
+                params![observation.product_id,kind,observation.observed_at],
+            )?;
+        }
         transaction.execute(
             "INSERT INTO bdl_meta(key, value) VALUES ('catalog_updated_seq', '1')
              ON CONFLICT(key) DO UPDATE SET
@@ -2966,7 +2936,7 @@ mod tests {
         let migration: i64 = connection
             .pragma_query_value(None, "user_version", |row| row.get(0))
             .unwrap();
-        assert_eq!(migration, 5, "fresh databases are born v0.4 chain complete (001-005)");
+        assert_eq!(migration, BDL_MIGRATION_VERSION, "fresh databases execute the entire migration chain");
         let dep_table: i64 = connection
             .query_row("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'dependency_observations'", [], |row| row.get(0))
             .unwrap();

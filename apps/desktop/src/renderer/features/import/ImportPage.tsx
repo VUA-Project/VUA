@@ -37,7 +37,7 @@ import {
   type EmbeddedBrowseState,
 } from "./import-model.ts";
 import "./import-page.css";
-import { useAcquireView } from "../../gateway/GatewayProvider.tsx";
+import { useAcquireView } from "../../gateway/index.ts";
 import { entrySurfacesVisible, inferGlobalDefaultMode } from "../warehouse/acquire-model.ts";
 
 /**

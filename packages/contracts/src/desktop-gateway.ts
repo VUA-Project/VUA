@@ -13,6 +13,12 @@ import type {
   ImportCopyPhaseV01,
 } from "./application-contract.js";
 
+import { isCatalogSyncParamsV03, type CatalogSyncStatusV03 } from "./catalog-sync-v03.js";
+import { isLibraryDownloadParamsV01, type LibraryDownloadStatusV01 } from "./library-download-v01.js";
+import { isLibraryViewParamsV01, type LibraryListParamsV01, type LibraryProductFilesParamsV01 } from "./library-view-v01.js";
+import { isRecipeDraftParamsV01, type RecipeDraftListParamsV01, type RecipeDraftGetParamsV01, type RecipeDraftSaveParamsV01, type RecipeDraftAddParamsV01 } from "./recipe-selection-draft-v01.js";
+import { isLibraryMaintenanceParamsV01, type LibraryRemovalPreviewParamsV01, type LibraryRemoveFilesParamsV01, type LibraryRemovalStatusParamsV01 } from "./library-maintenance-v01.js";
+
 export const DESKTOP_GATEWAY_VERSION = 1 as const;
 export const DESKTOP_GATEWAY_MAX_REQUEST_BYTES = 64 * 1024;
 
@@ -212,6 +218,38 @@ export interface CatalogListRequestV1 {
     readonly offset?: number;
   };
 }
+
+export interface CatalogSyncStatusRequestV1 {
+  readonly schemaVersion: 1;
+  readonly requestId: string;
+  readonly method: "catalog.librarySyncStatus";
+  readonly params: CatalogSyncStatusV03;
+}
+export interface LibraryDownloadStatusRequestV1 {
+  readonly schemaVersion: 1; readonly requestId: string; readonly method: "library.downloadStatus";
+  readonly params: LibraryDownloadStatusV01;
+}
+export type LibraryViewRequestV1 = { readonly schemaVersion: 1; readonly requestId: string } & (
+  | { readonly method: "library.list"; readonly params: LibraryListParamsV01 }
+  | { readonly method: "library.productFiles"; readonly params: LibraryProductFilesParamsV01 }
+);
+export type RecipeDraftQueryRequestV1 = { readonly schemaVersion: 1; readonly requestId: string } & (
+  | { readonly method: "recipeDraft.list"; readonly params: RecipeDraftListParamsV01 }
+  | { readonly method: "recipeDraft.get" | "recipeDraft.selectionStatus"; readonly params: RecipeDraftGetParamsV01 }
+);
+export type LibraryMaintenanceQueryRequestV1 = {
+  readonly schemaVersion: 1; readonly requestId: string;
+} & (
+  | { readonly method: "library.removalPreview"; readonly params: LibraryRemovalPreviewParamsV01 }
+  | { readonly method: "library.removalStatus"; readonly params: LibraryRemovalStatusParamsV01 }
+);
+export interface LibraryMaintenanceCommandRequestV1 {
+  readonly schemaVersion: 1; readonly requestId: string; readonly method: "library.removeFiles"; readonly params: LibraryRemoveFilesParamsV01;
+}
+export type RecipeDraftCommandRequestV1 = { readonly schemaVersion: 1; readonly requestId: string } & (
+  | { readonly method: "recipeDraft.save"; readonly params: RecipeDraftSaveParamsV01 }
+  | { readonly method: "recipeDraft.addSelection"; readonly params: RecipeDraftAddParamsV01 }
+);
 
 export interface CatalogDetailRequestV1 {
   readonly schemaVersion: 1;
@@ -947,6 +985,11 @@ export type DesktopGatewayRequestV1 =
   | ProductionRecoverRequestV1
   | ProductionGetBuildRecordRequestV1
   | CatalogListRequestV1
+  | CatalogSyncStatusRequestV1
+  | LibraryDownloadStatusRequestV1
+  | LibraryViewRequestV1
+  | LibraryMaintenanceQueryRequestV1 | LibraryMaintenanceCommandRequestV1
+  | RecipeDraftQueryRequestV1 | RecipeDraftCommandRequestV1
   | CatalogDetailRequestV1
   | CatalogStatusRequestV1
   | WarehouseListEntriesRequestV1
@@ -1024,6 +1067,18 @@ export const DESKTOP_GATEWAY_METHOD_KINDS = {
   "production.recover": "command",
   "production.getBuildRecord": "query",
   "catalog.list": "query",
+  "catalog.librarySyncStatus": "query",
+  "library.downloadStatus": "query",
+  "library.list": "query",
+  "library.productFiles": "query",
+  "library.removalPreview": "query",
+  "library.removeFiles": "command",
+  "library.removalStatus": "query",
+  "recipeDraft.list": "query",
+  "recipeDraft.get": "query",
+  "recipeDraft.selectionStatus": "query",
+  "recipeDraft.save": "command",
+  "recipeDraft.addSelection": "command",
   "catalog.detail": "query",
   "catalog.status": "query",
   "warehouse.listEntries": "query",
@@ -1356,7 +1411,11 @@ export interface RemoteContentApiV1 {
 /** 静默下载窄面(N5,2026-10-05 用户裁决:Steam 式):文件 id 批入队即受
  *  理;限速(串行 + 6s 源站间隔)与进度呈现归 Main/下载任务面,本面零过程 */
 export interface SilentDownloadApiV1 {
-  start(productId: string, downloadableIds: readonly number[]): Promise<{ readonly accepted: number }>;
+  start(productId: string, downloadableIds: readonly number[], replacementTargets?: readonly { readonly downloadableId: number; readonly copyId: string }[]): Promise<
+    | { readonly accepted: number; readonly batchId: string; readonly taskId: string }
+    | { readonly blocked: "sign-in-required" }
+    | { readonly errorCode: string }
+  >;
 }
 
 /** 账号库同步触发结果(N5 S1):触发面只启动/中止运行,进度与终态走
@@ -1772,6 +1831,17 @@ export function isDesktopGatewayRequestV1(value: unknown): value is DesktopGatew
       return hasExactKeys(value, REQUEST_KEYS)
         && hasExactKeys(value.params, ["buildRecordId"])
         && isIdentifier(value.params.buildRecordId);
+    case "catalog.librarySyncStatus":
+      return hasExactKeys(value, REQUEST_KEYS) && isCatalogSyncParamsV03(value.method, value.params);
+    case "library.downloadStatus":
+      return hasExactKeys(value, REQUEST_KEYS) && isLibraryDownloadParamsV01(value.method, value.params);
+    case "library.list":
+    case "library.productFiles":
+      return hasExactKeys(value, REQUEST_KEYS) && isLibraryViewParamsV01(value.method, value.params);
+    case "library.removalPreview": case "library.removeFiles": case "library.removalStatus":
+      return hasExactKeys(value, REQUEST_KEYS) && isLibraryMaintenanceParamsV01(value.method, value.params);
+    case "recipeDraft.list": case "recipeDraft.get": case "recipeDraft.save": case "recipeDraft.addSelection": case "recipeDraft.selectionStatus":
+      return hasExactKeys(value, REQUEST_KEYS) && isRecipeDraftParamsV01(value.method, value.params);
     case "catalog.list": {
       if (!hasExactKeys(value, REQUEST_KEYS)) return false;
       const listParams = value.params as CatalogListRequestV1["params"];

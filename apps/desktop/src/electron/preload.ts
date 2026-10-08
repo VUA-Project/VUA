@@ -196,8 +196,8 @@ const api: VuaDesktopApiV1 = Object.freeze({
   // 静默下载(N5,2026-10-05 用户裁决):文件 id 批入队即受理;进度与终态
   // 走下载任务面(通知中心),本面不返回过程
   silentDownload: Object.freeze({
-    start: (productId: string, downloadableIds: readonly number[]) =>
-      ipcRenderer.invoke("vua:silent-download:start", productId, downloadableIds),
+    start: (productId: string, downloadableIds: readonly number[], replacementTargets?: readonly { readonly downloadableId: number; readonly copyId: string }[]) =>
+      ipcRenderer.invoke("vua:silent-download:start", productId, downloadableIds, replacementTargets),
   }),
   // 壳能力自报(proposal 015 §11 方案 a):能力拥有者静态声明;内嵌浏览
   // 基座(remote-content + U9 导航策略)随本壳交付,呈现两态由渲染层据此

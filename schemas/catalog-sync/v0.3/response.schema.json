@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Catalog sync v0.3 operation values",
+  "$defs": {
+    "page": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "sourceUrl",
+        "parsedCount",
+        "upsertedCount",
+        "rejectedItems",
+        "nextPageUrl",
+        "cancellationRequested"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "0.3"
+        },
+        "sourceUrl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parsedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "upsertedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rejectedItems": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "index",
+              "code",
+              "reason"
+            ],
+            "properties": {
+              "index": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "code": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "nextPageUrl": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            }
+          ]
+        },
+        "cancellationRequested": {
+          "type": "boolean"
+        }
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "runId",
+        "taskId",
+        "revision",
+        "state",
+        "cancellationRequested",
+        "recoveryDisposition",
+        "libraryTypes",
+        "completedLibraryTypes",
+        "pages",
+        "parsedCount",
+        "upsertedCount",
+        "rejectedCount",
+        "nextPageUrl",
+        "errorCode"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "0.3"
+        },
+        "runId": {
+          "type": "string",
+          "pattern": "^catalog-sync-[A-Za-z0-9_.:-]{1,115}$"
+        },
+        "taskId": {
+          "type": "string",
+          "pattern": "^catalog-sync-[A-Za-z0-9_.:-]{1,115}$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "state": {
+          "enum": [
+            "running",
+            "succeeded",
+            "succeeded_with_warnings",
+            "failed",
+            "cancelled"
+          ]
+        },
+        "cancellationRequested": {
+          "type": "boolean"
+        },
+        "recoveryDisposition": {
+          "enum": [
+            "none",
+            "inspect_required"
+          ]
+        },
+        "libraryTypes": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "bought",
+              "gifts",
+              "free_downloads"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "completedLibraryTypes": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "bought",
+              "gifts",
+              "free_downloads"
+            ]
+          },
+          "minItems": 0,
+          "maxItems": 3,
+          "uniqueItems": true
+        },
+        "pages": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "parsedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "upsertedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rejectedCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nextPageUrl": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            }
+          ]
+        },
+        "errorCode": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            }
+          ]
+        }
+      }
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/page"
+    },
+    {
+      "$ref": "#/$defs/snapshot"
+    }
+  ]
+}

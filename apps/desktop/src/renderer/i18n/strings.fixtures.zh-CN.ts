@@ -1,16 +1,20 @@
 /**
  * 演示数据负载文案(zh-CN)—— DEV 构建专用。
  *
- * 原则①硬防线的结构保证:本模块只被 gateway/fixture-*.ts(fixture-gateway
+ * 原则①硬防线的结构保证:本模块的应用内引用来自 gateway/fixture-*.ts(fixture-gateway
  * 及其拆分子模块)与 features/overlay/demo/(切片五 Overlay 演示端口)引用,
  * 两条引用链都仅在 import.meta.env.DEV 分支可达(gateway/create.ts 静态分支、
  * overlay-port-instance.ts 动态 import),
  * 生产构建中整条引用链被 Rollup 剔除,演示文案不会进入生产包。
+ * scripts/fixtures 下的独立 Chromium 检查也可引用本模块,其入口不属于应用生产入口;
+ * 检查专用文案同样参与生产包泄漏检查。
  * 真实数据源接入后,本文件随 fixture-gateway.ts 一并移除。
  *
  * 插值与术语纪律与主字符串表一致(见 strings.en.ts 文件头)。
  */
 export const fixtureStrings = {
+  /** Standalone Chromium smoke payload; its marker participates in the production leak check. */
+  libraryMaintenanceProbeTitle: "Synthetic N5 library interaction test",
   checks: {
     vrchat: { title: "VRChat 本体", okDescription: "已安装,版本已通过验证。" },
     unity: { title: "Unity 版本", okDescription: "Unity 2022.3 LTS 就绪。" },

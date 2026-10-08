@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "0.1",
+  "total": 1,
+  "offset": 0,
+  "limit": 50,
+  "items": [
+    {
+      "kind": "product",
+      "product": {
+        "productId": "booth:90",
+        "title": "Synthetic item",
+        "libraryType": "gifts",
+        "importedArtifacts": 1,
+        "shopName": null,
+        "variantName": null,
+        "price": null,
+        "imageUrl": null,
+        "imageUrls": [],
+        "availabilityRaw": null,
+        "availabilityStatus": "unknown",
+        "entityCount": 0,
+        "entityTypes": []
+      },
+      "sources": [
+        "bought",
+        "gifts"
+      ],
+      "storage": {
+        "state": "present",
+        "storedCopies": 1,
+        "presentCopies": 1,
+        "missingCopies": 0,
+        "changedCopies": 0,
+        "unreadableCopies": 0,
+        "supersededGeneratedCopies": 0,
+        "currentGeneratedCopies": 0,
+        "productionQualification": "not_evaluated"
+      },
+      "operation": null
+    }
+  ]
+}

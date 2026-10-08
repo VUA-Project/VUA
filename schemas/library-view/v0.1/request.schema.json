@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vua.local/schemas/library-view/v0.1/request.schema.json",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "params"
+      ],
+      "properties": {
+        "method": {
+          "const": "library.list"
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schemaVersion"
+          ],
+          "properties": {
+            "schemaVersion": {
+              "const": "0.1"
+            },
+            "source": {
+              "type": "string",
+              "enum": [
+                "all",
+                "local",
+                "bought",
+                "gifts",
+                "free_downloads"
+              ]
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "all",
+                "downloaded",
+                "cloud_only",
+                "missing",
+                "in_progress",
+                "attention"
+              ]
+            },
+            "text": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "availabilityStatus": {
+              "type": "string",
+              "enum": [
+                "available",
+                "unavailable",
+                "unknown"
+              ]
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "params"
+      ],
+      "properties": {
+        "method": {
+          "const": "library.productFiles"
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schemaVersion",
+            "productId"
+          ],
+          "properties": {
+            "schemaVersion": {
+              "const": "0.1"
+            },
+            "productId": {
+              "type": "string",
+              "pattern": "^booth:[0-9]+$"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

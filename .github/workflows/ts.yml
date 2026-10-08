@@ -45,3 +45,5 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: pnpm check (typecheck + test + build + boundary + i18n + contrast + leak)
         run: pnpm check
+      - name: Library maintenance interaction (isolated profile, synthetic Gateway)
+        run: pnpm --filter @vua/desktop smoke:library-maintenance

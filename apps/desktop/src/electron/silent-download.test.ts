@@ -1,122 +1,130 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { DownloadEventV01, LibraryDownloadObservationV01 } from "@vua/contracts";
 import { createSilentDownloadQueue } from "./silent-download.js";
-import type { Session } from "electron";
 
-/** downloadURL 桩:记录发起与可注入的抛错 */
-function fakeSession(failUrls: ReadonlySet<string> = new Set()) {
-  const initiated: string[] = [];
-  const session = {
-    downloadURL(url: string) {
-      if (failUrls.has(url)) throw new Error("session gone");
-      initiated.push(url);
-    },
-  } as unknown as Session;
-  return { session, initiated };
+const batch = (ids: readonly number[] = [901, 902], batchId = "library-download-synthetic") => ({ batchId, productId: "booth:90", downloadableIds: ids });
+function event(kind: "download.started" | "download.completed" | "download.failed" | "download.cancelled", id = 901, redirected = false): DownloadEventV01 {
+  return { schemaVersion: "0.1", kind, downloadId: `dl-synthetic-${id}`, attempt: 1,
+    sourceUrl: redirected ? "https://synthetic.booth.pm/files/delivery" : `https://booth.pm/downloadables/${id}`,
+    urlChain: redirected ? [`https://booth.pm/downloadables/${id}`, "https://synthetic.booth.pm/files/delivery"] : null,
+    initiatedFromPageUrl: null, suggestedFileName: "synthetic.zip", occurredAt: "2026-10-08T00:00:00Z",
+    expectedBytes: 10, receivedBytes: kind === "download.completed" ? 10 : null,
+    storedPath: kind === "download.completed" ? "C:/synthetic/staging.zip" : null,
+    resumable: false, failureKind: kind === "download.failed" ? "unknown" : null,
+  };
 }
+function setup(extra: Partial<Parameters<typeof createSilentDownloadQueue>[0]> = {}) {
+  const downloadURL = vi.fn(); const observe = vi.fn< (value: LibraryDownloadObservationV01) => Promise<void> >().mockResolvedValue();
+  const abandon = vi.fn();
+  const queue = createSilentDownloadQueue({ partitionSession: { downloadURL }, observe, abandon, minIntervalMs: 0, log: () => undefined, ...extra });
+  return { queue, downloadURL, observe, abandon };
+}
+describe("silent library transport", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
 
-const noWait = { sleep: async () => {}, now: () => 0 };
-
-describe("createSilentDownloadQueue", () => {
-  it("initiates each file once, serially, through downloadURL", async () => {
-    const { session, initiated } = fakeSession();
-    const queue = createSilentDownloadQueue({ partitionSession: session, ...noWait });
-    const accepted = queue.enqueue("booth:6190761", [5330963, 5330987, 5330988]);
-    expect(accepted).toBe(3);
-    await vi.waitFor(() => expect(initiated).toHaveLength(3));
-    expect(initiated).toEqual([
-      "https://booth.pm/downloadables/5330963",
-      "https://booth.pm/downloadables/5330987",
-      "https://booth.pm/downloadables/5330988",
-    ]);
-    expect(queue.pending()).toBe(0);
+  it("keeps all selected files registered when the first completes during pacing", async () => {
+    let release!: () => void;
+    const { queue, downloadURL, observe } = setup({ minIntervalMs: 6_000, sleep: () => new Promise((resolve) => { release = resolve; }) });
+    expect(queue.enqueue(batch())).toBe(2);
+    queue.notifyTransport(event("download.completed")); queue.notifyPersisted(event("download.completed"));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(downloadURL).toHaveBeenCalledTimes(1); expect(queue.pending()).toBe(0);
+    expect(observe.mock.calls.map((call) => call[0].downloadableId)).toEqual([901]);
+    // The paced second entry has left the pending queue but belongs to the batch.
+    queue.cancel(batch().batchId); release(); await vi.advanceTimersByTimeAsync(0);
+    expect(downloadURL).toHaveBeenCalledTimes(1);
+    expect(observe.mock.calls.map((call) => [call[0].downloadableId, call[0].outcome])).toEqual([[901, "settled"], [902, "cancelled"]]);
+    queue.dispose();
   });
 
-  it("paces initiations by the BOOTH-crawler interval after the first", async () => {
-    const { session, initiated } = fakeSession();
-    const sleeps: number[] = [];
-    let clock = 1_000;
-    const queue = createSilentDownloadQueue({
-      partitionSession: session,
-      minIntervalMs: 6_000,
-      sleep: async (ms) => {
-        sleeps.push(ms);
-        clock += ms;
-      },
-      now: () => clock,
-    });
-    queue.enqueue("booth:1", [11, 22]);
-    await vi.waitFor(() => expect(initiated).toHaveLength(2));
-    // 首发不等;第二发等待剩余间隔(clock 已推进 minIntervalMs 以内)
-    expect(sleeps.length).toBeLessThanOrEqual(1);
-    expect(sleeps[0] ?? 0).toBeGreaterThan(0);
-    expect(sleeps[0] ?? 0).toBeLessThanOrEqual(6_000);
+  it("native completion alone cannot report settlement", async () => {
+    const { queue, observe } = setup(); queue.enqueue(batch([901]));
+    queue.notifyTransport(event("download.started")); queue.notifyTransport(event("download.completed"));
+    await vi.advanceTimersByTimeAsync(35_000);
+    expect(observe).not.toHaveBeenCalled();
+    queue.notifyPersisted(event("download.completed")); await vi.advanceTimersByTimeAsync(0);
+    expect(observe.mock.calls[0]![0]).toMatchObject({ outcome: "settled", downloadId: "dl-synthetic-901" }); queue.dispose();
   });
 
-  it("drops invalid ids honestly and survives a downloadURL throw", async () => {
-    const { session, initiated } = fakeSession(new Set(["https://booth.pm/downloadables/7"]));
-    const logs: string[] = [];
-    const queue = createSilentDownloadQueue({
-      partitionSession: session,
-      log: (line) => logs.push(line),
-      ...noWait,
-    });
-    const accepted = queue.enqueue("booth:2", [7, 0, -3, 8.5]);
-    expect(accepted).toBe(1);
-    await vi.waitFor(() => expect(initiated).toHaveLength(0));
-    expect(logs.some((line) => line.includes("\"error\""))).toBe(true);
-    expect(queue.pending()).toBe(0);
-  });
-});
-
-describe("product settle tracking (auto-adoption hook)", () => {
-  it("fires onProductSettled with the completed download ids once all files settle", async () => {
-    const { session, initiated } = fakeSession();
-    const settled: Array<{ productId: string; ids: string[] }> = [];
-    const queue = createSilentDownloadQueue({
-      partitionSession: session,
-      onProductSettled: (productId, ids) => settled.push({ productId, ids: [...ids] }),
-      ...noWait,
-    });
-    queue.enqueue("booth:6190761", [11, 22]);
-    // 等两个文件都经 downloadURL 发起(inFlight 登记完成)再喂终态
-    await vi.waitFor(() => expect(initiated).toHaveLength(2));
-    // 两个文件先后落定:11 成功,22 失败 → 只在最后一个落定时回调一次,携带成功批
-    queue.notifySettled(["https://booth.pm/downloadables/11"], "dl-1", "completed");
-    queue.notifySettled(["https://booth.pm/downloadables/22"], "dl-2", "failed");
-    expect(settled).toEqual([{ productId: "booth:6190761", ids: ["dl-1"] }]);
+  it("correlates redirected terminal delivery through the exact original URL", async () => {
+    const { queue, observe } = setup(); queue.enqueue(batch([901]));
+    queue.notifyTransport(event("download.completed", 901, true));
+    queue.notifyPersisted(event("download.completed", 901, true));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(observe.mock.calls[0]![0]).toEqual({ schemaVersion: "0.1", batchId: batch().batchId, downloadableId: 901, outcome: "settled", downloadId: "dl-synthetic-901" }); queue.dispose();
   });
 
-  it("ignores settle events for urls it never initiated", () => {
-    const { session } = fakeSession();
-    const settled: string[] = [];
-    const queue = createSilentDownloadQueue({
-      partitionSession: session,
-      onProductSettled: (productId) => settled.push(productId),
-      ...noWait,
-    });
-    queue.notifySettled(["https://booth.pm/downloadables/999"], "dl-x", "completed");
-    expect(settled).toHaveLength(0);
+  it("records each native kickoff exception and continues the remaining files", async () => {
+    const downloadURL = vi.fn().mockImplementationOnce(() => { throw new Error("destroyed session"); });
+    const { queue, observe } = setup({ partitionSession: { downloadURL } }); queue.enqueue(batch());
+    queue.notifyTransport(event("download.completed", 902)); queue.notifyPersisted(event("download.completed", 902));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(downloadURL).toHaveBeenCalledTimes(2);
+    expect(observe.mock.calls.map((call) => [call[0].downloadableId, call[0].outcome])).toEqual([[901, "initiation_failed"], [902, "settled"]]); queue.dispose();
   });
 
-  it("matches the ORIGINAL downloadables url through the redirect chain (2026-10-07)", async () => {
-    const { session, initiated } = fakeSession();
-    const settled: Array<{ productId: string; ids: string[] }> = [];
-    const queue = createSilentDownloadQueue({
-      partitionSession: session,
-      onProductSettled: (productId, ids) => settled.push({ productId, ids: [...ids] }),
-      ...noWait,
-    });
-    queue.enqueue("booth:4353376", [2934996]);
-    await vi.waitFor(() => expect(initiated).toHaveLength(1));
-    // 事件面只带重定向后的签名地址 + urlChain;命中链首直链才落定
-    queue.notifySettled(
-      [
-        "https://s6.booth.pm/3f709dc5/f/4353376/2934996/Charm_Crocs_ver1.00.zip?X-Amz-Expires=180",
-        "https://booth.pm/downloadables/2934996",
-      ],
-      "dl-9",
-      "completed",
-    );
-    expect(settled).toEqual([{ productId: "booth:4353376", ids: ["dl-9"] }]);
+  it("times out a request which never produces a native download", async () => {
+    const { queue, observe } = setup({ initiationTimeoutMs: 100 }); queue.enqueue(batch([901]));
+    await vi.advanceTimersByTimeAsync(100);
+    expect(observe.mock.calls[0]![0].outcome).toBe("initiation_failed"); queue.dispose();
+  });
+
+  it("limits native redirect admission to a currently waiting, uncancelled selection", async () => {
+    const original = "https://booth.pm/downloadables/901";
+    const { queue } = setup({ initiationTimeoutMs: 100 });
+    expect(queue.isAwaitingNative(original)).toBe(false);
+    queue.enqueue(batch([901]));
+    expect(queue.isAwaitingNative(original)).toBe(true);
+    expect(queue.isAwaitingNative("https://booth.pm/downloadables/902")).toBe(false);
+    queue.cancel(batch().batchId);
+    expect(queue.isAwaitingNative(original)).toBe(false);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(queue.isAwaitingNative(original)).toBe(false);
+    queue.enqueue(batch([901], "library-download-again"));
+    expect(queue.isAwaitingNative(original)).toBe(true);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(queue.isAwaitingNative(original)).toBe(false);
+    queue.enqueue(batch([901], "library-download-final"));
+    queue.dispose();
+    expect(queue.isAwaitingNative(original)).toBe(false);
+  });
+
+  it("preserves report identity through provider unavailability", async () => {
+    const observe = vi.fn<(value: LibraryDownloadObservationV01) => Promise<void>>().mockRejectedValueOnce(new Error("offline")).mockResolvedValue();
+    const { queue, downloadURL } = setup({ observe }); queue.enqueue(batch([901]));
+    queue.notifyTransport(event("download.completed")); queue.notifyPersisted(event("download.completed"));
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(observe).toHaveBeenCalledTimes(2); expect(observe.mock.calls[0]).toEqual(observe.mock.calls[1]);
+    expect(downloadURL).toHaveBeenCalledOnce(); queue.dispose();
+  });
+
+  it("rejects duplicate file selections and never replaces an in-flight URL binding", async () => {
+    const { queue, downloadURL, observe } = setup();
+    expect(queue.enqueue(batch([901, 901]))).toBe(0);
+    queue.enqueue(batch([901])); queue.enqueue(batch([901], "library-download-other"));
+    queue.notifyTransport(event("download.completed")); queue.notifyPersisted(event("download.completed"));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(downloadURL).toHaveBeenCalledOnce();
+    expect(observe.mock.calls.map((call) => [call[0].batchId, call[0].outcome])).toEqual([["library-download-other", "initiation_failed"], [batch().batchId, "settled"]]); queue.dispose();
+  });
+
+  it("cancels bound downloads and waits for their persisted terminal event", async () => {
+    const { queue, observe, abandon } = setup(); queue.enqueue(batch([901])); queue.notifyTransport(event("download.started"));
+    queue.cancel(batch().batchId); expect(abandon).toHaveBeenCalledWith("dl-synthetic-901"); expect(observe).not.toHaveBeenCalled();
+    queue.notifyTransport(event("download.cancelled")); queue.notifyPersisted(event("download.cancelled"));
+    await vi.advanceTimersByTimeAsync(0); expect(observe.mock.calls[0]![0].outcome).toBe("settled"); queue.dispose();
+  });
+
+  it("handles cancellation requested before native binding", async () => {
+    const { queue, abandon } = setup(); queue.enqueue(batch([901])); queue.cancel(batch().batchId);
+    queue.notifyTransport(event("download.started")); expect(abandon).toHaveBeenCalledWith("dl-synthetic-901"); queue.dispose();
+  });
+
+  it("reports unconfirmed evidence without pretending the file was stored", async () => {
+    const { queue, observe } = setup(); queue.enqueue(batch([901]));
+    queue.notifyTransport(event("download.completed")); queue.notifyUnconfirmed(event("download.completed"));
+    queue.notifyPersisted(event("download.completed")); await vi.advanceTimersByTimeAsync(0);
+    expect(observe).toHaveBeenCalledOnce(); expect(observe.mock.calls[0]![0].outcome).toBe("unconfirmed"); queue.dispose();
   });
 });

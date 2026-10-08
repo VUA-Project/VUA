@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { Button } from "../../components/primitives/Button.tsx";
 import { ContentDialog } from "../../components/primitives/ContentDialog.tsx";
 import { Skeleton } from "../../components/primitives/Skeleton.tsx";
-import { useGateway } from "../../gateway/GatewayProvider.tsx";
+import { useGateway } from "../../gateway/index.ts";
 import type {
   DependenciesObservationsView,
   DependencyKindV05,
-} from "../../gateway/dependencies-port.ts";
+} from "../../gateway/index.ts";
 import { format, strings } from "../../i18n/index.ts";
 
 const copy = strings.warehouse.compatibleDialog;
