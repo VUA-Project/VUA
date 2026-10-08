@@ -40,12 +40,12 @@ export interface TourStepDef {
  * 不存在控件的步骤——在 plan 步文案中如实说明"随后续步骤接入出现"。
  */
 export const TOUR_STEPS: readonly TourStepDef[] = [
-  { id: "route", page: "settings-goals", anchor: '[data-tour-anchor="tour-goals"]' },
-  { id: "network", page: "software", anchor: ".vua-network" },
-  { id: "checks", page: "software", anchor: ".vua-deployer__hero" },
-  { id: "plan", page: "software", anchor: ".vua-deployment" },
+  { id: "route", page: "home", anchor: '[data-nav-id="logo-home"]' },
+  { id: "network", page: "env-play", anchor: ".vua-network-tile" },
+  { id: "checks", page: "env-play", anchor: '[data-tour-anchor="play-environments"]' },
+  { id: "plan", page: "env-play", anchor: '[data-nav-id="route-desktop-action"]' },
   { id: "tasks", page: "home", anchor: '[data-nav-id="home-tasks"]' },
-  { id: "guide", page: "software", anchor: '[data-tour-anchor="tour-guide-entry"]' },
+  { id: "guide", page: "env-play", anchor: '[data-tour-anchor="tour-guide-entry"]' },
 ];
 
 /** 词表外/越界步号钳回合法区间(存储损坏时诚实回落,不抛异常) */

@@ -1,3 +1,4 @@
+import { environmentCopy } from "./environment-copy.ts";
 import { journeyCopy } from "./journey-copy.ts";
 import type { Strings } from "./strings.en.ts";
 
@@ -9,6 +10,7 @@ import type { Strings } from "./strings.en.ts";
  * - {placeholder} の名前はソース表と完全一致させること。
  */
 export const strings: Strings = {
+  environmentCards: environmentCopy["ja"],
   journey: journeyCopy["ja"],
   websiteTests: {
     title: "ウェブサイトテスト", test: "テスト", testAll: "すべてテスト", testing: "テスト中…",
@@ -244,8 +246,8 @@ demoTaskTitle: "デモタスク",
       tools: "ツール",
     },
     pages: {
-      envPlay: "プレイ環境",
-      envCreate: "制作環境",
+      envPlay: "プレイ",
+      envCreate: "アバター編集",
       guideStart: "はじめに",
       guideBasics: "基本操作",
       guideSafety: "安全設定",
@@ -430,22 +432,22 @@ demoTaskTitle: "デモタスク",
     steps: {
       route: {
         title: "目標はここで選びます",
-        body: "環境セットアップは VRChat を遊ぶためのソフトを整え、モデル制作はアバターの作成と着せ替えを担います。まず目標を一つ選んで開始 —— 後から「設定 → 目標の再選択」でいつでも変えられます。",
+        body: "左上の VUA ロゴでホームに戻れます。プレイ、アバター編集、Avatar の機能はウィザードの選択によらず利用できます。",
       },
       network: {
         title: "ネットワークチェックはここ",
-        body: "VRChat、Steam、GitHub を個別に、またはまとめてテストできます。+ でサイトを追加し、接続のヘルプで地域別の案内を確認できます。クリック時のみテストし、ログインはしません。",
-        absent: "環境デプロイの目標を選ぶと、ここにネットワークチェックが表示されます。",
+        body: "上のカードの右側で保存済みサイトをまとめて確認します。左側で個別のテスト、サイト編集、接続の説明を開けます。クリック時のみテストします。",
+        absent: "プレイに戻るとネットワークテストがあります。",
       },
       checks: {
         title: "ソフトの判定はここ",
-        body: "このマシンのソフトを実際に調査した結果をまとめて表示:準備完了・未導入・要対応。VUA は報告するだけで、確認なしにシステムを変更しません。",
-        absent: "環境デプロイの目標を選ぶと、ここにソフト調査が表示されます。",
+        body: "各カードが一つのプレイ環境です。左側は含まれるソフトウェア、右側は実際の状態と現在の操作を表示します。",
+        absent: "プレイに戻ると環境カードがあります。",
       },
       plan: {
         title: "インストール前に計画を確認",
-        body: "用途を選んで計画を生成すると、各インストール手順を実行前にここで確認できます。ゲーム起動の入口は、後続のインストール/起動ステップが着地すればここに現れます。",
-        absent: "環境デプロイの目標を選ぶと、ここにインストール計画が表示されます。",
+        body: "＋で準備計画を開き、インストール前に確認します。必要なソフトウェアの確認後、再生で起動し、×でこのカードが今回起動したアプリだけに終了を要求します。",
+        absent: "プレイで環境を選び、準備計画を確認してください。",
       },
       tasks: {
         title: "タスクの進行はここ",
@@ -454,7 +456,7 @@ demoTaskTitle: "デモタスク",
       },
       guide: {
         title: "ガイドはいつでも開けます",
-        body: "上部の「ガイド」で準備リーダーが開き、デプロイページの各チェック項目の横の「操作ガイドを見る」から該当章へ直接移動できます。このツアーはコマンドパレット(Ctrl+P)からいつでも再生できます。",
+        body: "ヘルプから準備の説明やゲームガイドを開けます。環境の詳細にも関連する章への入口があります。機能検索（Ctrl+P）からこのツアーを再生できます。",
       },
     },
   },
@@ -3204,6 +3206,7 @@ rolled_back: "ロールバック済み",
    *  ブラウザは現在、失敗を not-connected/not-found に落とすため、
    *  このビューでの透過表示は後続スライス。 */
   errors: {
+    playSession: { unavailable: environmentCopy["ja"].unknown },
     recipe: { draftFailed: "レシピの下書きの操作を完了できませんでした。" },
     library: { downloadFailed: "ダウンロードを完了できませんでした。既存のファイルは保持されます。", removalFailed: "ローカルファイルを削除できませんでした。状態を更新してタスクを確認してください。" },
     catalog: {

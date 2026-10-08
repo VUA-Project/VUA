@@ -76,6 +76,23 @@ try {
   checks.push(await window.webContents.executeJavaScript('window.firstRunReview.expectSearchFooterVisible()'));
   await writeFile(path.join(os.tmpdir(), "vua-settings-small-review.png"), (await window.webContents.capturePage()).toPNG());
   await writeFile(path.join(os.tmpdir(), "vua-task-window-review.png"), (await taskWindow.webContents.capturePage()).toPNG());
+  checks.push(...await window.webContents.executeJavaScript('window.firstRunReview.runEnvironmentCards()'));
+  await window.webContents.executeJavaScript('window.firstRunReview.settlePage()');
+  await writeFile(path.join(os.tmpdir(), "vua-play-cards-review.png"), (await window.webContents.capturePage()).toPNG());
+  await window.webContents.executeJavaScript('window.firstRunReview.previewEnvironment("play")');
+  await writeFile(path.join(os.tmpdir(), "vua-play-small-review.png"), (await window.webContents.capturePage()).toPNG());
+  window.setContentSize(1440, 960);
+  await window.webContents.executeJavaScript('window.firstRunReview.previewEnvironment("play")');
+  await writeFile(path.join(os.tmpdir(), "vua-play-overview-review.png"), (await window.webContents.capturePage()).toPNG());
+  await window.webContents.executeJavaScript('window.firstRunReview.previewEnvironment("create")');
+  await writeFile(path.join(os.tmpdir(), "vua-creator-overview-review.png"), (await window.webContents.capturePage()).toPNG());
+  await window.webContents.executeJavaScript('window.firstRunReview.previewEnvironment("play", "bigscreen")');
+  await writeFile(path.join(os.tmpdir(), "vua-play-bigscreen-review.png"), (await window.webContents.capturePage()).toPNG());
+  await window.webContents.executeJavaScript('window.firstRunReview.previewEnvironment("play")');
+  await window.webContents.executeJavaScript('window.firstRunReview.setThemePreference("light")');
+  await window.webContents.executeJavaScript('document.querySelector("[data-nav-id=shell-settings]").click()');
+  await window.webContents.executeJavaScript('window.firstRunReview.settlePage()');
+  await writeFile(path.join(os.tmpdir(), "vua-play-light-review.png"), (await window.webContents.capturePage()).toPNG());
   // A missing favicon is irrelevant to the route; actual renderer errors fail the smoke.
   const meaningfulErrors = errors.filter(e => !e.includes("404 (Not Found)"));
   if (meaningfulErrors.length) throw new Error(meaningfulErrors.join("\n"));

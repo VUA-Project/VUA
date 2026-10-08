@@ -263,3 +263,5 @@ export {
   useToolCatalogView,
   useWorkshopView,
 } from "./GatewayProvider.tsx";
+export type { CreatorManagers, CreatorEditor } from "./creator-inventory-port.ts";
+export type { PlayPort } from "./environment-port.ts";

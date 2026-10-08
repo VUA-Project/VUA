@@ -1,3 +1,4 @@
+import { environmentCopy } from "./environment-copy.ts";
 import { journeyCopy } from "./journey-copy.ts";
 import type { Strings } from "./strings.en.ts";
 
@@ -9,6 +10,7 @@ import type { Strings } from "./strings.en.ts";
  * - {placeholder} 이름은 소스 테이블과 정확히 일치해야 함.
  */
 export const strings: Strings = {
+  environmentCards: environmentCopy["ko"],
   journey: journeyCopy["ko"],
   websiteTests: {
     title: "웹사이트 테스트", test: "테스트", testAll: "모두 테스트", testing: "테스트 중…",
@@ -244,8 +246,8 @@ demoTaskTitle: "데모 작업",
       tools: "도구",
     },
     pages: {
-      envPlay: "플레이 환경",
-      envCreate: "제작 환경",
+      envPlay: "플레이",
+      envCreate: "아바타 편집",
       guideStart: "시작하기",
       guideBasics: "기본 조작",
       guideSafety: "안전 설정",
@@ -430,22 +432,22 @@ demoTaskTitle: "데모 작업",
     steps: {
       route: {
         title: "목표를 고르는 곳",
-        body: "환경 설정은 VRChat 플레이에 필요한 소프트웨어를 준비하고, 모델 제작은 아바타 만들기와 꾸미기를 담당합니다. 목표를 하나 고르고 시작하세요 — 나중에 '설정 → 목표 재선택'에서 언제든 바꿀 수 있습니다.",
+        body: "왼쪽 위 VUA 로고로 홈에 돌아갑니다. 플레이, 아바타 편집, Avatar 기능은 마법사 선택과 관계없이 사용할 수 있습니다.",
       },
       network: {
         title: "네트워크 점검은 여기",
-        body: "VRChat, Steam, GitHub를 개별 또는 한꺼번에 테스트하세요. + 버튼으로 사이트를 추가하고 연결 도움말에서 지역별 안내를 확인할 수 있습니다. 클릭할 때만 테스트하며 로그인하지 않습니다.",
-        absent: "환경 배포 목표를 선택하면 여기에 네트워크 점검이 표시됩니다.",
+        body: "상단 카드 오른쪽에서 저장된 모든 사이트를 테스트합니다. 왼쪽에서는 개별 테스트, 사이트 편집, 연결 도움말을 엽니다. 클릭할 때만 테스트합니다.",
+        absent: "플레이로 돌아가면 네트워크 테스트가 있습니다.",
       },
       checks: {
         title: "소프트웨어 판정은 여기",
-        body: "이 컴퓨터의 소프트웨어를 실제로 조사한 결과를 요약합니다: 준비됨·없음·조치 필요. VUA는 보고만 할 뿐, 확인 없이 시스템을 바꾸지 않습니다.",
-        absent: "환경 배포 목표를 선택하면 여기에 소프트웨어 점검이 표시됩니다.",
+        body: "각 카드는 하나의 플레이 환경입니다. 왼쪽은 포함된 소프트웨어, 오른쪽은 실제 상태와 현재 가능한 동작을 보여줍니다.",
+        absent: "플레이로 돌아가면 환경 카드가 있습니다.",
       },
       plan: {
         title: "설치 전에 계획을 검토",
-        body: "용도를 고르고 계획을 생성하면 각 설치 단계를 실행 전에 여기에서 확인합니다. 게임 실행 항목은 이후 설치/실행 단계가 자리 잡으면 여기에 나타납니다.",
-        absent: "환경 배포 목표를 선택하면 여기에 설치 계획이 표시됩니다.",
+        body: "＋로 준비 계획을 열어 설치 전에 확인합니다. 소프트웨어 확인 후 재생 버튼으로 시작하고, ×로 이 카드가 이번에 시작한 앱에만 종료를 요청합니다.",
+        absent: "플레이에서 환경을 선택해 준비 계획을 확인하세요.",
       },
       tasks: {
         title: "작업 진행은 여기",
@@ -454,7 +456,7 @@ demoTaskTitle: "데모 작업",
       },
       guide: {
         title: "가이드는 언제나 열립니다",
-        body: "상단의 '가이드'로 준비 리더가 열리고, 배포 페이지의 각 점검 항목 옆 '조작 가이드 보기'로 해당 절로 바로 이동합니다. 이 투어는 명령 팔레트(Ctrl+P)에서 언제든 다시 볼 수 있습니다.",
+        body: "도움말에서 준비 안내와 게임 가이드를 엽니다. 환경 상세에서도 관련 장으로 바로 이동할 수 있습니다. 기능 검색（Ctrl+P）에서 이 안내를 다시 볼 수 있습니다.",
       },
     },
   },
@@ -3191,6 +3193,7 @@ rolled_back: "롤백됨",
    *  실패를 not-connected/not-found로 처리하므로, 이 뷰에서의 투과
    *  표시는 후속 슬라이스. */
   errors: {
+    playSession: { unavailable: environmentCopy["ko"].unknown },
     recipe: { draftFailed: "레시피 초안 작업을 완료하지 못했습니다." },
     library: { downloadFailed: "다운로드를 완료하지 못했습니다. 기존 파일은 유지됩니다.", removalFailed: "로컬 파일을 삭제하지 못했습니다. 상태를 새로고침하고 작업을 확인하세요." },
     catalog: {

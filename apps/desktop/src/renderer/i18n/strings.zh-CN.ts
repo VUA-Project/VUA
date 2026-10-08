@@ -1,3 +1,4 @@
+import { environmentCopy } from "./environment-copy.ts";
 import { journeyCopy } from "./journey-copy.ts";
 import type { Strings } from "./strings.en.ts";
 
@@ -13,6 +14,7 @@ import type { Strings } from "./strings.en.ts";
  *   仅 gateway fixture 可达,生产构建被 Tree-shaking 剔除)。
  */
 export const strings: Strings = {
+  environmentCards: environmentCopy["zh-CN"],
   journey: journeyCopy["zh-CN"],
   websiteTests: {
     title: "网站测试", test: "测试", testAll: "测试全部", testing: "测试中…",
@@ -255,8 +257,8 @@ demoTaskTitle: "演示任务",
       tools: "工具",
     },
     pages: {
-      envPlay: "游玩环境",
-      envCreate: "生产环境",
+      envPlay: "游玩",
+      envCreate: "改模",
       guideStart: "开始游玩",
       guideBasics: "基础操作",
       guideSafety: "安全设置",
@@ -437,22 +439,22 @@ demoTaskTitle: "演示任务",
     steps: {
       route: {
         title: "从这里选择目标",
-        body: "环境部署负责准备游玩 VRChat 所需的软件,模型生产负责 Avatar 的制作与装扮。先选一个目标即可开始,之后可在「设置 → 目标重选」随时调整。",
+        body: "点左上角 VUA LOGO 回到首页。游玩、改模和 Avatar 功能始终可以找到，不受新手引导选择影响。",
       },
       network: {
         title: "网络检查在这里",
-        body: "单独测试 VRChat、Steam 或 GitHub，也可以测试全部网站。右上角 + 可添加网站，「连接帮助」中有地区建议。仅在点击后测试，不登录账号。",
-        absent: "选择环境部署目标后,网络检查会显示在这里。",
+        body: "顶部卡片右边测试全部已保存的网站；点左边可单独测试、修改网站，或查看连接帮助。只有点击后才会测试。",
+        absent: "返回「游玩」即可找到网络测试。",
       },
       checks: {
         title: "软件结论在这里",
-        body: "这里汇总对本机软件的真实检测结论:已就绪、缺失或需要处理。VUA 只如实报告——未经你确认不会改动系统。",
-        absent: "选择环境部署目标后,软件检查会显示在这里。",
+        body: "每张卡是一套游玩环境。左边查看包含的软件，右边显示实际状态与当前可以执行的操作。",
+        absent: "返回「游玩」即可找到环境卡片。",
       },
       plan: {
         title: "安装前先审阅计划",
-        body: "选择用途并生成计划后,每个安装步骤都会先在这里列明再执行。游戏启动入口随后续安装步骤接入后出现在这里。",
-        absent: "选择环境部署目标后,安装计划会显示在这里。",
+        body: "加号打开准备计划，安装前先看清楚。软件检测齐全后，播放按钮启动这套环境；叉号只尝试关闭这张卡本次启动的软件。",
+        absent: "在「游玩」选择一套环境，查看准备计划。",
       },
       tasks: {
         title: "任务进度在这里",
@@ -461,7 +463,7 @@ demoTaskTitle: "演示任务",
       },
       guide: {
         title: "引导随时可达",
-        body: "点顶栏「引导」打开准备阅读器;部署页每个检查项旁的「查看操作指南」直达相关章节。本导览可随时在功能搜索(Ctrl+P)里重播。",
+        body: "「帮助」可打开准备说明和游戏指南；环境详情里也有直达相关章节的入口。随时可从功能搜索（Ctrl+P）重播本导览。",
       },
     },
   },
@@ -3220,6 +3222,7 @@ rolled_back: "已回滚",
    *  errors.catalog.*);catalog 浏览器当前将失败回落 not-connected/not-found,
    *  该视图中透传呈现这些键为后续切片 */
   errors: {
+    playSession: { unavailable: environmentCopy["zh-CN"].unknown },
     recipe: { draftFailed: "配方草稿操作未能完成。" },
     library: { downloadFailed: "素材下载未能完成,原有文件会保留。", removalFailed: "本地文件未能删除，请刷新文件状态并检查任务。" },
     catalog: {

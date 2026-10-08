@@ -444,7 +444,7 @@ impl InstallLease {
 
 /// Presence means the selected application's entry point was observed, not that it was
 /// launched or its hardware worked. Incomplete installations require inspection, not overwrite.
-fn component_files_present(component: &str, location: &Path) -> bool {
+pub(crate) fn component_files_present(component: &str, location: &Path) -> bool {
     match component {
         "steam" => location.join("steam.exe").is_file(),
         "steamvr" => location.join("bin/win64/vrmonitor.exe").is_file(),

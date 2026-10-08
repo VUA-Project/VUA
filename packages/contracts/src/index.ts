@@ -13,3 +13,5 @@ export * from "./environment-network.js";
 export * from "./game-window.js";
 export * from "./website-test.js";
 export * from "./account-guide.js";
+export * from "./play-session.js";
+export * from "./manager-apps.js";

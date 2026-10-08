@@ -13,6 +13,8 @@ pub mod eac_verify;
 pub mod editor_verify;
 pub mod environment_managers;
 pub mod game_window;
+pub mod play_session;
+pub mod manager_apps;
 pub mod network_probe;
 pub mod import_copy;
 pub mod project_inspection;

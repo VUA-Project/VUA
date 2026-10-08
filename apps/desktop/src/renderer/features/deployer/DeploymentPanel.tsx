@@ -18,20 +18,27 @@ import { GUIDE_TARGETS, guideTargetForComponent } from "../guide/guide-target.ts
 import type { CheckZone } from "./deployer-model.ts";
 
 const copy = strings.deployment;
-export function DeploymentPanel({ zone, purpose, onReadyChange }: {
+export interface DeploymentCardState { busy: boolean; error: boolean; ready: boolean }
+export function DeploymentPanel({ zone, purpose, onReadyChange, onStateChange, autoPlan = false }: {
   zone: CheckZone;
   /** A route chosen by the user; standalone deployment keeps its multi-purpose picker. */
   purpose?: DeploymentPurpose;
   onReadyChange?: (ready: boolean) => void;
+  onStateChange?: (state: DeploymentCardState) => void;
+  autoPlan?: boolean;
 }) {
   const gateway = useGateway();
   const port = gateway.environment.deployment;
   const useMirrors = useUnityMirrors();
   const mirrorPreference = useRef(useMirrors);
   mirrorPreference.current = useMirrors;
-  const receiptKey = zone === "create" ? storageKeys.deploymentReceiptCreate : storageKeys.deploymentReceiptPlay;
+  const legacyReceiptKey = zone === "create" ? storageKeys.deploymentReceiptCreate : storageKeys.deploymentReceiptPlay;
+  const receiptKey = purpose ? `${legacyReceiptKey}.${purpose}` : legacyReceiptKey;
+  const autoPlanned = useRef(false);
   const [restored] = useState(() => {
-    try { return readDeploymentReceipt(localStorage.getItem(receiptKey)); } catch { return null; }
+    try { const receipt = readDeploymentReceipt(localStorage.getItem(receiptKey) ?? localStorage.getItem(legacyReceiptKey));
+      return receipt && (!purpose || receipt.intent.purposes.includes(purpose)) ? receipt : null;
+    } catch { return null; }
   });
   const [available, setAvailable] = useState(false);
   const [purposes, setPurposes] = useState<DeploymentPurpose[]>(purpose ? [purpose] : restored ? [...restored.intent.purposes] : [zone === "create" ? "pc_avatar" : "desktop_play"]);
@@ -98,9 +105,9 @@ export function DeploymentPanel({ zone, purpose, onReadyChange }: {
       && (!purpose || purpose.endsWith("play") || purpose === "pico_pcvr" || acceptedIntent.editorRoot === editorRoot))
   );
   useEffect(() => { onReadyChange?.(routeReady); }, [routeReady, onReadyChange]);
-  if (port === undefined || !available) return purpose ? <Card><p role="status">{strings.journey.unavailable}</p>
-    <GuideEntryButton target={zone === "play" ? GUIDE_TARGETS.vrchatInstall : { topic: "guide-vua" }} label={strings.journey.guide} /></Card> : null;
+
   const replan = async () => {
+    if (!port) return;
     setBusy(true); setError(null); setPlan(null); setTask(null); setTaskId(null); setAcceptedIntent(null); setExecutedHere(false); setStep(null); command.current = null;
     try { localStorage.removeItem(receiptKey); } catch { /* Storage does not grant execution authority. */ }
     try {
@@ -113,7 +120,7 @@ export function DeploymentPanel({ zone, purpose, onReadyChange }: {
     finally { setBusy(false); }
   };
   const execute = async () => {
-    if (plan === null) return;
+    if (plan === null || !port) return;
     setBusy(true); setError(null);
     // Preserve the command ID after an uncertain reply. Retrying sends identical consent;
     // backend idempotency returns the same task instead of running another installer.
@@ -124,6 +131,7 @@ export function DeploymentPanel({ zone, purpose, onReadyChange }: {
       const bookmark: DeploymentReceiptBookmark = { v: 1, taskId: id, intent: plan.intent, startedAt: started };
       try {
         const serialized = JSON.stringify(bookmark);
+        for (const selected of plan.intent.purposes) localStorage.setItem(`${selected === "pc_avatar" || selected === "quest_avatar" ? storageKeys.deploymentReceiptCreate : storageKeys.deploymentReceiptPlay}.${selected}`, serialized);
         if (plan.intent.purposes.some(p => p === "desktop_play" || p === "pico_pcvr")) localStorage.setItem(storageKeys.deploymentReceiptPlay, serialized);
         if (plan.intent.purposes.some(p => p === "pc_avatar" || p === "quest_avatar")) localStorage.setItem(storageKeys.deploymentReceiptCreate, serialized);
       } catch { /* The live receipt and task center remain available. */ }
@@ -156,6 +164,14 @@ export function DeploymentPanel({ zone, purpose, onReadyChange }: {
     const p = typeof value === "object" && value !== null ? readDeploymentProgress({ ...value, operation: "environment.executeDeployment", component: "unity_editor", action: "install_editor" }) : null;
     return p?.phase === "source_failed" || p?.phase === "installation_failed" ? [p] : [];
   });
+  useEffect(() => { onStateChange?.({ busy: busy || active, error: error !== null || task?.state === "failed" || task?.recoveryDisposition === "inspect_required", ready: routeReady }); }, [busy, active, error, task?.state, task?.recoveryDisposition, routeReady, onStateChange]);
+  useEffect(() => {
+    if (autoPlan && available && !autoPlanned.current && !active && (!purposes.includes("pico_pcvr") || picoRegion !== "")) {
+      autoPlanned.current = true; void replan();
+    }
+  }, [autoPlan, available, active, picoRegion]);
+  if (port === undefined || !available) return purpose ? <Card><p role="status">{strings.journey.unavailable}</p>
+    <GuideEntryButton target={zone === "play" ? GUIDE_TARGETS.vrchatInstall : { topic: "guide-vua" }} label={strings.journey.guide} /></Card> : null;
   return <Card className="vua-deployment">
     {!purpose ? <><h2 className="vua-title">{copy.title}</h2><p>{copy.description}</p></> : null}
     {!purpose ? <fieldset disabled={disabled}><legend>{copy.purpose}</legend>

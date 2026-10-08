@@ -32,7 +32,8 @@ function WebsiteGlyph({ url }: { url: string }) {
   );
 }
 
-export function NetworkPanel() {
+export function NetworkPanel({ compact = false }: { compact?: boolean }) {
+  const [expanded, setExpanded] = useState(false);
   const port = useGateway().environment.network;
   const [ready, setReady] = useState<boolean | null>(null);
   const [sites, setSites] = useState<readonly TestWebsite[]>(() => {
@@ -52,6 +53,7 @@ export function NetworkPanel() {
     const ticket = ++generation.current;
     pending.current.clear(); setStates({}); setReady(null); setDetecting(false);
     if (port) void port.websiteCapability().then(c => { if (generation.current === ticket) setReady(c.state === "ready"); }, () => { if (generation.current === ticket) setReady(false); });
+    else setReady(false);
     return () => { generation.current++; };
   }, [port]);
 
@@ -98,9 +100,19 @@ export function NetworkPanel() {
     finally { if (ticket === generation.current) setDetecting(false); }
   };
 
-  if (!port) return null;
+  if (!port && !compact) return null;
   const busy = Object.values(states).some(state => state.busy);
-  return <><Card className="vua-network">
+  return <>
+    {compact ? <article className="vua-environment-card vua-network-tile">
+      <button type="button" className="vua-environment-card__details" data-nav-id="play-network-details" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>
+        <span className="vua-route-tile__icon" aria-hidden="true"><Icon name="gauge" size={24} /></span><strong>{strings.environmentCards.network}</strong>
+        <span className="vua-network-tile__results">{sites.slice(0, 3).map(site => { const state = states[site.url]; return <span key={site.url}>{site.name}<span>{state?.busy ? copy.testing : state?.result ? copy.statuses[state.result.status] : "—"}</span></span>; })}</span>
+      </button>
+      <button type="button" className="vua-environment-card__action" data-nav-id="play-network-test" disabled={!ready || busy || !sites.length} aria-label={copy.testAll} aria-busy={busy} onClick={() => void test(sites)}>
+        <span className={busy ? "vua-environment-card__spin" : undefined} aria-hidden="true"><Icon name="refresh" size={24} /></span><span role="status">{busy ? copy.testing : ready === false ? copy.unavailable : copy.testAll}</span>
+      </button>
+    </article> : null}
+    <Card className="vua-network" hidden={compact && !expanded}>
     <header className="vua-network__header">
       {/* 仪表盘字形:本面板测的是到站耗时(ms),不是信号有无 */}
       <span className="vua-network__heading-icon"><Icon name="gauge" size={24} /></span><h2>{copy.title}</h2>

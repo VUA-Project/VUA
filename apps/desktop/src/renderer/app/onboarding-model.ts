@@ -97,6 +97,7 @@ export function envGoalEnabled(stored: StoredGoalsV1 | null, zone: EnvGoalId): b
 
 /** 旧版页 id 迁移(v0.3.1 → v0.3.2);未知名称原样返回,交由 isPageId 判否 */
 export function migratePageId(id: string): string {
+  if (id === "software") return "env-play";
   if (id === "deployer-play") return "env-play";
   if (id === "deployer-create") return "env-create";
   return id;

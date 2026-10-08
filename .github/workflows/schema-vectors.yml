@@ -35,6 +35,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.97.1
       - uses: Swatinem/rust-cache@v2
       # Contract anchor per crate (tests that read schemas/ for real):
+      # play_session / play_session_wire additionally cover Candidate play-session v0.1.
       # - vua-acquisition:    bdl_commands_contract           (bdl-commands v0.1)
       #                       import_downloads_contract_v04   (bdl-commands v0.4)
       #                       import_contract_v03             (bdl-commands v0.3)
@@ -80,8 +81,8 @@ jobs:
       - name: vua-orchestrator
         run: cargo test -p vua-orchestrator --test assembly --test build_record --test contracts --test recipe --test recipe_v03 --test production_evidence --test vpm_spike_contract --test deployment
       - name: vua-project-manager
-        run: cargo test -p vua-project-manager --test environment_managers --test editor_verify_wire --test eac_probe --test eac_allowlist_verify --test eac_terminate --test import_copy --test project_inspection --test project_queries --test vua_identity --test game_window
+        run: cargo test -p vua-project-manager --test environment_managers --test editor_verify_wire --test eac_probe --test eac_allowlist_verify --test eac_terminate --test import_copy --test project_inspection --test project_queries --test vua_identity --test game_window --test play_session
       - name: vua-provider-host
-        run: cargo test -p vua-provider-host --test m3_vectors --test provider_frame_handshake --test warehouse_commands --test catalog_queries --test production_use_case_vectors --test project_ops_wire --test task_snapshot_wire --test editor_verify_wire --test game_window_wire --test catalog_sync_wire_v01 --test product_downloadables_wire_v07 --test library_download_wire_v01
+        run: cargo test -p vua-provider-host --test m3_vectors --test provider_frame_handshake --test warehouse_commands --test catalog_queries --test production_use_case_vectors --test project_ops_wire --test task_snapshot_wire --test editor_verify_wire --test game_window_wire --test catalog_sync_wire_v01 --test product_downloadables_wire_v07 --test library_download_wire_v01 --test play_session_wire
       - name: vua-unity-bridge
         run: cargo test -p vua-unity-bridge --test material_intake --test bridge_v2_vectors --test inspection_evidence_vectors

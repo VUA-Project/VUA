@@ -15,6 +15,15 @@ const checks: string[] = [];
 let escapes = 0;
 let shellCommand: ((command: DesktopShellCommandV1) => void) | undefined;
 let updateChecks = 0;
+let playUnavailable = false, installationRunning = false, websiteCalls = 0;
+const playStates: Record<string, string> = { desktop_play: "idle", pico_pcvr: "idle" };
+const playCalls: string[] = [];
+function syntheticPlay(route: string) {
+  const state = playStates[route]; const active = state !== "idle";
+  return { playSession: { schemaVersion: "vua.play-session/v0.1", capturedAt: new Date().toISOString(), route, state, issue: null, canStop: active,
+    software: (route === "desktop_play" ? ["steam", "vrchat"] : ["steam", "pico_runtime", "steamvr", "vrchat"]).map(component => ({ component,
+      presence: scenario === "missing" ? "missing" : "verified", running: component === "steam" || state === "running" || state === "stopping", owned: component !== "steam" && (state === "running" || state === "stopping") })) } };
+}
 const check = (name: string, value: unknown) => { if (!value) throw new Error(name); checks.push(name); };
 const wait = async (predicate: () => unknown, label = "") => {
   const start = Date.now();
@@ -24,13 +33,28 @@ const visible = (el: Element) => el.getClientRects().length > 0 && !el.closest("
 const button = (label: string) => [...document.querySelectorAll<HTMLButtonElement>("button")].find(el => visible(el) && (el.textContent?.trim() === label || el.querySelector("strong")?.textContent === label));
 const click = async (label: string) => { await wait(() => button(label) && !button(label)!.disabled, `button ${label}`); button(label)!.focus(); button(label)!.click(); };
 const step = (value: string) => wait(() => document.querySelector(`[data-wizard-step="${value}"]`), `step ${value}`);
+const settlePage = async () => {
+  await wait(() => { const page = document.querySelector(".vua-page-enter"); return page && parseFloat(getComputedStyle(page).opacity) > 0.99; }, "page transition completed");
+  document.querySelector(".vua-page")!.scrollTop = 0;
+  await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+};
 
 window.vua = {
-  gateway: { invoke: async (req: { method: string; params?: { intent?: { purposes: string[] } }; }) => {
+  gateway: { invoke: async (req: { method: string; params?: { intent?: { purposes: string[] }; route?: string; urls?: string[]; path?: string }; }) => {
     let value: unknown;
-    if (req.method === "app.snapshot") value = { capabilities: { tasks: true, operations: ["environment.planDeployment", "environment.executeDeployment"].map(operationId => ({ operationId, availability: "available" })) } };
+    if (req.method === "app.snapshot") value = { capabilities: { tasks: true, operations: ["environment.planDeployment", "environment.executeDeployment", "environment.testWebsites", "environment.observePlay", "environment.startPlay", "environment.stopPlay", "environment.inspectManagerApps"].map(operationId => ({ operationId, availability: "available" })) } };
     if (req.method === "task.list") value = { revision: 1, tasks: [] };
     if (req.method === "environment.getSnapshot") value = { capturedAt: new Date().toISOString(), items: [] };
+    if (req.method === "environment.testWebsites") { websiteCalls += 1; value = { websiteTests: req.params!.urls!.map(url => ({ url, status: "reachable", elapsedMs: 8, httpStatus: 200 })) }; }
+    if (["environment.observePlay", "environment.startPlay", "environment.stopPlay"].includes(req.method)) {
+      if (playUnavailable) return { ok: false, error: { code: "unsupported_method", messageKey: "synthetic" } };
+      const route = req.params!.route!;
+      if (req.method !== "environment.observePlay") { const stopping = req.method === "environment.stopPlay"; playCalls.push(req.method + ":" + route); playStates[route] = stopping ? "stopping" : "starting"; setTimeout(() => { playStates[route] = stopping ? "idle" : "running"; }, 100); }
+      value = syntheticPlay(route);
+    }
+    if (req.method === "project.environmentManagers") value = { operation: req.method, result: { schemaVersion: "vua.environment-managers-snapshot/v0.1", editors: ["2022.3.22f1", "2019.4.31f1", "2021.3.45f1"].map(version => ({ version, path: `C:/Synthetic/Unity/${version}`, classification: "other_unity_version" })), vcc: { presence: "found" }, alcom: { presence: "not_found" } } };
+    if (req.method === "environment.verifyEditor") value = { verdict: "verified", version: req.params!.path!.split("/").at(-1), exePath: req.params!.path! + "/Editor/Unity.exe", classification: "other_unity_version" };
+    if (req.method === "environment.inspectManagerApps") value = { managerApps: { schemaVersion: "vua.manager-apps/v0.1", capturedAt: new Date().toISOString(), apps: ["unity_hub", "vcc", "alcom"].map(component => ({ component, presence: component === "alcom" ? "not_found" : "found", path: component === "alcom" ? null : `C:/Synthetic/${component}.exe` })) } };
     if (req.method === "environment.planDeployment") {
       intents.push([...req.params!.intent!.purposes]);
       value = { deploymentPlan: { schemaVersion: "vua.environment-deployment/v0.1", intent: req.params!.intent, digest: "a".repeat(64), prerequisitesReady: scenario === "installed", installer: null,
@@ -38,7 +62,7 @@ window.vua = {
           officialUrl: component === "steam" ? "https://store.steampowered.com/about/" : "https://store.steampowered.com/app/438100/" })) } };
     }
     if (req.method === "environment.executeDeployment") value = { schemaVersion: "vua.environment-deployment/v0.1", operation: req.method, taskId: "synthetic-deployment", correlationId: "synthetic" };
-    if (req.method === "task.get") value = { contractVersion: "0.1", taskId: "synthetic-deployment", correlationId: "synthetic", revision: 1, state: "succeeded_with_warnings", recoveryDisposition: "none", cancellationRequested: false, updatedAt: new Date().toISOString(),
+    if (req.method === "task.get") value = { contractVersion: "0.1", taskId: "synthetic-deployment", correlationId: "synthetic", revision: 1, state: installationRunning ? "running" : "succeeded_with_warnings", recoveryDisposition: "none", cancellationRequested: false, updatedAt: new Date().toISOString(),
       result: scenario === "restored" ? { outcome: "prerequisites_verified" } : { outcome: "manual_required", nextStep: { component: "vrchat", action: "manual_install", officialUrl: "https://store.steampowered.com/app/438100/" } } };
     return value ? { ok: true, value } : { ok: false, error: { code: "unsupported_method", messageKey: "synthetic" } };
   } }, events: { subscribe: () => () => {} },
@@ -52,7 +76,7 @@ window.vua = {
 } as unknown as VuaDesktopApiV1;
 
 async function mount(mode: typeof scenario = "installed", displayMode = "bigscreen", tourStep?: number) {
-  root?.unmount(); localStorage.clear(); location.hash = ""; scenario = mode;
+  root?.unmount(); localStorage.clear(); location.hash = ""; scenario = mode; playUnavailable = false; installationRunning = false; websiteCalls = 0; playStates.desktop_play = "idle"; playStates.pico_pcvr = "idle"; playCalls.length = 0;
   localStorage.setItem(storageKeys.locale, "en");
   localStorage.setItem(storageKeys.displayMode, displayMode);
   localStorage.setItem(storageKeys.tourProgress, JSON.stringify({ v: 1, status: tourStep === undefined ? "skipped" : "active", step: tourStep ?? 0 }));
@@ -170,6 +194,51 @@ const review = {
     await wait(() => document.activeElement?.getAttribute("data-nav-id")?.startsWith("wizard-play-mode"));
     return checks;
   },
+  async runEnvironmentCards() {
+    const startAt = checks.length;
+    await mount("installed", "desktop"); await step("goal"); document.querySelector<HTMLButtonElement>('[data-nav-id="logo-home"]')!.click(); await wait(() => !document.querySelector("[data-wizard-step]"));
+    check("Software & connections is absent from the fixed directory", !document.querySelector('[data-nav-id="nav-software"]') && !document.querySelector('[data-nav-id="home-software"]'));
+    await click(copy.play); const card = () => document.querySelector<HTMLElement>('[data-card="route-desktop"]')!;
+    await wait(() => card()?.dataset.action === "start");
+    const halves = card().querySelectorAll<HTMLButtonElement>(":scope > button"); const network = document.querySelector<HTMLElement>(".vua-network-tile")!;
+    const separatorWidth = parseFloat(getComputedStyle(halves[1]!).borderLeftWidth);
+    check("play card has two independent halves and a thin separator", halves.length === 2 && !halves[0]!.disabled && separatorWidth > 0 && separatorWidth <= 1);
+    check("network is above the environments and has the same height", network.getBoundingClientRect().bottom <= card().getBoundingClientRect().top && Math.abs(network.getBoundingClientRect().height - card().getBoundingClientRect().height) < 1);
+    check("entering Play makes no website test requests", websiteCalls === 0);
+    document.querySelector<HTMLButtonElement>('[data-nav-id="play-network-test"]')!.click(); await wait(() => websiteCalls === 1 && network.textContent?.includes(strings.websiteTests.statuses.reachable));
+    check("network batch testing is explicit and presents observed results", websiteCalls === 1);
+    document.querySelector<HTMLButtonElement>('[data-nav-id="route-desktop"]')!.click(); await wait(() => document.querySelector('[data-route-stage="prepare"]'));
+    check("left half opens details without launching software", playCalls.length === 0 && document.querySelector(".vua-environment-software"));
+    document.querySelector<HTMLButtonElement>('[data-nav-id="route-desktop-action"]')!.click(); await wait(() => card().dataset.action === "stop");
+    check("pending start offers scoped close rather than a second start", card().querySelector(".vua-environment-card__action")!.getAttribute("aria-label")?.includes("Close this session"));
+    await wait(() => card().textContent?.includes(strings.environmentCards.running));
+    check("observed running software identifies pre-existing Steam as retained", document.querySelector(".vua-environment-software")!.textContent?.includes(strings.environmentCards.borrowed));
+    document.querySelector<HTMLButtonElement>('[data-nav-id="route-desktop-action"]')!.click(); await wait(() => card().dataset.action === "start");
+    check("close returns the environment to play after observation", playCalls.join() === "environment.startPlay:desktop_play,environment.stopPlay:desktop_play");
+    check("Quest, Vive and Index remain development peers", ["quest", "vive", "index"].every(id => document.querySelector(`[data-card="route-${id}"] .vua-route-tile__tag`)?.textContent === copy.developing));
+    playUnavailable = true; await click(strings.environmentCards.inspect); await wait(() => card().dataset.action === "unknown");
+    check("provider failure is unknown instead of missing or ready", card().textContent?.includes(strings.environmentCards.unknown));
+    await click(copy.create); await wait(() => document.querySelector('[data-nav-id="editor-2019.4.31f1"]'));
+    check("creator lists complete discovered versions beside the fixed Unity entries", document.querySelector('[data-nav-id="route-unity2022"]') && document.querySelector('[data-nav-id="editor-2021.3.45f1"]') && [...document.querySelectorAll(".vua-creator-page button:disabled")].some(b => b.textContent?.includes(copy.unity6) && b.textContent?.includes(copy.developing)));
+    check("Hub, VCC and ALCOM have separate detected statuses", ["unity_hub", "vcc", "alcom"].every(id => document.querySelector(`[data-manager="${id}"] [role="status"]`)) && document.querySelector('[data-manager="alcom"]')!.textContent?.includes(strings.environmentCards.notFound));
+    document.querySelector<HTMLButtonElement>('[data-nav-id="manager-vcc"]')!.click(); await wait(() => document.querySelector(".vua-creator-page .vua-environment-detail"));
+    check("manager configuration is shown separately from executable detection", document.querySelector(".vua-creator-page .vua-environment-detail")!.textContent?.includes(strings.environmentCards.configFound));
+    await mount("missing", "desktop"); await step("goal"); document.querySelector<HTMLButtonElement>('[data-nav-id="logo-home"]')!.click(); await wait(() => !document.querySelector("[data-wizard-step]")); await click(copy.play);
+    await wait(() => card()?.dataset.action === "prepare"); document.querySelector<HTMLButtonElement>('[data-nav-id="route-desktop-action"]')!.click(); await wait(() => button(strings.deployment.execute));
+    check("plus opens the reviewed installation plan without launching software", playCalls.length === 0 && !!button(strings.deployment.execute));
+    installationRunning = true; await click(strings.deployment.execute); await wait(() => card().dataset.action === "busy");
+    check("accepted installation shows a spinner and cannot launch", card().querySelector(".vua-environment-card__spin") && card().textContent?.includes(strings.environmentCards.installing) && document.querySelector<HTMLButtonElement>(".vua-play-page .vua-environment-detail:not([hidden]) .vua-route-platform > button")!.disabled);
+    check("details remain available while installation is running", !card().querySelector<HTMLButtonElement>(".vua-environment-card__details")!.disabled);
+    return checks.slice(startAt);
+  },
+  async previewEnvironment(page: "play" | "create", mode: "desktop" | "bigscreen" = "desktop") {
+    await mount("installed", mode); await step("goal"); document.querySelector<HTMLButtonElement>('[data-nav-id="logo-home"]')!.click(); await wait(() => !document.querySelector("[data-wizard-step]"));
+    if (mode === "bigscreen") await click(copy.environment);
+    await click(copy[page]);
+    await wait(() => page === "play" ? document.querySelector<HTMLElement>('[data-card="route-desktop"]')?.dataset.action === "start" : document.querySelector('[data-nav-id="editor-2019.4.31f1"]'));
+    await settlePage();
+  },
+  settlePage,
   async beforeKey(key: string) {
     if (key === "ArrowRight") {
       if (button(copy.exit)) await click(copy.exit);

@@ -1,4 +1,5 @@
 import { isDeploymentCommandId, isDeploymentParams, type DeploymentPlanParams, type DeploymentExecuteParams } from "./environment-deployment.js";
+import { isPlayCommandId, isPlayParams, type PlayRoute } from "./play-session.js";
 import { isNetworkParams, type NetworkIntent } from "./environment-network.js";
 import { isWebsiteTestParams, type WebsiteTestParams } from "./website-test.js";
 import type {
@@ -965,6 +966,9 @@ export interface GatewayDeploymentPlanRequest { readonly schemaVersion: 1; reado
 export interface GatewayDeploymentExecuteRequest { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.executeDeployment"; readonly params: DeploymentExecuteParams & { readonly commandId: string } }
 
 export type DesktopGatewayRequestV1 =
+  | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.inspectManagerApps"; readonly params: Readonly<Record<string, never>> }
+  | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.observePlay"; readonly params: { readonly route: PlayRoute } }
+  | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.startPlay" | "environment.stopPlay"; readonly params: { readonly route: PlayRoute; readonly commandId: string } }
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.checkNetwork"; readonly params: { readonly intent: NetworkIntent } }
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.testWebsites"; readonly params: WebsiteTestParams }
   | GatewayDeploymentPlanRequest
@@ -1055,6 +1059,10 @@ export const DESKTOP_GATEWAY_METHOD_KINDS = {
   "environment.checkNetwork": "query",
   "environment.testWebsites": "query",
   "environment.planDeployment": "query",
+  "environment.observePlay": "query",
+  "environment.inspectManagerApps": "query",
+  "environment.startPlay": "command",
+  "environment.stopPlay": "command",
   "environment.executeDeployment": "command",
   "environment.verifyEditor": "query",
   "overlay.getSnapshot": "query",
@@ -1779,6 +1787,13 @@ export function isDesktopGatewayRequestV1(value: unknown): value is DesktopGatew
       return hasExactKeys(value, REQUEST_KEYS) && isWebsiteTestParams(value.params);
     case "environment.planDeployment":
       return hasExactKeys(value, REQUEST_KEYS) && isDeploymentParams(value.params, false);
+    case "environment.observePlay":
+      return hasExactKeys(value, REQUEST_KEYS) && isPlayParams(value.params);
+    case "environment.inspectManagerApps":
+      return hasExactKeys(value, REQUEST_KEYS) && hasExactKeys(value.params, []);
+    case "environment.startPlay": case "environment.stopPlay":
+      return hasExactKeys(value, REQUEST_KEYS) && hasExactKeys(value.params, ["route", "commandId"])
+        && isPlayCommandId(value.params.commandId) && isPlayParams({ route: value.params.route });
     case "environment.executeDeployment": {
       if (!hasExactKeys(value, REQUEST_KEYS) || !hasExactKeys(value.params, ["intent", "confirmedDigest", "commandId"]) || !isDeploymentCommandId(value.params.commandId)) return false;
       return isDeploymentParams({ intent: value.params.intent, confirmedDigest: value.params.confirmedDigest }, true);

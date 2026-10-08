@@ -1,4 +1,6 @@
 import { createLiveDeploymentPort } from "./live-deployment-port.ts";
+import { createLivePlayPort } from "./live-play-port.ts";
+import { createCreatorInventoryPort } from "./creator-inventory-port.ts";
 import { createLiveNetworkPort } from "./live-network-port.ts";
 import type { ApplicationEventV01, TaskEventV01 } from "@vua/contracts";
 import type { StoredGoalsV1 } from "../app/onboarding-model.ts";
@@ -142,6 +144,8 @@ function createLiveEnvironmentPort(client: GatewayClient): EnvironmentPort {
   };
   return {
     deployment: createLiveDeploymentPort(client),
+    play: createLivePlayPort(client),
+    managers: createCreatorInventoryPort(client),
     network: createLiveNetworkPort(client),
     snapshot: fetchView,
     subscribe(callback) {

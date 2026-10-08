@@ -1,11 +1,11 @@
 # Electron desktop and presentation architecture
 
 
-> Document version: 1.11.0
+> Document version: 1.12.0
 > Status: Accepted
 > Scope: `apps/desktop`, `packages/design-system`, frontend Gateway
 > Updated: 2026-10-09
-> Last conformance review: 2026-10-09 (compact shell, settings search/appearance and restored task-tour anchor; physical app/device review pending)
+> Last conformance review: 2026-10-09 (two-half environment cards, creator inventory and preserved shell preferences; physical app/device review pending)
 > Normative effect: Yes
 
 ## Technology decision
@@ -69,6 +69,22 @@ the current visit can establish software readiness; a restored terminal receipt 
 Reopening a completed preparation step reinspects files, and accepted tasks remain observable
 through their receipts. A connection confirmation is explicitly user-declared, not headset evidence.
 Opening Steam or a guide does not prove installation, login or successful play.
+
+Play now has fixed two-half cards: details on the left and observed status/action on the
+right. Network's equally tall tile is above the grid; the expandable runtime inventory stays
+on Play. The retired Software & connections page is absent from Home, sidebar and tour;
+old stored page IDs migrate to Play. Wizard choices still do not control these entries.
+The typed play port consumes the Candidate [play-session family](play-sessions.md), keeps
+unavailable observations distinct from missing software, and disables launch while installation
+is active. Scoped deployment bookmarks retain Desktop and PICO work independently while
+reading a matching legacy bookmark. Hidden details keep accepted installation receipts alive.
+
+Avatar editing reuses `project.environmentManagers` and `environment.verifyEditor` to show
+complete discovered editors; Unity 6 remains a development entry even when files are found.
+The read-only `environment.inspectManagerApps` Candidate query reports Hub/VCC/ALCOM
+executable findings from known roots and registry paths. Configuration findings keep their
+original frozen semantics and do not imply that an executable is installed. Version/path data
+remain local; unsupported versions only offer the accepted preparation route.
 
 Settings navigation keeps the underlying route or wizard mounted and returns to its source
 step and focus. The sidebar contains only settings categories while Settings is open, also in
@@ -264,6 +280,7 @@ redistribution review authorizes each bundled binary before a public release.
 ## Document changelog
 
 
+- 1.12.0 (2026-10-09): implement observed two-half play sessions and scoped close, move network/runtime discovery into Play, and add complete-editor and manager-app inventory to Avatar editing.
 - 1.11.0 (2026-10-09): apply the compact-shell ruling, move command search into Settings, replace the appearance select with joined buttons and a Dark default, and retarget the task-tour step to Home.
 - 1.10.0 (2026-10-09): implement settings-only sidebar/return, separate real task status and appearance from guides/demo previews, and add the localized VUA tray with typed main-renderer gestures and normal shutdown.
 - 1.9.0 (2026-10-08): record fixed navigation, desktop/big-screen focus, independent wizard/task facts and the closed official account-page browser handoff; temporary embedding and device acceptance remain pending.
@@ -278,5 +295,5 @@ redistribution review authorizes each bundled binary before a public release.
 
 - 1.4.1 (2026-10-02): merge the N1 Unity Hub handoff protocol with the status-quo alignment;
   no rule change.
-- 1.4.0 (2026-10-01): allow the Unity Hub installation handoff under the existing per-action external-protocol confirmation.
+
 Earlier entries remain in Git history.

@@ -15,6 +15,22 @@ function request(): unknown {
 }
 
 describe("Electron Desktop Gateway routing", () => {
+  it("routes scoped play commands without accepting native paths or renderer command text", async () => {
+    const provider = new MockOrchestratorProviderV01(); await provider.start(); const invoke = vi.spyOn(provider, "invoke");
+    const context = { provider, productVersion: "0.6.0", platform: "win32", rendererUrl };
+    for (const method of ["environment.startPlay", "environment.stopPlay"] as const) {
+      const params = { route: "pico_pcvr", commandId: `scoped-${method}` };
+      await routeDesktopGatewayInvoke(context, `${rendererUrl}/`, { schemaVersion: 1, requestId: "play", method, params });
+      expect(invoke).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "command", method, commandId: params.commandId, params: { route: params.route } }));
+      invoke.mockClear();
+      const rejected = await routeDesktopGatewayInvoke(context, `${rendererUrl}/`, { schemaVersion: 1, requestId: "bad-play", method, params: { ...params, executable: "C:\\Synthetic\\steam.exe", args: ["-shutdown"] } });
+      expect(rejected).toMatchObject({ ok: false, error: { code: "invalid_request" } }); expect(invoke).not.toHaveBeenCalled();
+    }
+    for (const [method, params] of [["environment.observePlay", { route: "desktop_play" }], ["environment.inspectManagerApps", {}]] as const) {
+      await routeDesktopGatewayInvoke(context, `${rendererUrl}/`, { schemaVersion: 1, requestId: "observe", method, params });
+      expect(invoke).toHaveBeenLastCalledWith(expect.objectContaining({ kind: "query", method, params }));
+    }
+  });
   it("routes file deletion with its durable removal identity and rejects renderer paths", async () => {
     const provider = new MockOrchestratorProviderV01(); await provider.start(); const invoke = vi.spyOn(provider, "invoke");
     const context = { provider, productVersion: "0.6.0", platform: "win32", rendererUrl };

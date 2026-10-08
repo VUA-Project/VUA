@@ -1,3 +1,4 @@
+import { environmentCopy } from "./environment-copy.ts";
 import { journeyCopy } from "./journey-copy.ts";
 /**
  * VUA UI string table (en) — SOURCE language.
@@ -15,6 +16,7 @@ import { journeyCopy } from "./journey-copy.ts";
  *   (DEV-only, reachable only from gateway fixtures, tree-shaken in release).
  */
 export const strings = {
+  environmentCards: environmentCopy["en"],
   journey: journeyCopy["en"],
   websiteTests: {
     title: "Website tests", test: "Test", testAll: "Test all", testing: "Testing…",
@@ -252,8 +254,8 @@ demoTaskTitle: "Demo task",
       tools: "Tools",
     },
     pages: {
-      envPlay: "Play Environment",
-      envCreate: "Creator environment",
+      envPlay: "Play",
+      envCreate: "Avatar editing",
       guideStart: "Getting Started",
       guideBasics: "Basic Controls",
       guideSafety: "Safety Settings",
@@ -442,22 +444,22 @@ demoTaskTitle: "Demo task",
     steps: {
       route: {
         title: "This is where you choose",
-        body: "Environment setup prepares the software for playing VRChat; avatar production covers creating and dressing up your avatar. Choose a goal to start — you can change it anytime under Settings → Goal selection.",
+        body: "The logo takes you Home. Play, Avatar editing and Avatar tools stay available regardless of your wizard choices.",
       },
       network: {
         title: "Network checks live here",
-        body: "Test VRChat, Steam or GitHub individually, or test all websites together. The + button adds a website. Connection help contains regional advice. Tests run only when clicked and never sign in.",
-        absent: "The network checks appear here once an environment deployment goal is selected.",
+        body: "The top card tests all saved websites from its right half. Open its left half to test or edit individual websites and read connection help. Testing starts only when you click.",
+        absent: "Return to Play to find network tests.",
       },
       checks: {
         title: "Software findings live here",
-        body: "This hero summarizes the real inspection of this machine: ready, missing or needing attention. VUA only reports — it never changes your system without your confirmation.",
-        absent: "The software inspection appears here once an environment deployment goal is selected.",
+        body: "Each card is one play environment. The left half shows its contents; the right half shows actual software status and the action you can take.",
+        absent: "Return to Play to find environment cards.",
       },
       plan: {
         title: "Review the plan before installing",
-        body: "After you pick purposes and generate a plan, every installation step is listed here for review before anything runs. A game launch entry will appear here as later install/launch steps land.",
-        absent: "The installation plan appears here once an environment deployment goal is selected.",
+        body: "The + opens a preparation plan for review. Once software is verified, Play starts that environment and × asks only apps started by this card to close.",
+        absent: "Choose an environment on Play to review its preparation plan.",
       },
       tasks: {
         title: "Task progress lives here",
@@ -466,7 +468,7 @@ demoTaskTitle: "Demo task",
       },
       guide: {
         title: "Guidance is always reachable",
-        body: "The Guide entry in the topbar opens the preparation reader; each check on the deployment page carries a \"View guide\" button that jumps to the matching section. Replay this tour anytime from the command palette (Ctrl+P).",
+        body: "Help opens preparation and game guidance. Environment details link directly to relevant chapters. Replay this tour from feature search (Ctrl+P).",
       },
     },
   },
@@ -3276,6 +3278,7 @@ demoTaskTitle: "Demo task",
    *  catalog browser currently degrades failures to not-connected/not-found;
    *  surfacing these keys in that view is a follow-up slice. */
   errors: {
+    playSession: { unavailable: environmentCopy["en"].unknown },
     recipe: { draftFailed: "The Recipe draft operation could not finish." },
     library: { downloadFailed: "The library download could not finish. Previously stored files are kept.", removalFailed: "Local files could not be deleted. Refresh their status and inspect the task." },
     catalog: {

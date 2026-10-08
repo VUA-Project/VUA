@@ -15,7 +15,6 @@ export type PageId =
   | "home"
   | "environment-hub"
   | "avatar-hub"
-  | "software"
   | "help"
   | "env-play"
   | "env-create"
@@ -153,7 +152,7 @@ const pageModule = new Map<PageId, AppSectionId>(
   modules.flatMap((m) => m.groups.flatMap((g) => g.pages.map((p) => [p.id, m.id] as const))),
 );
 
-for (const [page, section] of [["home", "settings"], ["help", "settings"], ["environment-hub", "env"], ["avatar-hub", "production"], ["software", "env"]] as const) pageModule.set(page, section);
+for (const [page, section] of [["home", "settings"], ["help", "settings"], ["environment-hub", "env"], ["avatar-hub", "production"]] as const) pageModule.set(page, section);
 
 const pageIds = new Set<string>(pageModule.keys());
 

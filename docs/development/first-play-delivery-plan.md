@@ -1,6 +1,6 @@
 # First play release: implementation checkpoint and remaining work
 
-> Document version: 1.7.0
+> Document version: 1.8.0
 > Status: Accepted
 > Updated: 2026-10-09
 > Scope: Desktop play, PICO 4 Pro USB/Wi-Fi, optional eye tracking and three guidance contexts
@@ -48,6 +48,15 @@ Keep their availability and non-blocking issues honest. No Sandbox is required: 
 deferred that test method on 2026-10-08, and another Windows baseline can supply the missing
 installation evidence. Finish exact-build notices and concise release instructions at publication.
 
+The 2026-10-09 environment-card slice adds two-half Play cards, network/runtime facts on the
+same page, verified extra editor listings and separate Hub/VCC/ALCOM application/config facts.
+Candidate launch/close sessions reuse existing processes, observe all required applications,
+close only software started by this card and report survivors or outstanding Steam handoffs.
+Software & connections is removed as a separate page. These changes preserve the approved
+wizard and compact shell. Controlled UI/process/schema checks cover recovery and scope;
+Steam/PICO vendor behavior and headset play remain physical acceptance work on the candidate.
+No new ZIP is produced during the author's development-UI review.
+
 ## 1. Completed work to build on
 
 | Slice | Delivered and checked | What remains outside that result |
@@ -78,7 +87,8 @@ and static installer inspection are separate from the pending [real installation
 The existing-software baseline and Provider replay after restart passed locally on 2026-10-08;
 no installer ran. Separate mainland/global Windows Sandbox inputs were prepared but the author
 deferred that method; the missing-software baseline remains unexecuted.
-VRChat/SteamVR remain manual Steam handoffs; acquisition does not complete the play/launch route.
+VRChat/SteamVR installation remains a manual Steam handoff. The Play cards now provide the
+closed launch/close route described in the checkpoint below; actual play acceptance remains pending.
 VRCFT has guide content but still needs the first-play detection/install/launch connection.
 
 Dated raw evidence remains local: `_local_real_machine/n1-play-zip-2026-10-03.md`,
@@ -111,7 +121,7 @@ manual handoff/reinspection, account return, focus/back, mode changes and four-l
 window layout. These checks use synthetic Gateway facts and establish UI behavior only.
 `pnpm --filter @vua/desktop smoke:first-run-ui` reproduces the branching, readiness, account-return
 and Chromium keyboard cases in an isolated Electron session without installing software or signing in.
-Its current 56 checks also cover settings-only navigation, source/focus preservation, tray-renderer
+Its 73 checks also cover settings-only navigation, source/focus preservation, tray-renderer
 gestures, live task-port selection in DEV, compact navigation/search, the Home task-tour anchor,
 a Dark default on a Light system, connected appearance choices, reduced-motion/resource-saving
 fallbacks, visible search with scrolling settings categories in a small big-screen window,
@@ -120,6 +130,25 @@ and cross-window/system appearance changes.
 programmatically invoked tray events. Physical Windows tray clicks still require author review.
 No new ZIP was made for these changes: the author is reviewing `pnpm dev:desktop` first.
 Restart that development command once to load Main/preload changes, including the tray.
+The subsequent Play/Avatar-editing correction gives each Play card two independent halves:
+left details and right observed status/action. Network tests sit above the same-height cards;
+runtime facts live on Play and the separate Software & connections page is retired. Installed
+Desktop/PICO cards start the required software chain, reuse existing processes, and offer a
+bounded normal close for this card's newly started processes only. Fresh native file/process
+observations, rather than saved deployment receipts, choose the action. Provider failures remain
+unknown; pending launch, scoped cancellation and close survivors stay recoverable. The
+[play-session owner](../architecture/play-sessions.md) defines the Candidate contract and scope.
+Avatar editing shows Unity 2022, a disabled Unity 6 peer, other verified complete installations
+only when discovered, and distinct Unity Hub/VCC/ALCOM executable findings. Manager configuration
+is a separate observation. Unsupported editor versions do not gain production compatibility.
+The additional controlled UI cases cover these card states and inventory with synthetic facts.
+The 2026-10-09 source checkpoint passed 124 desktop test files / 1121 tests, 14 contract test
+files / 211 tests, the Rust workspace and affected native rechecks, Clippy, type checking,
+i18n/boundary/contrast checks, renderer build and production leak checks. The 73 controlled
+Chromium checks are separate from real installer, game, controller and headset evidence.
+Restart development once to load the new native operations; `pnpm dev:desktop` now rebuilds
+the native provider before opening Electron. An already running old provider is not replaced
+or terminated by a failed build.
 Unit/type/boundary/i18n/contrast/leak checks and the integrated preview build are recorded with
 the candidate. The author's acceptance of the design is distinct from review of the running app.
 Physical controller input, missing-software installers, actual desktop/PICO play and four-language
@@ -253,7 +282,7 @@ integration, not a substitute for N5's own review and acceptance.
 
 ## Document changelog
 
-
+- 1.8.0 (2026-10-09): record two-half play cards, scoped observed launch/close and creator inventory while retaining real vendor/device checks and the author’s no-package UI review.
 - 1.7.0 (2026-10-09): record the compact shell and Settings search/appearance corrections, update the task-tour destination and expand the controlled UI checks to 56; no new ZIP or physical-acceptance claim.
 - 1.6.0 (2026-10-09): record the author's development-mode UI corrections, task/theme separation, settings return, headset glyphs and native tray checks; defer another ZIP while the UI is under review.
 - 1.5.0 (2026-10-08): record the integrated wizard/Home implementation and controlled UI checks, with official account handoff and real-device/installer/human review still separate.

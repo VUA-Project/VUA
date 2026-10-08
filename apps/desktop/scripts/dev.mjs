@@ -132,6 +132,15 @@ const dependencies = spawn("pnpm", ["--filter", "@vua/orchestrator-provider", "b
 const dependencyCode = await new Promise((resolve) => dependencies.once("exit", resolve));
 if (dependencyCode !== 0) throw new Error("Desktop runtime dependencies failed to build");
 
+// Renderer hot reload cannot update the native Gateway operations. Build the
+// provider before starting Vite/Electron so development never mixes new UI
+// with a stale backend. Leave an already running provider intact on failure.
+const backend = spawn("cargo", ["build", "--release", "-p", "vua-provider-host", "--bin", "vua-orchestrator-provider"], {
+  cwd: REPO_ROOT, stdio: "inherit", shell: useShell,
+});
+const backendCode = await new Promise((resolve) => backend.once("exit", resolve));
+if (backendCode !== 0) throw new Error("Desktop backend failed to build; close any previous development instance and retry");
+
 const vite = spawn("pnpm", ["exec", "vite", "--force", "--port", String(VITE_PORT)], { stdio: "inherit", shell: useShell });
 
 // Electron 额外参数透传(W25 走查取证护栏,2026-09-23):VUA_ELECTRON_ARGS

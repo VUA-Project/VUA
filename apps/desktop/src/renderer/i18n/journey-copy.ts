@@ -1,7 +1,7 @@
 /** Copy shared by the fixed directory and the independent first-run journey. */
 const en = {
-  home: "Home", finish: "Finish guide", environment: "Environment", avatar: "Avatar", software: "Software & connections", help: "Help", tasks: "Tasks",
-  play: "Play environment", create: "Creation environment", library: "Asset library", recipes: "Recipes", production: "Create an Avatar",
+  home: "Home", finish: "Finish guide", environment: "Environment", avatar: "Avatar", help: "Help", tasks: "Tasks",
+  play: "Play", create: "Avatar editing", library: "Asset library", recipes: "Recipes", production: "Create an Avatar",
   developing: "In development", desktop: "Computer screen", vr: "VR headset", unity2022: "Unity 2022", unity6: "Unity 6",
   desktopMode: "Desktop mode", bigscreenMode: "Big screen mode", display: "Display & controls", back: "Back", exit: "Back to the app",
   wizard: "New player guide", restart: "Start over", resume: "Continue the guide", goal: "What would you like to do first?",
@@ -36,8 +36,8 @@ const en = {
 };
 type Copy = { [K in keyof typeof en]: (typeof en)[K] extends string[] ? string[] : string };
 const zh: Copy = {
-  home: "首页", finish: "完成引导", environment: "环境", avatar: "Avatar", software: "软件与连接", help: "帮助", tasks: "任务",
-  play: "游玩环境", create: "制作环境", library: "素材库", recipes: "配方", production: "制作 Avatar",
+  home: "首页", finish: "完成引导", environment: "环境", avatar: "Avatar", help: "帮助", tasks: "任务",
+  play: "游玩", create: "改模", library: "素材库", recipes: "配方", production: "制作 Avatar",
   developing: "开发中", desktop: "电脑屏幕", vr: "VR 头显", unity2022: "Unity 2022", unity6: "Unity 6",
   desktopMode: "桌面模式", bigscreenMode: "大屏幕模式", display: "显示与操作", back: "返回", exit: "先看看主页面",
   wizard: "新手引导", restart: "重新开始", resume: "继续引导", goal: "这次想先做什么？", goalHint: "点一个就开始。先做一件事，之后随时可以回来选别的。",
@@ -68,8 +68,8 @@ const zh: Copy = {
   missing: "未找到", found: "已找到", unknown: "未能确认", failed: "这次检测没能完成，可以再试一次。",
 };
 const ja: Copy = {
-  home: "ホーム", finish: "ガイドを終える", environment: "環境", avatar: "Avatar", software: "ソフトと接続", help: "ヘルプ", tasks: "タスク",
-  play: "プレイ環境", create: "制作環境", library: "素材ライブラリ", recipes: "レシピ", production: "Avatar を制作",
+  home: "ホーム", finish: "ガイドを終える", environment: "環境", avatar: "Avatar", help: "ヘルプ", tasks: "タスク",
+  play: "プレイ", create: "アバター編集", library: "素材ライブラリ", recipes: "レシピ", production: "Avatar を制作",
   developing: "開発中", desktop: "PC 画面", vr: "VR ヘッドセット", unity2022: "Unity 2022", unity6: "Unity 6",
   desktopMode: "デスクトップモード", bigscreenMode: "大画面モード", display: "表示と操作", back: "戻る", exit: "メイン画面を見る",
   wizard: "初めてのガイド", restart: "最初から", resume: "ガイドを続ける", goal: "まず何をしますか？", goalHint: "選ぶと始まります。後から別のルートも試せます。",
@@ -100,8 +100,8 @@ const ja: Copy = {
   missing: "見つかりません", found: "見つかりました", unknown: "未確認", failed: "確認を完了できませんでした。再試行できます。",
 };
 const ko: Copy = {
-  home: "홈", finish: "안내 마치기", environment: "환경", avatar: "Avatar", software: "소프트웨어와 연결", help: "도움말", tasks: "작업",
-  play: "플레이 환경", create: "제작 환경", library: "소재 라이브러리", recipes: "레시피", production: "Avatar 제작",
+  home: "홈", finish: "안내 마치기", environment: "환경", avatar: "Avatar", help: "도움말", tasks: "작업",
+  play: "플레이", create: "아바타 편집", library: "소재 라이브러리", recipes: "레시피", production: "Avatar 제작",
   developing: "개발 중", desktop: "PC 화면", vr: "VR 헤드셋", unity2022: "Unity 2022", unity6: "Unity 6",
   desktopMode: "데스크톱 모드", bigscreenMode: "큰 화면 모드", display: "화면과 조작", back: "뒤로", exit: "메인 화면 둘러보기",
   wizard: "처음 시작 안내", restart: "처음부터", resume: "안내 계속하기", goal: "먼저 무엇을 해 볼까요?", goalHint: "선택하면 시작합니다. 나중에 다른 경로도 시도할 수 있어요.",

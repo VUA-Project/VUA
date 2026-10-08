@@ -51,7 +51,6 @@ import { Icon } from "@vua/design-system";
 import { format, strings, termLabel, termSequence, TERMS } from "./i18n/index.ts";
 import { currentLocale, localeRegistry } from "./i18n/index.ts";
 import { creatorEnvReady } from "./features/deployer/deployer-model.ts";
-import { DeployerPage } from "./features/deployer/DeployerPage.tsx";
 import { OnboardingPage, type OnboardingResult } from "./features/onboarding/OnboardingPage.tsx";
 import { NavigationConfirmOverlay } from "./app/NavigationConfirmOverlay.tsx";
 import { AppTour } from "./features/tour/AppTour.tsx";
@@ -639,10 +638,6 @@ function renderPage(
       return <HomePage page={page} bigscreen={bigscreen} navigate={actions.navigate} startWizard={actions.restartOnboarding} startTour={actions.startTour} />;
     case "env-play": case "env-create":
       return <RouteEnvironmentPage zone={page === "env-play" ? "play" : "create"} onAccounts={actions.openAccounts} />;
-    case "software":
-      return <div className="vua-software-page"><DeployerPage zone="play" /><div className="vua-page"><div className="vua-route-platform">
-        {moduleDef("env").groups[1]?.pages.map(p => <Button key={p.id} onClick={() => actions.navigate(p.id)}>{pageLabel(p)}</Button>)}
-      </div></div></div>;
     case "warehouse":
       return <WarehousePage onNavigate={actions.navigate} />;
     case "recipe":

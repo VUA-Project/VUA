@@ -1,11 +1,11 @@
-# VUA design standard v0.11.0
+# VUA design standard v0.12.0
 
 
-> Document version: 0.11.0
+> Document version: 0.12.0
 > Status: Accepted
 > Scope: Electron desktop, desktop overlay, and VR overlay presentation  
 > Updated: 2026-10-09
-> Last conformance review: 2026-10-09 (compact shell, settings search, connected appearance controls and preserved motion fallbacks; author app/device review pending)
+> Last conformance review: 2026-10-09 (two-half environment cards, observed session actions, creator inventory and preserved shell preferences; author app/device review pending)
 > Normative effect: Governs interaction, visual, and accessibility implementation;
 > does not expand product scope or replace versioned application contracts
 
@@ -105,6 +105,25 @@ Follow system, with one selected frame sliding across them. A new or invalid pre
 to Dark (superseding the earlier system default); keep existing saved choices. System remains
 selected while the effective theme follows Windows. Reduced motion and resource saving flatten
 the frame movement without changing selection, keyboard access or theme propagation.
+
+The environment directory contains **Play** and **Avatar editing** (游玩 / 改模). Remove
+Software & connections as a separate feature. Play owns network diagnostics and runtime facts.
+Its network tile sits above the environment grid and has the same height as an environment card.
+Each environment card has two equal halves separated by one thin line: the left always opens
+details, and the right combines current status with the current action. Show + for missing
+software, a spinner for preparation/start/close, a warning triangle for problems, Play after
+fresh file verification, and × for an active card session. Keep details accessible during work.
+A pending start can be stopped; a close in progress cannot be submitted again. Errors preserve
+an accessible explanation and retry/preparation path. Motion respects resource saving and
+reduced-motion preferences; visible text still reports work when the spinner is static.
+
+Unity 2022 and the development-only Unity 6 peer remain equal entries in Avatar editing.
+Other complete editor installations appear only after read-only discovery and executable
+verification. Hub, VCC and ALCOM have distinct detection cards; software presence and config
+presence are separate facts. A detected unsupported editor is informational and never grants
+production compatibility. Quest/VIVE/Index stay visible as development peers. The
+[play-session architecture](../architecture/play-sessions.md) owns process scope and close
+outcomes; none of these cards assert headset or account acceptance.
 
 Home's Tasks tile opens the actual queue, without an onboarding/guide switch; optional production details
 are collapsed initially. Its window follows the saved light/dark/system appearance, including
@@ -723,6 +742,7 @@ direction.
 ## 12. Document changelog
 
 
+- **0.12.0 (2026-10-09)**: replace route-only preparation tiles with two-half play cards, merge network/runtime facts into Play, and add verified editor and separate manager-software/config detection to Avatar editing.
 - **0.11.0 (2026-10-09)**: narrow the sidebar, retire the bottom bar and four redundant header controls, move search into Settings, and adopt connected appearance choices with a Dark default and preserved motion fallbacks.
 - **0.10.0 (2026-10-09)**: separate tasks from onboarding, define settings-only navigation and return, restore Inspection to Avatar, add tray gestures and recognizable headset glyphs, and remove the header page-name duplicate.
 - **0.9.0 (2026-10-08)**: implement the accepted fixed Home/logo entry, independent branching wizard, concise navigation and desktop/big-screen hierarchy while retaining grid, glass and resource saving.
@@ -775,22 +795,5 @@ direction.
   open-in-Unity capability retained, handoff failure now jumps to the run record); §8.4 adds
   the Recipe overlay-conflict four options and the asset-source "fill in at share time"
   interaction (both marked accepted direction, not yet implemented). ZH mirror synced.
-
-- **0.7.18 (2026-09-22)**: §8.4 addendum for project draft export (desktop
-  consumption of B-face loop 4 under the U16 user ruling of 2026-09-21; proposal 029-B4) - the
-  recipe page hero action row gains the "export draft from project" entry
-  (recipe-export v0.1 frozen word-table consumption): the pick stage is
-  limited to the VUA-registered project set (no arbitrary path input; stale
-  registrations honestly badged and disabled; not connected / no registrations
-  render honest empty states); the confirmation stage presents the draft's six
-  fact keys as-is (origin identity tri-state is not a gate [pending item 2
-  awaits a ruling]; environment version verbatim, completed by the user when
-  unreadable; dependencies verbatim with honest empty arrays and
-  presentation-only locked pins; the missing-dimension list as-is - no design
-  intent claims); promotion = explicit user completion (title + at least one
-  asset + the environment constraint when unreadable) riding the standing
-  recipe.save save chain (same shape and same guard set, first save
-  baseRevision 0), "saved" only after the receipt, a draft never silently
-  promoted. ZH mirror synced.
 
 Earlier entries remain in Git history.

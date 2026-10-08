@@ -2,6 +2,8 @@ import { isDeploymentCommandId, isDeploymentParams, type DeploymentPlanParams, t
 import { isNetworkParams, type NetworkIntent, type NetworkResult } from "./environment-network.js";
 import { isWebsiteTestParams, type WebsiteTestParams, type WebsiteTestResult } from "./website-test.js";
 import { type GameWindowObservationResultV1 } from "./game-window.js";
+import { isPlayCommandId, isPlayParams, type PlayRoute, type PlaySessionResult } from "./play-session.js";
+import type { ManagerAppsResult } from "./manager-apps.js";
 import { isDownloadEventV01 } from "./download-events.js";
 import { isCatalogSyncPageRequestV01, type CatalogSyncPageRequestV01 } from "./catalog-sync.js";
 import { isCatalogSyncParamsV03, type CatalogSyncBeginV03, type CatalogSyncPageV03, type CatalogSyncFinishV03, type CatalogSyncStatusV03 } from "./catalog-sync-v03.js";
@@ -2811,6 +2813,9 @@ export interface DeploymentPlanQuery extends ApplicationRequestBaseV01 { readonl
 export interface DeploymentExecuteCommand extends ApplicationRequestBaseV01 { readonly kind: "command"; readonly method: "environment.executeDeployment"; readonly commandId: string; readonly params: DeploymentExecuteParams }
 
 export type ApplicationRequestV01 =
+  | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.inspectManagerApps"; readonly params: Readonly<Record<string, never>> })
+  | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.observePlay"; readonly params: { readonly route: PlayRoute } })
+  | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly method: "environment.startPlay" | "environment.stopPlay"; readonly commandId: string; readonly params: { readonly route: PlayRoute } })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.checkNetwork"; readonly params: { readonly intent: NetworkIntent } })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.testWebsites"; readonly params: WebsiteTestParams })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.observeGameWindow"; readonly params: Readonly<Record<string, never>> })
@@ -2974,6 +2979,8 @@ export interface DemoTaskStartedV01 {
 }
 
 export type ApplicationSuccessValueV01 =
+  | ManagerAppsResult
+  | PlaySessionResult
   | NetworkResult
   | WebsiteTestResult
   | GameWindowObservationResultV1
@@ -3199,6 +3206,14 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
   if (value.kind === "query" && value.method === "environment.observeGameWindow") {
     return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
       && hasExactKeys(value.params, []);
+  }
+  if (value.method === "environment.inspectManagerApps") return value.kind === "query"
+    && hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"]) && hasExactKeys(value.params, []);
+  if (value.method === "environment.observePlay" || value.method === "environment.startPlay" || value.method === "environment.stopPlay") {
+    const command = value.method !== "environment.observePlay";
+    return value.kind === (command ? "command" : "query")
+      && hasExactKeys(value, command ? ["contractVersion", "requestId", "correlationId", "kind", "method", "params", "commandId"] : ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
+      && (!command || isPlayCommandId(value.commandId)) && isPlayParams(value.params);
   }
   if (value.method === "environment.planDeployment" || value.method === "environment.executeDeployment") {
     const execute = value.method === "environment.executeDeployment";
