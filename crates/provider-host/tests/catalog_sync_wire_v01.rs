@@ -570,6 +570,21 @@ fn product_page_request(id: &str, description: &str) -> Value {
 }
 
 #[test]
+fn official_product_reader_does_not_invent_account_memberships() {
+    let world = make_world("source-ownership");
+    let frames = run_frames(&world, &[product_page_request("901", "")]);
+    assert_eq!(frames[0]["payload"]["ok"], true, "{}", frames[0]);
+    assert!(world.bdl.product_library_memberships("booth:901").unwrap().is_empty());
+    let mut purchased = read_example("library-page.request.json");
+    purchased["schemaVersion"] = json!("0.2");
+    purchased["libraryType"] = json!("bought");
+    let frames = run_frames(&world, &[ingest_request(purchased), product_page_request("1693144", "")]);
+    assert!(frames.iter().all(|frame| frame["payload"]["ok"] == true), "{frames:?}");
+    assert_eq!(world.bdl.product_library_memberships("booth:1693144").unwrap(), vec!["bought"]);
+    assert!(world.bdl.product_library_memberships("booth:901").unwrap().is_empty());
+}
+
+#[test]
 fn product_description_links_persist_for_a_new_source_and_survive_restart() {
     let world = make_world("description-new-source");
     let frames = run_frames(&world, &[product_page_request("901", r#"

@@ -1,4 +1,5 @@
 import { useEffect, useState, type MouseEvent as ReactMouseEvent } from "react";
+import type { LibraryEntryMetadataV01 } from "@vua/contracts";
 import { catalogBrowser } from "../../app/catalog-browser-instance.ts";
 import { Badge } from "../../components/primitives/Badge.tsx";
 import { Button } from "../../components/primitives/Button.tsx";
@@ -81,15 +82,18 @@ export function ArtifactCard({
   onOpen,
   onMenu,
   source,
+  metadata,
 }: {
   card: AcquireArtifactCard;
   selected: boolean;
   onOpen: () => void;
   onMenu: (event: ReactMouseEvent<HTMLElement>) => void;
   source?: CatalogProductSummary | undefined;
+  metadata?: LibraryEntryMetadataV01 | undefined;
 }) {
   const { entry, artifact } = card;
-  const title = source?.title ?? entry.displayName;
+  const title = metadata?.displayName ?? source?.title ?? entry.displayName;
+  const image = metadata?.thumbnailRef ?? source?.imageUrl;
   return (
     <article
       className="vua-warehouse-card"
@@ -108,7 +112,7 @@ export function ArtifactCard({
       }}
     >
       <div className="vua-warehouse-card__media">
-        {source?.imageUrl ? <img src={source.imageUrl} alt={title} loading="lazy" /> : <div className="vua-warehouse-card__no-image">
+        {image ? <img src={image} alt={title} loading="lazy" /> : <div className="vua-warehouse-card__no-image">
           <span className="vua-caption vua-text-secondary">{copy.previewEmpty}</span>
         </div>}
       </div>

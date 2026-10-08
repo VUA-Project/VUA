@@ -1718,6 +1718,8 @@ fn served_capabilities(state: &HostState) -> Value {
         {"operationId": "library.downloadStatus", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "library.list", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "library.importFolders", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.entryMetadata", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.updateEntryMetadata", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "library.removalPreview", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "library.removeFiles", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "library.removalStatus", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
@@ -5458,6 +5460,9 @@ fn library_download_request(state: &HostState, method: &str, request: &Value, re
     let Some(warehouse) = &state.warehouse else {
         return FrameOutcome::Response(application_error(request_id, correlation_id, "vua.library.unavailable", "errors.library.downloadFailed", "unavailable"));
     };
+    if matches!(method, "library.entryMetadata" | "library.updateEntryMetadata") {
+        return library_entry_metadata_request(warehouse, method, request, request_id, correlation_id);
+    }
     if method == "library.importFolders" {
         if request["kind"] != "command" { return warehouse_invalid_params(request_id, correlation_id); }
         let Some(params) = request.get("params").and_then(Value::as_object) else { return warehouse_invalid_params(request_id, correlation_id); };
@@ -5539,6 +5544,37 @@ fn catalog_request(
             "validation",
         )),
     }
+}
+
+fn library_entry_metadata_request(warehouse: &WarehouseServices, method: &str, request: &Value, request_id: &str, correlation_id: &str) -> FrameOutcome {
+    let query = method == "library.entryMetadata";
+    let invalid = || FrameOutcome::Response(application_error(request_id, correlation_id, "vua.library.invalid_params", "errors.library.metadataFailed", "validation"));
+    let Some(params) = request.get("params").and_then(Value::as_object) else { return invalid(); };
+    if request["kind"] != if query { "query" } else { "command" } || params.get("schemaVersion").and_then(Value::as_str) != Some("0.1") { return invalid(); }
+    let result = if query {
+        if params.len() != 2 { return invalid(); }
+        let Some(id) = params.get("entryId").and_then(Value::as_str).filter(|id| !id.is_empty()) else { return invalid(); };
+        warehouse.bdl.library_entry_metadata(id)
+    } else {
+        if params.len() != 6 || !params.contains_key("productId") || !params.contains_key("thumbnailRef") { return invalid(); }
+        let Ok(update) = serde_json::from_value::<vua_bdl_store::LibraryEntryMetadataUpdate>(request["params"].clone()) else { return invalid(); };
+        let Some(command) = request.get("commandId").and_then(Value::as_str).filter(|id| !id.is_empty()) else { return invalid(); };
+        warehouse.bdl.update_library_entry_metadata(&update, command, &vua_orchestrator::Clock::now_rfc3339(&SystemClock))
+    };
+    FrameOutcome::Response(match result {
+        Ok(value) => match serde_json::to_value(value) { Ok(value) => application_success(request_id, value), Err(_) => application_error(request_id, correlation_id, "vua.library.store_failed", "errors.library.metadataFailed", "internal") },
+        Err(error) => {
+            let (code, category) = match error {
+                vua_bdl_store::BdlStoreError::UnknownWarehouseItem(_) => ("entry_not_found", "validation"),
+                vua_bdl_store::BdlStoreError::UnknownProduct(_) => ("source_not_found", "validation"),
+                vua_bdl_store::BdlStoreError::InvalidEvent("metadata_conflict") => ("metadata_conflict", "conflict"),
+                vua_bdl_store::BdlStoreError::InvalidEvent("entry_not_local") => ("entry_not_local", "validation"),
+                vua_bdl_store::BdlStoreError::InvalidEvent(_) => ("invalid_params", "validation"),
+                _ => ("store_failed", "internal"),
+            };
+            application_error(request_id, correlation_id, &format!("vua.library.{code}"), "errors.library.metadataFailed", category)
+        }
+    })
 }
 
 /// The bdl-queries v0.3 envelope all read queries travel as: the frozen

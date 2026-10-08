@@ -1,6 +1,6 @@
 # N5 rework plan — unified library and acquisition producers
 
-> Document version: 1.9.0
+> Document version: 1.10.0
 > Status: Accepted
 > Scope: Implementation direction for the N5 material-management rework, within the accepted N5 scope
 > Updated: 2026-10-09
@@ -254,8 +254,17 @@ remain pending; this is implementation evidence, not N5 closure.
   labels and empty-evidence wording; no universal inference, image classifier or new metadata
   aggregation system is needed for this closure.
 
+The minimal source slice uses [entry metadata v0.1](../protocols/library-entry-metadata-v0.1.md):
+official ID/link lookup, per-entry name and opaque local thumbnail, atomic revision/idempotency
+checks and editable local origins after content merging. Public lookup does not invent account
+membership. Source edits preserve copy identity and saved references.
+Synthetic verification passed 91 acquisition and 34 BDL unit tests, 11 library wire and 24 catalog
+wire tests, workspace checks (201 contract, 48 provider, 1111 desktop tests plus type/build/boundary/
+i18n/contrast/leak checks), and acquisition/BDL/provider-host Clippy with warnings denied.
+Real official lookup, real image rendering and human source-dialog acceptance remain pending.
+
 These rulings reduce implementation scope, not the real-account/material and human-UI evidence
-required by the N sequence. Source/record maintenance and the new settings still need implementation;
+required by the N sequence. Record maintenance and the new settings still need implementation;
 neither the existing lookup port nor this plan establishes a finished reverse-lookup interaction.
 
 ### Content revisions and VPM regeneration proposal — deferred after N5
@@ -384,6 +393,8 @@ D6 parser relocation remains later cleanup, not a prerequisite for usable mainte
 
 ## Document changelog
 
+- 1.10.0 (2026-10-09): add minimal official/manual local source editing with atomic metadata receipts, private thumbnail caching and source-constrained content grouping.
+
 - 1.9.0 (2026-10-09): implement ordinary-file intake and ZIP expansion, retain archive/member lineage and extraction issues, and use current official member fingerprints in migration reconciliation. Synthetic verification is separate from real-material/human acceptance.
 
 - 1.8.0 (2026-10-09): record the reduced first-closure intake/provenance/dependency scope and third-party-search deferral, with implementation gaps kept explicit.
@@ -391,8 +402,6 @@ D6 parser relocation remains later cleanup, not a prerequisite for usable mainte
 - 1.6.0 (2026-10-08): apply missing-file/source user refinements and record concrete VPM regeneration, dependency evidence, record-removal and production-integration discussion proposals.
 - 1.5.0 (2026-10-08): implement selected-file removal and retained generated-version facts, record remaining regeneration/Recipe choices and reconcile PR #61.
 - 1.4.0 (2026-10-08): record the sequential takeover baseline, replacement/retention and draft rulings, independent library facts and remaining acceptance gaps.
-- 1.0.0 (2026-10-02): initial plan consolidating the post-audit design discussion: unified library
-  vision, D1–D9 decisions, slice sequence S1–S4, N1 coexistence notes.
 
 - 1.1.0 (2026-10-02): S1 addendum — third library type (free downloads) per user
   direction; real-machine verification facts recorded.

@@ -84,6 +84,36 @@ fn vector(name: &str) -> Value {
     )
     .unwrap()
 }
+
+#[test]
+fn metadata_wire_has_atomic_replay_and_persistent_local_only_edits() {
+    let world = World::new();
+    let entry = world.bdl.create_warehouse_item("Local folder", "imported_material", "t").unwrap();
+    let account = world.bdl.create_warehouse_item("Account download", "downloaded_material", "t").unwrap();
+    let mut host = Host::new(&world.base, world.bdl.clone());
+    let params = json!({"schemaVersion":"0.1","entryId":entry.warehouse_item_id,"expectedRevision":0,"displayName":"Texture","productId":"booth:90","thumbnailRef":format!("vua-img://local/{}", "a".repeat(64))});
+    let before = host.call("library.entryMetadata", json!({"schemaVersion":"0.1","entryId":entry.warehouse_item_id}));
+    assert_eq!(before["value"]["revision"], 0);
+    let edited = host.call_command("library.updateEntryMetadata", params.clone(), Some("source-edit"));
+    assert_eq!(edited["ok"], true, "{edited}");
+    let schema: Value = serde_json::from_slice(&std::fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/library-entry-metadata/v0.1/response.schema.json")).unwrap()).unwrap();
+    assert!(jsonschema::validator_for(&schema).unwrap().is_valid(&edited["value"]));
+    assert_eq!(host.call_command("library.updateEntryMetadata", params.clone(), Some("source-edit"))["value"], edited["value"]);
+    assert_eq!(host.call("library.updateEntryMetadata", params)["error"]["code"], "vua.library.metadata_conflict");
+    let invalid_account = json!({"schemaVersion":"0.1","entryId":account.warehouse_item_id,"expectedRevision":0,"displayName":"Fake","productId":null,"thumbnailRef":null});
+    assert_eq!(host.call("library.updateEntryMetadata", invalid_account)["error"]["code"], "vua.library.entry_not_local");
+    assert_eq!(host.call("library.entryMetadata", json!({"schemaVersion":"0.1","entryId":entry.warehouse_item_id,"unknown":true}))["error"]["code"], "vua.library.invalid_params");
+    let view = host.call("library.list", json!({"schemaVersion":"0.1"}));
+    let local = view["value"]["items"].as_array().unwrap().iter().find(|row| row["entry"]["warehouseItemId"] == entry.warehouse_item_id).unwrap();
+    assert_eq!(local["metadata"], edited["value"]);
+    assert_eq!(local["sourceMatch"]["content"], "unverified");
+    let view_schema: Value = serde_json::from_slice(&std::fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/library-view/v0.1/response.schema.json")).unwrap()).unwrap();
+    assert!(jsonschema::validator_for(&view_schema).unwrap().is_valid(&view["value"]));
+    drop(host);
+    let reopened = BdlStore::open(world.base.join("bdl.db")).unwrap();
+    assert_eq!(reopened.library_entry_metadata(&entry.warehouse_item_id).unwrap().revision, 1);
+    assert_eq!(reopened.product_library_memberships("booth:90").unwrap(), vec!["bought"]);
+}
 struct Lines {
     receiver: mpsc::Receiver<Vec<u8>>,
     current: Cursor<Vec<u8>>,
@@ -170,6 +200,7 @@ impl Host {
         let query = matches!(
             method,
             "library.downloadStatus"
+                | "library.entryMetadata"
                 | "library.list"
                 | "library.productFiles"
                 | "recipeDraft.list"

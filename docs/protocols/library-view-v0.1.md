@@ -1,6 +1,6 @@
 # Unified library view v0.1
 
-> Document version: 0.3
+> Document version: 0.4
 > Status: Implementation baseline
 > Updated: 2026-10-09
 > Maintainer: AMF
@@ -108,6 +108,12 @@ having zero files.
 
 ## Storage and evidence
 
+Local rows may carry `metadata` from [entry metadata v0.1](library-entry-metadata-v0.1.md).
+Explicit sources constrain content merging but never establish official fingerprints. Product rows
+may carry `localEntries` with the IDs/names of merged imported entries, so their individual metadata
+remains editable. Public product lookup alone creates no cloud-only account row: membership or
+associated physical copies are required.
+
 [BDL v0.5 migration 006](../../schemas/bdl/v0.5/006_managed_library_files.sql) owns normalized
 membership/binding evidence. The acquisition service owns the aggregate and filesystem checks.
 The TypeScript guards additionally check cross-field counts, state derivation, operation product
@@ -120,6 +126,8 @@ idempotency and restart proof reuse. Real-account, real-material and human UI ac
 remain `not_run` for this takeover baseline and are owned by N5.
 
 ## Document changelog
+
+- 0.4 (2026-10-09): expose optional local metadata and merged local origins, constrain source-corrected grouping and keep public lookup separate from account ownership.
 
 - 0.3 (2026-10-09): include managed ZIP member references and optional unresolved-expansion counts, independently of file presence and production qualification.
 

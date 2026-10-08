@@ -7,6 +7,7 @@ import { isCatalogSyncPageRequestV01, type CatalogSyncPageRequestV01 } from "./c
 import { isCatalogSyncParamsV03, type CatalogSyncBeginV03, type CatalogSyncPageV03, type CatalogSyncFinishV03, type CatalogSyncStatusV03 } from "./catalog-sync-v03.js";
 import { isLibraryDownloadParamsV01, type LibraryDownloadBeginV01, type LibraryDownloadObservationV01, type LibraryDownloadStatusV01 } from "./library-download-v01.js";
 import { isLibraryImportParamsV01, type LibraryImportParamsV01, type LibraryImportAcceptedV01 } from "./library-intake-v01.js";
+import { isLibraryEntryMetadataParamsV01, type LibraryEntryMetadataQueryV01, type LibraryEntryMetadataUpdateV01, type LibraryEntryMetadataV01 } from "./library-entry-metadata-v01.js";
 import { isLibraryViewParamsV01, type LibraryListParamsV01, type LibraryProductFilesParamsV01, type LibraryListV01, type LibraryProductFilesV01 } from "./library-view-v01.js";
 import { isRecipeDraftParamsV01, type RecipeDraftListParamsV01, type RecipeDraftGetParamsV01, type RecipeDraftSaveParamsV01, type RecipeDraftAddParamsV01, type RecipeDraftListV01, type RecipeDraftReadV01 } from "./recipe-selection-draft-v01.js";
 import { isLibraryMaintenanceParamsV01, type LibraryRemovalPreviewParamsV01, type LibraryRemoveFilesParamsV01, type LibraryRemovalStatusParamsV01, type LibraryRemovalPreviewV01, type LibraryRemovalSnapshotV01 } from "./library-maintenance-v01.js";
@@ -2013,6 +2014,10 @@ export interface LibraryMaintenanceCommandV01 extends ApplicationRequestBaseV01 
 export interface LibraryImportCommandV01 extends ApplicationRequestBaseV01 {
   readonly kind: "command"; readonly method: "library.importFolders"; readonly commandId: string; readonly params: LibraryImportParamsV01;
 }
+export type LibraryEntryMetadataRequestV01 = ApplicationRequestBaseV01 & (
+  | { readonly kind: "query"; readonly method: "library.entryMetadata"; readonly params: LibraryEntryMetadataQueryV01 }
+  | { readonly kind: "command"; readonly commandId: string; readonly method: "library.updateEntryMetadata"; readonly params: LibraryEntryMetadataUpdateV01 }
+);
 export type RecipeDraftCommandV01 = ApplicationRequestBaseV01 & { readonly kind: "command"; readonly commandId: string } & (
   | { readonly method: "recipeDraft.save"; readonly params: RecipeDraftSaveParamsV01 }
   | { readonly method: "recipeDraft.addSelection"; readonly params: RecipeDraftAddParamsV01 }
@@ -2844,6 +2849,7 @@ export type ApplicationRequestV01 =
   | LibraryViewQueryV01
   | LibraryMaintenanceQueryV01 | LibraryMaintenanceCommandV01
   | LibraryImportCommandV01
+  | LibraryEntryMetadataRequestV01
   | RecipeDraftQueryV01 | RecipeDraftCommandV01
   | WarehouseListEntriesQueryV03
   | WarehouseEntryDetailQueryV03
@@ -3016,6 +3022,7 @@ export type ApplicationSuccessValueV01 =
   | WarehouseSetGlobalDefaultModeResultV02
   | WarehouseImportAcceptedV03
   | LibraryImportAcceptedV01
+  | LibraryEntryMetadataV01
   | RecipeSaveResultV02
   | RecipeGetResultV02
   | RecipeListResultV02
@@ -3680,6 +3687,10 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
   }
   if (value.method === "library.importFolders") {
     return value.kind === "command" && isIdentifier(value.commandId) && isLibraryImportParamsV01(value.params);
+  }
+  if (value.method === "library.entryMetadata" || value.method === "library.updateEntryMetadata") {
+    const query = value.method === "library.entryMetadata";
+    return value.kind === (query ? "query" : "command") && (query || isIdentifier(value.commandId)) && isLibraryEntryMetadataParamsV01(value.method, value.params);
   }
   if (value.method === "library.removalPreview" || value.method === "library.removeFiles" || value.method === "library.removalStatus") {
     const query = value.method !== "library.removeFiles";

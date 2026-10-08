@@ -5,6 +5,7 @@ export * from "./library-download-v01.js";
 export * from "./library-view-v01.js";
 export * from "./library-maintenance-v01.js";
 export * from "./library-intake-v01.js";
+export * from "./library-entry-metadata-v01.js";
 export * from "./recipe-selection-draft-v01.js";
 export * from "./desktop-gateway.js";
 export * from "./download-events.js";

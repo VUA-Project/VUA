@@ -16,6 +16,7 @@ import type {
 import { isCatalogSyncParamsV03, type CatalogSyncStatusV03 } from "./catalog-sync-v03.js";
 import { isLibraryDownloadParamsV01, type LibraryDownloadStatusV01 } from "./library-download-v01.js";
 import { isLibraryImportParamsV01, type LibraryImportParamsV01 } from "./library-intake-v01.js";
+import { isLibraryEntryMetadataParamsV01, type LibraryEntryMetadataQueryV01, type LibraryEntryMetadataUpdateV01 } from "./library-entry-metadata-v01.js";
 import { isLibraryViewParamsV01, type LibraryListParamsV01, type LibraryProductFilesParamsV01 } from "./library-view-v01.js";
 import { isRecipeDraftParamsV01, type RecipeDraftListParamsV01, type RecipeDraftGetParamsV01, type RecipeDraftSaveParamsV01, type RecipeDraftAddParamsV01 } from "./recipe-selection-draft-v01.js";
 import { isLibraryMaintenanceParamsV01, type LibraryRemovalPreviewParamsV01, type LibraryRemoveFilesParamsV01, type LibraryRemovalStatusParamsV01 } from "./library-maintenance-v01.js";
@@ -251,6 +252,10 @@ export interface LibraryImportRequestV1 {
   readonly schemaVersion: 1; readonly requestId: string; readonly method: "library.importFolders";
   readonly params: LibraryImportParamsV01 & { readonly commandId: string };
 }
+export type LibraryEntryMetadataRequestV1 = { readonly schemaVersion: 1; readonly requestId: string } & (
+  | { readonly method: "library.entryMetadata"; readonly params: LibraryEntryMetadataQueryV01 }
+  | { readonly method: "library.updateEntryMetadata"; readonly params: LibraryEntryMetadataUpdateV01 & { readonly commandId: string } }
+);
 export type RecipeDraftCommandRequestV1 = { readonly schemaVersion: 1; readonly requestId: string } & (
   | { readonly method: "recipeDraft.save"; readonly params: RecipeDraftSaveParamsV01 }
   | { readonly method: "recipeDraft.addSelection"; readonly params: RecipeDraftAddParamsV01 }
@@ -995,6 +1000,7 @@ export type DesktopGatewayRequestV1 =
   | LibraryViewRequestV1
   | LibraryMaintenanceQueryRequestV1 | LibraryMaintenanceCommandRequestV1
   | LibraryImportRequestV1
+  | LibraryEntryMetadataRequestV1
   | RecipeDraftQueryRequestV1 | RecipeDraftCommandRequestV1
   | CatalogDetailRequestV1
   | CatalogStatusRequestV1
@@ -1080,6 +1086,8 @@ export const DESKTOP_GATEWAY_METHOD_KINDS = {
   "library.removalPreview": "query",
   "library.removeFiles": "command",
   "library.importFolders": "command",
+  "library.entryMetadata": "query",
+  "library.updateEntryMetadata": "command",
   "library.removalStatus": "query",
   "recipeDraft.list": "query",
   "recipeDraft.get": "query",
@@ -1360,6 +1368,8 @@ export interface DesktopDialogApiV1 {
    *  openDirectory + multiSelections;用户取消或空选返回 null;本进程不做任何
    *  文件操作,路径交渲染层经 warehouse.import 提交 */
   pickWarehouseFolders(): Promise<readonly string[] | null>;
+  /** User-picked thumbnail copied into local cache; no source path reaches Renderer. */
+  pickLibraryThumbnail?(): Promise<string | null>;
   /** U10 手选编辑器路径(021 收敛点 4:单一「浏览」入口 openFile +
    *  openDirectory 双态):pickEditorExecutable 选 exe 文件本身,
    *  pickEditorDirectory 选版本化根/Editor 目录;取消返回 null。路径原样
@@ -1866,6 +1876,13 @@ export function isDesktopGatewayRequestV1(value: unknown): value is DesktopGatew
       if (!hasExactKeys(value, REQUEST_KEYS)) return false;
       const { commandId, ...params } = value.params as Record<string, unknown>;
       return isIdentifier(commandId) && isLibraryImportParamsV01(params);
+    }
+    case "library.entryMetadata":
+      return hasExactKeys(value, REQUEST_KEYS) && isLibraryEntryMetadataParamsV01(value.method, value.params);
+    case "library.updateEntryMetadata": {
+      if (!hasExactKeys(value, REQUEST_KEYS)) return false;
+      const { commandId, ...params } = value.params as Record<string, unknown>;
+      return isIdentifier(commandId) && isLibraryEntryMetadataParamsV01(value.method, params);
     }
     case "library.list":
     case "library.productFiles":

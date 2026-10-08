@@ -131,6 +131,8 @@ pub fn list(
     let mut products = bdl.library_product_summaries()?;
     let entries = bdl.warehouse_entry_cards(global_default)?;
     let copies = bdl.library_copy_evidence()?;
+    let metadata: HashMap<_, _> = bdl.library_entry_metadata_all()?.into_iter().map(|m| (m.entry_id.clone(), m)).collect();
+    let explicit_sources: HashMap<_, _> = metadata.values().filter_map(|m| m.product_id.as_ref().map(|id| (m.entry_id.clone(), id.clone()))).collect();
     let mut presences = copies
         .iter()
         .map(|copy| (copy.copy.copy_id.clone(), presence(root, copy)))
@@ -151,6 +153,7 @@ pub fn list(
             .library_content_checks
             .lock()
             .expect("library checks poisoned"),
+        &explicit_sources,
     );
     let memberships: HashMap<_, _> = products
         .iter()
@@ -185,11 +188,15 @@ pub fn list(
             })
             .collect();
         let facts = storage(&attached, &presences);
+        if attached.is_empty() && memberships[&product.product_id].is_empty() { continue; }
         // Compatibility projection: this new face counts present physical copies,
         // while the frozen catalog face retains its historical mapping count.
         product.imported_artifacts = facts["presentCopies"].as_u64().unwrap_or(0) as u32;
         rows.push(json!({"kind":"product","product":product,"sources":memberships[&product.product_id],
             "storage":facts,"copyIds":attached.iter().map(|c|&c.copy.copy_id).collect::<Vec<_>>(),"operation":operations.remove(&product.product_id)}));
+        let local_entries: Vec<_> = entries.iter().filter(|entry| entry.kind == "imported_material" && attached.iter().any(|copy| copy.copy.warehouse_item_id == entry.warehouse_item_id))
+            .map(|entry| json!({"entryId":entry.warehouse_item_id,"displayName":entry.display_name})).collect();
+        if !local_entries.is_empty() { rows.last_mut().expect("product row")["localEntries"] = json!(local_entries); }
     }
     for mut entry in entries {
         let unassociated: Vec<_> = copies
@@ -210,9 +217,10 @@ pub fn list(
             })
         });
         let hint =
-            crate::library_reconcile::source_hint(&entry, &unassociated, &products, &grouping);
+            crate::library_reconcile::source_hint(&entry, &unassociated, &products, &grouping, explicit_sources.get(&entry.warehouse_item_id).map(String::as_str));
         let mut row = json!({"kind":"local","entry":entry,"storage":storage(&unassociated,&presences),
             "copyIds":unassociated.iter().map(|c|&c.copy.copy_id).collect::<Vec<_>>()});
+        if let Some(metadata) = metadata.get(&entry.warehouse_item_id) { row["metadata"] = json!(metadata); }
         if let Some((basis, id, content)) = hint {
             if let Some(product) = products.iter().find(|p| p.product_id == id) {
                 row["sourceMatch"] = crate::library_reconcile::hint_value(

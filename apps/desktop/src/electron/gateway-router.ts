@@ -217,6 +217,12 @@ function toApplicationRequest(
       const { commandId, ...params } = request.params;
       return { ...base, kind: "command", commandId, method: request.method, params };
     }
+    case "library.entryMetadata":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "library.updateEntryMetadata": {
+      const { commandId, ...params } = request.params;
+      return { ...base, kind: "command", commandId, method: request.method, params };
+    }
     case "recipeDraft.list":
       return { ...base, kind: "query", method: request.method, params: request.params };
     case "recipeDraft.get": case "recipeDraft.selectionStatus":

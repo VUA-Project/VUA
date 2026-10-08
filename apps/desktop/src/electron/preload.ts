@@ -55,6 +55,7 @@ const api: VuaDesktopApiV1 = Object.freeze({
     pickMaterialSource: (intake: "direct_unity_package" | "local_reusable_vpm") =>
       ipcRenderer.invoke("vua:dialog:pick-material-source", intake, document.documentElement.lang),
     pickWarehouseFolders: () => ipcRenderer.invoke("vua:dialog:pick-warehouse-folders", document.documentElement.lang),
+    pickLibraryThumbnail: () => ipcRenderer.invoke("vua:dialog:pick-library-thumbnail", document.documentElement.lang),
     // U10 手选编辑器路径(021 收敛点 4:双态浏览;取消返回 null)
     pickEditorExecutable: () => ipcRenderer.invoke("vua:dialog:pick-editor-path", "executable", document.documentElement.lang),
     pickEditorDirectory: () => ipcRenderer.invoke("vua:dialog:pick-editor-path", "directory", document.documentElement.lang),

@@ -46,6 +46,7 @@ import { CompatibleItemsDialog } from "./CompatibleItemsDialog.tsx";
 import { registerTaskIdentity } from "../../gateway/index.ts";
 import { CardAlbumMedia, DetailAlbum } from "./WarehouseAlbum.tsx";
 import { ArtifactCard, EntryDetail } from "./WarehouseAcquire.tsx";
+import { EditSourceDialog } from "./EditSourceDialog.tsx";
 import { artifactCardMatches, artifactCards, inferGlobalDefaultMode } from "./acquire-model.ts";
 import { ContentDialog } from "../../components/primitives/ContentDialog.tsx";
 import { ImportPage } from "../import/ImportPage.tsx";
@@ -581,6 +582,7 @@ export function WarehousePage({
     title: string;
   } | null>(null);
   const [removalTarget, setRemovalTarget] = useState<RemovalDialogTarget | null>(null);
+  const [metadataEntries, setMetadataEntries] = useState<readonly { readonly entryId: string; readonly displayName: string }[] | null>(null);
   const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
   // 静默下载观察(人审 E18 修复):受理后记住商品,下载任务静默 + 目录里
   // 该商品已入库(自动采纳完成写 mappings)即刷新卡片墙并提示——用户看
@@ -1094,6 +1096,10 @@ export function WarehousePage({
     setSelectedIds(new Set([item.productId]));
     const menuItems: ContextMenuState["items"] = [
       { id: "open", label: copy.card.detailsCta, onSelect: () => setSelectedId(item.productId) },
+      ...(dataSource === "live" && (libraryPage?.facts.get(item.productId)?.localEntries?.length ?? 0) > 0 ? [{
+        id: "editLocalSource", label: copy.editSource.title,
+        onSelect: () => setMetadataEntries(libraryPage!.facts.get(item.productId)!.localEntries!),
+      }] : []),
         {
           id: "download",
           label: (libraryPage?.facts.get(item.productId)?.storage.storedCopies ?? item.importedArtifacts) > 0 ? copy.cardMenu.reDownload : copy.cardMenu.download,
@@ -1496,6 +1502,7 @@ export function WarehousePage({
                           key={card.key}
                           card={card}
                           source={libraryPage?.facts.get(card.entry.warehouseItemId)?.sourceMatch?.product}
+                          metadata={libraryPage?.facts.get(card.entry.warehouseItemId)?.metadata}
                           selected={selectedLocalId === card.entry.warehouseItemId}
                           onOpen={() => {
                             setSelectedId(null);
@@ -1529,6 +1536,9 @@ export function WarehousePage({
                                     setRecipeDialogOpen(true);
                                   },
                                 },
+                                ...(dataSource === "live" && card.entry.kind === "imported_material" ? [{ id: "editSource", label: copy.editSource.title,
+                                  onSelect: () => setMetadataEntries([{ entryId: card.entry.warehouseItemId, displayName: card.entry.displayName }]),
+                                }] : []),
                                 ...(dataSource === "live" ? [{ id: "removeFiles", label: copy.cardMenu.deleteLocal,
                                   onSelect: () => setRemovalTarget({ target: { kind: "entry", id: card.entry.warehouseItemId }, title: card.entry.displayName,
                                     ...(libraryPage?.facts.get(card.entry.warehouseItemId)?.copyIds === undefined ? {} : { copyIds: libraryPage.facts.get(card.entry.warehouseItemId)!.copyIds! }) }),
@@ -1688,6 +1698,8 @@ export function WarehousePage({
       />
       {removalTarget !== null ? <RemoveFilesDialog key={`${removalTarget.target.kind}:${removalTarget.target.id}`} item={removalTarget}
         onClose={() => setRemovalTarget(null)} onChanged={() => { setReloadKey((key) => key + 1); setDetailReloadKey((key) => key + 1); }} /> : null}
+      {metadataEntries !== null ? <EditSourceDialog key={metadataEntries.map((entry) => entry.entryId).join(",")} entries={metadataEntries}
+        onClose={() => setMetadataEntries(null)} onChanged={() => { setReloadKey((key) => key + 1); setDetailReloadKey((key) => key + 1); }} /> : null}
       <DownloadChecklistDialog
         product={checklistProduct}
         onClose={() => setChecklistProduct(null)}

@@ -345,6 +345,34 @@ fn library_migration_suggests_source_then_merges_only_verified_equal_bytes() {
 }
 
 #[test]
+fn source_correction_constrains_merge_without_claiming_public_lookup_ownership() {
+    let w = World::new();
+    let local = w.import_local("Local source", &[("bundle.zip", b"same bytes")]);
+    let fixture: Value = serde_json::from_slice(&std::fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/catalog-sync/v0.3/examples/page.request.json")).unwrap()).unwrap();
+    let page = crate::extract_library_page(fixture["params"]["html"].as_str().unwrap()).unwrap();
+    let mut observation = crate::library_item_to_observation(&page.items[0], &format!("sha256:{}", "1".repeat(64)), "t", None, None);
+    observation.product_id = "booth:91".into(); observation.native_product_id = "91".into();
+    w.bdl.record_product_observation(&observation).unwrap();
+    let edit = |revision, product: &str| vua_bdl_store::LibraryEntryMetadataUpdate {
+        schema_version: "0.1".into(), entry_id: local.warehouse_item_id.clone(), expected_revision: revision,
+        display_name: "My texture".into(), product_id: Some(product.into()), thumbnail_ref: None
+    };
+    w.bdl.update_library_entry_metadata(&edit(0, "booth:91"), "source-first", "t").unwrap();
+    assert_eq!(library_view(&w, json!({"schemaVersion":"0.1"}))["total"], 2);
+    w.download_reference(b"same bytes"); w.verify_sources("source-correction");
+    let separate = library_view(&w, json!({"schemaVersion":"0.1"}));
+    assert_eq!(separate["total"], 2);
+    assert_eq!(separate["items"][1]["metadata"]["displayName"], "My texture");
+    assert_eq!(separate["items"][1]["sourceMatch"]["product"]["productId"], "booth:91");
+    assert!(w.bdl.product_library_memberships("booth:91").unwrap().is_empty());
+    w.bdl.update_library_entry_metadata(&edit(1, "booth:90"), "source-corrected", "t").unwrap();
+    let merged = library_view(&w, json!({"schemaVersion":"0.1"}));
+    assert_eq!(merged["total"], 1);
+    assert_eq!(merged["items"][0]["localEntries"][0]["entryId"], local.warehouse_item_id);
+    assert_eq!(std::fs::read(&w.bdl.entry_copies(&local.warehouse_item_id).unwrap()[0].stored_path).unwrap(), b"same bytes");
+}
+
+#[test]
 fn library_different_content_and_partial_folder_matches_keep_independent_files() {
     let w = World::new();
     let imported = w.import_local(
