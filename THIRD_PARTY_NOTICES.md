@@ -21,6 +21,12 @@ for VRChat, Steam and GitHub. The VRChat, Steam and GitHub names and logos are t
 their respective owners; the glyphs identify the services being tested and imply no affiliation
 with or endorsement by them.
 
+The VR headset choices also inline the Meta, HTC Vive and Valve glyph paths from
+[Simple Icons at revision 98820a4dc8c363ca72fa2c0d294ea4a0a9bba75d](https://github.com/simple-icons/simple-icons/tree/98820a4dc8c363ca72fa2c0d294ea4a0a9bba75d)
+(CC0; extracted 2026-10-09). The PICO wordmark was supplied by the project author
+on 2026-10-09 and is separate from the CC0 glyph collection. All of these names and
+logos remain trademarks of their respective owners and identify device choices.
+
 The current Rust workspace directly declares the following third-party crates:
 
 | Dependency | Declared license family | Role |

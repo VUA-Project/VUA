@@ -8,6 +8,7 @@ import type {
   CatalogSyncFinishV03,
   CatalogSyncPageV03,
   DownloadEventV01,
+  DesktopShellCommandV1,
   EditorSettingsV1,
   GameGuideFollowStatusV1,
   GameWindowRectPhysicalV1,
@@ -92,6 +93,7 @@ import { createFsDirectory, listFsDirectory } from "./fs-directory.js";
 import { resolveDesktopRuntime } from "./runtime-paths.js";
 import { preparePackagedSmoke } from "./packaged-smoke.js";
 import { configureDesktopProfile, resolveDesktopProfile, tagDevelopmentWindow } from "./runtime-profile.js";
+import { createVuaTray } from "./system-tray.js";
 
 registerImageCacheScheme();
 
@@ -121,6 +123,10 @@ if (desktopProfile.kind !== "release") {
 }
 const packagedSmoke = preparePackagedSmoke();
 let mainWindow: BrowserWindow | null = null;
+let systemTray: ReturnType<typeof createVuaTray> | null = null;
+let shellListening = false;
+let shellLocale: string | null = null;
+let pendingShellCommand: DesktopShellCommandV1 | null = null;
 let overlayWindow: BrowserWindow | null = null;
 let readerWindow: BrowserWindow | null = null;
 let gameGuideWindow: BrowserWindow | null = null;
@@ -139,6 +145,20 @@ const systemUsage = new SystemUsageCollector();
 let providerHandshake: Awaited<ReturnType<OrchestratorProviderV01["start"]>> | null = null;
 const lastAppliedIntentSeq = new Map<string, number>();
 let shutdownStarted = false;
+
+function focusMainWindow(): void {
+  if (mainWindow === null || mainWindow.isDestroyed()) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+function sendShellCommand(command: DesktopShellCommandV1): void {
+  focusMainWindow();
+  if (shellListening && mainWindow !== null && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("vua:window:shell-command", command);
+  } else pendingShellCommand = command;
+}
 
 // 游戏引导跟随(game-guide follow 切片,guidance §4):状态机与决策在
 // game-guide-follow.ts(纯函数可测);此处只持有状态、250ms 定时器与请求
@@ -554,10 +574,21 @@ function registerIpc(provider: OrchestratorProviderV01): void {
   // 主窗口」),允许切换焦点;最小化先还原;主窗口缺席(启动中/已关闭)幂等
   ipcMain.handle("vua:window:focus-main", (event) => {
     assertLocalSender(senderFrameUrl(event));
-    if (mainWindow === null || mainWindow.isDestroyed()) return;
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.show();
-    mainWindow.focus();
+    focusMainWindow();
+  });
+  ipcMain.on("vua:window:shell-listening", (event, listening: unknown, locale: unknown) => {
+    if (typeof listening !== "boolean" || mainWindow === null || mainWindow.isDestroyed()
+      || event.sender !== mainWindow.webContents || event.senderFrame !== event.sender.mainFrame
+      || !isAllowedLocalSender(event.senderFrame?.url ?? "", rendererUrl)) return;
+    shellListening = listening;
+    if (!listening) return;
+    if (typeof locale === "string" && locale.length <= 32) shellLocale = locale;
+    systemTray?.setLocale(shellLocale);
+    if (pendingShellCommand !== null) {
+      const command = pendingShellCommand;
+      pendingShellCommand = null;
+      sendShellCommand(command);
+    }
   });
 
   // 远程内容窄面(F4-2 隔离基座):Renderer 只发语义动作;来源允许清单在
@@ -1227,6 +1258,7 @@ async function createWindow(): Promise<void> {
   });
 
   tagDevelopmentWindow(mainWindow, desktopProfile);
+  mainWindow.webContents.on("did-start-loading", () => { shellListening = false; });
 
   // U9 四分法(本地壳窗口):http/https 弹窗不再交系统浏览器——清单内直行/
   // 清单外确认后转当前内嵌视图(RemoteContentManager);外部协议手势+确认后
@@ -1343,6 +1375,8 @@ async function createWindow(): Promise<void> {
   });
   mainWindow.on("closed", () => {
     mainWindow = null;
+    shellListening = false;
+    pendingShellCommand = null;
     // 主窗口关闭＝应用退出语义:悬浮窗、阅读器与游戏引导窗都不拖住
     // window-all-closed(窗口随主窗口生命周期销毁,closed 处理器自行清引用)
     overlayWindow?.destroy();
@@ -1394,6 +1428,7 @@ app.whenReady().then(async () => {
     await packagedSmoke.verify(mainWindow, provider);
     return;
   }
+  systemTray = createVuaTray({ locale: shellLocale ?? app.getLocale(), showMain: focusMainWindow, command: sendShellCommand, quit: () => app.quit() });
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) void createWindow();
   });
@@ -1409,6 +1444,8 @@ app.whenReady().then(async () => {
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
+
+app.on("will-quit", () => { systemTray?.dispose(); systemTray = null; });
 
 /**
  * 进程关闭协议(M2 交付):退出前先 prepareShutdown——关闭新调用入口并等待

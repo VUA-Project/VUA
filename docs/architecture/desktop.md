@@ -1,11 +1,11 @@
 # Electron desktop and presentation architecture
 
 
-> Document version: 1.9.0
+> Document version: 1.10.0
 > Status: Accepted
 > Scope: `apps/desktop`, `packages/design-system`, frontend Gateway
-> Updated: 2026-10-08
-> Last conformance review: 2026-10-08 (integrated first-run UI and existing task/window boundaries; app/device acceptance pending)
+> Updated: 2026-10-09
+> Last conformance review: 2026-10-09 (settings source preservation, task appearance and native tray wiring; physical app/device review pending)
 > Normative effect: Yes
 
 ## Technology decision
@@ -70,13 +70,31 @@ Reopening a completed preparation step reinspects files, and accepted tasks rema
 through their receipts. A connection confirmation is explicitly user-declared, not headset evidence.
 Opening Steam or a guide does not prove installation, login or successful play.
 
-Account-help navigation keeps the underlying route mounted and returns to its source step.
+Settings navigation keeps the underlying route or wizard mounted and returns to its source
+step and focus. The sidebar contains only settings categories while Settings is open, also in
+big screen mode; the upper-left Back action and the active Settings button return to the same
+source page. Category changes do not replace the return destination. Inspection belongs to the
+Avatar directory; Help and Settings have no duplicate bottom-left entry, and the topbar does
+not repeat the page name beside the Home logo.
+
+Account-help navigation uses that same settings return path.
 Settings → Accounts retains the N5 BOOTH sign-in/probe/logout surface; Steam, VRChat and Unity
 authentication remain honest placeholders. Registration/linking pages add an official browser
 handoff through `RemoteContentApiV1.openAccountGuideInBrowser(AccountGuideIdV1)` and the matching
 preload/Main channel. This is an additive native desktop port, not a new Provider method or a
 change to the frozen application envelope. Main checks local sender identity and maps the closed
 ID to a fixed public URL; arbitrary URLs, page data and credentials do not cross this port.
+
+Main owns a VUA system tray icon throughout normal application execution. Double-click restores
+and focuses the existing main window. The localized menu exposes update checking, big screen
+mode and application exit. `DesktopWindowApiV1.shellCommandEvents` is an additive, closed native
+desktop event face (`check-updates` / `bigscreen`), not a Provider method. Preload subscription
+signals readiness; Main accepts that signal only from the local main frame and retains the latest
+gesture until it is listening. Update checking opens the Version settings page and runs a manual
+read-only check independent of the automatic-check preference; big screen changes the existing
+shell mode. Exit uses normal application shutdown. Closing Main still exits, and the tray is
+destroyed at process shutdown. Theme/DPI variants rasterize the accepted VUA mark and design tokens
+through `scripts/generate-tray-icons.ps1`; no new runtime image dependency is introduced.
 
 ## Account-guide browser
 
@@ -165,6 +183,14 @@ isolated by the Electron process model — no separate Gateway connection instan
 (archived [proposal 017](../archive/2026-09-29/collab/proposals/017-overlay-surface.md) §4
 desktop statement, 2026-09-10).
 
+The Tasks entry requests the status view and has no guide/status switch. Production details
+remain collapsed until requested. Existing explicit `showGuide` and view/target events remain
+compatible; ordinary guidance uses Help, the preparation reader and the game guide. The task
+window applies shared saved appearance before paint, listens for cross-window storage and system
+theme changes, and honors saved contrast/resource-saving preferences. Normal `pnpm dev:desktop`
+uses the real Gateway task projection; only an explicit DEV `overlayPreview=1` enables demo data
+and its badge. `preview-overlay.mjs` opts into that isolated demonstration.
+
 - Business events broadcast to every locally-originated window by local origin checks, and
   Overlay windows are naturally on that list. Business snapshots use the existing query path;
   guide-target requests use their separate validated desktop-window event/acknowledgment path;
@@ -231,6 +257,7 @@ redistribution review authorizes each bundled binary before a public release.
 ## Document changelog
 
 
+- 1.10.0 (2026-10-09): implement settings-only sidebar/return, separate real task status and appearance from guides/demo previews, and add the localized VUA tray with typed main-renderer gestures and normal shutdown.
 - 1.9.0 (2026-10-08): record fixed navigation, desktop/big-screen focus, independent wizard/task facts and the closed official account-page browser handoff; temporary embedding and device acceptance remain pending.
 - 1.8.0 (2026-10-08): record the implemented game-window follow loop in Main (game-window-observe
   v0.1 observation, follow decision module, and the setGameGuideFollowing /
@@ -249,7 +276,5 @@ redistribution review authorizes each bundled binary before a public release.
   boundary; overlay shape parameters cite the spike-overlay.mjs verification; proposal 017 cited
   as a dated archived proposal; "core freeze batch" scheduling residue removed; four-locale UI
   i18n fact recorded with the §2.3 policy link. No rule change.
-
-- 1.3.0 (2026-09-30): specify isolated temporary account-guide pages and credential-free application state.
 
 Earlier entries remain in Git history.

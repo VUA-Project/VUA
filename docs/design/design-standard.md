@@ -1,11 +1,11 @@
-# VUA design standard v0.9.0
+# VUA design standard v0.10.0
 
 
-> Document version: 0.9.0
+> Document version: 0.10.0
 > Status: Accepted
 > Scope: Electron desktop, desktop overlay, and VR overlay presentation  
-> Updated: 2026-10-08
-> Last conformance review: 2026-10-08 (fixed Home, independent wizard and desktop/big-screen source alignment; author app/device review pending)
+> Updated: 2026-10-09
+> Last conformance review: 2026-10-09 (settings return, task themes, tray and brand-glyph source alignment; author app/device review pending)
 > Normative effect: Governs interaction, visual, and accessibility implementation;
 > does not expand product scope or replace versioned application contracts
 
@@ -84,6 +84,22 @@ theme tokens in light/dark mode. Home and the feature directory do not change wi
 choices. Main navigation tiles contain an icon and a title, without explanatory subtitles.
 Unavailable peers such as Quest and Unity 6 remain at the same level with a top-right
 **In development** badge; they are disabled and make no capability claim.
+VR device choices use their recognizable brand glyphs: Simple Icons for Meta, HTC Vive and
+Valve, and the author-supplied PICO wordmark. Keep unavailable peers visually equal.
+
+The 2026-10-09 user ruling places Inspection inside the Avatar group and removes duplicate
+Help/Settings entries from the sidebar bottom. Opening Settings replaces the business sidebar
+with settings items in both display modes. A prominent upper-left Back action and clicking
+Settings again return to the original page with its workflow and focus preserved; changing
+settings categories does not change that return destination. Do not repeat the page name beside
+the logo. Guides may have their own one-level Back inside the content.
+
+Tasks opens the actual queue, without an onboarding/guide switch; optional production details
+are collapsed initially. Its window follows the saved light/dark/system appearance, including
+changes while open. Guidance remains accessible through Help and contextual entries. The VUA
+system tray logo restores the main window on double-click. Its right-click menu has exactly
+Check for updates, Big screen mode and Exit, localized with the application. Explicit update
+checks work even when automatic checking is disabled. Main-window close keeps its exit behavior.
 
 **Desktop mode** keeps a persistent glass sidebar and a mouse-oriented directory of Environment,
 Avatar and global functions. **Big screen mode** uses larger grouped tiles, visible focus,
@@ -695,6 +711,7 @@ direction.
 ## 12. Document changelog
 
 
+- **0.10.0 (2026-10-09)**: separate tasks from onboarding, define settings-only navigation and return, restore Inspection to Avatar, add tray gestures and recognizable headset glyphs, and remove the header page-name duplicate.
 - **0.9.0 (2026-10-08)**: implement the accepted fixed Home/logo entry, independent branching wizard, concise navigation and desktop/big-screen hierarchy while retaining grid, glass and resource saving.
 - **0.8.0 (2026-10-05)**: define three guidance presentations and their topbar/contextual entries while retaining the two-business-tab shell.
 - **0.7.23 (2026-10-01)**: status-quo alignment and reference repair — §0/§3/§10/§11 the retired
@@ -774,17 +791,5 @@ direction.
   picker = warehouse read-face projection (no third import entry; cloud access
   = pending item 3 stays honestly absent before a ruling). This closes the
   proposal-029 A-face (A1–A6) desktop consumption loop. EN mirror synced.
-
-- **0.7.16 (2026-09-22)**: §8.5 addendum for the workshop as the execution status
-  face (second desktop slice consuming the U16 user ruling of 2026-09-21; proposal 029-A6) — the workshop only
-  displays status (resolve/plan/assembly/record cards share the same source and
-  store with the recipe-page initiation face, zero initiation actions; honest
-  no-chain empty state + pure-navigation CTA; task handling points to the task
-  center); §8.4 one-line erratum (registered 2026-09-22): the chain
-  identity source = the recipe.get receipt's TOP-LEVEL required identity fields
-  (store-authoritative), not the recipeDocument body itself; the material
-  direct-chain initiation point leaves the workshop and lands in the warehouse
-  page's action area (pending item 1's desktop form, ruled 2026-09-22,
-  zero change to the v0.1 wire face). EN mirror of the authoritative ZH.
 
 Earlier entries remain in Git history.

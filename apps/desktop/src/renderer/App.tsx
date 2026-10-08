@@ -1,5 +1,6 @@
 import { formatDateTime } from "./i18n/index.ts";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import type { DesktopShellCommandV1 } from "@vua/contracts";
 import { saveDebugMode, useDebugMode } from "./app/debug-mode.ts";
 import {
   defaultPage,
@@ -447,7 +448,7 @@ function VersionPage() {
 
   const checkNow = () => {
     setUpdateChecking(true);
-    void runUpdateCheck().finally(() => setUpdateChecking(false));
+    void runUpdateCheck({ manual: true }).finally(() => setUpdateChecking(false));
   };
 
   return (
@@ -736,30 +737,40 @@ function AppShell({
   const activeModule = page === "home" || page === "help" ? "global" : moduleOf(page);
   const [displayMode, setDisplayMode] = useState<"desktop" | "bigscreen">(() => { try { return localStorage.getItem(storageKeys.displayMode) === "bigscreen" ? "bigscreen" : "desktop"; } catch { return "desktop"; } });
   const bigscreen = displayMode === "bigscreen";
-  const [accountReturn, setAccountReturn] = useState<PageId | null>(null);
+  const settingsOpen = page.startsWith("settings-");
+  // Settings temporarily covers the source page; its local workflow stays mounted.
+  const [settingsReturn, setSettingsReturn] = useState<PageId | null>(null);
   const history = useRef<PageId[]>([]);
   const focusMemory = useRef(new Map<PageId, string>());
   const returnFocus = useRef<string | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
   const navigate = (target: PageId) => {
     if (target === page) {
-      if (showOnboarding && target !== "settings-accounts") onOnboardingComplete({ status: "skipped", goals: [], environments: [] });
+      if (showOnboarding && !settingsOpen) onOnboardingComplete({ status: "skipped", goals: [], environments: [] });
       return;
     }
     const focused = document.activeElement?.getAttribute("data-nav-id");
     if (focused) focusMemory.current.set(page, focused);
-    history.current.push(page);
+    if (target.startsWith("settings-")) {
+      if (!settingsOpen) setSettingsReturn(page);
+      navigatePage(target);
+      return;
+    }
+    const source = settingsOpen ? settingsReturn : page;
+    if (source !== null && source !== target) history.current.push(source);
     if (history.current.length > 32) history.current.shift();
-    if (target !== "settings-accounts") setAccountReturn(null);
-    if (showOnboarding && target !== "settings-accounts") onOnboardingComplete({ status: "skipped", goals: [], environments: [] });
+    setSettingsReturn(null);
+    if (showOnboarding) onOnboardingComplete({ status: "skipped", goals: [], environments: [] });
     navigatePage(target);
   };
+  const returnFromSettings = () => {
+    const target = settingsReturn ?? "home";
+    returnFocus.current = focusMemory.current.get(target) ?? null;
+    navigatePage(target);
+    setSettingsReturn(null);
+  };
   const goBack = () => {
-    if (page === "settings-accounts" && accountReturn !== null) {
-      returnFocus.current = focusMemory.current.get(accountReturn) ?? null;
-      if (history.current.at(-1) === accountReturn) history.current.pop();
-      navigatePage(accountReturn); setAccountReturn(null); return;
-    }
+    if (settingsOpen) { returnFromSettings(); return; }
     const target = history.current.pop() ?? "home";
     returnFocus.current = focusMemory.current.get(target) ?? null;
     navigatePage(target);
@@ -768,9 +779,18 @@ function AppShell({
     const back = visibleControls(shellRef.current?.querySelector("main") ?? document)
       .filter(el => el.hasAttribute("data-back")).at(-1);
     if (back) back.click();
+    else if (settingsOpen) returnFromSettings();
     else if (showOnboarding) onOnboardingComplete({ status: "skipped", goals: [], environments: [] });
     else goBack();
   };
+  const onShellCommand = useEffectEvent((command: DesktopShellCommandV1) => {
+    if (command === "bigscreen") setDisplayMode("bigscreen");
+    else {
+      navigate("settings-version");
+      void runUpdateCheck({ manual: true });
+    }
+  });
+  useEffect(() => window.vua?.window.shellCommandEvents?.subscribe(onShellCommand), []);
   useEffect(() => { try { localStorage.setItem(storageKeys.displayMode, displayMode); } catch { /* Keep the mode for this session. */ } }, [displayMode]);
   useEffect(() => {
     if (!bigscreen) return;
@@ -881,9 +901,12 @@ function AppShell({
   // 顶栏 palette 按钮,动作注入面不变)
   const pageActions: PageActions = {
     ...actions,
+    chooseGoals: () => navigate("settings-goals"),
+    prepareEnv: () => navigate("env-create"),
+    restartOnboarding: () => { if (settingsOpen) returnFromSettings(); actions.restartOnboarding(); },
     openPalette: () => setPaletteOpen(true),
     navigate,
-    openAccounts: () => { setAccountReturn(page); navigate("settings-accounts"); },
+    openAccounts: () => navigate("settings-accounts"),
     startTour,
   };
 
@@ -995,6 +1018,23 @@ function AppShell({
     }
   }, [effectsAuto]);
 
+  const pagePrefs: PagePrefs = {
+    displayMode, onDisplayModeChange: setDisplayMode,
+    theme: themeOverride ?? themePref, hc,
+    onThemeChange: (next) => {
+      if (themeOverride !== null) {
+        if (next === "dark" || next === "light") setThemeOverride(next);
+        return;
+      }
+      setThemePref(next);
+    },
+    onHcChange: setHc,
+    saverOn: effects === "off",
+    onSaverToggle: () => setEffects(current => current === "off" ? "on" : "off"),
+    saverAuto: effectsAuto, onSaverAutoChange: setEffectsAuto, steamVRRunning,
+  };
+  const contentPage = settingsOpen ? settingsReturn : page;
+
   return (
     <div
       className="vua-shell"
@@ -1020,8 +1060,7 @@ function AppShell({
           <span className="vua-shell__wordmark"><BrandMark variant={activeModule === "env" || activeModule === "production" ? "solid" : "mixed"} /></span>
         </button>
         <div className="vua-shell__location vua-drag-region">
-          {bigscreen && page !== "home" ? <Button variant="subtle" onClick={backCurrentView}>{strings.journey.back}</Button> : null}
-          <strong>{({ home: strings.journey.home, "environment-hub": strings.journey.environment, "avatar-hub": strings.journey.avatar, software: strings.journey.software, help: strings.journey.help } as Partial<Record<PageId, string>>)[page] ?? modules.flatMap(m => m.groups.flatMap(g => g.pages)).filter(p => p.id === page).map(pageLabel)[0]}</strong>
+          {settingsOpen || (bigscreen && page !== "home") ? <Button variant={settingsOpen ? "primary" : "subtle"} className="vua-shell__back" data-nav-id="shell-back" onClick={settingsOpen ? returnFromSettings : backCurrentView}><Icon name="arrow-left" size={20} />{strings.journey.back}</Button> : null}
         </div>
         {/* 占用查看器(2026-09-25 用户裁决):设置按钮左侧常驻读数,
          *  RAM/VRAM 取高;点击展开右上角详情小窗 */}
@@ -1031,8 +1070,9 @@ function AppShell({
         <button
           type="button"
           className="vua-shell__tab vua-shell__settings"
-          aria-current={activeModule === "settings" ? "page" : undefined}
-          onClick={() => navigate("settings-theme")}
+          aria-current={settingsOpen ? "page" : undefined}
+          data-nav-id="shell-settings"
+          onClick={() => settingsOpen ? returnFromSettings() : navigate("settings-theme")}
         >
           <span className="vua-shell__tab-label">{tabLabel(moduleDef("settings"))}</span>
         </button>
@@ -1082,46 +1122,20 @@ function AppShell({
         ) : null}
       </header>
       <div className="vua-shell__body">
-        {!bigscreen ? <aside className="vua-shell__sidebar" aria-label={strings.app.sidebarAria}>
-          {(["env", "production"] as const).map(group => <div className="vua-shell__sidebar-group" key={group} data-module={group}>
+        {!bigscreen || settingsOpen ? <aside className="vua-shell__sidebar" aria-label={settingsOpen ? strings.nav.tabs.settings : strings.app.sidebarAria}>
+          {settingsOpen ? <div className="vua-shell__sidebar-group" data-module="settings">
+            {moduleDef("settings").groups.flatMap(g => g.pages).map(p => <button type="button" key={p.id} className="vua-shell__sidebar-item" aria-current={page === p.id ? "page" : undefined} onClick={() => navigate(p.id)} data-nav-id={`nav-${p.id}`}>{pageLabel(p)}</button>)}
+          </div> : (["env", "production"] as const).map(group => <div className="vua-shell__sidebar-group" key={group} data-module={group}>
             <button type="button" className="vua-shell__sidebar-label" onClick={() => navigate(group === "env" ? "environment-hub" : "avatar-hub")}>{group === "env" ? strings.journey.environment : strings.journey.avatar}</button>
             {directory[group].map(item => <button type="button" key={item.id} className="vua-shell__sidebar-item" aria-current={page === item.id ? "page" : undefined} onClick={() => navigate(item.id)} data-nav-id={`nav-${item.id}`}>{item.title}</button>)}
           </div>)}
-          {activeModule === "settings" && page !== "home" && page !== "help" ? <div className="vua-shell__sidebar-group">
-            {moduleDef("settings").groups.flatMap(g => g.pages).map(p => <button type="button" key={p.id} className="vua-shell__sidebar-item" aria-current={page === p.id ? "page" : undefined} onClick={() => navigate(p.id)}>{pageLabel(p)}</button>)}
-          </div> : null}
-          <div className="vua-shell__sidebar-global">
-            <button type="button" className="vua-shell__sidebar-item" onClick={() => navigate("inspection")}>{strings.terms.inspection}</button>
-            <button type="button" className="vua-shell__sidebar-item" onClick={() => navigate("help")}>{strings.journey.help}</button>
-            <button type="button" className="vua-shell__sidebar-item" onClick={() => navigate("settings-theme")}>{strings.nav.tabs.settings}</button>
-          </div>
         </aside> : null}
         <main className="vua-shell__main">
-          <div hidden={showOnboarding || (page === "settings-accounts" && accountReturn !== null)} key={page === "settings-accounts" && accountReturn !== null ? accountReturn : page} className="vua-page-enter">
-            {renderPage(page === "settings-accounts" && accountReturn !== null ? accountReturn : page, creatorReady, pageActions, {
-              displayMode, onDisplayModeChange: setDisplayMode,
-              theme: themeOverride ?? themePref,
-              hc,
-              onThemeChange: (next) => {
-                // 走查覆盖在时:dark|light 选择翻转覆盖值(不写存储);
-                // 跟随系统无法由覆盖表达,忽略(开发面,不猜态)
-                if (themeOverride !== null) {
-                  if (next === "dark" || next === "light") setThemeOverride(next);
-                  return;
-                }
-                setThemePref(next);
-              },
-              onHcChange: setHc,
-              saverOn: effects === "off",
-              onSaverToggle: () =>
-                setEffects((current) => (current === "off" ? "on" : "off")),
-              saverAuto: effectsAuto,
-              onSaverAutoChange: setEffectsAuto,
-              steamVRRunning,
-            }, uiRoot, onUiRootChange, bigscreen)}
-          </div>
-          {showOnboarding ? <div hidden={page === "settings-accounts" && accountReturn !== null}><OnboardingPage onComplete={onOnboardingComplete} onAccounts={pageActions.openAccounts} /></div> : null}
-          {page === "settings-accounts" && accountReturn !== null ? <div className="vua-page-enter"><Button variant="subtle" data-back onClick={goBack}>{strings.journey.accountReturn}</Button><AccountSettingsPage /></div> : null}
+          {contentPage !== null ? <div hidden={showOnboarding || settingsOpen} key={contentPage} className="vua-page-enter">
+            {renderPage(contentPage, creatorReady, pageActions, pagePrefs, uiRoot, onUiRootChange, bigscreen)}
+          </div> : null}
+          {showOnboarding ? <div key="first-run" hidden={settingsOpen}><OnboardingPage onComplete={onOnboardingComplete} onAccounts={pageActions.openAccounts} /></div> : null}
+          {settingsOpen ? <div key={page} className="vua-page-enter">{renderPage(page, creatorReady, pageActions, pagePrefs, uiRoot, onUiRootChange, bigscreen)}</div> : null}
         </main>
       </div>
       {/* 任务中心(ui-ux §4.2 底部入口):capability 非 ready 时组件自身不渲染 */}

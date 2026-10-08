@@ -92,7 +92,9 @@ export function OnboardingPage({ onComplete, onAccounts }: {
 }
 export function HeadsetChoices({ onPico }: { onPico: () => void }) {
   return <div className="vua-route-grid vua-route-grid--devices">
-    <RouteTile title="PICO" kind="headset" onClick={onPico} id="headset-pico" />
-    {["Meta Quest", "HTC VIVE", "Valve Index"].map(title => <RouteTile key={title} title={title} kind="headset" disabled />)}
+    <RouteTile title="PICO" brand="pico" onClick={onPico} id="headset-pico" />
+    <RouteTile title="Meta Quest" brand="meta" disabled />
+    <RouteTile title="HTC VIVE" brand="htcvive" disabled />
+    <RouteTile title="Valve Index" brand="valve" disabled />
   </div>;
 }

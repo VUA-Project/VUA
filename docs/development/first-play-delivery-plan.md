@@ -1,8 +1,8 @@
 # First play release: implementation checkpoint and remaining work
 
-> Document version: 1.5.0
+> Document version: 1.6.0
 > Status: Accepted
-> Updated: 2026-10-08
+> Updated: 2026-10-09
 > Scope: Desktop play, PICO 4 Pro USB/Wi-Fi, optional eye tracking and three guidance contexts
 
 For people: this release takes a player from missing play software to playing VRChat, with
@@ -86,7 +86,7 @@ Dated raw evidence remains local: `_local_real_machine/n1-play-zip-2026-10-03.md
 Their bootstrap, controlled UI and physical-hardware results are different evidence categories.
 Refresh evidence after changing the affected path rather than rerunning every old check.
 
-## First-run UI checkpoint (2026-10-08)
+## First-run UI checkpoint (2026-10-09)
 
 PRs #64 (dependency patch), #65 (game guide following) and #66 (N5 material management) are
 merged and integrated with the Steam/PICO acquisition slice on `slice/first-run-main-ui`.
@@ -95,12 +95,23 @@ Home access, domain/theme colors, concise main tiles, equal disabled Quest/Unity
 mouse-oriented desktop mode and keyboard big-screen mode are implemented. Matrix/grid, sidebar
 and small-window glass and resource saving remain. Account help opens Accounts, dedicated guides
 and a fixed official system-browser handoff, then returns to the selected preparation step.
+The author's 2026-10-09 development-mode corrections are implemented: Settings replaces the
+business sidebar and returns to the same workflow, Inspection belongs to Avatar, duplicate
+sidebar Help/Settings and the topbar page name are removed, and headset choices use recognizable
+brand glyphs. Tasks shows actual Gateway facts without a guide switch and follows saved/system
+appearance. A localized VUA tray restores Main and exposes update checking, big screen and exit.
 
 Controlled Chromium checks cover route choices, disabled peers, unknown/missing software,
 manual handoff/reinspection, account return, focus/back, mode changes and four-language minimum
 window layout. These checks use synthetic Gateway facts and establish UI behavior only.
 `pnpm --filter @vua/desktop smoke:first-run-ui` reproduces the branching, readiness, account-return
 and Chromium keyboard cases in an isolated Electron session without installing software or signing in.
+Its current 40 checks also cover settings-only navigation, source/focus preservation, tray-renderer
+gestures, live task-port selection in DEV and cross-window/system appearance changes.
+`pnpm --filter @vua/desktop smoke:system-tray` adds eight native Electron API checks with
+programmatically invoked tray events. Physical Windows tray clicks still require author review.
+No new ZIP was made for these changes: the author is reviewing `pnpm dev:desktop` first.
+Restart that development command once to load Main/preload changes, including the tray.
 Unit/type/boundary/i18n/contrast/leak checks and the integrated preview build are recorded with
 the candidate. The author's acceptance of the design is distinct from review of the running app.
 Physical controller input, missing-software installers, actual desktop/PICO play and four-language
@@ -235,6 +246,7 @@ integration, not a substitute for N5's own review and acceptance.
 ## Document changelog
 
 
+- 1.6.0 (2026-10-09): record the author's development-mode UI corrections, task/theme separation, settings return, headset glyphs and native tray checks; defer another ZIP while the UI is under review.
 - 1.5.0 (2026-10-08): record the integrated wizard/Home implementation and controlled UI checks, with official account handoff and real-device/installer/human review still separate.
 - 1.4.0 (2026-10-08): integrate the independently delivered acquisition and game-guide-follow slices without changing their pending real-machine acceptance.
 - 1.3.0 (2026-10-08): prioritize download-to-play blockers under the author's Ibis criterion, record return/next-action repairs and keep optional automation and the deferred Sandbox method outside independent release gates.

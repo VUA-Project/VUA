@@ -38,8 +38,10 @@ export function RouteEnvironmentPage({ zone, onAccounts }: { zone: "play" | "cre
     {stage === "pick" ? <div className="vua-route-grid vua-route-grid--devices">
       {zone === "play" ? <>
         <RouteTile title={copy.desktop} kind="screen" onClick={() => choose("desktop_play")} id="route-desktop" />
-        <RouteTile title="PICO" kind="headset" onClick={() => choose("pico_pcvr")} id="route-pico" />
-        {["Meta Quest", "HTC VIVE", "Valve Index"].map(title => <RouteTile title={title} key={title} kind="headset" disabled />)}
+        <RouteTile title="PICO" brand="pico" onClick={() => choose("pico_pcvr")} id="route-pico" />
+        <RouteTile title="Meta Quest" brand="meta" disabled />
+        <RouteTile title="HTC VIVE" brand="htcvive" disabled />
+        <RouteTile title="Valve Index" brand="valve" disabled />
       </> : <>
         <RouteTile title={copy.unity2022} kind="unity" onClick={() => choose("pc_avatar")} id="route-unity2022" />
         <RouteTile title={copy.unity6} kind="unity" disabled />

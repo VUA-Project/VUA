@@ -1,5 +1,5 @@
 import { createRoot, type Root } from "react-dom/client";
-import type { VuaDesktopApiV1 } from "@vua/contracts";
+import type { DesktopShellCommandV1, VuaDesktopApiV1 } from "@vua/contracts";
 import { App } from "../../src/renderer/App.tsx";
 import { strings } from "../../src/renderer/i18n/index.ts";
 import { storageKeys } from "../../src/renderer/app/storage-keys.ts";
@@ -13,6 +13,8 @@ let guideId: string | null = null;
 const intents: string[][] = [];
 const checks: string[] = [];
 let escapes = 0;
+let shellCommand: ((command: DesktopShellCommandV1) => void) | undefined;
+let updateChecks = 0;
 const check = (name: string, value: unknown) => { if (!value) throw new Error(name); checks.push(name); };
 const wait = async (predicate: () => unknown, label = "") => {
   const start = Date.now();
@@ -40,14 +42,19 @@ window.vua = {
       result: scenario === "restored" ? { outcome: "prerequisites_verified" } : { outcome: "manual_required", nextStep: { component: "vrchat", action: "manual_install", officialUrl: "https://store.steampowered.com/app/438100/" } } };
     return value ? { ok: true, value } : { ok: false, error: { code: "unsupported_method", messageKey: "synthetic" } };
   } }, events: { subscribe: () => () => {} },
-  window: { showReader: async () => {}, showGameGuide: async () => {}, showOverlay: async () => {} },
+  window: { showReader: async () => {}, showGameGuide: async () => {}, showOverlay: async () => {},
+    shellCommandEvents: { subscribe: (listener: typeof shellCommand) => { shellCommand = listener; return () => { shellCommand = undefined; }; } } },
+  system: {
+    readResourceUsage: async () => ({ schemaVersion: 1, ramUsedBytes: 1024, ramTotalBytes: 4096, vramUsedBytes: null, vramTotalBytes: null, sampledAt: new Date().toISOString() }),
+    checkUpdate: async () => { updateChecks += 1; return { schemaVersion: 1, state: "up-to-date", currentVersion: "synthetic", latestVersion: "synthetic", releaseUrl: null, checkedAt: new Date().toISOString() }; },
+  },
   remoteContent: { openAccountGuideInBrowser: async (id: string) => { guideId = id; }, authProbe: async () => ({ authOk: false, accountName: null }) },
 } as unknown as VuaDesktopApiV1;
 
-async function mount(mode: typeof scenario = "installed") {
+async function mount(mode: typeof scenario = "installed", displayMode = "bigscreen") {
   root?.unmount(); localStorage.clear(); location.hash = ""; scenario = mode;
   localStorage.setItem(storageKeys.locale, "en"); localStorage.setItem(storageKeys.theme, "dark");
-  localStorage.setItem(storageKeys.displayMode, "bigscreen");
+  localStorage.setItem(storageKeys.displayMode, displayMode);
   localStorage.setItem(storageKeys.tourProgress, JSON.stringify({ v: 1, status: "skipped", step: 0 }));
   if (mode === "restored") {
     localStorage.setItem(storageKeys.firstRunJourney, JSON.stringify({ v: 1, step: "prepare", purpose: "desktop_play", connection: null }));
@@ -73,15 +80,17 @@ const review = {
     await click(copy.playGoal); await step("play-mode");
     await click(copy.vr); await step("headset");
     check("Quest stays a disabled peer", [...document.querySelectorAll<HTMLButtonElement>("button")].some(el => el.textContent?.includes("Meta Quest") && el.disabled));
+    check("headset choices use distinct brand glyphs including the supplied PICO wordmark", ["pico", "meta", "htcvive", "valve"].every(brand => document.querySelector(`[data-brand="${brand}"] svg path`)));
     await click(copy.restart); await step("goal"); await prepare(); await wait(() => button(copy.preparedNext));
     check("desktop plans only desktop prerequisites", intents.at(-1)?.join() === "desktop_play");
     await click(copy.preparedNext); await step("launch"); await click(copy.accounts);
     await wait(() => document.querySelector(".vua-account-grid")); await click(copy.linking);
     await click(copy.official); check("registration handoff sends a closed guide ID", guideId === "linking");
-    document.querySelector<HTMLButtonElement>(".vua-shell__location button")!.click();
+    check("settings sidebar contains only settings pages, also in big screen mode", document.querySelectorAll(".vua-shell__sidebar [data-module='settings']").length === 1 && !document.querySelector(".vua-shell__sidebar [data-module='env'], .vua-shell__sidebar [data-module='production']"));
+    document.querySelector<HTMLButtonElement>(".vua-journey-actions [data-back]")!.click();
     await wait(() => document.querySelector(".vua-account-grid") && visible(document.querySelector(".vua-account-grid")!));
-    check("header Back returns from guide to account cards", !!document.querySelector(".vua-account-grid"));
-    await click(copy.accountReturn); await step("launch");
+    check("account guide has its own one-level Back", !!document.querySelector(".vua-account-grid"));
+    document.querySelector<HTMLButtonElement>('[data-nav-id="shell-back"]')!.click(); await step("launch");
     check("account return retains the launch step", !!document.querySelector('[data-wizard-step="launch"]'));
     await wait(() => document.activeElement?.getAttribute("data-nav-id") === "play-accounts");
     check("account return restores the originating control", document.activeElement?.getAttribute("data-nav-id") === "play-accounts");
@@ -89,6 +98,32 @@ const review = {
     check("finishing the wizard returns to the fixed Home", !document.querySelector("[data-wizard-step]"));
     check("only the logo is the Home action", document.querySelectorAll('[data-nav-id="logo-home"]').length === 1 && !document.querySelector(".vua-shell__tabs"));
     check("home has no tile subtitles", !document.querySelector(".vua-home .vua-route-tile__description"));
+    check("header no longer repeats the page title beside the logo", !document.querySelector(".vua-shell__location strong"));
+    await mount("installed", "desktop"); await step("goal");
+    document.querySelector<HTMLButtonElement>('[data-nav-id="logo-home"]')!.click();
+    await wait(() => !document.querySelector("[data-wizard-step]"));
+    check("Inspection belongs to the Avatar sidebar group", !!document.querySelector('[data-module="production"] [data-nav-id="nav-inspection"]'));
+    check("bottom-left duplicate settings and help entries are gone", !document.querySelector(".vua-shell__sidebar-global") && !document.querySelector('.vua-shell__sidebar [data-nav-id="nav-settings-theme"]'));
+    await click(copy.play); await click(copy.desktop);
+    await wait(() => document.querySelector('[data-route-stage="prepare"]'));
+    document.querySelector<HTMLButtonElement>('[data-nav-id="shell-settings"]')!.click();
+    await wait(() => document.querySelector('[data-nav-id="nav-settings-accounts"]'));
+    document.querySelector<HTMLButtonElement>('[data-nav-id="nav-settings-accounts"]')!.click();
+    await wait(() => document.querySelector(".vua-account-grid"));
+    document.querySelector<HTMLButtonElement>('[data-nav-id="shell-settings"]')!.click();
+    await wait(() => document.querySelector('[data-route-stage="prepare"]') && visible(document.querySelector('[data-route-stage="prepare"]')!));
+    check("clicking Settings again returns to the source workflow without resetting its step", !!document.querySelector('[data-route-stage="prepare"]'));
+    localStorage.setItem(storageKeys.updateCheckEnabled, "off");
+    const beforeChecks = updateChecks;
+    shellCommand!("check-updates");
+    await wait(() => document.querySelector('[data-nav-id="nav-settings-version"][aria-current="page"]') && updateChecks > beforeChecks);
+    check("tray update gesture opens Version and checks even when automatic checks are disabled", updateChecks > beforeChecks);
+    shellCommand!("bigscreen");
+    await wait(() => document.querySelector('.vua-shell[data-display-mode="bigscreen"]'));
+    check("tray big screen gesture switches the existing shell", !!document.querySelector('.vua-shell[data-display-mode="bigscreen"]'));
+    document.querySelector<HTMLButtonElement>('[data-nav-id="shell-back"]')!.click();
+    await wait(() => !document.querySelector('[data-nav-id="nav-settings-version"]'));
+    check("tray-opened settings retains the same source page", !!document.querySelector('[data-route-stage="prepare"]'));
     await mount("missing"); await prepare(); await wait(() => button(strings.deployment.execute));
     check("missing software cannot continue", !button(copy.preparedNext));
     await click(strings.deployment.execute); await wait(() => document.body.textContent?.includes(strings.deployment.manualRequired));
@@ -119,6 +154,17 @@ const review = {
     }
     if (key === "ArrowRight") await wait(() => document.activeElement?.getAttribute("data-nav-id") === "home-avatar");
     return `Chromium ${key}: ${key === "Enter" ? "direct branch" : key === "Escape" ? escapes === 1 ? "one level back" : "first level returns Home" : "next domain"}`;
+  },
+  async setThemePreference(theme: "light" | "dark" | "system") {
+    if (!document.querySelector('[data-nav-id="nav-settings-theme"]')) {
+      document.querySelector<HTMLButtonElement>('[data-nav-id="shell-settings"]')!.click();
+    } else if (!document.querySelector('[data-nav-id="nav-settings-theme"][aria-current="page"]')) {
+      document.querySelector<HTMLButtonElement>('[data-nav-id="nav-settings-theme"]')!.click();
+    }
+    await wait(() => [...document.querySelectorAll<HTMLSelectElement>("select")].some(el => visible(el) && el.getAttribute("aria-label") === strings.settings.theme.appearanceAria));
+    const select = [...document.querySelectorAll<HTMLSelectElement>("select")].find(el => visible(el) && el.getAttribute("aria-label") === strings.settings.theme.appearanceAria)!;
+    select.value = theme; select.dispatchEvent(new Event("change", { bubbles: true }));
+    await wait(() => localStorage.getItem(storageKeys.theme) === theme);
   },
 };
 (window as unknown as { firstRunReview: typeof review }).firstRunReview = review;

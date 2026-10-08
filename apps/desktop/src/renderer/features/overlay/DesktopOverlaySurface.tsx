@@ -14,11 +14,9 @@ import { formatDateTime } from "../../i18n/index.ts";
  * 仍由任务卡承载(downloadId 是 correlationId 非 taskId,不做行内猜测);
  * 环境摘要属批 2 未投影,本表面不渲染。
  *
- * 2026-09-26 用户裁决:覆盖层窗口成为引导宿主——顶部视图切换(引导|
- * 状态)segemented 控件;引导视图 = GuideOverlayView(原游戏引导内容,
- * 经 ?view= 首帧落位,已开窗的切换经 vua:overlay:set-view 事件投递);
- * 状态视图即本面的 017 任务/下载内容,不变。Esc 关闭与关闭 chrome
- * 对所有视图一致(关窗不切换视图语义)。
+ * 2026-10-09 用户裁决:任务入口仅呈现实际任务/下载,不混入新手引导。
+ * 旧版显式引导调用仍经 GuideOverlayView 与既有事件接收,兼容旧面;
+ * 日常引导走帮助/阅读器。任务窗主题与主窗口共用偏好及系统变化。
  *
  * 交互规格(键鼠):紧凑面板 + 拖拽区标题栏 + 关闭 chrome;Tab/Shift+Tab
  * 焦点环(base.css 全局 :focus-visible)、Enter/Space 激活(原生 button)、
@@ -30,7 +28,8 @@ import { formatDateTime } from "../../i18n/index.ts";
  */
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { Icon } from "@vua/design-system";
-import { overlayPort } from "./overlay-port-instance.ts";
+import { overlayPort, overlayPreviewEnabled } from "./overlay-port-instance.ts";
+import { useSurfaceAppearance } from "../../app/surface-appearance.ts";
 import { GuideOverlayView, shouldClearGuideRequest, type GuideRequest } from "./GuideOverlayView.tsx";
 import {
   isOverlayView,
@@ -90,6 +89,7 @@ function taskStateLabel(state: string): string {
 }
 
 export function DesktopOverlaySurface() {
+  useSurfaceAppearance();
   const [snapshot, setSnapshot] = useState<OverlaySnapshot | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   // 2026-09-26 视图宿主裁决:首视图经加载查询 ?view= 投递(创建窗口的
@@ -221,7 +221,7 @@ export function DesktopOverlaySurface() {
               variant={action.primary ? "primary" : "default"}
               onClick={closeSurface}
             >
-              {copy.actions.dismiss}
+              {view === "status" ? copy.closeWindow : copy.actions.dismiss}
             </Button>
           );
         }
@@ -242,10 +242,9 @@ export function DesktopOverlaySurface() {
       style={{ "--vua-overlay-text-scale": model?.textScale ?? 1 } as CSSProperties}
     >
       <header className="vua-overlay__titlebar vua-drag-region">
-        {/* 标题随活动视图(引导/状态);总控语义由下方 segmented 控件表达 */}
-        <span className="vua-overlay__title vua-drag-region">{copy.views[view]}</span>
+        <span className="vua-overlay__title vua-drag-region">{view === "status" ? strings.journey.tasks : copy.views.guide}</span>
         {/* 演示徽标只钉在状态视图:引导是静态真实内容,标"演示数据"属误标 */}
-        {import.meta.env.DEV && view === "status" ? (
+        {overlayPreviewEnabled && view === "status" ? (
           <Badge tone="warning">{strings.common.fixtureBadge}</Badge>
         ) : null}
         {/* 首玩 B 切片:明确的收起(隐藏不销毁)与返回主窗口(允许切换焦点);
@@ -279,27 +278,7 @@ export function DesktopOverlaySurface() {
         </button>
       </header>
 
-      {/* 视图切换(2026-09-26 引导宿主裁决):引导 = 引导内容;状态 = 017
-          任务/下载面。已开窗时 Main 经 set-view 事件驱动,与本控件同态 */}
-      <div
-        className="vua-overlay__view-switch"
-        role="tablist"
-        aria-label={copy.viewSwitchAria}
-      >
-        {(["guide", "status"] as const).map((id) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={view === id}
-            className="vua-overlay__view-tab"
-            data-active={view === id || undefined}
-            onClick={() => setView(id)}
-          >
-            {copy.views[id]}
-          </button>
-        ))}
-      </div>
+      {/* Tasks has no onboarding switch. Legacy explicit guide requests remain compatible. */}
 
       <main className="vua-overlay__body">
         {view === "guide" ? (
@@ -370,8 +349,8 @@ export function DesktopOverlaySurface() {
             ) : null}
 
             {model.productionCard.currentPlan !== null || model.productionCard.latestRecord !== null ? (
-              <section aria-label={copy.productionSectionLabel}>
-                <p className="vua-overlay__section-label">{copy.productionSectionLabel}</p>
+              <details className="vua-overlay__production-details">
+                <summary className="vua-overlay__section-label">{copy.productionSectionLabel}</summary>
                 {model.productionCard.currentPlan !== null ? (
                   <Card className="vua-overlay__production">
                     <p className="vua-overlay__production-line">
@@ -398,7 +377,7 @@ export function DesktopOverlaySurface() {
                     </p>
                   </Card>
                 ) : null}
-              </section>
+              </details>
             ) : null}
 
             {model.downloadCard !== null ? (

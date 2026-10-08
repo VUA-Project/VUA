@@ -1267,6 +1267,9 @@ export interface GameGuideFollowStatusV1 {
   readonly gameForeground: boolean;
 }
 
+/** Local shell gestures delivered to the main renderer; no provider command authority. */
+export type DesktopShellCommandV1 = "check-updates" | "bigscreen";
+
 export interface DesktopWindowApiV1 {
   minimize(): Promise<void>;
   toggleMaximize(): Promise<void>;
@@ -1331,6 +1334,10 @@ export interface DesktopWindowApiV1 {
   /** 返回主窗口(additive):主窗口最小化则还原,随后显示并聚焦——仅响应
    *  用户明确动作(覆盖层「返回主窗口」),允许切换焦点 */
   focusMainWindow(): Promise<void>;
+  /** Tray actions. Subscription also signals readiness so startup gestures can be replayed. */
+  shellCommandEvents: {
+    subscribe(listener: (command: DesktopShellCommandV1) => void): () => void;
+  };
 }
 
 /**

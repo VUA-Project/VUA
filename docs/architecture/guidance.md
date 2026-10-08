@@ -1,9 +1,9 @@
 # Guidance architecture: app tour, preparation reader and game guide
 
-> Document version: 1.3.0
+> Document version: 1.4.0
 > Status: Accepted
-> Updated: 2026-10-08
-> Last conformance review: 2026-10-08 (independent first-run wizard and Help/tour routing; real-machine acceptance pending)
+> Updated: 2026-10-09
+> Last conformance review: 2026-10-09 (tasks/guide separation and settings account-return source alignment; real-machine acceptance pending)
 > Scope: First play release guidance in Electron and React
 
 For people: VUA teaches three different activities in three appropriate places: using VUA,
@@ -30,6 +30,13 @@ implementation order/status to the [first play delivery plan](../development/fir
 The preparation reader is useful before VRChat exists or starts. The game guide targets the
 Windows game window; headset reading uses SteamVR's desktop view of the preparation reader.
 A native in-headset VUA overlay remains later work.
+
+The Tasks window is a queue/status entry, without an onboarding switch. Preparation and game
+guidance stay in their own presentations; retained legacy explicit guide calls do not add a
+guide tab to Tasks. Account guidance opens Settings → Accounts with a settings-only sidebar.
+The upper-left Back action or clicking Settings again returns to the source workflow; a guide's
+content Back returns one level to its account cards. These actions preserve the wizard step and
+accepted tasks. The [desktop architecture](desktop.md) owns settings/tray lifecycle and appearance.
 
 ## 2. VUA app tour
 
@@ -167,6 +174,7 @@ The delivery plan names the outstanding code and real-machine checks.
 ## Document changelog
 
 
+- 1.4.0 (2026-10-09): separate the daily Tasks entry from guidance and route account-help return through the independent settings area; retain legacy guide-call compatibility.
 - 1.3.0 (2026-10-08): keep the independent first-run wizard and manually opened app tour distinct; route Help and tour anchors through the fixed directory.
 - 1.2.0 (2026-10-08): record the delivered game-window observer and automatic guide following (game-window-observe v0.1); real-machine acceptance remains in the delivery plan.
 - 1.1.0 (2026-10-07): distinguish the delivered three presentations from the remaining game-window observer and automatic lifecycle.

@@ -98,7 +98,7 @@ function registerWindowControls() {
 }
 
 function surfaceUrl(base, surface) {
-  return `${base.href}?surface=${surface}`;
+  return `${base.href}?surface=${surface}&overlayPreview=1`;
 }
 
 async function openDesktopPreview(base) {

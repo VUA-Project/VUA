@@ -39,6 +39,7 @@ describe("DesktopWindowApiV1 overlay faces (2026-09-26 additive: showOverlay + v
       setGameGuideFollowing: true,
       getGameGuideFollowStatus: true,
       focusMainWindow: true,
+      shellCommandEvents: true,
     };
     expect(Object.keys(apiShape)).toEqual([
       "minimize",
@@ -57,6 +58,7 @@ describe("DesktopWindowApiV1 overlay faces (2026-09-26 additive: showOverlay + v
       "setGameGuideFollowing",
       "getGameGuideFollowStatus",
       "focusMainWindow",
+      "shellCommandEvents",
     ]);
   });
 

@@ -4,7 +4,7 @@ import { RouteTile } from "../../components/RouteTile.tsx";
 const copy = strings.journey;
 export const directory = {
   env: [{ id: "env-play", title: copy.play, icon: "anim" }, { id: "env-create", title: copy.create, icon: "flask" }, { id: "software", title: copy.software, icon: "gauge" }],
-  production: [{ id: "warehouse", title: copy.library, icon: "folder" }, { id: "recipe", title: copy.recipes, icon: "outfit" }, { id: "workshop", title: copy.production, icon: "avatar" }],
+  production: [{ id: "warehouse", title: copy.library, icon: "folder" }, { id: "recipe", title: copy.recipes, icon: "outfit" }, { id: "workshop", title: copy.production, icon: "avatar" }, { id: "inspection", title: strings.terms.inspection, icon: "check" }],
 } as const;
 export function HomePage({ page, bigscreen, navigate, startWizard, startTour }: {
   page: "home" | "environment-hub" | "avatar-hub" | "help"; bigscreen: boolean;
@@ -33,7 +33,6 @@ export function HomePage({ page, bigscreen, navigate, startWizard, startTour }: 
       </section>)}
       {page === "avatar-hub" ? <div className="vua-route-grid">
         <RouteTile title={strings.nav.pages.packages} icon="folder" onClick={() => navigate("packages")} />
-        <RouteTile title={strings.terms.inspection} icon="check" onClick={() => navigate("inspection")} />
         <RouteTile title={strings.terms.release} icon="anim" onClick={() => navigate("release")} />
       </div> : null}
       {page === "home" ? global : null}

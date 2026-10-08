@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
 import type {
   ApplicationEventV01,
   DesktopGatewayRequestV1,
+  DesktopShellCommandV1,
   EditorSettingsV1,
   GuideTargetV1,
   NavigationConfirmRequestV1,
@@ -44,6 +45,11 @@ const guideTargetListeners = new WeakMap<
 const readerTargetListeners = new WeakMap<
   (target: GuideTargetV1 | null) => void,
   (event: IpcRendererEvent, payload: GuideTargetV1 | null) => void
+>();
+
+const shellCommandListeners = new WeakMap<
+  (command: DesktopShellCommandV1) => void,
+  (event: IpcRendererEvent, payload: unknown) => void
 >();
 
 const api: VuaDesktopApiV1 = Object.freeze({
@@ -153,6 +159,22 @@ const api: VuaDesktopApiV1 = Object.freeze({
     getGameGuideFollowStatus: () => ipcRenderer.invoke("vua:game-guide:follow-status"),
     // 返回主窗口(仅响应用户明确动作,允许切换焦点)
     focusMainWindow: () => ipcRenderer.invoke("vua:window:focus-main"),
+    shellCommandEvents: Object.freeze({
+      subscribe: (listener: (command: DesktopShellCommandV1) => void) => {
+        const wrapped = (_event: IpcRendererEvent, payload: unknown) => {
+          if (payload === "check-updates" || payload === "bigscreen") listener(payload);
+        };
+        shellCommandListeners.set(listener, wrapped);
+        ipcRenderer.on("vua:window:shell-command", wrapped);
+        ipcRenderer.send("vua:window:shell-listening", true, document.documentElement.lang);
+        return () => {
+          const wrappedListener = shellCommandListeners.get(listener);
+          if (wrappedListener) ipcRenderer.removeListener("vua:window:shell-command", wrappedListener);
+          shellCommandListeners.delete(listener);
+          ipcRenderer.send("vua:window:shell-listening", false);
+        };
+      },
+    }),
   }),
   // 远程内容窄面(F4-2):只发语义动作;远程页面本身无 preload、无本面
   remoteContent: Object.freeze({
