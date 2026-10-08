@@ -1375,6 +1375,15 @@ rolled_back: "已回滚",
   /** Warehouse 目录浏览(G8):卡片墙、搜索筛选、详情抽屉与三态文案 */
   warehouse: {
     importedBadge: "已入库",
+    removeEntries: {
+      "title": "移除导入记录",
+      "description": "从素材库移除所选的本地导入记录。文件和已有配方引用会保留，BOOTH 账号商品仍在库中。",
+      "wholeImport": "此操作影响整批导入，包括同一文件夹中的其他卡片和已合并到 BOOTH 商品的文件。同步 BOOTH 库不会恢复这批导入。",
+      "cancel": "取消",
+      "confirm": "移除所选记录",
+      "working": "正在移除…",
+      "failed": "未确认移除结果，请重试。"
+    },
     editSource: {
       title: "来源与显示信息",
       localEntry: "本地导入记录",

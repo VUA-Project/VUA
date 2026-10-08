@@ -47,6 +47,7 @@ import { registerTaskIdentity } from "../../gateway/index.ts";
 import { CardAlbumMedia, DetailAlbum } from "./WarehouseAlbum.tsx";
 import { ArtifactCard, EntryDetail } from "./WarehouseAcquire.tsx";
 import { EditSourceDialog } from "./EditSourceDialog.tsx";
+import { RemoveEntriesDialog } from "./RemoveEntriesDialog.tsx";
 import { artifactCardMatches, artifactCards, inferGlobalDefaultMode } from "./acquire-model.ts";
 import { ContentDialog } from "../../components/primitives/ContentDialog.tsx";
 import { ImportPage } from "../import/ImportPage.tsx";
@@ -583,6 +584,7 @@ export function WarehousePage({
   } | null>(null);
   const [removalTarget, setRemovalTarget] = useState<RemovalDialogTarget | null>(null);
   const [metadataEntries, setMetadataEntries] = useState<readonly { readonly entryId: string; readonly displayName: string }[] | null>(null);
+  const [removedEntries, setRemovedEntries] = useState<readonly { readonly entryId: string; readonly displayName: string }[] | null>(null);
   const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
   // 静默下载观察(人审 E18 修复):受理后记住商品,下载任务静默 + 目录里
   // 该商品已入库(自动采纳完成写 mappings)即刷新卡片墙并提示——用户看
@@ -1099,6 +1101,8 @@ export function WarehousePage({
       ...(dataSource === "live" && (libraryPage?.facts.get(item.productId)?.localEntries?.length ?? 0) > 0 ? [{
         id: "editLocalSource", label: copy.editSource.title,
         onSelect: () => setMetadataEntries(libraryPage!.facts.get(item.productId)!.localEntries!),
+      }, { id: "removeLocalEntries", label: copy.removeEntries.title,
+        onSelect: () => setRemovedEntries(libraryPage!.facts.get(item.productId)!.localEntries!),
       }] : []),
         {
           id: "download",
@@ -1538,6 +1542,8 @@ export function WarehousePage({
                                 },
                                 ...(dataSource === "live" && card.entry.kind === "imported_material" ? [{ id: "editSource", label: copy.editSource.title,
                                   onSelect: () => setMetadataEntries([{ entryId: card.entry.warehouseItemId, displayName: card.entry.displayName }]),
+                                }, { id: "removeEntry", label: copy.removeEntries.title,
+                                  onSelect: () => setRemovedEntries([{ entryId: card.entry.warehouseItemId, displayName: card.entry.displayName }]),
                                 }] : []),
                                 ...(dataSource === "live" ? [{ id: "removeFiles", label: copy.cardMenu.deleteLocal,
                                   onSelect: () => setRemovalTarget({ target: { kind: "entry", id: card.entry.warehouseItemId }, title: card.entry.displayName,
@@ -1700,6 +1706,8 @@ export function WarehousePage({
         onClose={() => setRemovalTarget(null)} onChanged={() => { setReloadKey((key) => key + 1); setDetailReloadKey((key) => key + 1); }} /> : null}
       {metadataEntries !== null ? <EditSourceDialog key={metadataEntries.map((entry) => entry.entryId).join(",")} entries={metadataEntries}
         onClose={() => setMetadataEntries(null)} onChanged={() => { setReloadKey((key) => key + 1); setDetailReloadKey((key) => key + 1); }} /> : null}
+      {removedEntries !== null ? <RemoveEntriesDialog key={removedEntries.map((entry) => entry.entryId).join(",")} entries={removedEntries}
+        onClose={() => setRemovedEntries(null)} onChanged={() => { setSelectedLocalId(null); setReloadKey((key) => key + 1); setDetailReloadKey((key) => key + 1); }} /> : null}
       <DownloadChecklistDialog
         product={checklistProduct}
         onClose={() => setChecklistProduct(null)}

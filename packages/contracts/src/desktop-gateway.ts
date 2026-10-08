@@ -17,6 +17,7 @@ import { isCatalogSyncParamsV03, type CatalogSyncStatusV03 } from "./catalog-syn
 import { isLibraryDownloadParamsV01, type LibraryDownloadStatusV01 } from "./library-download-v01.js";
 import { isLibraryImportParamsV01, type LibraryImportParamsV01 } from "./library-intake-v01.js";
 import { isLibraryEntryMetadataParamsV01, type LibraryEntryMetadataQueryV01, type LibraryEntryMetadataUpdateV01 } from "./library-entry-metadata-v01.js";
+import { isLibraryRemoveLocalEntriesV01, type LibraryRemoveLocalEntriesV01 } from "./library-records-v01.js";
 import { isLibraryViewParamsV01, type LibraryListParamsV01, type LibraryProductFilesParamsV01 } from "./library-view-v01.js";
 import { isRecipeDraftParamsV01, type RecipeDraftListParamsV01, type RecipeDraftGetParamsV01, type RecipeDraftSaveParamsV01, type RecipeDraftAddParamsV01 } from "./recipe-selection-draft-v01.js";
 import { isLibraryMaintenanceParamsV01, type LibraryRemovalPreviewParamsV01, type LibraryRemoveFilesParamsV01, type LibraryRemovalStatusParamsV01 } from "./library-maintenance-v01.js";
@@ -255,6 +256,7 @@ export interface LibraryImportRequestV1 {
 export type LibraryEntryMetadataRequestV1 = { readonly schemaVersion: 1; readonly requestId: string } & (
   | { readonly method: "library.entryMetadata"; readonly params: LibraryEntryMetadataQueryV01 }
   | { readonly method: "library.updateEntryMetadata"; readonly params: LibraryEntryMetadataUpdateV01 & { readonly commandId: string } }
+  | { readonly method: "library.removeLocalEntries"; readonly params: LibraryRemoveLocalEntriesV01 & { readonly commandId: string } }
 );
 export type RecipeDraftCommandRequestV1 = { readonly schemaVersion: 1; readonly requestId: string } & (
   | { readonly method: "recipeDraft.save"; readonly params: RecipeDraftSaveParamsV01 }
@@ -1088,6 +1090,7 @@ export const DESKTOP_GATEWAY_METHOD_KINDS = {
   "library.importFolders": "command",
   "library.entryMetadata": "query",
   "library.updateEntryMetadata": "command",
+  "library.removeLocalEntries": "command",
   "library.removalStatus": "query",
   "recipeDraft.list": "query",
   "recipeDraft.get": "query",
@@ -1883,6 +1886,11 @@ export function isDesktopGatewayRequestV1(value: unknown): value is DesktopGatew
       if (!hasExactKeys(value, REQUEST_KEYS)) return false;
       const { commandId, ...params } = value.params as Record<string, unknown>;
       return isIdentifier(commandId) && isLibraryEntryMetadataParamsV01(value.method, params);
+    }
+    case "library.removeLocalEntries": {
+      if (!hasExactKeys(value, REQUEST_KEYS)) return false;
+      const { commandId, ...params } = value.params as Record<string, unknown>;
+      return isIdentifier(commandId) && isLibraryRemoveLocalEntriesV01(params);
     }
     case "library.list":
     case "library.productFiles":

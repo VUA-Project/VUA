@@ -118,6 +118,28 @@ struct Lines {
     receiver: mpsc::Receiver<Vec<u8>>,
     current: Cursor<Vec<u8>>,
 }
+
+#[test]
+fn local_record_removal_wire_keeps_account_and_warehouse_identities() {
+    let world = World::new();
+    let entry = world.bdl.create_warehouse_item("Local", "imported_material", "t").unwrap();
+    let account = world.bdl.create_warehouse_item("Account", "downloaded_material", "t").unwrap();
+    let mut host = Host::new(&world.base, world.bdl.clone());
+    let params = json!({"schemaVersion":"0.1","entryIds":[entry.warehouse_item_id]});
+    let rejected = host.call("library.removeLocalEntries", json!({"schemaVersion":"0.1","entryIds":[entry.warehouse_item_id,account.warehouse_item_id]}));
+    assert_eq!(rejected["error"]["code"], "vua.library.entry_not_local");
+    assert!(world.bdl.removed_local_entries().unwrap().is_empty());
+    let removed = host.call_command("library.removeLocalEntries", params.clone(), Some("remove-local"));
+    assert_eq!(removed["ok"], true, "{removed}");
+    let schema: Value = serde_json::from_slice(&std::fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/library-records/v0.1/response.schema.json")).unwrap()).unwrap();
+    assert!(jsonschema::validator_for(&schema).unwrap().is_valid(&removed["value"]));
+    assert_eq!(host.call_command("library.removeLocalEntries", params, Some("remove-local"))["value"], removed["value"]);
+    assert_eq!(host.call_command("library.removeLocalEntries", json!({"schemaVersion":"0.1","entryIds":[account.warehouse_item_id]}), Some("remove-local"))["error"]["code"], "vua.library.record_conflict");
+    let view = host.call("library.list", json!({"schemaVersion":"0.1"}));
+    assert!(!view["value"]["items"].as_array().unwrap().iter().any(|row| row["entry"]["warehouseItemId"] == entry.warehouse_item_id));
+    assert!(world.bdl.warehouse_entry_detail(&entry.warehouse_item_id, ArtifactMode::UseOriginalUnitypackage).unwrap().is_some());
+    assert_eq!(world.bdl.product_library_memberships("booth:90").unwrap(), vec!["bought"]);
+}
 impl Read for Lines {
     fn read(&mut self, output: &mut [u8]) -> std::io::Result<usize> {
         loop {

@@ -20,6 +20,7 @@ pub use bdl_store::{
     StoredArtifactCopy, StoredDependencyObservation, StoredDownloadEvent,
     ArchiveMember, StoredArchiveMember,
     LibraryEntryMetadata, LibraryEntryMetadataUpdate,
+    RemoveLocalEntries, RemovedLocalEntries,
     StoredWarehouseItem, SubproductObservation, WarehouseArtifactFact,
     WarehouseArtifactRef, WarehouseEntryCard, WarehouseEntryDetail, WAREHOUSE_ITEM_KINDS,
     BDL_FORMAT_VERSION,

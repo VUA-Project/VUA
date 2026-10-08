@@ -373,6 +373,29 @@ fn source_correction_constrains_merge_without_claiming_public_lookup_ownership()
 }
 
 #[test]
+fn removing_a_merged_local_import_preserves_files_references_and_account_product() {
+    let w = World::new();
+    let local = w.import_local("Local removal", &[("bundle.zip", b"same bytes")]);
+    let drafts = crate::recipe_selection_drafts::RecipeSelectionDrafts::new(w.base.join("drafts"));
+    let params = json!({"schemaVersion":"0.1","draftId":"recipe-draft-removal","title":"Keep reference","baseRevision":0,
+        "selections":[{"identity":local.artifacts[0].artifact_sha256,"displayName":"Local","source":"local","warehouseItemId":local.warehouse_item_id}]});
+    let saved = drafts.apply("recipeDraft.save", params).unwrap();
+    w.download_reference(b"same bytes"); w.verify_sources("before-record-removal");
+    assert_eq!(library_view(&w, json!({"schemaVersion":"0.1"}))["items"][0]["storage"]["presentCopies"], 2);
+    w.bdl.remove_local_entries(&vua_bdl_store::RemoveLocalEntries { schema_version:"0.1".into(), entry_ids:vec![local.warehouse_item_id.clone()] }, "remove-local", "t").unwrap();
+    let view = library_view(&w, json!({"schemaVersion":"0.1"}));
+    assert_eq!(view["total"], 1);
+    assert_eq!(view["items"][0]["product"]["productId"], "booth:90");
+    assert_eq!(view["items"][0]["storage"]["presentCopies"], 1);
+    assert!(view["items"][0].get("localEntries").is_none());
+    assert_eq!(w.bdl.product_library_memberships("booth:90").unwrap(), vec!["bought"]);
+    assert_eq!(std::fs::read(&w.bdl.entry_copies(&local.warehouse_item_id).unwrap()[0].stored_path).unwrap(), b"same bytes");
+    assert_eq!(drafts.apply("recipeDraft.get", json!({"schemaVersion":"0.1","draftId":"recipe-draft-removal"})).unwrap(), saved);
+    assert!(w.service.reconcile_library_sources("after-record-removal").unwrap().is_none());
+    assert!(BdlStore::open(w.base.join("bdl.db")).unwrap().removed_local_entries().unwrap().contains(&local.warehouse_item_id));
+}
+
+#[test]
 fn library_different_content_and_partial_folder_matches_keep_independent_files() {
     let w = World::new();
     let imported = w.import_local(

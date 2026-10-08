@@ -1387,6 +1387,15 @@ demoTaskTitle: "Demo task",
   },
   warehouse: {
     importedBadge: "Imported",
+    removeEntries: {
+      "title": "Remove imported entries",
+      "description": "Remove the selected local imports from the library. Files and existing recipe references remain, as do BOOTH account products.",
+      "wholeImport": "This affects the entire import, including other cards from that folder and files merged into BOOTH products. BOOTH sync will not restore this import.",
+      "cancel": "Cancel",
+      "confirm": "Remove selected entries",
+      "working": "Removing…",
+      "failed": "The removal result is unconfirmed. Retry to check."
+    },
     editSource: {
       title: "Source and display information",
       localEntry: "Local import record",

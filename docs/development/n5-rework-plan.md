@@ -1,6 +1,6 @@
 # N5 rework plan — unified library and acquisition producers
 
-> Document version: 1.10.0
+> Document version: 1.11.0
 > Status: Accepted
 > Scope: Implementation direction for the N5 material-management rework, within the accepted N5 scope
 > Updated: 2026-10-09
@@ -264,7 +264,10 @@ i18n/contrast/leak checks), and acquisition/BDL/provider-host Clippy with warnin
 Real official lookup, real image rendering and human source-dialog acceptance remain pending.
 
 These rulings reduce implementation scope, not the real-account/material and human-UI evidence
-required by the N sequence. Record maintenance and the new settings still need implementation;
+required by the N sequence. [Local record removal](../protocols/library-records-v0.1.md) now
+removes complete imports, including merged copies, with atomic receipt replay and retained files/
+references/account products. Targeted BDL, acquisition, wire, contract and typed-port checks passed.
+Interrupted file-removal resolution and the new settings still need implementation;
 neither the existing lookup port nor this plan establishes a finished reverse-lookup interaction.
 
 ### Content revisions and VPM regeneration proposal — deferred after N5
@@ -393,6 +396,8 @@ D6 parser relocation remains later cleanup, not a prerequisite for usable mainte
 
 ## Document changelog
 
+- 1.11.0 (2026-10-09): implement local-only import-record removal with durable receipts and retained files/references/account ownership.
+
 - 1.10.0 (2026-10-09): add minimal official/manual local source editing with atomic metadata receipts, private thumbnail caching and source-constrained content grouping.
 
 - 1.9.0 (2026-10-09): implement ordinary-file intake and ZIP expansion, retain archive/member lineage and extraction issues, and use current official member fingerprints in migration reconciliation. Synthetic verification is separate from real-material/human acceptance.
@@ -403,8 +408,6 @@ D6 parser relocation remains later cleanup, not a prerequisite for usable mainte
 - 1.5.0 (2026-10-08): implement selected-file removal and retained generated-version facts, record remaining regeneration/Recipe choices and reconcile PR #61.
 - 1.4.0 (2026-10-08): record the sequential takeover baseline, replacement/retention and draft rulings, independent library facts and remaining acceptance gaps.
 
-- 1.1.0 (2026-10-02): S1 addendum — third library type (free downloads) per user
-  direction; real-machine verification facts recorded.
 
 - 1.2.0 (2026-10-02): user direction — merge the two warehouse tracks into one library
   page with a cloud/local filter; layout rework rides S3.

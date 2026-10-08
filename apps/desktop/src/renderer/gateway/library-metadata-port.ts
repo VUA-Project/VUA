@@ -1,9 +1,10 @@
-import { isLibraryEntryMetadataV01, type LibraryEntryMetadataV01, type LibraryEntryMetadataUpdateV01 } from "@vua/contracts";
+import { isLibraryEntryMetadataV01, isLibraryRemoveLocalEntriesV01, type LibraryEntryMetadataV01, type LibraryEntryMetadataUpdateV01 } from "@vua/contracts";
 import { createGatewayClient, type GatewayClient } from "./gateway-client.ts";
 export class LibraryMetadataError extends Error { constructor(readonly code: string) { super(code); } }
 export interface LibraryMetadataPort {
   read(entryId: string): Promise<LibraryEntryMetadataV01>;
   update(params: LibraryEntryMetadataUpdateV01, commandId: string): Promise<LibraryEntryMetadataV01>;
+  removeEntries(entryIds: readonly string[], commandId: string): Promise<void>;
 }
 export function createLibraryMetadataPort(client: GatewayClient = createGatewayClient(typeof window === "undefined" ? undefined : window.vua)): LibraryMetadataPort {
   return {
@@ -12,6 +13,11 @@ export function createLibraryMetadataPort(client: GatewayClient = createGatewayC
       if (!response.ok) throw new LibraryMetadataError(response.error.kind === "application" ? response.error.error.code : "read_failed");
       if (!isLibraryEntryMetadataV01(response.value) || response.value.entryId !== entryId) throw new LibraryMetadataError("read_failed");
       return response.value;
+    },
+    async removeEntries(entryIds, commandId) {
+      const response = await client.invoke({ schemaVersion: 1, requestId: crypto.randomUUID(), method: "library.removeLocalEntries", params: { schemaVersion: "0.1", entryIds, commandId } });
+      if (!response.ok) throw new LibraryMetadataError(response.error.kind === "application" ? response.error.error.code : "write_failed");
+      if (!isLibraryRemoveLocalEntriesV01(response.value) || JSON.stringify(response.value.entryIds) !== JSON.stringify(entryIds)) throw new LibraryMetadataError("write_failed");
     },
     async update(params, commandId) {
       const response = await client.invoke({ schemaVersion: 1, requestId: crypto.randomUUID(), method: "library.updateEntryMetadata", params: { ...params, commandId } });

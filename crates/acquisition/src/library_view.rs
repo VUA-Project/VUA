@@ -129,8 +129,9 @@ pub fn list(
         return Err(LibraryDownloadError("invalid_params"));
     }
     let mut products = bdl.library_product_summaries()?;
-    let entries = bdl.warehouse_entry_cards(global_default)?;
-    let copies = bdl.library_copy_evidence()?;
+    let removed = bdl.removed_local_entries()?;
+    let entries: Vec<_> = bdl.warehouse_entry_cards(global_default)?.into_iter().filter(|entry| !removed.contains(&entry.warehouse_item_id)).collect();
+    let copies: Vec<_> = bdl.library_copy_evidence()?.into_iter().filter(|copy| !removed.contains(&copy.copy.warehouse_item_id)).collect();
     let metadata: HashMap<_, _> = bdl.library_entry_metadata_all()?.into_iter().map(|m| (m.entry_id.clone(), m)).collect();
     let explicit_sources: HashMap<_, _> = metadata.values().filter_map(|m| m.product_id.as_ref().map(|id| (m.entry_id.clone(), id.clone()))).collect();
     let mut presences = copies

@@ -207,7 +207,8 @@ impl LibraryDownloadService {
         {
             return Ok(Some(prior.task_id));
         }
-        let copies = self.bdl.library_copy_evidence()?;
+        let removed = self.bdl.removed_local_entries()?;
+        let copies: Vec<_> = self.bdl.library_copy_evidence()?.into_iter().filter(|copy| !removed.contains(&copy.copy.warehouse_item_id)).collect();
         let reference_hashes: HashSet<_> = copies
             .iter()
             .filter(|copy| (copy.downloadable_id.is_some() || copy.archive_downloadable_id.is_some() && copy.archive_current) && copy.copy.role == CopyRole::Original)

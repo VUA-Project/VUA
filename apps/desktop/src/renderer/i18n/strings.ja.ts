@@ -1350,6 +1350,15 @@ rolled_back: "ロールバック済み",
   },
   warehouse: {
     importedBadge: "インポート済み",
+    removeEntries: {
+      "title": "インポート記録を削除",
+      "description": "選択したローカルインポートを素材ライブラリから削除します。ファイルと既存のレシピ参照、BOOTH アカウントの商品は保持されます。",
+      "wholeImport": "同じフォルダーの他のカードや BOOTH 商品に統合されたファイルを含め、インポート全体が対象です。BOOTH 同期ではこのインポートは復元されません。",
+      "cancel": "キャンセル",
+      "confirm": "選択した記録を削除",
+      "working": "削除中…",
+      "failed": "削除結果を確認できません。再試行してください。"
+    },
     editSource: {
       title: "出典と表示情報",
       localEntry: "ローカル取り込み記録",

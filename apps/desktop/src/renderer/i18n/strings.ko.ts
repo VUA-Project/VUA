@@ -1343,6 +1343,15 @@ rolled_back: "롤백됨",
   },
   warehouse: {
     importedBadge: "가져옴",
+    removeEntries: {
+      "title": "가져오기 기록 제거",
+      "description": "선택한 로컬 가져오기를 소재 라이브러리에서 제거합니다. 파일과 기존 레시피 참조, BOOTH 계정 상품은 유지됩니다.",
+      "wholeImport": "같은 폴더의 다른 카드와 BOOTH 상품에 합쳐진 파일을 포함하여 가져오기 전체에 적용됩니다. BOOTH 동기화로 이 가져오기는 복원되지 않습니다.",
+      "cancel": "취소",
+      "confirm": "선택한 기록 제거",
+      "working": "제거 중…",
+      "failed": "제거 결과를 확인하지 못했습니다. 다시 시도하세요."
+    },
     editSource: {
       title: "출처와 표시 정보",
       localEntry: "로컬 가져오기 기록",
