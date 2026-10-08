@@ -11,6 +11,7 @@ import {
 import { strings } from "../../i18n/index.ts";
 import { useDeleteOriginalsAfterGenerate, shouldResetDeleteFlag } from "../../app/delete-originals-flag.ts";
 import { useDownloadChecklist } from "../../app/download-checklist-flag.ts";
+import { DependencyCluesSetting } from "./DependencyCluesSetting.tsx";
 import { commandErrorText, inferGlobalDefaultMode, type GlobalDefaultInference } from "../warehouse/acquire-model.ts";
 
 /**
@@ -126,6 +127,8 @@ export function ExperimentalCommands() {
           onToggle={() => setChecklist(!checklist)}
         />
       </section>
+
+      <DependencyCluesSetting />
 
       {/* 行 2:生成后删除原始素材文件(危险;未接线偏好,proposal 008 未决) */}
       <section className="vua-exp-card__row">

@@ -25,13 +25,12 @@ export type {
 } from "@vua/contracts";
 
 /**
- * 依赖反查/观察列窄端口(bdl-queries v0.5 消费准备切片,2026-09-22;030
+ * 依赖反查/观察列窄端口(bdl-queries v0.6 信封,保持 v0.5 依赖词面;030
  * §5.7 案 A,数据席第 168 批 FROZEN):dependencies.lookup(建议面)与
  * dependencies.listByProduct(未过滤观察面)两方法只读——「线索非结论」
- * 律的桌面落点:lookup 只出人工确认消解与过建议门的 advisory(建议非事
- * 实断言),listByProduct 如实列全部观察含 confirmed:false 带标注线索。
- * 本批只落契约面＋端口＋词表基建,消费页面不挂(BOM 检测驱动安装是 U18
- * 终裁后功能);缺席臂 = 能力缺席时控制不渲染的先例(recipe-export 环 4
+ * 律的桌面落点:lookup 列匹配观察,仅人工确认消解可携 resolvedProductId,
+ * 过建议门才携 advisory;listByProduct 列全部观察含 confirmed:false。
+ * N5 的可选显示/反查消费这些只读面,不自动安装;缺席臂沿用能力缺席先例(recipe-export 环 4
  * 同构),empty/fixture 装配恒答缺席,绝不伪造线索/建议。
  *
  * - 词面骑 BDL v0.2 冻结闭集,投影按 client 纪律逐字段收窄:闭集词表外
@@ -142,12 +141,12 @@ function word<T extends string>(value: unknown, vocabulary: readonly T[]): T | n
     : null;
 }
 
-/** bdl-queries 三键信封解包:v0.5 族常量 + operation 精确命中;词表外信封
+/** bdl-queries 三键信封解包:v0.6 族常量 + operation 精确命中;词表外信封
  *  = null(调用方按缺席处理,绝不平铺猜测) */
-function bdlQueryResultV05(value: unknown, operation: string): Record<string, unknown> | null {
+function bdlQueryResultV06(value: unknown, operation: string): Record<string, unknown> | null {
   const envelope = asRecord(value);
   if (envelope === null) return null;
-  if (envelope.schemaVersion !== "0.5" || envelope.operation !== operation) return null;
+  if (envelope.schemaVersion !== "0.6" || envelope.operation !== operation) return null;
   return asRecord(envelope.result);
 }
 
@@ -385,7 +384,7 @@ export function createLiveDependenciesPort(client: GatewayClient): DependenciesP
         }
         return { kind: "absent" };
       }
-      const body = bdlQueryResultV05(result.value, "dependencies.lookup");
+      const body = bdlQueryResultV06(result.value, "dependencies.lookup");
       if (body === null || typeof body.total !== "number" || !Array.isArray(body.matches)) {
         return { kind: "absent" };
       }
@@ -424,7 +423,7 @@ export function createLiveDependenciesPort(client: GatewayClient): DependenciesP
         }
         return { kind: "absent" };
       }
-      const body = bdlQueryResultV05(result.value, "dependencies.listByProduct");
+      const body = bdlQueryResultV06(result.value, "dependencies.listByProduct");
       const productStatus = body === null ? null : word(body.productStatus, PRODUCT_STATUSES);
       if (
         body === null ||

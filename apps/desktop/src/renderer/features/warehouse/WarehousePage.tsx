@@ -43,6 +43,7 @@ import { useCardSpotlight } from "./use-card-spotlight.ts";
 import type { RecipeAssetRef } from "../../gateway/index.ts";
 import { AddToRecipeDialog } from "./AddToRecipeDialog.tsx";
 import { CompatibleItemsDialog } from "./CompatibleItemsDialog.tsx";
+import { DependencyLookupDialog } from "./DependencyLookupDialog.tsx";
 import { registerTaskIdentity } from "../../gateway/index.ts";
 import { CardAlbumMedia, DetailAlbum } from "./WarehouseAlbum.tsx";
 import { ArtifactCard, EntryDetail } from "./WarehouseAcquire.tsx";
@@ -62,6 +63,7 @@ import {
 import { BOOTH_SIGN_IN_URL } from "../import/import-model.ts";
 import { openLoginBrowser, useLoginBrowserRequest } from "../../app/login-browser-store.ts";
 import { useDownloadChecklist } from "../../app/download-checklist-flag.ts";
+import { useDependencyClues } from "../../app/dependency-clues-flag.ts";
 import { DownloadChecklistDialog } from "./DownloadChecklistDialog.tsx";
 import { RemoveFilesDialog, type RemovalDialogTarget } from "./RemoveFilesDialog.tsx";
 import "./warehouse.css";
@@ -577,11 +579,19 @@ export function WarehousePage({
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
   const [recipeDialogOpen, setRecipeDialogOpen] = useState(false);
   const [contextSelection, setContextSelection] = useState<readonly RecipeAssetRef[]>([]);
-  // 适配依赖小窗(N5):query 即打开意图,null = 关闭
+  const [dependencyCluesOn] = useDependencyClues();
+  const [lookupName, setLookupName] = useState<string | null>(null);
+  // Optional, unconfirmed dependency observations.
   const [compatibleQuery, setCompatibleQuery] = useState<{
     productId: string;
     title: string;
   } | null>(null);
+  useEffect(() => {
+    if (dependencyCluesOn) return;
+    setCompatibleQuery(null);
+    setLookupName(null);
+    setCardMenu(null);
+  }, [dependencyCluesOn]);
   const [removalTarget, setRemovalTarget] = useState<RemovalDialogTarget | null>(null);
   const [metadataEntries, setMetadataEntries] = useState<readonly { readonly entryId: string; readonly displayName: string }[] | null>(null);
   const [removedEntries, setRemovedEntries] = useState<readonly { readonly entryId: string; readonly displayName: string }[] | null>(null);
@@ -1143,13 +1153,13 @@ export function WarehousePage({
               },
             }]
           : []),
-        {
+        ...(dependencyCluesOn ? [{
           id: "showCompatible",
           label: copy.cardMenu.showCompatible,
           onSelect: () => {
             setCompatibleQuery({ productId: item.productId, title: item.title ?? item.productId });
           },
-        },
+        }] : []),
     ];
     const anchor = event.currentTarget.getBoundingClientRect();
     setCardMenu({ x: event.detail === 0 ? anchor.left : event.clientX, y: event.detail === 0 ? anchor.bottom : event.clientY, items: menuItems });
@@ -1184,6 +1194,7 @@ export function WarehousePage({
           {viewMode === "cards" ? copy.viewList : copy.viewCards}
         </button>
         {/* 来源筛选(用户方向 2026-10-02):云端/本地合并为单库页,来源只作筛选 */}
+        {dependencyCluesOn && connected ? <Button variant="subtle" onClick={() => setLookupName("")}>{copy.dependencyLookup.open}</Button> : null}
         <select
           className="vua-warehouse__filter"
           aria-label={copy.filters.source}
@@ -1717,13 +1728,18 @@ export function WarehousePage({
         }}
       />
       <CompatibleItemsDialog
+        enabled={dependencyCluesOn}
         query={compatibleQuery}
         onClose={() => setCompatibleQuery(null)}
         onSelectProduct={(productId) => {
           setCompatibleQuery(null);
           setSelectedId(productId);
         }}
+        onLookupName={(name) => { setCompatibleQuery(null); setLookupName(name); }}
       />
+      {dependencyCluesOn && lookupName !== null ? <DependencyLookupDialog key={lookupName}
+        enabled={dependencyCluesOn} initialName={lookupName} onClose={() => setLookupName(null)}
+        onSelectProduct={(productId) => { setLookupName(null); setSelectedId(productId); }} /> : null}
     </div>
   );
 }

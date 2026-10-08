@@ -28,6 +28,8 @@ export function EditSourceDialog({ entries, onClose, onChanged }: {
   const lifetime = useRef(0);
   const pending = useRef<{ fingerprint: string; commandId: string } | null>(null);
   const busyRef = useRef(false);
+  // An entry switch invalidates the previous form before the effect starts its read.
+  const currentRecord = record?.entryId === entryId ? record : null;
   useEffect(() => {
     const generation = ++lifetime.current;
     setRecord(null); setNotice(null); setOfficialImage(null); setNameEdited(false);
@@ -66,7 +68,7 @@ export function EditSourceDialog({ entries, onClose, onChanged }: {
     finally { busyRef.current = false; if (lifetime.current === generation) setBusy(false); }
   };
   const save = async () => {
-    if (record === null || busyRef.current || name.trim() === "") return;
+    if (currentRecord === null || busyRef.current || name.trim() === "") return;
     const id = booth.trim() === "" ? null : boothSourceId(booth);
     if (booth.trim() !== "" && id === null) { setNotice(copy.invalidId); return; }
     busyRef.current = true; setBusy(true); setNotice(null);
@@ -79,7 +81,7 @@ export function EditSourceDialog({ entries, onClose, onChanged }: {
         if (!nameEdited && product.title !== null) displayName = product.title;
         setResolvedId(id); setName(displayName); setOfficialImage(product.imageUrl);
       }
-      const params = { schemaVersion: "0.1" as const, entryId: record.entryId, expectedRevision: record.revision,
+      const params = { schemaVersion: "0.1" as const, entryId: currentRecord.entryId, expectedRevision: currentRecord.revision,
         displayName, productId: id, thumbnailRef: thumbnail };
       const fingerprint = JSON.stringify(params);
       if (pending.current?.fingerprint !== fingerprint) pending.current = { fingerprint, commandId: crypto.randomUUID() };
@@ -109,7 +111,7 @@ export function EditSourceDialog({ entries, onClose, onChanged }: {
         {entries.map((entry) => <option key={entry.entryId} value={entry.entryId}>{entry.displayName}</option>)}
       </select></label> : null}
       <p className="vua-caption vua-text-secondary">{copy.description}</p>
-      {record === null ? <p role="status">{notice ?? copy.loading}</p> : <>
+      {currentRecord === null ? <p role="status">{notice ?? copy.loading}</p> : <>
         <label>{copy.boothId}<input value={booth} disabled={busy} placeholder={copy.boothPlaceholder} onChange={(event) => setBooth(event.target.value)} /></label>
         <div className="vua-edit-source__actions">
           <Button disabled={busy || booth.trim() === ""} onClick={() => void readOfficial()}>{copy.readOfficial}</Button>
@@ -125,7 +127,7 @@ export function EditSourceDialog({ entries, onClose, onChanged }: {
       </>}
       <div className="vua-edit-source__actions">
         <Button onClick={onClose}>{copy.cancel}</Button>
-        <Button type="submit" variant="primary" disabled={busy || record === null || name.trim() === ""}>{busy ? copy.working : copy.save}</Button>
+        <Button type="submit" variant="primary" disabled={busy || currentRecord === null || name.trim() === ""}>{busy ? copy.working : copy.save}</Button>
       </div>
     </form>
   </ContentDialog>;

@@ -1,6 +1,6 @@
 # N5 rework plan — unified library and acquisition producers
 
-> Document version: 1.12.0
+> Document version: 1.13.0
 > Status: Accepted
 > Scope: Implementation direction for the N5 material-management rework, within the accepted N5 scope
 > Updated: 2026-10-09
@@ -173,9 +173,12 @@ implementation. The new protocol faces are implementation baselines, not frozen 
 | Selected download | [Library download v0.1](../protocols/library-download-v0.1.md): durable selected-file intent, acknowledged delivery, independent checks, stable replacement and rollback, explicit legacy-copy choice | Real transport cancellation, legacy-copy choice and real-material UI review |
 | One library | [Library view v0.1](../protocols/library-view-v0.1.md): provider join, multiple memberships, physical presence, source/status filters, pagination and verified content reconciliation | Real migration-collection and human UI review; general production hash admission remains separate |
 | Selected material destination | [Selection drafts v0.1](../protocols/recipe-selection-draft-v0.1.md): durable reference collections, append, view/rename/remove references, separate production store | Final Recipe design/promotion deferred until the post-N5 production loop |
-| Selected-file removal | [Library maintenance v0.1](../protocols/library-maintenance-v0.1.md): file/reference preview, durable independent results, retained catalog/copy/draft identities, cancellation and inspect-required restart | Explicit inspection resolution for interrupted tasks; human UI/real-material review; record removal remains a separate unimplemented action |
+| File intake | [Library intake v0.1](../protocols/library-intake-v0.1.md): retain ordinary files and original ZIPs, expand member directories, keep failed-expansion issues visible | Real BOOTH ZIPs, migration folders and human UI review |
+| Local metadata and records | [Entry metadata v0.1](../protocols/library-entry-metadata-v0.1.md) and [local records v0.1](../protocols/library-records-v0.1.md): official ID/link lookup, manual name/private thumbnail and local-only removal with retained files/references | Real official lookup, thumbnail rendering and human UI review; third-party search deferred |
+| Selected-file removal | [Library maintenance v0.1](../protocols/library-maintenance-v0.1.md): file/reference preview, durable independent results, cancellation, restart discovery and explicit inspection closure without resuming deletion | Human UI and real-material/interruption review |
+| Dependency clues | Bounded description links persisted; default-off settings expose labeled observations and paginated full-name reverse lookup with accuracy limits | Fully loaded real description HTML and human UI review; comprehensive inference/confirmation is later work |
 | Generated versions | Changed managed originals mark retained VPM copies superseded; current production resolution excludes those outputs; library exposes old/current counts | Explicit regeneration/version allocation deferred after N5, subject to production design; old generator remains compatible |
-| Maintenance and production | Existing frozen maintenance and production paths retained; dedicated relink removed from scope by the later user ruling | Source supplementation and local-record removal remain N5 work; generated-version selection and production integration are post-N5 work |
+| Maintenance and production | Existing frozen maintenance and production paths retained; dedicated relink removed from scope by the later user ruling | Generated-version selection, Recipe design and production integration are post-N5 work |
 
 Checks cover Renderer and Electron TypeScript, runtime wire guards, schema vectors, Gateway
 consumer routing, Rust domain/ledger/provider behavior and four-language copy. Synthetic cases
@@ -271,8 +274,31 @@ Interrupted file removal now has explicit discovery, metadata inspection and dur
 remaining files are retained, absence does not become a claimed deletion, and a fresh deletion
 needs a new preview/selection. ZIP members and verified migrated files are selectable from their
 product card. Acquisition/wire/contract/typed-port and 26 Chromium interaction checks passed;
-real-material and human review remain pending. The dependency settings still need implementation;
-neither the existing lookup port nor this plan establishes a finished reverse-lookup interaction.
+real-material and human review remain pending.
+
+The settings page now offers **Dependency clues and reverse lookup**, off by default. Enabling it
+first explains that links may be promotional or unrelated, authors may omit links, and missing
+results do not prove missing dependencies/compatible items. Product menus show all recorded
+observations with unconfirmed/confirmed-link-target labels; a known target is not a compatibility
+verdict. The library's reverse-lookup entry and each observation's name action reuse the frozen
+`dependencies.lookup` rule: full names with ASCII case folding, no fuzzy or product-title inference,
+local recorded observations only, 50-result pages. Results open the declaring product's detail.
+Turning the setting off closes query dialogs, hides their actions and discards late replies. Two
+preference tests and 18 isolated Chromium checks passed using the actual library/settings components
+and synthetic typed Gateway records; they do not establish real-description or human UI acceptance.
+
+Follow-up checks align the desktop dependency reader with the current frozen v0.6 query envelope;
+the v0.5 dependency word faces and matching rule remain unchanged. Both current vector files are
+consumed directly by the desktop test. Another 15 isolated Chromium checks exercise source lookup,
+private thumbnail references, independent same-name entry edits, revision conflicts, selected record
+removal and receipt recovery without repeated mutations. Source switching invalidates the previous
+form until the selected entry has loaded. Real account/material and human review remain required.
+
+The combined synthetic regression passed `pnpm check` (205 contract, 48 provider and 1116 desktop
+tests, type checks, production build, Gateway/i18n/contrast/leak checks) and the full acquisition,
+BDL, orchestrator and provider-host Rust test suites. Historical store tests now expect the current
+009 migration fence while retaining their old-row, frozen vocabulary and future-format refusal
+assertions. These checks do not replace the real-account/material and human UI acceptance above.
 
 ### Content revisions and VPM regeneration proposal — deferred after N5
 
@@ -400,6 +426,8 @@ D6 parser relocation remains later cleanup, not a prerequisite for usable mainte
 
 ## Document changelog
 
+- 1.13.0 (2026-10-09): implement default-off dependency clues and paginated full-name reverse lookup, explain coverage limits and refresh implemented maintenance/intake rows.
+
 - 1.12.0 (2026-10-09): complete explicit interrupted-removal inspection/closure and include ZIP members and verified local files in product deletion previews.
 
 - 1.11.0 (2026-10-09): implement local-only import-record removal with durable receipts and retained files/references/account ownership.
@@ -413,8 +441,3 @@ D6 parser relocation remains later cleanup, not a prerequisite for usable mainte
 - 1.6.0 (2026-10-08): apply missing-file/source user refinements and record concrete VPM regeneration, dependency evidence, record-removal and production-integration discussion proposals.
 - 1.5.0 (2026-10-08): implement selected-file removal and retained generated-version facts, record remaining regeneration/Recipe choices and reconcile PR #61.
 - 1.4.0 (2026-10-08): record the sequential takeover baseline, replacement/retention and draft rulings, independent library facts and remaining acceptance gaps.
-
-
-
-- 1.3.0 (2026-10-03): VPM import experimental option + D2 v1 (adoption correlation +
-  importedArtifacts aggregate); full D2 aggregation still pending.
