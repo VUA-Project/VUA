@@ -13,7 +13,7 @@ function removalError(code: string | null): string {
     file_remove_failed: copy.fileRemoveFailed, copy_changed: copy.copyChanged, outside_managed_root: copy.outsideRoot };
   return code === null ? copy.failed : reasons[code] ?? copy.failed;
 }
-export interface RemovalDialogTarget { readonly target: LibraryTargetV01; readonly title: string }
+export interface RemovalDialogTarget { readonly target: LibraryTargetV01; readonly title: string; readonly copyIds?: readonly string[] }
 
 export function RemoveFilesDialog({ item, onClose, onChanged }: {
   item: RemovalDialogTarget; onClose: () => void; onChanged: () => void;
@@ -29,14 +29,15 @@ export function RemoveFilesDialog({ item, onClose, onChanged }: {
   const [submitting, setSubmitting] = useState(false);
   const currentIntent = useRef<string | null>(null);
   const changed = useRef(onChanged);
+  const scope = item.copyIds?.join("|");
   useEffect(() => { changed.current = onChanged; }, [onChanged]);
   useEffect(() => {
     let active = true; setLoading(true); setFeedback(null); setInventory(null); setPreview(null);
-    void libraryMaintenance.preview(item.target).then((value) => {
+    void libraryMaintenance.preview(item.target, item.copyIds).then((value) => {
       if (active) { setInventory(value); setSelection(new Set(value.files.map((file) => file.copyId))); }
     }).catch(() => { if (active) setFeedback(copy.loadFailed); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [item.target.kind, item.target.id, refresh]);
+  }, [item.target.kind, item.target.id, scope, refresh]);
   const selected = [...selection].sort().join("|");
   useEffect(() => {
     let active = true; setPreview(null);

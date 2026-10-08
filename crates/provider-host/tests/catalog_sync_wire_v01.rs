@@ -196,7 +196,7 @@ fn run_frames(world: &World, requests: &[Value]) -> Vec<Value> {
         .iter()
         .enumerate()
         .map(|(index, request)| {
-            let is_query = matches!(request["method"].as_str(), Some("catalog.librarySyncStatus" | "catalog.list" | "catalog.status" | "catalog.detail"));
+            let is_query = matches!(request["method"].as_str(), Some("catalog.librarySyncStatus" | "catalog.list" | "catalog.status" | "catalog.detail" | "dependencies.listByProduct"));
             let mut payload = json!({
                 "contractVersion": "0.1", "requestId": format!("req-{index}"), "correlationId": format!("corr-{index}"),
                 "kind": if is_query { "query" } else { "command" }, "method": request["method"], "params": request["params"],
@@ -216,7 +216,7 @@ fn run_frames(world: &World, requests: &[Value]) -> Vec<Value> {
         warehouse_root: world.base.join("warehouse"),
         global_default: ArtifactMode::UseOriginalUnitypackage,
         executor: None,
-        dependencies_queries: None,
+        dependencies_queries: Some(Arc::new(vua_orchestrator::BdlDependencyQueries::new(world.bdl.clone()))),
     };
     let mut output = Vec::new();
     run_provider_host_with_services(
@@ -555,4 +555,92 @@ fn v02_requests_carry_library_type_into_observations() {
     assert_eq!(value["result"]["total"], json!(2));
     let entries = value["result"]["entries"].as_array().unwrap();
     assert!(entries.iter().all(|e| e["libraryType"] == json!("bought")));
+}
+
+fn product_page_request(id: &str, description: &str) -> Value {
+    ingest_request(json!({
+        "schemaVersion": "0.2",
+        "sourceUrl": format!("https://booth.pm/items/{id}"),
+        "fetchedAt": "2026-10-08T10:00:00Z",
+        "html": format!(r#"<div id="items" data-product-id="{id}"><article>
+            <div class="summary"><h2>Synthetic item {id}</h2></div>
+            <div class="js-market-item-detail-description description">{description}</div>
+            </article><aside><a href="https://booth.pm/items/903">Related item</a></aside></div>"#),
+    }))
+}
+
+#[test]
+fn product_description_links_persist_for_a_new_source_and_survive_restart() {
+    let world = make_world("description-new-source");
+    let frames = run_frames(&world, &[product_page_request("901", r#"
+        <a href='https://sample.booth.pm/en/items/902'><span>lilToon</span></a>
+        <a href="https://booth.pm/items/902">Same target again</a>
+        <a href="https://booth.pm/items/901">Self link</a>
+        <a href="https://booth.pm.invalid/items/904">Unrelated host</a>
+    "#)]);
+    assert_eq!(frames[0]["payload"]["ok"], true, "{}", frames[0]);
+    assert_eq!(frames[0]["payload"]["value"]["upsertedCount"], 1);
+
+    let reopened = BdlStore::open(world.base.join("bdl/bdl.db")).unwrap();
+    let observations = reopened.dependency_observations("booth:901").unwrap();
+    assert_eq!(observations.len(), 1, "only the unique description target belongs here");
+    let observation = &observations[0];
+    assert_eq!(observation.dep_name, "lilToon");
+    assert_eq!(observation.dep_kind, "shader");
+    assert_eq!(observation.extraction_method, "link");
+    assert_eq!(observation.source_span, "description_link");
+    assert_eq!(observation.raw_quote, "https://sample.booth.pm/en/items/902");
+    assert_eq!(observation.observed_at, "2026-10-08T10:00:00Z");
+    assert!(observation.content_hash.as_ref().unwrap().starts_with("sha256:"));
+    assert!(observation.resolved_ref_product_id.is_none());
+    assert!(!observation.confirmed_by_human);
+}
+
+#[test]
+fn known_description_targets_reach_the_dependency_query_as_unconfirmed_clues() {
+    let world = make_world("description-known-target");
+    let frames = run_frames(&world, &[
+        product_page_request("902", ""),
+        product_page_request("901", r#"<a href="https://booth.pm/ja/items/902">Sample base</a>"#),
+        json!({"method":"dependencies.listByProduct", "params":{"productId":"booth:901"}}),
+    ]);
+    assert_eq!(frames[1]["payload"]["ok"], true, "{}", frames[1]);
+    assert_eq!(frames[2]["payload"]["ok"], true, "{}", frames[2]);
+    let observations = world.bdl.dependency_observations("booth:901").unwrap();
+    assert_eq!(observations.len(), 1);
+    assert_eq!(observations[0].dep_kind, "other");
+    assert_eq!(observations[0].resolved_ref_product_id.as_deref(), Some("booth:902"));
+    assert_eq!(observations[0].resolution_evidence.as_ref().unwrap().len(), 1);
+    assert!(!observations[0].confirmed_by_human);
+    let served = frames[2]["payload"]["value"]["result"]["observations"].as_array().unwrap();
+    assert_eq!(served.len(), 1);
+    assert_eq!(served[0]["depName"], "Sample base");
+}
+
+#[test]
+fn dependency_storage_failure_is_returned_instead_of_an_empty_success() {
+    let world = make_world("description-store-failure");
+    rusqlite::Connection::open(world.base.join("bdl/bdl.db")).unwrap().execute_batch(
+        "CREATE TRIGGER synthetic_dependency_rejection BEFORE INSERT ON dependency_observations BEGIN SELECT RAISE(FAIL, 'synthetic dependency rejection'); END;"
+    ).unwrap();
+    let frames = run_frames(&world, &[product_page_request("901",
+        r#"<a href="https://booth.pm/items/902">Sample base</a>"#,
+    )]);
+    assert_eq!(frames[0]["payload"]["ok"], false);
+    assert_eq!(frames[0]["payload"]["error"]["code"], "vua.catalog.store_failed");
+    assert!(world.bdl.catalog_detail("booth:901").unwrap().is_some());
+    assert!(world.bdl.dependency_observations("booth:901").unwrap().is_empty());
+}
+
+#[test]
+fn rejected_source_products_do_not_attempt_dependency_writes() {
+    let world = make_world("description-source-failure");
+    rusqlite::Connection::open(world.base.join("bdl/bdl.db")).unwrap().execute_batch(
+        "CREATE TRIGGER synthetic_source_rejection BEFORE INSERT ON products BEGIN SELECT RAISE(FAIL, 'synthetic source rejection'); END;"
+    ).unwrap();
+    let frames = run_frames(&world, &[product_page_request("901",
+        r#"<a href="https://booth.pm/items/902">Sample base</a>"#,
+    )]);
+    assert_eq!(frames[0]["payload"]["ok"], false);
+    assert!(world.bdl.dependency_observations_all().unwrap().is_empty());
 }

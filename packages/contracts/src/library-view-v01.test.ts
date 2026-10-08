@@ -17,8 +17,22 @@ describe("library-view v0.1 consumers", () => {
   }
   it("accepts actual multi-source and physical-copy evidence without paths", () => {
     expect(isLibraryListV01(vector("list.response"))).toBe(true);
+    expect(isLibraryListV01(vector("local-source.response"))).toBe(true);
     expect(isLibraryProductFilesV01(vector("files.response"))).toBe(true);
     expect(isLibraryProductFilesV01(vector("invalid-path.response"))).toBe(false);
+  });
+  it("keeps source suggestions separate and validates each card's file scope", () => {
+    const list = vector("local-source.response");
+    const rows = list.items as Record<string, unknown>[];
+    const local = rows[1]!;
+    (local.sourceMatch as Record<string, unknown>).content = "equal";
+    expect(isLibraryListV01(list)).toBe(false);
+    (local.sourceMatch as Record<string, unknown>).content = "unverified";
+    local.copyIds = ["cpy-imported", "cpy-other-card"];
+    expect(isLibraryListV01(list)).toBe(false);
+    local.copyIds = ["cpy-imported"];
+    (local.sourceMatch as Record<string, unknown>).basis = "confirmed_by_title";
+    expect(isLibraryListV01(list)).toBe(false);
   });
   it("rejects inflated counts and unbound managed targets", () => {
     const list = vector("list.response"); const rows = list.items as Record<string, unknown>[];

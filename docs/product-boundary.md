@@ -1,7 +1,7 @@
 # VUA product boundary
 
 
-> Document version: 2.13.0
+> Document version: 2.15.0
 > Status: Accepted
 > Scope: Entire VUA product
 > Updated: 2026-10-08
@@ -149,6 +149,34 @@ through re-download. Changed originals retain old generated VPM copies as supers
 the current original needs regeneration. Saved references are not rewritten automatically.
 The [maintenance ruling](decisions/library-file-maintenance.md) owns these behaviors.
 
+**Missing files and source supplementation (user ruling, 2026-10-08).** A dedicated missing-file
+relink feature is no longer required. Missing BOOTH-managed files are restored through explicit
+library re-download. A missing upstream download remains unavailable rather than a successful
+restore. This does not alter the retained-record/reference maintenance ruling.
+For files needing provenance, the user may provide a BOOTH ID or product URL and VUA retrieves
+the available official metadata. When the official product metadata is unavailable, support
+third-party metadata search and minimal manual supplementation as alternative routes. Keep the
+origin of supplemented information and remember the user's association; neither route establishes
+account entitlement or production compatibility. Local import still does not require an ID.
+Third-party providers and the exact correction fields/interaction remain to be designed.
+
+**Migration reconciliation and N5 scope (user ruling, 2026-10-08).** Synchronizing the BOOTH
+library also attempts to match already imported local material, including a batch migrated from
+another manager. Product identity, name and image are not content identity: verified equal
+fingerprints combine duplicate presentation, while different content keeps independent cards
+even with identical product metadata. Without official reference bytes, keep the account and
+local cards separate until verification. Names/IDs can suggest a source but never establish byte
+equality or a user-confirmed association. Sync does not download the whole account for comparison.
+Physical copies and saved references are retained when presentation is combined.
+
+N5 record removal first covers local imports; hiding account products is later work. Dependency
+discovery may initially use author-description links, with persistence and honest unconfirmed
+evidence required; exhaustive classification and absent-link corner cases are not this pass.
+Final Recipe design, VPM revision/regeneration mechanisms and actual library-to-production
+acceptance move after N5 and are designed with the N3/N4 production loop. Their necessity remains
+subject to that design. Existing file-retention and reference-preservation rulings still apply;
+this deferral neither erases old generated output nor retargets existing references.
+
 **BDL.** The existing base storage, asset identity, source correlation, and catalog capabilities
 are retained. Automatic compatibility-evidence collection is an experimental feature, off by
 default; when enabled it tries to collect evidence from the user's actual BOOTH browsing and Unity
@@ -195,8 +223,8 @@ resolved:
   preview, and protection need implementation verification.
 - **Dependency degradation path (undecided):** how dependency completion is accomplished when
   automatic forensics is off or resolution fails still needs a concrete flow.
-- **BDL human correction (undecided):** the viewing/correction direction is retained; concrete
-  permissions and interaction are not yet frozen.
+- **BDL human correction (undecided):** the source-supplementation routes above are decided;
+  third-party providers, concrete correction fields, permissions and interaction are not frozen.
 
 ## Extension and integration trust boundary
 
@@ -513,6 +541,8 @@ plugin execution and a marketplace still require their separately accepted secur
 
 ## Document changelog
 
+- 2.15.0 (2026-10-08): add content-based migration reconciliation and narrow N5 to local record removal and persisted link clues; defer final Recipe/VPM and production-loop work.
+- 2.14.0 (2026-10-08): replace the missing-file relink requirement with explicit BOOTH re-download and record official-ID, third-party and manual source-supplementation routes.
 - 2.13.0 (2026-10-08): preserve records/references after local-file removal and retain superseded VPM output after changed managed originals; link the maintenance ruling.
 - 2.12.0 (2026-10-08): retain all downloaded formats with separate production qualification and allow provisional Recipe selection drafts without deciding the production format.
 - 2.11.0 (2026-10-07): record the user ruling that managed library re-downloads replace the existing selected file while preserving entry identity; link the owning replacement decision.
@@ -524,15 +554,5 @@ plugin execution and a marketplace still require their separately accepted secur
 - 2.8.0 (2026-10-03): bound the first play release to desktop/PICO onboarding, a desktop guide overlay and ZIP distribution; retain wider N1 work for later deliveries.
 - 2.7.0 (2026-10-02): make CLI-led official acquisition first in every region and identify the actual downloaded edition; mirrors are optional backups.
 
-- 2.6.0 (2026-10-02): accept the f1/c1 development pair and global → China → Hub deployment order while retaining actual identities.
-
-- 2.5.0 (2026-10-02): adopt model-driven official-first headset routes, observable silent installs
-  and N1 activation/network guidance; make WMR first-delivery support conditional on investigation.
-
-- 2.4.1 (2026-10-02): state the first-delivery account exclusions at full strength (not "required")
-  and compress the active-delivery policy to boundary rulings, linking acceptance definitions to
-  the development outline; no scope change.
-- 2.4.0 (2026-10-01): select region-aware Unity/NoUnityCN source priority, a mirror switch and Hub fallback; authorize original-installer deployment with official CLI registration during N1 development.
-- 2.3.0 (2026-09-30): select official standalone Unity CLI installation with separate user licensing; Hub is optional.
 
 Earlier entries remain in Git history.

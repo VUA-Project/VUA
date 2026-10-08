@@ -1,6 +1,6 @@
 import { isLibraryListV01, isLibraryProductFilesV01, type LibraryListParamsV01 } from "@vua/contracts";
 import type { WarehouseEntry } from "./acquire-port.ts";
-import type { CatalogListView } from "./catalog-browser-port.ts";
+import type { CatalogListView, CatalogProductSummary } from "./catalog-browser-port.ts";
 import { projectSummary } from "./catalog-browser-live.ts";
 import { projectEntry } from "./live-acquire-port.ts";
 import { createGatewayClient, type GatewayClient } from "./gateway-client.ts";
@@ -16,6 +16,8 @@ export interface LibraryCardFacts {
   readonly storage: LibraryStorageFacts;
   readonly sources: readonly ("bought" | "gifts" | "free_downloads")[];
   readonly operation: { readonly taskId: string; readonly state: string; readonly inspectRequired: boolean } | null;
+  readonly copyIds?: readonly string[];
+  readonly sourceMatch?: { readonly product: CatalogProductSummary; readonly basis: "mapping" | "product_id" | "name"; readonly content: "unverified" | "different" };
 }
 export interface LibraryPageView {
   readonly catalog: CatalogListView;
@@ -44,13 +46,18 @@ export function createLiveLibraryBrowserPort(client: GatewayClient): LibraryBrow
           const product = projectSummary(row.product);
           if (product === null) throw new Error("library_product_invalid");
           items.push(product);
-          facts.set(product.productId, { storage: row.storage, sources: row.sources, operation: row.operation === null ? null : {
+          facts.set(product.productId, { storage: row.storage, sources: row.sources, ...(row.copyIds === undefined ? {} : { copyIds: row.copyIds }), operation: row.operation === null ? null : {
             taskId: row.operation.taskId, state: row.operation.state, inspectRequired: row.operation.recoveryDisposition === "inspect_required",
           } });
         } else {
           const entry = projectEntry(row.entry);
           if (entry === null) throw new Error("library_entry_invalid");
-          localEntries.push(entry); facts.set(entry.warehouseItemId, { storage: row.storage, sources: [], operation: null });
+          const sourceProduct = row.sourceMatch === undefined ? undefined : projectSummary(row.sourceMatch.product);
+          if (sourceProduct === null) throw new Error("library_source_invalid");
+          localEntries.push(entry); facts.set(entry.warehouseItemId, { storage: row.storage, sources: row.sourceMatch?.sources ?? [], operation: null,
+            ...(row.copyIds === undefined ? {} : { copyIds: row.copyIds }),
+            ...(row.sourceMatch === undefined || sourceProduct === undefined ? {} : { sourceMatch: { product: sourceProduct, basis: row.sourceMatch.basis, content: row.sourceMatch.content } }),
+          });
         }
       }
       return { catalog: { schemaVersion: 1, kind: "results", items, total: response.value.total,

@@ -155,6 +155,7 @@ pub struct LibraryDownloadService {
     recovered: HashSet<String>,
     mutations: Mutex<()>,
     copy_writes: Arc<Mutex<()>>,
+    pub(crate) library_content_checks: Arc<Mutex<crate::library_reconcile::ContentChecks>>,
 }
 impl LibraryDownloadService {
     pub fn new(
@@ -172,6 +173,7 @@ impl LibraryDownloadService {
             })
             .map(|task| task.task_id)
             .collect();
+        let library_content_checks = crate::library_reconcile::ContentChecks::restore(&store)?;
         Ok(Self {
             store,
             bdl,
@@ -181,11 +183,79 @@ impl LibraryDownloadService {
             recovered,
             mutations: Mutex::new(()),
             copy_writes: Arc::new(Mutex::new(())),
+            library_content_checks: Arc::new(Mutex::new(library_content_checks)),
         })
     }
 
     pub(crate) fn copy_write_lock(&self) -> Arc<Mutex<()>> {
         self.copy_writes.clone()
+    }
+
+    /// An acquisition continuation, accepted before hashing. Listing queries
+    /// consume its proofs and never perform long file reads themselves.
+    pub fn reconcile_library_sources(
+        &self,
+        trigger_id: &str,
+    ) -> Result<Option<String>, LibraryDownloadError> {
+        let _admission = self.mutations.lock().expect("library mutations poisoned");
+        let operation = crate::library_reconcile::OPERATION;
+        if let Some(prior) = self
+            .store
+            .idempotent_tasks(operation)?
+            .into_iter()
+            .find(|t| t.idempotency_key == trigger_id)
+        {
+            return Ok(Some(prior.task_id));
+        }
+        let copies = self.bdl.library_copy_evidence()?;
+        let reference_hashes: HashSet<_> = copies
+            .iter()
+            .filter(|copy| copy.downloadable_id.is_some() && copy.copy.role == CopyRole::Original)
+            .map(|copy| copy.copy.artifact_sha256.as_str())
+            .collect();
+        let candidate_ids: HashSet<_> = copies
+            .iter()
+            .filter(|copy| {
+                copy.downloadable_id.is_none()
+                    && copy.copy.role == CopyRole::Original
+                    && reference_hashes.contains(copy.copy.artifact_sha256.as_str())
+            })
+            .map(|copy| copy.copy.copy_id.clone())
+            .collect();
+        let candidates: Vec<_> = copies
+            .into_iter()
+            .filter(|copy| candidate_ids.contains(&copy.copy.copy_id))
+            .collect();
+        if candidates.is_empty() {
+            return Ok(None);
+        }
+        let fingerprint = serde_json::to_string(
+            &candidates
+                .iter()
+                .map(|c| (&c.copy.copy_id, &c.copy.artifact_sha256))
+                .collect::<Vec<_>>(),
+        )?;
+        let accepted = self
+            .runtime
+            .submit_idempotent(
+                SubmitRequest {
+                    correlation_id: Some(format!("library-reconcile:{trigger_id}")),
+                    timeout: None,
+                    job: crate::library_reconcile::verification_job(
+                        candidates,
+                        self.warehouse_root.clone(),
+                        self.bdl.clone(),
+                        self.copy_writes.clone(),
+                        self.library_content_checks.clone(),
+                        trigger_id.to_owned(),
+                    ),
+                },
+                operation,
+                trigger_id,
+                &fingerprint,
+            )
+            .map_err(|_| LibraryDownloadError("store_failed"))?;
+        Ok(Some(accepted.task_id))
     }
 
     pub(crate) fn has_active_download(

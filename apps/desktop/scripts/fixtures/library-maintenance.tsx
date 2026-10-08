@@ -16,6 +16,7 @@ const files: LibraryRemovalPreviewV01["files"] = [
 ];
 type Mode = "normal" | "lost_receipt" | "preview_drift" | "reference_failure" | "recovered";
 let mode: Mode = "normal";
+let cardScope: readonly string[] | undefined;
 let accepted: LibraryRemoveFilesParamsV01 | null = null;
 let latest: LibraryRemovalSnapshotV01 | null = null;
 let commandCalls: LibraryRemoveFilesParamsV01[] = [];
@@ -88,10 +89,11 @@ async function click(text: string) { button(text).click(); await pause(); }
 function Case() {
   const [open, setOpen] = useState(false);
   return <><p>{fixtureStrings.libraryMaintenanceProbeTitle}</p><button id="opener" onClick={() => setOpen(true)}>open synthetic removal</button>
-    {open ? <RemoveFilesDialog item={{ target, title: "Synthetic material" }} onClose={() => setOpen(false)} onChanged={() => { refreshes++; }} /> : null}</>;
+    {open ? <RemoveFilesDialog item={{ target, title: "Synthetic material", ...(cardScope === undefined ? {} : { copyIds: cardScope }) }} onClose={() => setOpen(false)} onChanged={() => { refreshes++; }} /> : null}</>;
 }
 let generation = 0;
-async function open(nextMode: Mode = "normal") {
+async function open(nextMode: Mode = "normal", scope?: readonly string[]) {
+  cardScope = scope;
   mode = nextMode; accepted = null; latest = null; commandCalls = []; starts = 0; recoveredReceipt = false; refreshes = 0; cancellation = null;
   root.render(<StrictMode><Case key={++generation} /></StrictMode>); await pause();
   document.getElementById("opener")!.focus(); await click("open synthetic removal");
@@ -99,6 +101,12 @@ async function open(nextMode: Mode = "normal") {
   else await until(() => !button(copy.confirm).disabled, "preview ready");
 }
 async function run() {
+  await open("normal", ["cpy-original"]);
+  check(document.querySelectorAll('input[type="checkbox"]').length === 1, "a card opens only its displayed file scope");
+  await click(copy.selectAll); await until(() => !button(copy.confirm).disabled, "scoped all-file preview ready");
+  check(document.querySelectorAll('input[type="checkbox"]:checked').length === 1, "select all cannot expand into another card's files");
+  await click(copy.confirm);
+  check(commandCalls.length === 1 && JSON.stringify(commandCalls[0]!.copyIds) === JSON.stringify(["cpy-original"]), "deletion retains the independent card's scope");
   await open();
   check(commandCalls.length === 0, "opening the preview never starts deletion");
   check(document.querySelectorAll('input[type="checkbox"]:checked').length === 2, "all observed copies initially selected");

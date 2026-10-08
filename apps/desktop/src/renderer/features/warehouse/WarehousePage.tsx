@@ -140,6 +140,10 @@ function LibraryBadges({ facts }: { facts: LibraryCardFacts | undefined }) {
     <Badge tone={facts.storage.state === "present" || facts.storage.state === "cloud_only" ? "neutral" : "warning"}>
       {copy.libraryState[facts.storage.state]}
     </Badge>
+    {facts.sourceMatch === undefined ? null : <>
+      {facts.sourceMatch.basis !== "mapping" ? <Badge tone="neutral">{copy.libraryState.sourceSuggested}</Badge> : null}
+      <Badge tone="neutral">{facts.sourceMatch.content === "different" ? copy.libraryState.contentDifferent : copy.libraryState.contentUnverified}</Badge>
+    </>}
     {facts.storage.supersededGeneratedCopies > 0 ? <Badge tone="neutral">{copy.removeFiles.oldVersion}</Badge> : null}
     {facts.storage.supersededGeneratedCopies > 0 && facts.storage.currentGeneratedCopies === 0 ? <Badge tone="warning">{copy.removeFiles.regenerate}</Badge> : null}
     {facts.operation?.inspectRequired ? <Badge tone="warning">{copy.libraryState.inspectRequired}</Badge>
@@ -963,6 +967,9 @@ export function WarehousePage({
     return () => window.removeEventListener("focus", refresh);
   }, []);
   useEffect(() => window.vua?.events.subscribe((event) => {
+    if ("taskId" in event && typeof event.payload === "object" && event.payload !== null && "operation" in event.payload && event.payload.operation === "library.reconcileSources") {
+      registerTaskIdentity(event.taskId, { title: copy.libraryState.reconciliationTitle, originPage: "warehouse", notifyOnComplete: true });
+    }
     if (event.kind === "task.completed" || event.kind === "task.persistenceFailed") {
       setReloadKey((key) => key + 1); setDetailReloadKey((key) => key + 1);
     }
@@ -1120,7 +1127,8 @@ export function WarehousePage({
               id: "deleteLocal",
               label: copy.cardMenu.deleteLocal,
               onSelect: () => {
-                setRemovalTarget({ target: { kind: "product", id: item.productId }, title: item.title ?? item.productId });
+                setRemovalTarget({ target: { kind: "product", id: item.productId }, title: item.title ?? item.productId,
+                  ...(libraryPage?.facts.get(item.productId)?.copyIds === undefined ? {} : { copyIds: libraryPage.facts.get(item.productId)!.copyIds! }) });
               },
             }]
           : []),
@@ -1479,13 +1487,14 @@ export function WarehousePage({
                         )
                       )
                   }
-                  {source !== "gifts" && source !== "bought" && source !== "free"
+                  {dataSource === "live" || source !== "gifts" && source !== "bought" && source !== "free"
                     ? localCards.map((card) => (
                         <div key={card.key}>
                         <LibraryBadges facts={libraryPage?.facts.get(card.entry.warehouseItemId)} />
                         <ArtifactCard
                           key={card.key}
                           card={card}
+                          source={libraryPage?.facts.get(card.entry.warehouseItemId)?.sourceMatch?.product}
                           selected={selectedLocalId === card.entry.warehouseItemId}
                           onOpen={() => {
                             setSelectedId(null);
@@ -1520,7 +1529,8 @@ export function WarehousePage({
                                   },
                                 },
                                 ...(dataSource === "live" ? [{ id: "removeFiles", label: copy.cardMenu.deleteLocal,
-                                  onSelect: () => setRemovalTarget({ target: { kind: "entry", id: card.entry.warehouseItemId }, title: card.entry.displayName }),
+                                  onSelect: () => setRemovalTarget({ target: { kind: "entry", id: card.entry.warehouseItemId }, title: card.entry.displayName,
+                                    ...(libraryPage?.facts.get(card.entry.warehouseItemId)?.copyIds === undefined ? {} : { copyIds: libraryPage.facts.get(card.entry.warehouseItemId)!.copyIds! }) }),
                                 }] : []),
                               ],
                             });

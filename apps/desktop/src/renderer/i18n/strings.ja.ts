@@ -1351,6 +1351,8 @@ rolled_back: "ロールバック済み",
   warehouse: {
     importedBadge: "インポート済み",
     libraryState: {
+      sourceSuggested: "入手元の候補", contentUnverified: "内容未確認", contentDifferent: "ダウンロード済みファイルと異なる",
+      reconciliationTitle: "重複素材の内容を確認",
       cloud_only: "アカウント内", present: "ローカルファイルあり", partial: "一部のファイルが不在", missing: "ファイルが不在",
       changed: "ファイルが変更済み", unreadable: "ファイルを読み取れません", downloading: "ダウンロード中", downloadFailed: "前回のダウンロード失敗",
       downloadPartial: "一部のダウンロード未完了", inspectRequired: "確認が必要", attention: "対応が必要",
@@ -1466,7 +1468,7 @@ rolled_back: "ロールバック済み",
       progressHint: "処理済み: {pages} ページ · 保存: {count} 件 · スキップ: {rejected} 件",
       readFailedHint: "同期状態を取得できません。再試行しています…",
       signInRequired: "先にBOOTHへログインしてから同期してください。",
-      completedHint: "ライブラリ同期が完了しました。",
+      completedHint: "アカウント一覧の同期が完了しました。内容を確認した後、重複項目をまとめます。",
       failedHint: "ライブラリ同期に失敗しました。ボタンから再試行できます。失敗の詳細はタスク記録にあります。",
       taskTitle: "BOOTHライブラリ同期",
       action: "BOOTHライブラリを同期",
@@ -1478,7 +1480,7 @@ rolled_back: "ロールバック済み",
       signInAction: "ログインページを開く",
       syncTitle: "BOOTHライブラリを同期",
       syncDescription:
-        "カタログは空です。同期すると自分のBOOTHアカウントで利用可能な素材を一覧表示します。選択するまでファイルはダウンロードされません。",
+        "アカウントの素材を同期し、インポート済みのローカルファイルとの一致を確認します。内容が一致した重複項目をまとめます。選択するまでファイルはダウンロードされません。",
     },
     subtitle: "商品情報と、この PC に保存した素材を管理します。BOOTH の商品ページはアプリ内またはブラウザーで開けます。購入にはご自身のアカウントを使用してください。",
     searchPlaceholder: "タイトルまたは商品 ID で検索",
@@ -3184,7 +3186,7 @@ rolled_back: "ロールバック済み",
    *  このビューでの透過表示は後続スライス。 */
   errors: {
     recipe: { draftFailed: "レシピの下書きの操作を完了できませんでした。" },
-    library: { downloadFailed: "ダウンロードを完了できませんでした。既存のファイルは保持されます。", removalFailed: "ローカルファイルを削除できませんでした。状態を更新してタスクを確認してください。" },
+    library: { downloadFailed: "ダウンロードを完了できませんでした。既存のファイルは保持されます。", removalFailed: "ローカルファイルを削除できませんでした。状態を更新してタスクを確認してください。", reconciliationFailed: "素材の内容を確認できませんでした。タスクを確認してから再同期してください。" },
     catalog: {
       syncFailed: "同期を完了できませんでした。保存済みの項目は保持されています。タスク記録をご確認ください。",
       productNotFound:

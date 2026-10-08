@@ -538,6 +538,10 @@
             "storage": {
               "$ref": "#/$defs/storage"
             },
+            "copyIds": {
+              "type": "array", "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1 }
+            },
             "operation": {
               "anyOf": [
                 {
@@ -564,6 +568,20 @@
             },
             "entry": {
               "$ref": "#/$defs/entry"
+            },
+            "copyIds": {
+              "type": "array", "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "sourceMatch": {
+              "type": "object", "additionalProperties": false,
+              "required": ["product", "sources", "basis", "content"],
+              "properties": {
+                "product": { "$ref": "#/$defs/productSummary" },
+                "sources": { "type": "array", "uniqueItems": true, "items": { "enum": ["bought", "gifts", "free_downloads"] } },
+                "basis": { "enum": ["mapping", "product_id", "name"] },
+                "content": { "enum": ["unverified", "different"] }
+              }
             },
             "storage": {
               "$ref": "#/$defs/storage"

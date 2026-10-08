@@ -1,10 +1,10 @@
 # N5 rework plan — unified library and acquisition producers
 
-> Document version: 1.5.0
+> Document version: 1.7.0
 > Status: Accepted
 > Scope: Implementation direction for the N5 material-management rework, within the accepted N5 scope
 > Updated: 2026-10-08
-> Authority: User direction of 2026-10-02 approving this plan's approach after the capability audit;
+> Authority: User direction of 2026-10-02 approving this plan's approach after the capability audit, with migration reconciliation and N5 scope refinements of 2026-10-08;
 > acceptance remains owned by the [N sequence](../development-outline.md), scope by the
 > [product boundary](../product-boundary.md). Input evidence: [capability audit](n5-capability-audit.md).
 
@@ -29,8 +29,10 @@ only. Everything account-related stays local and entitlement-respecting.
 
 **D1 — One library, account catalog as backbone.** The current split (catalog browser reading the
 always-empty `products` table vs. warehouse entry list reading local artifacts) becomes one library
-view: the account-synced catalog is the backbone, local artifacts attach as state. Local imports
-without provenance appear as "unknown source" entries in the same library. Two deliberate
+view: the account-synced catalog is the backbone, and verified equal local content can attach as
+state. A product ID is distinct from content identity: different or unverified local files stay
+in independent cards, even with the same title and image. Local imports without provenance appear
+as "unknown source" entries in the same library. Two deliberate
 deviations from the Steam reference: the "store" is BOOTH's own site in the isolated embedded
 browser (VUA never automates purchase/payment), and "cloud" always means the user's own account,
 never a VUA-operated service.
@@ -49,9 +51,12 @@ missing-files / local-import) + card grid (image, title, price badge, state badg
 + detail drawer (media, terms, known dependencies with suggestion-vs-confirmation, associated
 files, provenance, actions). Context menu equals a "⋯" menu with full keyboard access (APG
 patterns per the design standard); right-click is a shortcut, never the only entry. Menu actions:
-open source page, download/re-download, relink, correct source association, switch version,
-remove record (distinct from delete files; Recipe-reference effects explained), generate VPM,
-set artifact mode. Multi-select → "download selected" → per-item tasks in the notification center.
+open source page, download/re-download (also restores missing BOOTH files), supplement/correct
+source association, and remove a local-import record (distinct from delete files, with saved-reference
+effects explained). Account-product hiding is later work. Concrete generated-version selection,
+regeneration and final Recipe actions move after N5 with the production design; existing experimental
+controls do not establish that those features are required. Multi-select → "download selected" →
+per-item tasks in the notification center.
 
 **D4 — Library sync producer, thin edges.** A reader in the Electron remote-content module fetches
 account-library pages **inside the partition session** (cookies never leave Electron; no session
@@ -91,13 +96,22 @@ this feature, not a prerequisite of S1). The toggle controls only the producer; 
 import, and provenance supplementation never depend on it. No evidence renders as unknown;
 suggestions are never presented as confirmations.
 
-**D8 — Provenance search for unknown files.** User-initiated "find source": candidate generation
-from local clues (acquisition heuristics: archive name, inner filenames, README, package shape) →
-two-tier candidate sources (local account catalog first — this is why D4 precedes D8; BOOTH public
-search through the partition session second) → user confirms → correlation lands via the existing
-`record_artifact_mapping` write face (awaiting its first producer). Follows the ruling: as little
-as possible, as late as possible, never repeated once confirmed; a BOOTH ID is the user's
-statement, not VUA's certification.
+**D8 — Source supplementation (user refinement, 2026-10-08).** Normal account downloads already
+carry their source. For an unknown-source import, the user can supply a BOOTH ID or product URL
+and VUA retrieves available official metadata; selecting an existing account-catalog entry remains
+an equivalent route. Sync also attempts to match a migrated local collection using existing
+associations, unambiguous IDs/names and known inspected official file fingerprints. Only a verified
+content match combines duplicate presentation; names/IDs alone remain suggestions. A cloud-only
+product has no reference bytes, so the two cards remain separate until an authorized download
+provides them. Differing content remains independent; a partial folder match never discards its
+other files. The comparison does not download the whole account or delete physical duplicates.
+Unavailable official metadata has two alternatives: search third-party
+metadata candidates, or provide minimal metadata manually. Retain the BOOTH identity when known,
+the information source and the confirmed local association. Network failure, authentication/age
+gates and parsing failure must not be mislabeled as a delisted product. Public-page availability
+and the account's ability to download files are separate facts. The third-party provider and
+correction write contract still need design. Local use never requires completing a form first;
+confirmation is remembered and grants neither entitlement nor a compatibility verdict.
 
 **D9 — UI discipline.** Honest empty states (signed-out library shows a sign-in card, never seed
 data); refresh keeps old results; 700 ms busy-token rule; notification-center semantics; standard
@@ -140,8 +154,8 @@ catalog.list entries carry `importedArtifacts` (bdl-queries v0.6) with an "Impor
 card badge. Full D2 (unified entries joining local-only materials) still rides the
 aggregate query slice.
 | S2 Selective download | D5 initiation method; download → auto-adopt → state transition; duplicate-decision dialog | E1, E2, A2 |
-| S3 Library management | Unified menu (relink, correct source, remove-record vs delete-files with Recipe effects); version chips and switching; local-import entries as unknown-source | B4, B5, E2 |
-| S4 Inspection & dependencies | Wire `ArtifactInspector` as the single intake gate; dependency-observation ingestion + consumer page after the pending ruling | A3, D1 |
+| S3 Library management | Restore through re-download, source supplementation and migration reconciliation, local-import record removal vs file deletion with reference effects; independent content cards | B4, B5, E2 |
+| S4 Inspection & dependencies | Keep intake checks separate from production qualification; persist and display bounded author-description link clues without claiming universal compatibility | A3, D1 |
 
 All slices: synthetic tests in-repo; real-account/real-download runs stay local user-run evidence
 (recorded per-run, `not_run` until exercised); no end-to-end claims without those runs.
@@ -157,11 +171,11 @@ implementation. The new protocol faces are implementation baselines, not frozen 
 | --- | --- | --- |
 | Whole-run sync | [Catalog sync v0.3](../protocols/catalog-sync-v0.3.md): durable begin, ordered selected libraries/pages, receipts, explicit finality and inspect-required restart | New real-account/expired-login/interruption runs and human UI review |
 | Selected download | [Library download v0.1](../protocols/library-download-v0.1.md): durable selected-file intent, acknowledged delivery, independent checks, stable replacement and rollback, explicit legacy-copy choice | Real transport cancellation, legacy-copy choice and real-material UI review |
-| One library | [Library view v0.1](../protocols/library-view-v0.1.md): provider join, multiple memberships, physical presence, source/status filters and pagination | Same-size edits still require production hash verification; full file-management UI review |
-| Selected material destination | [Selection drafts v0.1](../protocols/recipe-selection-draft-v0.1.md): durable reference collections, append, view/rename/remove references, separate production store | Final Recipe design and explicit promotion remain undecided |
+| One library | [Library view v0.1](../protocols/library-view-v0.1.md): provider join, multiple memberships, physical presence, source/status filters, pagination and verified content reconciliation | Real migration-collection and human UI review; general production hash admission remains separate |
+| Selected material destination | [Selection drafts v0.1](../protocols/recipe-selection-draft-v0.1.md): durable reference collections, append, view/rename/remove references, separate production store | Final Recipe design/promotion deferred until the post-N5 production loop |
 | Selected-file removal | [Library maintenance v0.1](../protocols/library-maintenance-v0.1.md): file/reference preview, durable independent results, retained catalog/copy/draft identities, cancellation and inspect-required restart | Explicit inspection resolution for interrupted tasks; human UI/real-material review; record removal remains a separate unimplemented action |
-| Generated versions | Changed managed originals mark retained VPM copies superseded; current production resolution excludes those outputs; library exposes old/current counts | Explicit regeneration and package-version allocation still need the next slice; old generator remains compatible |
-| Maintenance and production | Existing frozen maintenance and production paths retained | Relink/version switching, provenance correction and production qualification remain incomplete; no N5 acceptance claim |
+| Generated versions | Changed managed originals mark retained VPM copies superseded; current production resolution excludes those outputs; library exposes old/current counts | Explicit regeneration/version allocation deferred after N5, subject to production design; old generator remains compatible |
+| Maintenance and production | Existing frozen maintenance and production paths retained; dedicated relink removed from scope by the later user ruling | Source supplementation and local-record removal remain N5 work; generated-version selection and production integration are post-N5 work |
 
 Checks cover Renderer and Electron TypeScript, runtime wire guards, schema vectors, Gateway
 consumer routing, Rust domain/ledger/provider behavior and four-language copy. Synthetic cases
@@ -202,15 +216,130 @@ packages and pinned production inputs remain reproducible; reusing the old path 
 history. The new resolver also needs copy/revision-level lineage: entry and content hash alone
 cannot distinguish a retained old output from a fresh output with identical bytes. Package
 revision allocation and the relation to visible material versions are held for
-the next focused design, without inventing a final Recipe format while the user is away.
+post-N5 production design, which will first determine whether the feature is needed.
 The frozen legacy original-cleanup face also predates superseded-output lineage; a successor
 must require a current qualified generated revision before offering to remove current originals.
 Its frozen contract is not redefined by this slice.
 
-Relinking unchanged missing files can be handled independently. Different-content relink,
-version switching, provenance correction, record removal and final Recipe promotion must not
-silently retarget saved content-pinned references. Human UI and real-material acceptance remain
-open under the N sequence.
+The later user ruling removes dedicated relinking from the work list. Missing BOOTH files use
+the existing explicit re-download path. Source correction, generated-version selection, record
+removal and final Recipe promotion must not silently retarget saved content-pinned references.
+Human UI and real-material acceptance remain open under the N sequence.
+
+## Focused follow-up discussion (2026-10-08)
+
+The migration, source and reduced N5 scope above are user rulings. The VPM discussion below is
+retained as a deferred proposal; it is not a N5 prerequisite or a frozen contract.
+
+### Content revisions and VPM regeneration proposal — deferred after N5
+
+Keep three identities separate: an author's optional version label, the inspected local source
+content revision, and the generated VPM package revision. A BOOTH file slot retains its managed
+entry/copy identity and path across explicit re-download; changed bytes advance its content
+revision. The old source fingerprint remains evidence, but the overwrite policy does not retain
+an extra old original file. Local same-name imports keep their existing non-overwrite behavior.
+
+1. Record the exact original copy IDs and fingerprints used by a generation. If several originals
+   make one output, capture the ordered input manifest. Record the actual Editor/Bridge/generator
+   versions and selected generation options; record dependency versions only when used and known.
+2. Keep the entry's stable package ID. Allocate a unique local SemVer for each explicit new
+   generation (for example, existing `0.1.0` followed by `0.1.1`), independently of the author's
+   label. Reserve the revision against the request/task atomically; retrying that request uses
+   the same reservation and cannot allocate a second successful revision.
+3. Generate through the existing staging/Bridge chain into an isolated revision location. Verify
+   the output manifest, package identity/version and fingerprint before publishing the output
+   and its lineage. Share source-copy exclusion with download/removal, and reject source drift.
+   Existing valid current output can be reused; explicit regeneration creates a new revision.
+4. A failed/cancelled generation leaves previous outputs intact and does not mark the current
+   source generated. Restart exposes inspection-required work and never silently continues.
+   Source drift before the final commit prevents the new output from becoming current.
+5. Show the source-to-output relation: current original with no generated output, current qualified
+   generated output, retained older output, or missing output. Qualifying a package does not
+   establish Avatar appearance, compatibility or a completed production run.
+6. New production selection can use the current output; old content-pinned selections remain
+   pinned. Selecting an available old VPM is explicit. If an overwritten old original has no
+   surviving suitable output, report that pinned input missing instead of substituting current
+   bytes. This reserves input semantics without designing the final Recipe document.
+
+Example: original hash A produces package `0.1.0`. Re-download replaces A with B in the same
+managed file slot. Package `0.1.0` remains an older output; B needs generation. A successful new
+generation publishes `0.1.1` from B. A saved plan pinned to `0.1.0` remains unchanged. Re-download
+with the same hash does not by itself invalidate the current output.
+
+If the production design retains this feature, a possible sequence is generation lineage/revision persistence and migration; a successor
+generation command using the existing Bridge version parameter; revision-specific publication
+and recovery; library status/selection UI; then real Unity package-generation evidence. Regression
+cases must cover same-content re-download, changed content, retained old pins, retry, failure,
+source drift and missing old output. The frozen legacy command remains unchanged.
+Migration preserves legacy outputs and reads their actual package identity/version. A legacy
+output without recorded source lineage remains explicitly unknown; do not backfill the current
+original's fingerprint as if it had generated that older output.
+
+### Dependency persistence first
+
+The former helper scanned the whole HTML, used an invalid BDL extraction-method value, swallowed
+store errors and ran before the source product was persisted. The replacement stores the product
+first, reads only anchors under the supplied author-description subtree, uses the frozen `link`
+value, preserves text/URL/page-hash/time evidence and propagates read/write failures. A known
+target remains unconfirmed; target resolution establishes identity only. Synthetic wire cases
+cover first-time source insertion, durable restart reads, known targets, sidebar/self/foreign/duplicate
+link exclusion, and injected product/dependency write failures.
+
+This link-based path is sufficient for the initial N5 discovery scope. Fully loaded real HTML
+and UI consumption still need local review. An absent link or empty extraction means unknown.
+Classification, author declarations without links, confirmation/exclusion and automatic forensics
+can follow the production design; no automatic acquisition or production follows from a clue.
+
+### Record-removal scope and upstream facts
+
+Record removal mainly serves unwanted local imports, mistaken/duplicate local entries and library
+organization. The user limited N5 record removal to local imports; account-product hiding is
+deferred. Local-entry removal still needs a reference-aware contract and must remain distinct from
+deleting managed bytes. Neither a missing
+page nor absence from a partial sync proves a refund, revoked entitlement or permission to erase
+references. Do not add a refund action to the material manager from this research.
+
+Official policy checked on 2026-10-08: the [cancellation help](https://booth.pixiv.help/hc/ja/articles/115002295113)
+does not offer normal post-order cancellation/refunds for download products. The
+[BOOTH individual terms, articles 15/16](https://policies.pixiv.net/#booth) separately permit
+BOOTH-managed cancellation/refund in specified cases; this is not an automatic VUA workflow.
+[Non-public products remain downloadable to past purchasers](https://booth.pixiv.help/hc/ja/articles/360002964114),
+but [owner-deleted download files cannot be re-downloaded](https://booth.pixiv.help/hc/ja/articles/360009206893).
+Consequently restore remains a best available action, with honest upstream-unavailable results.
+
+### Production integration checkpoint
+
+Production is incomplete, so neither a working library selection nor a stored draft establishes
+the actual production/Build Record loop. Retain the N3/N4 integration checkpoint and exercise it
+when the production path is ready, after N5. Final Recipe structure and any necessary VPM lifecycle
+are designed with that loop. N5 acceptance now depends on its material-management and real
+acquisition/UI checks, not on proving a currently incomplete production implementation.
+
+### Migration reconciliation implementation
+
+The library aggregate keeps source identity separate from file identity. Source hints use existing
+mapping evidence, an unambiguous product ID in a name, or an unambiguous normalized exact title.
+They are not written as user confirmations. Inspected managed BOOTH deliveries provide reference
+fingerprints; local original files match only after actual SHA-256 verification. Generated files
+are not original-content evidence. Partial matches keep other files in a separate local row.
+
+Sync finalization and completed acquisition trigger an idempotent background verification task.
+It reports per-file progress through the existing task channel, accepts cancellation between read
+chunks, and persists proofs without absolute paths. Listing/search/pagination read metadata and
+proofs instead of hashing the collection. Restart reuses proofs only when content identity,
+location and file metadata still agree; interrupted work never resumes automatically. Matched
+cards retain every copy/reference, while displayed copy IDs bound the delete-files dialog so a
+different local variant is not silently included in the account card's selection.
+
+Synthetic regressions exercise cloud-only separation, source suggestions, equal content,
+different/partial content, same-size edits, cancellation, idempotent replay and proof reuse after
+restart. These are not real-account/material or human-UI acceptance evidence.
+
+The follow-up branch is based on main after merged PRs #66 and #65; the original N5 branch is
+retained. Local validation includes acquisition unit tests, sync/library schema and actual wire
+consumers, desktop tests and an isolated Chromium removal-dialog check. The latter now exercises
+per-card file scopes so initial preview, select-all and submission cannot include a different card.
+Its output remains local; no paid material, account data or human acceptance is implied.
 
 ## Coexistence with N1
 
@@ -228,6 +357,8 @@ D6 parser relocation remains later cleanup, not a prerequisite for usable mainte
 
 ## Document changelog
 
+- 1.7.0 (2026-10-08): apply the reduced N5 scope, persist bounded dependency clues and add verified migration reconciliation with independent cards and background checks.
+- 1.6.0 (2026-10-08): apply missing-file/source user refinements and record concrete VPM regeneration, dependency evidence, record-removal and production-integration discussion proposals.
 - 1.5.0 (2026-10-08): implement selected-file removal and retained generated-version facts, record remaining regeneration/Recipe choices and reconcile PR #61.
 - 1.4.0 (2026-10-08): record the sequential takeover baseline, replacement/retention and draft rulings, independent library facts and remaining acceptance gaps.
 - 1.0.0 (2026-10-02): initial plan consolidating the post-audit design discussion: unified library

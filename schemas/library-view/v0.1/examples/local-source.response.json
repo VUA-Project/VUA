@@ -1,0 +1,99 @@
+{
+  "schemaVersion": "0.1",
+  "total": 2,
+  "offset": 0,
+  "limit": 50,
+  "items": [
+    {
+      "kind": "product",
+      "product": {
+        "productId": "booth:90",
+        "title": "Synthetic item",
+        "libraryType": "bought",
+        "importedArtifacts": 0,
+        "shopName": "Synthetic shop",
+        "variantName": null,
+        "price": null,
+        "imageUrl": null,
+        "imageUrls": [],
+        "availabilityRaw": null,
+        "availabilityStatus": "unknown",
+        "entityCount": 0,
+        "entityTypes": []
+      },
+      "sources": [
+        "bought"
+      ],
+      "storage": {
+        "state": "cloud_only",
+        "storedCopies": 0,
+        "presentCopies": 0,
+        "missingCopies": 0,
+        "changedCopies": 0,
+        "unreadableCopies": 0,
+        "supersededGeneratedCopies": 0,
+        "currentGeneratedCopies": 0,
+        "productionQualification": "not_evaluated"
+      },
+      "copyIds": [],
+      "operation": null
+    },
+    {
+      "kind": "local",
+      "entry": {
+        "warehouseItemId": "wh-imported",
+        "folderName": "wh-imported",
+        "displayName": "Synthetic item",
+        "kind": "imported_material",
+        "createdAt": "2026-10-08T00:00:00Z",
+        "artifactMode": null,
+        "effectiveArtifactMode": "use_original_unitypackage",
+        "artifacts": [
+          {
+            "relativePath": "local.zip",
+            "artifactSha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "state": "clean",
+            "sizeBytes": 10,
+            "role": "original"
+          }
+        ]
+      },
+      "storage": {
+        "state": "present",
+        "storedCopies": 1,
+        "presentCopies": 1,
+        "missingCopies": 0,
+        "changedCopies": 0,
+        "unreadableCopies": 0,
+        "supersededGeneratedCopies": 0,
+        "currentGeneratedCopies": 0,
+        "productionQualification": "not_evaluated"
+      },
+      "copyIds": [
+        "cpy-imported"
+      ],
+      "sourceMatch": {
+        "product": {
+          "productId": "booth:90",
+          "title": "Synthetic item",
+          "libraryType": "bought",
+          "importedArtifacts": 0,
+          "shopName": "Synthetic shop",
+          "variantName": null,
+          "price": null,
+          "imageUrl": null,
+          "imageUrls": [],
+          "availabilityRaw": null,
+          "availabilityStatus": "unknown",
+          "entityCount": 0,
+          "entityTypes": []
+        },
+        "sources": [
+          "bought"
+        ],
+        "basis": "name",
+        "content": "unverified"
+      }
+    }
+  ]
+}

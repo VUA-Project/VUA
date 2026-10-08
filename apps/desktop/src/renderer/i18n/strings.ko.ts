@@ -1344,6 +1344,8 @@ rolled_back: "롤백됨",
   warehouse: {
     importedBadge: "가져옴",
     libraryState: {
+      sourceSuggested: "출처 후보", contentUnverified: "내용 확인 전", contentDifferent: "다운로드한 파일과 다름",
+      reconciliationTitle: "중복 에셋 내용 확인",
       cloud_only: "계정에 있음", present: "로컬 파일 있음", partial: "일부 파일 없음", missing: "파일 없음",
       changed: "파일 변경됨", unreadable: "파일을 읽을 수 없음", downloading: "다운로드 중", downloadFailed: "최근 다운로드 실패",
       downloadPartial: "일부 다운로드 미완료", inspectRequired: "확인 필요", attention: "조치 필요",
@@ -1459,7 +1461,7 @@ rolled_back: "롤백됨",
       progressHint: "처리: {pages}페이지 · 저장: {count}개 기록 · 건너뜀: {rejected}개",
       readFailedHint: "동기화 상태를 가져올 수 없습니다. 다시 시도하고 있습니다…",
       signInRequired: "먼저 BOOTH에 로그인한 뒤 동기화하세요.",
-      completedHint: "라이브러리 동기화가 완료되었습니다.",
+      completedHint: "계정 목록을 동기화했습니다. 내용을 확인한 뒤 중복 항목을 합칩니다.",
       failedHint: "라이브러리 동기화가 실패했습니다. 버튼으로 재시도하세요. 실패 상세는 작업 기록에 있습니다.",
       taskTitle: "BOOTH 라이브러리 동기화",
       action: "BOOTH 라이브러리 동기화",
@@ -1471,7 +1473,7 @@ rolled_back: "롤백됨",
       signInAction: "로그인 페이지 열기",
       syncTitle: "BOOTH 라이브러리 동기화",
       syncDescription:
-        "카탈로그가 비어 있습니다. 동기화하면 자신의 BOOTH 계정에서 사용 가능한 자료가 나열됩니다. 선택하기 전에는 파일이 다운로드되지 않습니다.",
+        "계정 에셋을 동기화하고 가져온 로컬 파일과 일치하는지 확인합니다. 내용이 확인된 중복 항목을 합칩니다. 선택하기 전에는 파일을 다운로드하지 않습니다.",
     },
     subtitle: "이 PC에 저장된 상품 정보와 에셋을 관리합니다. 앱이나 브라우저에서 BOOTH 상품 페이지를 열고 본인 계정으로 구매하세요.",
     searchPlaceholder: "제목 또는 상품 ID 검색",
@@ -3171,7 +3173,7 @@ rolled_back: "롤백됨",
    *  표시는 후속 슬라이스. */
   errors: {
     recipe: { draftFailed: "레시피 초안 작업을 완료하지 못했습니다." },
-    library: { downloadFailed: "다운로드를 완료하지 못했습니다. 기존 파일은 유지됩니다.", removalFailed: "로컬 파일을 삭제하지 못했습니다. 상태를 새로고침하고 작업을 확인하세요." },
+    library: { downloadFailed: "다운로드를 완료하지 못했습니다. 기존 파일은 유지됩니다.", removalFailed: "로컬 파일을 삭제하지 못했습니다. 상태를 새로고침하고 작업을 확인하세요.", reconciliationFailed: "에셋 내용 확인을 완료하지 못했습니다. 작업을 확인한 뒤 다시 동기화하세요." },
     catalog: {
       syncFailed: "동기화를 완료하지 못했습니다. 저장된 항목은 유지됩니다. 작업 기록을 확인하세요.",
       productNotFound:

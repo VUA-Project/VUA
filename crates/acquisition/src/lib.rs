@@ -8,9 +8,11 @@
 
 pub mod artifact_inspection;
 pub mod catalog_sync;
+pub mod description_dependencies;
 pub mod library_page;
 pub mod library_download;
 pub mod library_view;
+mod library_reconcile;
 pub mod library_maintenance;
 pub mod recipe_selection_drafts;
 pub mod warehouse_download_adopt;

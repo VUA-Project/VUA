@@ -1388,6 +1388,8 @@ demoTaskTitle: "Demo task",
   warehouse: {
     importedBadge: "Imported",
     libraryState: {
+      sourceSuggested: "Possible source", contentUnverified: "Content not verified", contentDifferent: "Differs from downloaded files",
+      reconciliationTitle: "Verify duplicate assets",
       cloud_only: "In account", present: "Local files", partial: "Some files missing", missing: "Files missing",
       changed: "Files changed", unreadable: "Cannot read files", downloading: "Downloading", downloadFailed: "Last download failed",
       downloadPartial: "Some downloads incomplete", inspectRequired: "Inspection needed", attention: "Needs attention",
@@ -1503,7 +1505,7 @@ demoTaskTitle: "Demo task",
       progressHint: "Pages: {pages} · Records saved: {count} · Skipped: {rejected}",
       readFailedHint: "Sync status is temporarily unavailable. Retrying…",
       signInRequired: "Sign in to BOOTH first, then sync.",
-      completedHint: "Library sync finished.",
+      completedHint: "Account list synced. Duplicates are combined after content verification.",
       failedHint: "Library sync failed. Retry from the button; the task record keeps the failure.",
       taskTitle: "BOOTH library sync",
       action: "Sync BOOTH library",
@@ -1515,7 +1517,7 @@ demoTaskTitle: "Demo task",
       signInAction: "Open sign-in page",
       syncTitle: "Sync your BOOTH library",
       syncDescription:
-        "Your catalog is empty. Sync to list the material available to your own BOOTH account; nothing is downloaded until you choose it.",
+        "Sync account assets and try to match imported local files. Verified duplicates are combined; no files are downloaded until you choose them.",
     },
     subtitle:
       "Manage product information and assets saved on this PC. Open BOOTH product pages in the app or your browser, and use your own account for purchases.",
@@ -3256,7 +3258,7 @@ demoTaskTitle: "Demo task",
    *  surfacing these keys in that view is a follow-up slice. */
   errors: {
     recipe: { draftFailed: "The Recipe draft operation could not finish." },
-    library: { downloadFailed: "The library download could not finish. Previously stored files are kept.", removalFailed: "Local files could not be deleted. Refresh their status and inspect the task." },
+    library: { downloadFailed: "The library download could not finish. Previously stored files are kept.", removalFailed: "Local files could not be deleted. Refresh their status and inspect the task.", reconciliationFailed: "Asset content verification could not finish. Inspect the task, then sync again." },
     catalog: {
       syncFailed: "Library sync could not finish. Saved entries are kept; check the task record.",
       productNotFound:

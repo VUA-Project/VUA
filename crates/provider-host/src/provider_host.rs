@@ -972,11 +972,18 @@ pub fn run_provider_host_full(
                         correlation_id: event.correlation_id,
                         payload: event.payload,
                     };
+                    let acquisition_completed = matches!(stored.state, TaskState::Succeeded | TaskState::SucceededWithWarnings) && stored.kind == TaskEventKind::Completed
+                        && (stored.payload["foldersImported"].is_number()
+                            || stored.payload["files"].as_array().is_some_and(|files| files.iter().any(|file| file["phase"] == "stored")));
+                    let acquisition_trigger = format!("acquisition:{}", stored.task_id);
                     sink.lock()
                         .expect("runtime events poisoned")
                         .push(stored);
                     if let Some(downloads) = library_downloads.as_ref().and_then(|downloads| downloads.upgrade()) {
                         let _ = downloads.reconcile(&parent_id, |event| sink.lock().expect("runtime events poisoned").push(event));
+                        if acquisition_completed {
+                            let _ = downloads.reconcile_library_sources(&acquisition_trigger);
+                        }
                     }
                 }
             });
@@ -6039,9 +6046,6 @@ fn catalog_ingest_library_page(
                 ));
             }
         };
-        // 依赖链接提取:描述区 booth 商品链接 → dependency_observations
-        let dep_hash = vua_acquisition::library_page::page_content_hash(html);
-        extract_description_dependencies(html, &observation.product_id, &dep_hash, &warehouse.bdl);
         if warehouse.bdl.record_product_observation(&observation).is_err() {
             return FrameOutcome::Response(application_error(
                 request_id,
@@ -6051,6 +6055,13 @@ fn catalog_ingest_library_page(
                 "internal",
             ));
         };
+        // Record the source first to satisfy the dependency-observation FK.
+        // A captured link remains unconfirmed; storage failures are not discarded.
+        if vua_acquisition::description_dependencies::record_description_dependencies(
+            &warehouse.bdl, html, &observation.product_id, &observation.content_hash, fetched_at,
+        ).is_err() {
+            return catalog_store_failed(request_id, correlation_id);
+        }
         return FrameOutcome::Response(application_success(
             request_id,
             json!({
@@ -6189,7 +6200,15 @@ fn catalog_sync_run_request(
         &state.store, &warehouse.bdl, method, params, &now_rfc3339(), recovered,
         |event| publish_task_event(state, Some(event)),
     ) {
-        Ok(value) => FrameOutcome::Response(application_success(request_id, value)),
+        Ok(value) => {
+            if method == "catalog.finishLibrarySync" && ["succeeded", "succeeded_with_warnings"].contains(&value["state"].as_str().unwrap_or("")) {
+                let trigger = format!("sync:{}", value["runId"].as_str().unwrap_or(correlation_id));
+                if warehouse.library_downloads.reconcile_library_sources(&trigger).is_err() {
+                    return catalog_store_failed(request_id, correlation_id);
+                }
+            }
+            FrameOutcome::Response(application_success(request_id, value))
+        }
         Err(error) => FrameOutcome::Response(application_error(
             request_id, correlation_id, &format!("vua.catalog.{}", error.0),
             "errors.catalog.syncFailed", if error.0 == "store_failed" { "internal" } else { "validation" },
@@ -6254,86 +6273,6 @@ fn product_page_observation(
         missing_fields: extracted.missing_fields.into_iter().map(str::to_owned).collect(),
     })
 }
-
-/// 商品页描述区依赖链接提取(N5 D2,2026-10-04 用户方向):
-/// 提取 booth.pm/items/ 链接 → 分类 dep_kind → 写 dependency_observations。
-/// 链接是结构化信号(作者显式声明的引用),不做正文猜名字。
-/// 分类:标题含 Shader/シェーダー → shader;已知 shader 名 → shader;
-/// 其余 → other(诚实不猜 avatar/shader 归属)。
-fn extract_description_dependencies(
-    html: &str,
-    source_product_id: &str,
-    page_hash: &str,
-    store: &std::sync::Arc<vua_bdl_store::BdlStore>,
-) {
-    use vua_bdl_store::bdl_store::{
-        DependencyResolutionEvidence, NewDependencyObservation,
-    };
-    use vua_bdl_store::dependency_extract::{DEP_KIND_SHADER, DEP_KIND_OTHER};
-
-    let mut seen = std::collections::HashSet::new();
-    let bytes = html.as_bytes();
-    let mut pos = 0;
-    while let Some(href_start) = html[pos..].find("href=\"") {
-        let abs_start = pos + href_start + 6;
-        if abs_start >= bytes.len() { break; }
-        let Some(href_len) = html[abs_start..].find('"') else { break };
-        let href = &html[abs_start..abs_start + href_len];
-        pos = abs_start + href_len;
-        if !href.contains("booth.pm") || !href.contains("/items/") { continue; }
-        // extract native id from /items/{digits}
-        let Some(id_start) = href.find("/items/") else { continue };
-        let tail = &href[id_start + 7..];
-        let id_end = tail.find(|c: char| !c.is_ascii_digit()).unwrap_or(tail.len());
-        if id_end == 0 { continue; }
-        let native_id = &tail[..id_end];
-        // extract link text: find > after this href, up to </a>
-        let Some(gt) = html[pos..].find('>') else { continue };
-        let text_start = pos + gt + 1;
-        let Some(close) = html[text_start..].find("</a>") else { continue };
-        let raw_text = &html[text_start..text_start + close];
-        // strip HTML tags
-        let text = raw_text
-            .replace(['<', '>'], " ")
-            .split_whitespace()
-            .collect::<Vec<_>>()
-            .join(" ");
-        if text.is_empty() { continue; }
-        let target_product_id = format!("booth:{native_id}");
-        if target_product_id == source_product_id || !seen.insert(target_product_id.clone()) { continue; }
-        let lowered = text.to_lowercase();
-        let is_shader = lowered.contains("shader")
-            || lowered.contains("liltoon")
-            || lowered.contains("poiyomi");
-        let dep_kind = if is_shader { DEP_KIND_SHADER } else { DEP_KIND_OTHER };
-        let in_catalog = store.catalog_detail(&target_product_id).ok().flatten().is_some();
-        let evidence = vec![DependencyResolutionEvidence {
-            link_text: text.clone(),
-            link_url: href.to_owned(),
-            span: "description_link".to_owned(),
-            note: None,
-        }];
-        let observation = NewDependencyObservation {
-            product_id: source_product_id.to_owned(),
-            dep_kind: dep_kind.to_owned(),
-            dep_name: text.clone(),
-            raw_quote: href.to_owned(),
-            source_span: "description_link".to_owned(),
-            version_hint: None,
-            resolved_ref_product_id: if in_catalog { Some(target_product_id.clone()) } else { None },
-            resolution_evidence: if in_catalog { evidence } else { Vec::new() },
-            extraction_method: "description_link".to_owned(),
-            extracted_by: "catalog-sync/0.2-product-deps".to_owned(),
-            observed_at: chrono_now_rfc3339(),
-            processor_version: "catalog-sync/0.2-product-deps".to_owned(),
-            content_hash: Some(page_hash.to_owned()),
-            run_id: None,
-        };
-        let _ = store.record_dependency_observation(&observation);
-    }
-}
-
-
 
 fn chrono_now_rfc3339() -> String {
     std::time::SystemTime::now()

@@ -463,7 +463,7 @@ fn library_view_schema_vectors_and_real_queries_agree() {
     for name in ["invalid-session.request", "invalid-limit.request"] {
         assert!(!request.is_valid(&read(&format!("examples/{name}.json"))));
     }
-    for name in ["list.response", "files.response"] {
+    for name in ["list.response", "files.response", "local-source.response"] {
         assert!(
             response.is_valid(&read(&format!("examples/{name}.json"))),
             "{name}"
@@ -497,6 +497,55 @@ fn library_view_schema_vectors_and_real_queries_agree() {
         host.call("library.list", json!({"schemaVersion":"0.1","limit":201}))["error"]["code"],
         "vua.library.invalid_params"
     );
+}
+
+#[test]
+fn sync_finalization_and_download_completion_reconcile_migrated_local_files() {
+    let world = World::new();
+    let title = world.bdl.library_product_summaries().unwrap()[0].title.clone().unwrap();
+    let source = world.base.join("import-source").join(&title);
+    std::fs::create_dir_all(&source).unwrap();
+    std::fs::write(source.join("local.zip"), b"synthetic").unwrap();
+    let imported = vua_acquisition::WarehouseImporter::new(&world.bdl, &vua_orchestrator::SystemClock, world.base.join("warehouse")).import_folder(&source).unwrap();
+    let mut host = Host::new(&world.base, world.bdl.clone());
+    assert_eq!(host.call("library.list", json!({"schemaVersion":"0.1"}))["value"]["total"], 2);
+    world.delivery(901, "dl-reconcile", b"synthetic");
+    host.batch("reconcile", &[901]);
+    host.observe("reconcile", 901, "dl-reconcile");
+    host.wait("reconcile", &world.tasks);
+    let wait_checks = |key: Option<&str>| {
+        let started = Instant::now();
+        loop {
+            let tasks = world.tasks.idempotent_tasks("library.reconcileSources").unwrap();
+            if tasks.iter().any(|row| key.is_none_or(|key| row.idempotency_key == key)
+                && world.tasks.task(&row.task_id).unwrap().is_some_and(|task| task.state.is_terminal())) { break; }
+            assert!(started.elapsed() < Duration::from_secs(5), "reconciliation was not dispatched");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+    };
+    wait_checks(None);
+    let merged = host.call("library.list", json!({"schemaVersion":"0.1"}));
+    assert_eq!(merged["value"]["total"], 1);
+    assert_eq!(merged["value"]["items"][0]["storage"]["presentCopies"], 2);
+    let sync_id = "catalog-sync-migration";
+    assert_eq!(host.call("catalog.beginLibrarySync", json!({"schemaVersion":"0.3","runId":sync_id,"libraryTypes":["bought"]}))["ok"], true);
+    let page: Value = serde_json::from_slice(&std::fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/catalog-sync/v0.3/examples/page.request.json")).unwrap()).unwrap();
+    let mut params = page["params"].clone(); params["runId"] = json!(sync_id);
+    params["html"] = json!(params["html"].as_str().unwrap().replace("901", "90"));
+    assert_eq!(host.call("catalog.ingestLibraryPage", params)["ok"], true);
+    let finish = json!({"schemaVersion":"0.3","runId":sync_id,"outcome":"completed"});
+    assert_eq!(host.call("catalog.finishLibrarySync", finish.clone())["ok"], true);
+    wait_checks(Some(&format!("sync:{sync_id}")));
+    let before = world.tasks.idempotent_tasks("library.reconcileSources").unwrap().len();
+    assert_eq!(host.call("catalog.finishLibrarySync", finish)["ok"], true);
+    assert_eq!(world.tasks.idempotent_tasks("library.reconcileSources").unwrap().len(), before);
+    assert_eq!(host.call("catalog.beginLibrarySync", json!({"schemaVersion":"0.3","runId":"catalog-sync-cancel-migration","libraryTypes":["bought"]}))["ok"], true);
+    let cancelled = host.call("catalog.finishLibrarySync", json!({"schemaVersion":"0.3","runId":"catalog-sync-cancel-migration","outcome":"cancelled"}));
+    assert_eq!(cancelled["value"]["state"], "cancelled");
+    assert_eq!(world.tasks.idempotent_tasks("library.reconcileSources").unwrap().len(), before, "cancelling sync must not start another verifier");
+    assert_eq!(host.call("library.list", json!({"schemaVersion":"0.1"}))["value"]["total"], 1);
+    assert!(PathBuf::from(&world.bdl.entry_copies(&imported.entry.warehouse_item_id).unwrap()[0].stored_path).exists());
+    assert!(host.frames().iter().any(|frame| frame["kind"] == "event" && frame["payload"]["payload"]["operation"] == "library.reconcileSources"));
 }
 
 #[test]

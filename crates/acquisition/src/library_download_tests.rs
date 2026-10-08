@@ -126,7 +126,7 @@ fn library_keeps_multiple_memberships_and_paginates_after_all_filters() {
 }
 
 #[test]
-fn library_keeps_unassociated_local_files_and_joins_only_the_associated_part() {
+fn library_source_mapping_without_reference_bytes_keeps_local_card_unverified() {
     let w = World::new();
     let staged = w.delivery(901, "dl-local", b"manual local file", "notes.pdf");
     let completion = DownloadEventConsumer::new(&w.bdl)
@@ -189,10 +189,233 @@ fn library_keeps_unassociated_local_files_and_joins_only_the_associated_part() {
         )
         .unwrap();
     let associated = library_view(&w, json!({"schemaVersion":"0.1"}));
-    assert_eq!(associated["total"], 1);
-    assert_eq!(associated["items"][0]["storage"]["presentCopies"], 1);
+    assert_eq!(associated["total"], 2);
+    assert_eq!(associated["items"][0]["storage"]["presentCopies"], 0);
+    assert_eq!(associated["items"][1]["sourceMatch"]["basis"], "mapping");
+    assert_eq!(
+        associated["items"][1]["sourceMatch"]["content"],
+        "unverified"
+    );
+}
+
+#[test]
+fn library_migration_suggests_source_then_merges_only_verified_equal_bytes() {
+    let w = World::new();
+    let title = w.bdl.library_product_summaries().unwrap()[0]
+        .title
+        .clone()
+        .unwrap();
+    let imported = w.import_local(&title, &[("local-name.zip", b"same content")]);
+    let pending = library_view(&w, json!({"schemaVersion":"0.1"}));
+    assert_eq!(pending["total"], 2);
+    assert_eq!(pending["items"][1]["sourceMatch"]["basis"], "name");
+    assert_eq!(pending["items"][1]["sourceMatch"]["content"], "unverified");
+    assert_eq!(
+        library_view(&w, json!({"schemaVersion":"0.1","source":"bought"}))["total"],
+        2
+    );
+    assert!(w
+        .bdl
+        .warehouse_entry_detail(
+            &imported.warehouse_item_id,
+            ArtifactMode::UseOriginalUnitypackage
+        )
+        .unwrap()
+        .unwrap()
+        .artifacts[0]
+        .mapped_product_ids
+        .is_empty());
+    w.download_reference(b"same content");
+    assert_eq!(library_view(&w, json!({"schemaVersion":"0.1"}))["total"], 2);
+    let task_id = w.verify_sources("migration");
+    let merged = library_view(&w, json!({"schemaVersion":"0.1"}));
+    assert_eq!(merged["total"], 1);
+    assert_eq!(merged["items"][0]["storage"]["presentCopies"], 2);
+    assert_eq!(merged["items"][0]["copyIds"].as_array().unwrap().len(), 2);
+    assert_eq!(
+        w.bdl
+            .entry_copies(&imported.warehouse_item_id)
+            .unwrap()
+            .len(),
+        1
+    );
+    assert!(
+        Path::new(&w.bdl.entry_copies(&imported.warehouse_item_id).unwrap()[0].stored_path)
+            .exists()
+    );
+    assert_eq!(
+        w.service.reconcile_library_sources("migration").unwrap(),
+        Some(task_id.clone())
+    );
+    assert!(!w
+        .store
+        .events_after(&task_id, 0)
+        .unwrap()
+        .iter()
+        .any(|e| e.payload.to_string().contains("storedPath")));
+    let restarted = LibraryDownloadService::new(
+        w.store.clone(),
+        w.bdl.clone(),
+        w.runtime.clone(),
+        w.base.join("warehouse"),
+        w.base.join("downloads-staging"),
+    )
+    .unwrap();
+    let after_restart = crate::library_view::list(
+        &w.bdl,
+        &w.base.join("warehouse"),
+        ArtifactMode::UseOriginalUnitypackage,
+        &restarted,
+        json!({"schemaVersion":"0.1"}),
+    )
+    .unwrap();
+    assert_eq!(after_restart["total"], 1);
+    std::fs::remove_file(&w.bdl.entry_copies(&imported.warehouse_item_id).unwrap()[0].stored_path)
+        .unwrap();
+    let removed = library_view(&w, json!({"schemaVersion":"0.1"}));
+    assert_eq!(removed["total"], 1);
+    assert_eq!(removed["items"][0]["storage"]["missingCopies"], 1);
+    assert_eq!(removed["items"][0]["storage"]["state"], "partial");
+}
+
+#[test]
+fn library_different_content_and_partial_folder_matches_keep_independent_files() {
+    let w = World::new();
+    let imported = w.import_local(
+        "Mixed migration",
+        &[("same.zip", b"same"), ("other.zip", b"different")],
+    );
+    for artifact in &imported.artifacts {
+        w.bdl
+            .record_artifact_mapping(
+                &artifact.artifact_sha256,
+                "booth:90",
+                None,
+                Some("user"),
+                "2026-10-08T00:00:00Z",
+            )
+            .unwrap();
+    }
+    w.download_reference(b"same");
+    w.verify_sources("partial-folder");
+    let list = library_view(&w, json!({"schemaVersion":"0.1"}));
+    assert_eq!(list["total"], 2);
+    assert_eq!(list["items"][0]["storage"]["presentCopies"], 2);
+    assert_eq!(list["items"][1]["storage"]["presentCopies"], 1);
+    assert_eq!(list["items"][1]["sourceMatch"]["content"], "different");
+    assert_eq!(
+        list["items"][1]["sourceMatch"]["product"]["title"],
+        list["items"][0]["product"]["title"]
+    );
+    assert_eq!(
+        list["items"][1]["entry"]["artifacts"][0]["relativePath"],
+        "other.zip"
+    );
+    let local_ids = list["items"][1]["copyIds"].as_array().unwrap();
+    assert_eq!(local_ids.len(), 1);
+    assert!(!list["items"][0]["copyIds"]
+        .as_array()
+        .unwrap()
+        .contains(&local_ids[0]));
+    assert_eq!(
+        w.bdl
+            .entry_copies(&imported.warehouse_item_id)
+            .unwrap()
+            .len(),
+        2
+    );
+}
+
+#[test]
+fn library_same_size_edit_invalidates_proof_and_never_merges_changed_bytes() {
+    let w = World::new();
+    let imported = w.import_local("Imported copy", &[("copy.zip", b"original")]);
+    w.download_reference(b"original");
+    w.verify_sources("before-edit");
+    assert_eq!(library_view(&w, json!({"schemaVersion":"0.1"}))["total"], 1);
+    let copy = w
+        .bdl
+        .entry_copies(&imported.warehouse_item_id)
+        .unwrap()
+        .remove(0);
+    let previous = std::fs::metadata(&copy.stored_path)
+        .unwrap()
+        .modified()
+        .unwrap();
+    std::fs::write(&copy.stored_path, b"modified").unwrap();
+    std::fs::File::options()
+        .write(true)
+        .open(&copy.stored_path)
+        .unwrap()
+        .set_modified(previous + std::time::Duration::from_secs(1))
+        .unwrap();
+    assert_eq!(library_view(&w, json!({"schemaVersion":"0.1"}))["total"], 2);
+    w.verify_sources("after-edit");
+    let list = library_view(&w, json!({"schemaVersion":"0.1"}));
+    assert_eq!(list["total"], 2);
+    assert_eq!(list["items"][1]["storage"]["state"], "changed");
+}
+
+#[test]
+fn library_reconciliation_can_cancel_without_hiding_unverified_local_files() {
+    let w = World::new();
+    w.import_local("Cancel migration", &[("copy.zip", b"same")]);
+    w.download_reference(b"same");
+    let gate = w.service.copy_write_lock();
+    let guard = gate.lock().unwrap();
+    let id = w
+        .service
+        .reconcile_library_sources("cancelled-check")
+        .unwrap()
+        .unwrap();
+    w.runtime.cancel(&id).unwrap();
+    drop(guard);
+    w.wait_task(&id);
+    assert_eq!(
+        w.store.task(&id).unwrap().unwrap().state,
+        TaskState::Cancelled
+    );
+    assert_eq!(library_view(&w, json!({"schemaVersion":"0.1"}))["total"], 2);
 }
 impl World {
+    fn import_local(
+        &self,
+        name: &str,
+        files: &[(&str, &[u8])],
+    ) -> vua_bdl_store::WarehouseEntryDetail {
+        let source = self.base.join("local-sources").join(name);
+        std::fs::create_dir_all(&source).unwrap();
+        for (name, bytes) in files {
+            std::fs::write(source.join(name), bytes).unwrap();
+        }
+        crate::WarehouseImporter::new(&self.bdl, &SystemClock, self.base.join("warehouse"))
+            .import_folder(&source)
+            .unwrap()
+            .entry
+    }
+    fn download_reference(&self, bytes: &[u8]) {
+        self.begin("reference", &[901]);
+        self.delivery(901, "dl-reference", bytes, "official.zip");
+        self.observe("reference", 901, "settled", Some("dl-reference"))
+            .unwrap();
+        self.wait("reference");
+    }
+    fn verify_sources(&self, trigger: &str) -> String {
+        let id = self
+            .service
+            .reconcile_library_sources(trigger)
+            .unwrap()
+            .unwrap();
+        self.wait_task(&id);
+        id
+    }
+    fn wait_task(&self, id: &str) {
+        let started = std::time::Instant::now();
+        while !self.store.task(id).unwrap().unwrap().state.is_terminal() {
+            assert!(started.elapsed() < std::time::Duration::from_secs(5));
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+    }
     fn new() -> Self {
         let base = unique_dir("vua-library", "synthetic");
         let bdl = Arc::new(BdlStore::open(base.join("bdl.db")).unwrap());
