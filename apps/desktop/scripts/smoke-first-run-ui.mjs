@@ -33,7 +33,7 @@ try {
   console.log(`First-run controlled UI: ${checks.length} checks passed`);
   window.webContents.debugger.attach("1.3");
   await window.webContents.debugger.sendCommand("Emulation.setFocusEmulationEnabled", { enabled: true });
-  for (const key of ["Enter", "Escape", "ArrowRight"]) {
+  for (const key of ["Enter", "Escape", "Escape", "ArrowRight"]) {
     await window.webContents.executeJavaScript(`window.firstRunReview.beforeKey(${JSON.stringify(key)})`);
     const code = key === "Enter" ? 13 : key === "Escape" ? 27 : 39;
     await window.webContents.debugger.sendCommand("Input.dispatchKeyEvent", { type: "keyDown", key, code: key, windowsVirtualKeyCode: code,

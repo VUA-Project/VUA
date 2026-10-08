@@ -742,7 +742,10 @@ function AppShell({
   const returnFocus = useRef<string | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
   const navigate = (target: PageId) => {
-    if (target === page) return;
+    if (target === page) {
+      if (showOnboarding && target !== "settings-accounts") onOnboardingComplete({ status: "skipped", goals: [], environments: [] });
+      return;
+    }
     const focused = document.activeElement?.getAttribute("data-nav-id");
     if (focused) focusMemory.current.set(page, focused);
     history.current.push(page);
@@ -764,7 +767,9 @@ function AppShell({
   const backCurrentView = () => {
     const back = visibleControls(shellRef.current?.querySelector("main") ?? document)
       .filter(el => el.hasAttribute("data-back")).at(-1);
-    if (back) back.click(); else goBack();
+    if (back) back.click();
+    else if (showOnboarding) onOnboardingComplete({ status: "skipped", goals: [], environments: [] });
+    else goBack();
   };
   useEffect(() => { try { localStorage.setItem(storageKeys.displayMode, displayMode); } catch { /* Keep the mode for this session. */ } }, [displayMode]);
   useEffect(() => {

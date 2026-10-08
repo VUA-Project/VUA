@@ -12,6 +12,7 @@ let scenario: "installed" | "missing" | "restored" = "installed";
 let guideId: string | null = null;
 const intents: string[][] = [];
 const checks: string[] = [];
+let escapes = 0;
 const check = (name: string, value: unknown) => { if (!value) throw new Error(name); checks.push(name); };
 const wait = async (predicate: () => unknown, label = "") => {
   const start = Date.now();
@@ -64,6 +65,10 @@ async function prepare() {
 const review = {
   async run() {
     await mount(); await step("goal");
+    document.querySelector<HTMLButtonElement>('[data-nav-id="logo-home"]')!.click();
+    await wait(() => document.querySelector(".vua-home") && !document.querySelector("[data-wizard-step]"));
+    check("logo exits the first-run guide even when Home is already the underlying page", !document.querySelector("[data-wizard-step]"));
+    await mount(); await step("goal");
     check("single-choice first page has no Continue action", !button(copy.next));
     await click(copy.playGoal); await step("play-mode");
     await click(copy.vr); await step("headset");
@@ -100,15 +105,20 @@ const review = {
   },
   async beforeKey(key: string) {
     if (key === "ArrowRight") {
-      await click(copy.exit); await wait(() => document.querySelector('[data-nav-id="home-environment"]'));
+      if (button(copy.exit)) await click(copy.exit);
+      await wait(() => document.querySelector('[data-nav-id="home-environment"]'));
       document.querySelector<HTMLButtonElement>('[data-nav-id="home-environment"]')!.focus();
     }
   },
   async afterKey(key: string) {
     if (key === "Enter") await step("play-mode");
-    if (key === "Escape") await step("goal");
+    if (key === "Escape") {
+      escapes += 1;
+      if (escapes === 1) await step("goal");
+      else await wait(() => document.querySelector(".vua-home") && !document.querySelector("[data-wizard-step]"));
+    }
     if (key === "ArrowRight") await wait(() => document.activeElement?.getAttribute("data-nav-id") === "home-avatar");
-    return `Chromium ${key}: ${key === "Enter" ? "direct branch" : key === "Escape" ? "one level back" : "next domain"}`;
+    return `Chromium ${key}: ${key === "Enter" ? "direct branch" : key === "Escape" ? escapes === 1 ? "one level back" : "first level returns Home" : "next domain"}`;
   },
 };
 (window as unknown as { firstRunReview: typeof review }).firstRunReview = review;
