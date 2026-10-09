@@ -14,7 +14,7 @@ const files: LibraryRemovalPreviewV01["files"] = [
   { copyId: "cpy-original", entryId: "whi-synthetic", fileName: "synthetic-notes.pdf", role: "original", artifactSha256: `sha256:${"a".repeat(64)}`, sizeBytes: 14, presence: "present", superseded: false },
   { copyId: "cpy-old-vpm", entryId: "whi-synthetic", fileName: "vpm/synthetic-old.zip", role: "generated_vpm", artifactSha256: `sha256:${"b".repeat(64)}`, sizeBytes: 19, presence: "missing", superseded: true },
 ];
-type Mode = "normal" | "lost_receipt" | "preview_drift" | "reference_failure" | "recovered";
+type Mode = "normal" | "lost_receipt" | "preview_drift" | "reference_failure" | "recovered" | "pending_on_open";
 let mode: Mode = "normal";
 let cardScope: readonly string[] | undefined;
 let accepted: LibraryRemoveFilesParamsV01 | null = null;
@@ -29,6 +29,22 @@ const application = (code: string) => ({ ok: false, error: { code: "application"
   schemaVersion: "0.1", code, category: "conflict", messageKey: "errors.library.removalFailed", recoverable: true, correlationId: "synthetic", params: {},
 } } });
 const invoke = async (request: DesktopGatewayRequestV1): Promise<unknown> => {
+  if (request.method === "library.pendingRemovals") {
+    if (mode === "pending_on_open" && latest === null) {
+      latest = { schemaVersion: "0.1", removalId: "library-removal-before-restart", target, taskId: "task-synthetic-removal", taskState: "running",
+        revision: 3, cancelRequested: false, recoveryDisposition: "inspect_required", state: "unconfirmed",
+        files: files.map((file) => ({ copyId: file.copyId, entryId: file.entryId, fileName: file.fileName, phase: "pending", errorCode: null })),
+      };
+    }
+    return ok({ schemaVersion: "0.1", target, items: latest?.state === "unconfirmed" ? [structuredClone(latest)] : [] });
+  }
+  if (request.method === "library.resolveRemoval") {
+    if (latest === null || latest.removalId !== request.params.removalId || latest.revision !== request.params.observedRevision) throw new Error("inspection used another operation or revision");
+    latest = { ...latest, revision: latest.revision + 1, taskState: "cancelled", state: "cancelled", recoveryDisposition: "none", inspectionResolved: true,
+      files: latest.files.map((file, index) => ({ ...file, phase: index === 0 ? "kept" : "missing_after_inspection", errorCode: null })),
+    };
+    return ok(structuredClone(latest));
+  }
   if (request.method === "library.removalPreview") {
     if (mode === "reference_failure") return application("vua.library.reference_read_failed");
     const selected = files.filter((file) => request.params.copyIds === undefined || request.params.copyIds.includes(file.copyId));
@@ -86,6 +102,7 @@ function button(text: string): HTMLButtonElement {
   return node;
 }
 async function click(text: string) { button(text).click(); await pause(); }
+function confirmReady() { return [...document.querySelectorAll<HTMLButtonElement>("button")].some((node) => node.textContent?.trim() === copy.confirm && !node.disabled); }
 function Case() {
   const [open, setOpen] = useState(false);
   return <><p>{fixtureStrings.libraryMaintenanceProbeTitle}</p><button id="opener" onClick={() => setOpen(true)}>open synthetic removal</button>
@@ -98,12 +115,13 @@ async function open(nextMode: Mode = "normal", scope?: readonly string[]) {
   root.render(<StrictMode><Case key={++generation} /></StrictMode>); await pause();
   document.getElementById("opener")!.focus(); await click("open synthetic removal");
   if (nextMode === "reference_failure") await until(() => document.body.textContent!.includes(copy.loadFailed), "reference failure displayed");
-  else await until(() => !button(copy.confirm).disabled, "preview ready");
+  else if (nextMode === "pending_on_open") await until(() => document.body.textContent!.includes(copy.interruptedTitle), "interrupted removal discovered");
+  else await until(() => confirmReady(), "preview ready");
 }
 async function run() {
   await open("normal", ["cpy-original"]);
   check(document.querySelectorAll('input[type="checkbox"]').length === 1, "a card opens only its displayed file scope");
-  await click(copy.selectAll); await until(() => !button(copy.confirm).disabled, "scoped all-file preview ready");
+  await click(copy.selectAll); await until(() => confirmReady(), "scoped all-file preview ready");
   check(document.querySelectorAll('input[type="checkbox"]:checked').length === 1, "select all cannot expand into another card's files");
   await click(copy.confirm);
   check(commandCalls.length === 1 && JSON.stringify(commandCalls[0]!.copyIds) === JSON.stringify(["cpy-original"]), "deletion retains the independent card's scope");
@@ -115,9 +133,9 @@ async function run() {
   await click(copy.clear);
   check(button(copy.confirm).disabled && !button(copy.retry).disabled, "empty selection cannot delete and does not remain busy");
   (document.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
-  await until(() => !button(copy.confirm).disabled, "subset preview ready");
+  await until(() => confirmReady(), "subset preview ready");
   check(document.querySelectorAll('input[type="checkbox"]:checked').length === 1, "subset selection is retained");
-  await click(copy.selectAll); await until(() => !button(copy.confirm).disabled, "all-file preview refreshed");
+  await click(copy.selectAll); await until(() => confirmReady(), "all-file preview refreshed");
   check(commandCalls.length === 0, "selection changes only preview");
 
   await open("lost_receipt");
@@ -138,17 +156,26 @@ async function run() {
 
   await open("reference_failure");
   check(!document.body.textContent!.includes(copy.noReferences) && commandCalls.length === 0, "failed reference read never becomes no references or allows deletion");
-  mode = "normal"; await click(copy.retry); await until(() => !button(copy.confirm).disabled, "reference read retry");
+  mode = "normal"; await click(copy.retry); await until(() => confirmReady(), "reference read retry");
   check(commandCalls.length === 0, "refreshing a failed reference preview never starts deletion");
 
   await open("recovered"); await click(copy.confirm);
   await until(() => document.body.textContent!.includes(copy.unconfirmed), "interrupted operation inspection shown");
   check(commandCalls.length === 1 && !document.body.textContent!.includes(copy.cancelled), "recovered operation never restarts or invents cancellation");
+  await click(copy.inspect); await until(() => document.body.textContent!.includes(copy.inspectionComplete), "explicit inspection completed");
+  check(document.body.textContent!.includes(copy.kept) && document.body.textContent!.includes(copy.missing_after_inspection) && commandCalls.length === 1, "inspection retains present files and distinguishes missing from deleted");
+  await click(copy.newSelection); await until(() => confirmReady(), "new deletion requires a new selection");
+  check(commandCalls.length === 1, "inspection resolution never continues the old deletion");
+
+  await open("pending_on_open");
+  check(commandCalls.length === 0 && ![...document.querySelectorAll("button")].some((node) => node.textContent?.trim() === copy.confirm), "opening interrupted maintenance shows inspection before a new deletion");
+  await click(copy.inspect); await until(() => confirmReady(), "restart fence cleared after explicit inspection");
+  check(commandCalls.length === 0 && document.body.textContent!.includes(copy.inspectionComplete), "restart inspection closes the old task without deleting files");
 
   await open("preview_drift"); await click(copy.confirm);
   await until(() => document.body.textContent!.includes(copy.drift), "stale preview refusal remains visible");
   check(starts === 0 && commandCalls.length === 1, "drift refusal does not start or automatically retry deletion");
-  mode = "normal"; await click(copy.retry); await until(() => !button(copy.confirm).disabled, "final preview ready");
+  mode = "normal"; await click(copy.retry); await until(() => confirmReady(), "final preview ready");
   check(document.querySelectorAll('[role="dialog"]').length === 1, "one accessible dialog remains ready for keyboard close");
   return results;
 }

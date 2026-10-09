@@ -21,8 +21,8 @@
 //!   unrepresentable in the typed face (SQL NULL against NOT NULL columns,
 //!   `confirmed_by_human = 2`) are driven against the store's own migrated
 //!   database and refused by the same constraints;
-//! - the migration discipline: fresh stores are born v0.2 (001 + 002 in one
-//!   transaction), existing v0.1 databases migrate on open with verbatim row
+//! - the migration discipline: fresh stores apply the current executable chain
+//!   (including the v0.2 word face), existing v0.1 databases migrate with verbatim row
 //!   carry-over, and the established `UnsupportedFormat` discipline refuses
 //!   future `user_version` fences and foreign `format_version` values.
 //!
@@ -441,12 +441,12 @@ fn reject_vectors_are_refused_by_the_real_constraints() {
 }
 
 // ---------------------------------------------------------------------------
-// Migration discipline: born v0.2; v0.1 migrates on open; the fence holds.
+// Migration discipline: current chain; v0.1 migrates on open; the fence holds.
 // ---------------------------------------------------------------------------
 
 #[test]
-fn fresh_stores_are_born_v02_and_v01_databases_migrate_on_open() {
-    // Fresh: born v0.2 through the full executable chain in one transaction.
+fn fresh_stores_apply_current_chain_and_v01_databases_migrate_on_open() {
+    // Fresh: the full current executable chain in one transaction.
     let born_path = store_path("born");
     {
         let store = BdlStore::open(&born_path).unwrap();
@@ -458,7 +458,7 @@ fn fresh_stores_are_born_v02_and_v01_databases_migrate_on_open() {
         let user_version: i64 = raw
             .pragma_query_value(None, "user_version", |row| row.get(0))
             .unwrap();
-        assert_eq!(user_version, 6, "the host-owned fence includes migrations 001-006");
+        assert_eq!(user_version, 9, "the host-owned fence includes migrations 001-009");
     }
 
     // Existing v0.1 database: opens, migrates, keeps every row verbatim.
@@ -496,7 +496,7 @@ fn fresh_stores_are_born_v02_and_v01_databases_migrate_on_open() {
         let user_version: i64 = raw
             .pragma_query_value(None, "user_version", |row| row.get(0))
             .unwrap();
-        assert_eq!(user_version, 6);
+        assert_eq!(user_version, 9);
         let (quote, span, confirmed): (String, String, i64) = raw
             .query_row(
                 "SELECT raw_quote, source_span, confirmed_by_human
@@ -547,18 +547,18 @@ fn unsupported_format_discipline_refuses_future_and_foreign_databases() {
     {
         let raw = Connection::open(&future_path).unwrap();
         raw.execute_batch(MIGRATION_001).unwrap();
-        raw.pragma_update(None, "user_version", 7).unwrap();
+        raw.pragma_update(None, "user_version", 10).unwrap();
     }
     let error = match BdlStore::open(&future_path) {
         Err(error) => error,
         Ok(_) => panic!("a future user_version fence must be refused"),
     };
     assert!(
-        matches!(error, BdlStoreError::UnsupportedFormat(ref version) if version == "migration-7"),
+        matches!(error, BdlStoreError::UnsupportedFormat(ref version) if version == "migration-10"),
         "future fence refused: {error}"
     );
 
-    // A foreign format_version at the current fence: refused.
+    // A foreign format_version at a supported historical fence: refused.
     let foreign_path = store_path("foreign");
     {
         let raw = Connection::open(&foreign_path).unwrap();

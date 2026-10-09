@@ -18,6 +18,8 @@ pub mod recipe_selection_drafts;
 pub mod warehouse_download_adopt;
 pub mod warehouse_import;
 pub mod warehouse_maintenance;
+mod zip_intake;
+pub use zip_intake::ExpansionReport;
 
 #[cfg(test)]
 mod test_support;

@@ -1717,9 +1717,15 @@ fn served_capabilities(state: &HostState) -> Value {
         {"operationId": "library.observeDownload", "availability": if state.warehouse.is_some() && state.downloads.is_some() { "available" } else { "unavailable" }},
         {"operationId": "library.downloadStatus", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "library.list", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.importFolders", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.entryMetadata", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.updateEntryMetadata", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.removeLocalEntries", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "library.removalPreview", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "library.removeFiles", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "library.removalStatus", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.pendingRemovals", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.resolveRemoval", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "recipeDraft.selectionStatus", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "library.productFiles", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "recipeDraft.list", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
@@ -5457,8 +5463,20 @@ fn library_download_request(state: &HostState, method: &str, request: &Value, re
     let Some(warehouse) = &state.warehouse else {
         return FrameOutcome::Response(application_error(request_id, correlation_id, "vua.library.unavailable", "errors.library.downloadFailed", "unavailable"));
     };
-    if matches!(method,"library.removalPreview"|"library.removeFiles"|"library.removalStatus") {
-        if request["kind"] != if method == "library.removeFiles" {"command"} else {"query"} {
+    if matches!(method, "library.entryMetadata" | "library.updateEntryMetadata" | "library.removeLocalEntries") {
+        return library_entry_metadata_request(warehouse, method, request, request_id, correlation_id);
+    }
+    if method == "library.importFolders" {
+        if request["kind"] != "command" { return warehouse_invalid_params(request_id, correlation_id); }
+        let Some(params) = request.get("params").and_then(Value::as_object) else { return warehouse_invalid_params(request_id, correlation_id); };
+        if params.get("schemaVersion").and_then(Value::as_str) != Some("0.1")
+            || !params.keys().all(|key| matches!(key.as_str(), "schemaVersion"|"sourceFolders"|"autoGenerate")) {
+            return warehouse_invalid_params(request_id, correlation_id);
+        }
+        return library_import_submit(warehouse.clone(), request, request_id, correlation_id);
+    }
+    if matches!(method,"library.removalPreview"|"library.removeFiles"|"library.removalStatus"|"library.pendingRemovals"|"library.resolveRemoval") {
+        if request["kind"] != if method == "library.removeFiles" || method == "library.resolveRemoval" {"command"} else {"query"} {
             return FrameOutcome::Response(application_error(request_id,correlation_id,"vua.library.invalid_params","errors.library.removalFailed","validation"));
         }
         let result = warehouse.library_maintenance.apply(method,request.get("params").cloned().unwrap_or(Value::Null),&warehouse.selection_drafts,state.use_cases.as_ref().map(|services|services.recipes.as_ref()));
@@ -5529,6 +5547,54 @@ fn catalog_request(
             "validation",
         )),
     }
+}
+
+fn library_entry_metadata_request(warehouse: &WarehouseServices, method: &str, request: &Value, request_id: &str, correlation_id: &str) -> FrameOutcome {
+    let query = method == "library.entryMetadata";
+    let invalid = || FrameOutcome::Response(application_error(request_id, correlation_id, "vua.library.invalid_params", "errors.library.metadataFailed", "validation"));
+    let Some(params) = request.get("params").and_then(Value::as_object) else { return invalid(); };
+    if request["kind"] != if query { "query" } else { "command" } || params.get("schemaVersion").and_then(Value::as_str) != Some("0.1") { return invalid(); }
+    if method == "library.removeLocalEntries" {
+        let Ok(remove) = serde_json::from_value::<vua_bdl_store::RemoveLocalEntries>(request["params"].clone()) else { return invalid(); };
+        let Some(command) = request.get("commandId").and_then(Value::as_str).filter(|id| !id.is_empty()) else { return invalid(); };
+        return FrameOutcome::Response(match warehouse.bdl.remove_local_entries(&remove, command, &vua_orchestrator::Clock::now_rfc3339(&SystemClock)) {
+            Ok(value) => match serde_json::to_value(value) { Ok(value) => application_success(request_id, value), Err(_) => application_error(request_id, correlation_id, "vua.library.store_failed", "errors.library.recordRemovalFailed", "internal") },
+            Err(error) => {
+                let (code, category) = match error {
+                    vua_bdl_store::BdlStoreError::UnknownWarehouseItem(_) => ("entry_not_found", "validation"),
+                    vua_bdl_store::BdlStoreError::InvalidEvent("record_conflict") => ("record_conflict", "conflict"),
+                    vua_bdl_store::BdlStoreError::InvalidEvent("entry_not_local") => ("entry_not_local", "validation"),
+                    vua_bdl_store::BdlStoreError::InvalidEvent(_) => ("invalid_params", "validation"),
+                    _ => ("store_failed", "internal"),
+                };
+                application_error(request_id, correlation_id, &format!("vua.library.{code}"), "errors.library.recordRemovalFailed", category)
+            }
+        });
+    }
+    let result = if query {
+        if params.len() != 2 { return invalid(); }
+        let Some(id) = params.get("entryId").and_then(Value::as_str).filter(|id| !id.is_empty()) else { return invalid(); };
+        warehouse.bdl.library_entry_metadata(id)
+    } else {
+        if params.len() != 6 || !params.contains_key("productId") || !params.contains_key("thumbnailRef") { return invalid(); }
+        let Ok(update) = serde_json::from_value::<vua_bdl_store::LibraryEntryMetadataUpdate>(request["params"].clone()) else { return invalid(); };
+        let Some(command) = request.get("commandId").and_then(Value::as_str).filter(|id| !id.is_empty()) else { return invalid(); };
+        warehouse.bdl.update_library_entry_metadata(&update, command, &vua_orchestrator::Clock::now_rfc3339(&SystemClock))
+    };
+    FrameOutcome::Response(match result {
+        Ok(value) => match serde_json::to_value(value) { Ok(value) => application_success(request_id, value), Err(_) => application_error(request_id, correlation_id, "vua.library.store_failed", "errors.library.metadataFailed", "internal") },
+        Err(error) => {
+            let (code, category) = match error {
+                vua_bdl_store::BdlStoreError::UnknownWarehouseItem(_) => ("entry_not_found", "validation"),
+                vua_bdl_store::BdlStoreError::UnknownProduct(_) => ("source_not_found", "validation"),
+                vua_bdl_store::BdlStoreError::InvalidEvent("metadata_conflict") => ("metadata_conflict", "conflict"),
+                vua_bdl_store::BdlStoreError::InvalidEvent("entry_not_local") => ("entry_not_local", "validation"),
+                vua_bdl_store::BdlStoreError::InvalidEvent(_) => ("invalid_params", "validation"),
+                _ => ("store_failed", "internal"),
+            };
+            application_error(request_id, correlation_id, &format!("vua.library.{code}"), "errors.library.metadataFailed", category)
+        }
+    })
 }
 
 /// The bdl-queries v0.3 envelope all read queries travel as: the frozen
@@ -6549,11 +6615,19 @@ fn warehouse_import_submit(
     request_id: &str,
     correlation_id: &str,
 ) -> FrameOutcome {
+    import_submit(warehouse, request, request_id, correlation_id, false)
+}
+
+fn library_import_submit(warehouse: Arc<WarehouseServices>, request: &Value, request_id: &str, correlation_id: &str) -> FrameOutcome {
+    import_submit(warehouse, request, request_id, correlation_id, true)
+}
+
+fn import_submit(warehouse: Arc<WarehouseServices>, request: &Value, request_id: &str, correlation_id: &str, retain_all: bool) -> FrameOutcome {
     let source_folders = match request.get("params") {
         Some(Value::Object(params))
             if params
                 .keys()
-                .all(|key| key == "sourceFolders" || key == "autoGenerate") =>
+                .all(|key| key == "sourceFolders" || key == "autoGenerate" || (retain_all && key == "schemaVersion")) =>
         {
             match params.get("sourceFolders") {
                 Some(Value::Array(folders)) if !folders.is_empty() => folders
@@ -6561,7 +6635,7 @@ fn warehouse_import_submit(
                     .map(|value| {
                         value
                             .as_str()
-                            .filter(|raw| !raw.is_empty())
+                            .filter(|raw| !raw.is_empty() && (!retain_all || !raw.contains('\0')))
                             .map(PathBuf::from)
                     })
                     .collect::<Option<Vec<PathBuf>>>(),
@@ -6573,6 +6647,10 @@ fn warehouse_import_submit(
     let Some(source_folders) = source_folders else {
         return warehouse_invalid_params(request_id, correlation_id);
     };
+    if retain_all && (source_folders.len() > 200 || source_folders.iter().any(|path| !path.is_absolute())
+        || source_folders.iter().map(|path| path.to_string_lossy().replace('\\', "/").to_lowercase()).collect::<std::collections::HashSet<_>>().len() != source_folders.len()) {
+        return warehouse_invalid_params(request_id, correlation_id);
+    }
     // N5 实验选项(用户方向 2026-10-02):autoGenerate=true 时导入完成每个
     // 文件夹后自动制成 VPM 包再入库。实验门控在渲染层(UI 只在设置-实验
     // 性开时显示该选项);此处在执行侧注入既有的 AutoGenerateSpec 管道。
@@ -6598,25 +6676,27 @@ fn warehouse_import_submit(
         }
         Some(_) => return warehouse_invalid_params(request_id, correlation_id),
     };
-    let accepted = vua_acquisition::submit_warehouse_import_auto(
+    let spec = vua_acquisition::WarehouseImportTaskSpec {
+        correlation_id: correlation_id.to_owned(), source_folders,
+        warehouse_root: warehouse.warehouse_root.clone(), auto_generate: auto_generate.clone(),
+    };
+    let accepted = if retain_all {
+        let Some(command_id) = request.get("commandId").and_then(Value::as_str).filter(|id| !id.is_empty()) else { return warehouse_invalid_params(request_id, correlation_id); };
+        vua_acquisition::warehouse_import::submit_library_import(warehouse.runtime.clone(), warehouse.bdl.clone(), Arc::new(SystemClock), spec, auto_generate, command_id)
+    } else { vua_acquisition::submit_warehouse_import_auto(
         warehouse.runtime.clone(),
         warehouse.bdl.clone(),
         Arc::new(SystemClock),
-        vua_acquisition::WarehouseImportTaskSpec {
-            correlation_id: correlation_id.to_owned(),
-            source_folders,
-            warehouse_root: warehouse.warehouse_root.clone(),
-            auto_generate: auto_generate.clone(),
-        },
+        spec,
         auto_generate,
         None,
-    );
+    ) };
     match accepted {
         Ok(accepted) => FrameOutcome::Response(application_success(
             request_id,
             json!({
-                "schemaVersion": BDL_COMMANDS_SCHEMA_VERSION,
-                "operation": "warehouse.import",
+                "schemaVersion": if retain_all { "0.1" } else { BDL_COMMANDS_SCHEMA_VERSION },
+                "operation": if retain_all { "library.importFolders" } else { "warehouse.import" },
                 "taskId": accepted.task_id,
                 "correlationId": correlation_id,
             }),

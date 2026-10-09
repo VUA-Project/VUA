@@ -1,7 +1,7 @@
-import { app, net, protocol } from "electron";
+import { app, nativeImage, net, protocol } from "electron";
 import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 /**
@@ -28,6 +28,37 @@ export function toCachedImageUrl(original: string): string {
   return `vua-img://${encodeURIComponent(original)}`;
 }
 
+/** Local Kernel picker owns the path. Only a bounded PNG cache reference is returned. */
+export async function importLocalThumbnail(sourcePath: string): Promise<string> {
+  const source = await open(sourcePath, "r");
+  let bytes: Buffer;
+  try {
+    const metadata = await source.stat();
+    if (!metadata.isFile() || metadata.size > MAX_CACHE_BYTES) throw new Error("thumbnail_invalid");
+    const bounded = Buffer.alloc(MAX_CACHE_BYTES + 1);
+    let length = 0;
+    while (length < bounded.length) {
+      const read = await source.read(bounded, length, Math.min(1024 * 1024, bounded.length - length), null);
+      if (read.bytesRead === 0) break;
+      length += read.bytesRead;
+    }
+    if (length > MAX_CACHE_BYTES) throw new Error("thumbnail_invalid");
+    bytes = bounded.subarray(0, length);
+  } finally { await source.close(); }
+  let image = nativeImage.createFromBuffer(bytes);
+  if (image.isEmpty()) throw new Error("thumbnail_invalid");
+  const size = image.getSize();
+  if (size.width > 512 || size.height > 512) {
+    const scale = 512 / Math.max(size.width, size.height);
+    image = image.resize({ width: Math.max(1, Math.round(size.width * scale)), height: Math.max(1, Math.round(size.height * scale)) });
+  }
+  const png = image.toPNG();
+  const hash = createHash("sha256").update(png).digest("hex");
+  await mkdir(cacheDir(), { recursive: true });
+  await writeFile(path.join(cacheDir(), `local-${hash}`), png);
+  return `vua-img://local/${hash}`;
+}
+
 /** 必须在 app ready 之前调用(Electron 时机要求):注册 scheme 特权 */
 export function registerImageCacheScheme(): void {
   protocol.registerSchemesAsPrivileged([
@@ -39,6 +70,12 @@ export function registerImageCacheScheme(): void {
 export async function registerImageCacheProtocol(): Promise<void> {
   await mkdir(cacheDir(), { recursive: true });
   protocol.handle("vua-img", async (request) => {
+    const target = new URL(request.url);
+    if (target.hostname === "local" && /^\/[a-f0-9]{64}$/.test(target.pathname) && target.search === "" && target.hash === "") {
+      const file = path.join(cacheDir(), `local-${target.pathname.slice(1)}`);
+      if (!existsSync(file)) return new Response("missing", { status: 404 });
+      return new Response(new Uint8Array(await readFile(file)), { headers: { "content-type": "image/png", "cache-control": "immutable" } });
+    }
     const raw = decodeURIComponent(new URL(request.url).hostname + new URL(request.url).pathname.slice(1));
     if (!raw.startsWith(ALLOWED_PREFIX)) {
       return new Response("forbidden", { status: 403 });

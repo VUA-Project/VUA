@@ -14,6 +14,7 @@ scraper = "0.27.0"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.11.0"
+zip = { version = "4.6", default-features = false, features = ["deflate"] }
 vua-bdl-store = { path = "../bdl-store" }
 vua-orchestrator = { path = "../orchestrator" }
 vua-unity-bridge = { path = "../unity-bridge" }

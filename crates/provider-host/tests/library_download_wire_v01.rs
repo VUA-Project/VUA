@@ -12,6 +12,67 @@ use vua_bdl_store::{
 use vua_orchestrator::SqliteTaskStore;
 use vua_provider_host::{run_provider_host_with_services, DownloadConfig, WarehouseConfig};
 
+fn zip_bytes(files: &[(&str, &[u8])]) -> Vec<u8> {
+    let mut archive = zip::ZipWriter::new(Cursor::new(Vec::new()));
+    for (name, bytes) in files {
+        archive.start_file(*name, zip::write::SimpleFileOptions::default()).unwrap();
+        archive.write_all(bytes).unwrap();
+    }
+    archive.finish().unwrap().into_inner()
+}
+
+#[test]
+fn library_intake_wire_keeps_files_expands_zip_and_replays_without_duplicate_entries() {
+    let world = World::new();
+    let source = world.base.join("migrated-source");
+    std::fs::create_dir(&source).unwrap();
+    std::fs::write(source.join("texture.psd"), b"synthetic psd").unwrap();
+    std::fs::write(source.join("README"), b"synthetic instructions").unwrap();
+    let archive = zip_bytes(&[("sub/Avatar.unitypackage", b"synthetic UnityPackage"), ("sub/preview.jpg", b"synthetic image")]);
+    std::fs::write(source.join("package.zip"), &archive).unwrap();
+    let params = json!({"schemaVersion":"0.1","sourceFolders":[source]});
+    let mut host = Host::new(&world.base, world.bdl.clone());
+    let accepted = host.call_command("library.importFolders", params.clone(), Some("import-replay"));
+    assert_eq!(accepted["ok"], true, "{accepted}");
+    let response_schema: Value = serde_json::from_slice(&std::fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/library-intake/v0.1/response.schema.json")).unwrap()).unwrap();
+    assert!(jsonschema::validator_for(&response_schema).unwrap().is_valid(&accepted["value"]));
+    let again = host.call_command("library.importFolders", params, Some("import-replay"));
+    assert_eq!(again["value"]["taskId"], accepted["value"]["taskId"]);
+    let task_id = accepted["value"]["taskId"].as_str().unwrap();
+    let start = Instant::now();
+    loop {
+        let task = world.tasks.task(task_id).unwrap().unwrap();
+        if task.state.is_terminal() { assert_eq!(task.state, vua_orchestrator::TaskState::Succeeded); break; }
+        assert!(start.elapsed() < Duration::from_secs(10));
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    assert_eq!(world.bdl.warehouse_entry_cards(ArtifactMode::UseOriginalUnitypackage).unwrap().len(), 1);
+    assert_eq!(world.bdl.library_copy_evidence().unwrap().len(), 5);
+    assert_eq!(std::fs::read(source.join("package.zip")).unwrap(), archive);
+    let view = host.call("library.list", json!({"schemaVersion":"0.1","source":"local"}));
+    assert_eq!(view["value"]["items"][0]["storage"]["presentCopies"], 5);
+    for invalid in [json!({"schemaVersion":"0.1","sourceFolders":[]}), json!({"schemaVersion":"0.1","sourceFolders":["relative"]}), json!({"schemaVersion":"0.1","sourceFolders":[source],"unknown":true})] {
+        assert_eq!(host.call("library.importFolders", invalid)["ok"], false);
+    }
+}
+
+#[test]
+fn managed_zip_download_wire_exposes_members_and_original_separately() {
+    let world = World::new();
+    let mut host = Host::new(&world.base, world.bdl.clone());
+    let archive = zip_bytes(&[("Avatar.unitypackage", b"synthetic UnityPackage"), ("PSD/texture.psd", b"synthetic psd")]);
+    assert_eq!(host.batch("zip", &[902])["ok"], true);
+    world.delivery_named(902, "dl-zip", &archive, "bundle.zip");
+    assert_eq!(host.observe("zip", 902, "dl-zip")["ok"], true);
+    assert_eq!(host.wait("zip", &world.tasks)["state"], "succeeded");
+    let parent = world.bdl.managed_library_file(902).unwrap().unwrap();
+    assert_eq!(std::fs::read(parent.stored_path).unwrap(), archive);
+    assert_eq!(world.bdl.archive_members(&parent.copy_id).unwrap().len(), 2);
+    let view = host.call("library.list", json!({"schemaVersion":"0.1"}));
+    assert_eq!(view["value"]["items"][0]["storage"]["presentCopies"], 3);
+    assert_eq!(view["value"]["items"][0]["storage"]["productionQualification"], "not_evaluated");
+}
+
 fn vector(name: &str) -> Value {
     serde_json::from_slice(
         &std::fs::read(
@@ -23,9 +84,100 @@ fn vector(name: &str) -> Value {
     )
     .unwrap()
 }
+
+#[test]
+fn interrupted_removal_wire_discovers_and_resolves_without_deleting_the_file() {
+    let world = World::new();
+    let mut host = Host::new(&world.base, world.bdl.clone());
+    host.batch("inspect-original", &[901]);
+    world.delivery(901, "dl-inspect-original", b"synthetic original");
+    host.observe("inspect-original", 901, "dl-inspect-original"); host.wait("inspect-original", &world.tasks);
+    let stored = world.bdl.managed_library_file(901).unwrap().unwrap();
+    let target = json!({"kind":"product","id":"booth:90"});
+    let preview = host.call("library.removalPreview", json!({"schemaVersion":"0.1","target":target}));
+    assert_eq!(preview["ok"], true, "{preview}");
+    let remove = json!({"schemaVersion":"0.1","removalId":"library-removal-before-restart","target":target,"copyIds":[stored.copy_id],"previewHash":preview["value"]["previewHash"]});
+    let mut file = preview["value"]["files"][0].clone();
+    file["storedPath"] = json!(stored.stored_path); file["productIds"] = json!(["booth:90"]);
+    let plan = json!({"request":remove,"files":[file]});
+    drop(host);
+    world.tasks.accept_idempotent_task("library.removeFiles","library-removal-before-restart",&plan.to_string(),&vua_orchestrator::NewTask {
+        task_id:"task-wire-interrupted-removal".into(),correlation_id:"library-removal-before-restart".into(),occurred_at:"t".into()
+    },&json!({"schemaVersion":"0.1","taskId":"task-wire-interrupted-removal","acceptedRevision":1,"initialState":"queued"})).unwrap();
+    let mut host = Host::new(&world.base, world.bdl.clone());
+    let pending = host.call("library.pendingRemovals", json!({"schemaVersion":"0.1","target":target}));
+    assert_eq!(pending["value"]["items"][0]["state"], "unconfirmed");
+    let params = json!({"schemaVersion":"0.1","removalId":"library-removal-before-restart","observedRevision":1});
+    let resolved = host.call("library.resolveRemoval", params.clone());
+    assert_eq!(resolved["ok"], true, "{resolved}");
+    assert_eq!(resolved["value"]["inspectionResolved"], true);
+    assert_eq!(resolved["value"]["files"][0]["phase"], "kept");
+    assert_eq!(resolved["value"]["taskState"], "cancelled");
+    let schema: Value = serde_json::from_slice(&std::fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/library-maintenance/v0.1/response.schema.json")).unwrap()).unwrap();
+    let validator = jsonschema::validator_for(&schema).unwrap();
+    assert!(validator.is_valid(&pending["value"]));
+    assert!(validator.is_valid(&resolved["value"]));
+    assert_eq!(host.call("library.resolveRemoval", params)["value"], resolved["value"]);
+    assert_eq!(std::fs::read(&stored.stored_path).unwrap(), b"synthetic original");
+    assert!(host.call("library.pendingRemovals", json!({"schemaVersion":"0.1","target":target}))["value"]["items"].as_array().unwrap().is_empty());
+    assert_eq!(host.batch("unblocked", &[901])["ok"], true);
+    assert_eq!(host.call("library.observeDownload", json!({"schemaVersion":"0.1","batchId":"library-download-unblocked","downloadableId":901,"outcome":"initiation_failed"}))["ok"], true);
+}
+
+#[test]
+fn metadata_wire_has_atomic_replay_and_persistent_local_only_edits() {
+    let world = World::new();
+    let entry = world.bdl.create_warehouse_item("Local folder", "imported_material", "t").unwrap();
+    let account = world.bdl.create_warehouse_item("Account download", "downloaded_material", "t").unwrap();
+    let mut host = Host::new(&world.base, world.bdl.clone());
+    let params = json!({"schemaVersion":"0.1","entryId":entry.warehouse_item_id,"expectedRevision":0,"displayName":"Texture","productId":"booth:90","thumbnailRef":format!("vua-img://local/{}", "a".repeat(64))});
+    let before = host.call("library.entryMetadata", json!({"schemaVersion":"0.1","entryId":entry.warehouse_item_id}));
+    assert_eq!(before["value"]["revision"], 0);
+    let edited = host.call_command("library.updateEntryMetadata", params.clone(), Some("source-edit"));
+    assert_eq!(edited["ok"], true, "{edited}");
+    let schema: Value = serde_json::from_slice(&std::fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/library-entry-metadata/v0.1/response.schema.json")).unwrap()).unwrap();
+    assert!(jsonschema::validator_for(&schema).unwrap().is_valid(&edited["value"]));
+    assert_eq!(host.call_command("library.updateEntryMetadata", params.clone(), Some("source-edit"))["value"], edited["value"]);
+    assert_eq!(host.call("library.updateEntryMetadata", params)["error"]["code"], "vua.library.metadata_conflict");
+    let invalid_account = json!({"schemaVersion":"0.1","entryId":account.warehouse_item_id,"expectedRevision":0,"displayName":"Fake","productId":null,"thumbnailRef":null});
+    assert_eq!(host.call("library.updateEntryMetadata", invalid_account)["error"]["code"], "vua.library.entry_not_local");
+    assert_eq!(host.call("library.entryMetadata", json!({"schemaVersion":"0.1","entryId":entry.warehouse_item_id,"unknown":true}))["error"]["code"], "vua.library.invalid_params");
+    let view = host.call("library.list", json!({"schemaVersion":"0.1"}));
+    let local = view["value"]["items"].as_array().unwrap().iter().find(|row| row["entry"]["warehouseItemId"] == entry.warehouse_item_id).unwrap();
+    assert_eq!(local["metadata"], edited["value"]);
+    assert_eq!(local["sourceMatch"]["content"], "unverified");
+    let view_schema: Value = serde_json::from_slice(&std::fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/library-view/v0.1/response.schema.json")).unwrap()).unwrap();
+    assert!(jsonschema::validator_for(&view_schema).unwrap().is_valid(&view["value"]));
+    drop(host);
+    let reopened = BdlStore::open(world.base.join("bdl.db")).unwrap();
+    assert_eq!(reopened.library_entry_metadata(&entry.warehouse_item_id).unwrap().revision, 1);
+    assert_eq!(reopened.product_library_memberships("booth:90").unwrap(), vec!["bought"]);
+}
 struct Lines {
     receiver: mpsc::Receiver<Vec<u8>>,
     current: Cursor<Vec<u8>>,
+}
+
+#[test]
+fn local_record_removal_wire_keeps_account_and_warehouse_identities() {
+    let world = World::new();
+    let entry = world.bdl.create_warehouse_item("Local", "imported_material", "t").unwrap();
+    let account = world.bdl.create_warehouse_item("Account", "downloaded_material", "t").unwrap();
+    let mut host = Host::new(&world.base, world.bdl.clone());
+    let params = json!({"schemaVersion":"0.1","entryIds":[entry.warehouse_item_id]});
+    let rejected = host.call("library.removeLocalEntries", json!({"schemaVersion":"0.1","entryIds":[entry.warehouse_item_id,account.warehouse_item_id]}));
+    assert_eq!(rejected["error"]["code"], "vua.library.entry_not_local");
+    assert!(world.bdl.removed_local_entries().unwrap().is_empty());
+    let removed = host.call_command("library.removeLocalEntries", params.clone(), Some("remove-local"));
+    assert_eq!(removed["ok"], true, "{removed}");
+    let schema: Value = serde_json::from_slice(&std::fs::read(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schemas/library-records/v0.1/response.schema.json")).unwrap()).unwrap();
+    assert!(jsonschema::validator_for(&schema).unwrap().is_valid(&removed["value"]));
+    assert_eq!(host.call_command("library.removeLocalEntries", params, Some("remove-local"))["value"], removed["value"]);
+    assert_eq!(host.call_command("library.removeLocalEntries", json!({"schemaVersion":"0.1","entryIds":[account.warehouse_item_id]}), Some("remove-local"))["error"]["code"], "vua.library.record_conflict");
+    let view = host.call("library.list", json!({"schemaVersion":"0.1"}));
+    assert!(!view["value"]["items"].as_array().unwrap().iter().any(|row| row["entry"]["warehouseItemId"] == entry.warehouse_item_id));
+    assert!(world.bdl.warehouse_entry_detail(&entry.warehouse_item_id, ArtifactMode::UseOriginalUnitypackage).unwrap().is_some());
+    assert_eq!(world.bdl.product_library_memberships("booth:90").unwrap(), vec!["bought"]);
 }
 impl Read for Lines {
     fn read(&mut self, output: &mut [u8]) -> std::io::Result<usize> {
@@ -101,11 +253,15 @@ impl Host {
             .collect()
     }
     fn call(&mut self, method: &str, params: Value) -> Value {
+        self.call_command(method, params, None)
+    }
+    fn call_command(&mut self, method: &str, params: Value, command_id: Option<&str>) -> Value {
         self.sequence += 1;
         let id = format!("request-{}", self.sequence);
         let query = matches!(
             method,
             "library.downloadStatus"
+                | "library.entryMetadata"
                 | "library.list"
                 | "library.productFiles"
                 | "recipeDraft.list"
@@ -113,11 +269,12 @@ impl Host {
                 | "recipeDraft.selectionStatus"
                 | "library.removalPreview"
                 | "library.removalStatus"
+                | "library.pendingRemovals"
                 | "app.snapshot"
         );
         let mut request = json!({"contractVersion":"0.1","requestId":id,"correlationId":id,"kind":if query {"query"} else {"command"},"method":method,"params":params});
         if !query {
-            request["commandId"] = json!(id);
+            request["commandId"] = json!(command_id.unwrap_or(&id));
         }
         let frame = json!({"frameVersion":"0.1","frameId":id,"kind":"request","payload":request});
         self.sender
@@ -243,6 +400,9 @@ impl World {
         }
     }
     fn delivery(&self, id: i64, delivery: &str, content: &[u8]) {
+        self.delivery_named(id, delivery, content, "synthetic.pdf");
+    }
+    fn delivery_named(&self, id: i64, delivery: &str, content: &[u8], name: &str) {
         let root = self.base.join("downloads-staging");
         std::fs::create_dir_all(&root).unwrap();
         let file = root.join(delivery);
@@ -257,7 +417,7 @@ impl World {
                     source_url: format!("https://booth.pm/downloadables/{id}"),
                     initiated_from_page_url: None,
                     url_chain: None,
-                    suggested_file_name: Some("synthetic.pdf".into()),
+                    suggested_file_name: Some(name.into()),
                     stored_path: if kind == DownloadEventKind::Completed {
                         Some(file.to_string_lossy().into())
                     } else {

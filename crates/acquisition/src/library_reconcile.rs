@@ -241,6 +241,7 @@ pub(crate) fn group(
     managed_products: &HashMap<i64, String>,
     presences: &mut HashMap<String, &'static str>,
     checks: &ContentChecks,
+    explicit_sources: &HashMap<String, String>,
 ) -> Grouping {
     let product_ids: HashSet<_> = products.iter().map(|p| p.product_id.as_str()).collect();
     let downloaded: HashSet<_> = entries
@@ -256,6 +257,7 @@ pub(crate) fn group(
     for copy in copies {
         let managed_product = copy
             .downloadable_id
+            .or(copy.archive_downloadable_id)
             .and_then(|id| managed_products.get(&id))
             .filter(|id| product_ids.contains(id.as_str()));
         let ids: HashSet<_> = if let Some(id) = managed_product {
@@ -274,7 +276,7 @@ pub(crate) fn group(
         }
         assignments.insert(copy.copy.copy_id.clone(), ids.clone());
         if copy.copy.role == CopyRole::Original {
-            if let Some(id) = managed_product {
+            if let Some(id) = managed_product.filter(|_| copy.downloadable_id.is_some() || copy.archive_current) {
                 let id = id.clone();
                 reference_hashes
                     .entry(id.clone())
@@ -294,6 +296,8 @@ pub(crate) fn group(
         let Some(ids) = hash_products.get(copy.copy.artifact_sha256.as_str()) else {
             continue;
         };
+        let ids: HashSet<_> = ids.iter().filter(|id| explicit_sources.get(&copy.copy.warehouse_item_id).is_none_or(|source| source == *id)).cloned().collect();
+        if ids.is_empty() { continue; }
         let state = presences[&copy.copy.copy_id];
         // Explicit deletion does not erase a previously verified content identity.
         // Reappearing bytes must pass the metadata/proof check again.
@@ -309,7 +313,7 @@ pub(crate) fn group(
         };
         presences.insert(copy.copy.copy_id.clone(), result);
         if result == "present" || result == "missing" {
-            assignments.insert(copy.copy.copy_id.clone(), ids.clone());
+            assignments.insert(copy.copy.copy_id.clone(), ids);
         }
     }
     // A derivative is grouped only when every original in its entry has matched
@@ -372,6 +376,7 @@ pub(crate) fn source_hint(
     copies: &[&LibraryCopyEvidence],
     products: &[CatalogProductSummary],
     grouping: &Grouping,
+    explicit_source: Option<&str>,
 ) -> Option<(&'static str, String, &'static str)> {
     let known: HashSet<_> = products.iter().map(|p| p.product_id.as_str()).collect();
     let mapped: HashSet<_> = copies
@@ -381,7 +386,9 @@ pub(crate) fn source_hint(
         .filter(|id| known.contains(id.as_str()))
         .cloned()
         .collect();
-    let (basis, id) = if !mapped.is_empty() {
+    let (basis, id) = if let Some(id) = explicit_source.filter(|id| known.contains(id)) {
+        ("mapping", id.to_owned())
+    } else if !mapped.is_empty() {
         if mapped.len() != 1 {
             return None;
         }

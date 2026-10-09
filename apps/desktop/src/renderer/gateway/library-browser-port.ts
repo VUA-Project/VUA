@@ -1,4 +1,5 @@
 import { isLibraryListV01, isLibraryProductFilesV01, type LibraryListParamsV01 } from "@vua/contracts";
+import type { LibraryEntryMetadataV01 } from "@vua/contracts";
 import type { WarehouseEntry } from "./acquire-port.ts";
 import type { CatalogListView, CatalogProductSummary } from "./catalog-browser-port.ts";
 import { projectSummary } from "./catalog-browser-live.ts";
@@ -11,12 +12,15 @@ export interface LibraryStorageFacts {
   readonly changedCopies: number; readonly unreadableCopies: number;
   readonly supersededGeneratedCopies: number; readonly currentGeneratedCopies: number;
   readonly productionQualification: "not_evaluated";
+  readonly unexpandedArchives?: number;
 }
 export interface LibraryCardFacts {
   readonly storage: LibraryStorageFacts;
   readonly sources: readonly ("bought" | "gifts" | "free_downloads")[];
   readonly operation: { readonly taskId: string; readonly state: string; readonly inspectRequired: boolean } | null;
   readonly copyIds?: readonly string[];
+  readonly localEntries?: readonly { readonly entryId: string; readonly displayName: string }[];
+  readonly metadata?: LibraryEntryMetadataV01;
   readonly sourceMatch?: { readonly product: CatalogProductSummary; readonly basis: "mapping" | "product_id" | "name"; readonly content: "unverified" | "different" };
 }
 export interface LibraryPageView {
@@ -48,13 +52,14 @@ export function createLiveLibraryBrowserPort(client: GatewayClient): LibraryBrow
           items.push(product);
           facts.set(product.productId, { storage: row.storage, sources: row.sources, ...(row.copyIds === undefined ? {} : { copyIds: row.copyIds }), operation: row.operation === null ? null : {
             taskId: row.operation.taskId, state: row.operation.state, inspectRequired: row.operation.recoveryDisposition === "inspect_required",
-          } });
+          }, ...(row.localEntries === undefined ? {} : { localEntries: row.localEntries }) });
         } else {
           const entry = projectEntry(row.entry);
           if (entry === null) throw new Error("library_entry_invalid");
           const sourceProduct = row.sourceMatch === undefined ? undefined : projectSummary(row.sourceMatch.product);
           if (sourceProduct === null) throw new Error("library_source_invalid");
           localEntries.push(entry); facts.set(entry.warehouseItemId, { storage: row.storage, sources: row.sourceMatch?.sources ?? [], operation: null,
+            ...(row.metadata === undefined ? {} : { metadata: row.metadata }),
             ...(row.copyIds === undefined ? {} : { copyIds: row.copyIds }),
             ...(row.sourceMatch === undefined || sourceProduct === undefined ? {} : { sourceMatch: { product: sourceProduct, basis: row.sourceMatch.basis, content: row.sourceMatch.content } }),
           });

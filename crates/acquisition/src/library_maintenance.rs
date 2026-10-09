@@ -33,13 +33,6 @@ impl Target {
             self.kind == "entry" && safe_id(&self.id, 128)
         }
     }
-    fn matches(&self, copy: &LibraryCopyEvidence) -> bool {
-        if self.kind == "product" {
-            copy.product_ids.contains(&self.id)
-        } else {
-            copy.copy.warehouse_item_id == self.id
-        }
-    }
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
@@ -362,6 +355,7 @@ impl LibraryMaintenance {
             return Err(LibraryDownloadError("target_not_found"));
         }
         let copies = self.bdl.library_copy_evidence()?;
+        let product_scope = if target.kind == "product" { Some(crate::library_view::product_copy_ids(&self.bdl, &self.root, &self.downloads, &target.id)?) } else { None };
         let mut path_keys = HashMap::new();
         let mut aliases: HashMap<PathBuf, (Vec<String>, Vec<String>)> = HashMap::new();
         for copy in &copies {
@@ -379,7 +373,8 @@ impl LibraryMaintenance {
         let mut files: Vec<_> = copies
             .iter()
             .filter(|copy| {
-                target.matches(copy) && ids.is_none_or(|ids| ids.contains(&copy.copy.copy_id))
+                product_scope.as_ref().map_or_else(|| copy.copy.warehouse_item_id == target.id, |scope| scope.contains(&copy.copy.copy_id))
+                    && ids.is_none_or(|ids| ids.contains(&copy.copy.copy_id))
             })
             .map(|copy| PlannedFile {
                 copy_id: copy.copy.copy_id.clone(),
@@ -391,7 +386,11 @@ impl LibraryMaintenance {
                 presence: presence(&self.root, copy).into(),
                 superseded: copy.superseded,
                 stored_path: copy.copy.stored_path.clone(),
-                product_ids: aliases[&path_keys[&copy.copy.copy_id]].1.clone(),
+                product_ids: {
+                    let mut products = aliases[&path_keys[&copy.copy.copy_id]].1.clone();
+                    if target.kind == "product" && !products.contains(&target.id) { products.push(target.id.clone()); products.sort(); }
+                    products
+                },
                 affected_copy_ids: aliases[&path_keys[&copy.copy.copy_id]].0.clone(),
             })
             .collect();
@@ -436,10 +435,14 @@ impl LibraryMaintenance {
             .ok_or(LibraryDownloadError("store_failed"))?;
         // Read task before events, then consume only its revision to avoid mixing finality.
         let events = self.store.events_after(task_id, 0)?;
+        let resolution = task.result.as_ref().filter(|result| result["operation"] == COMMAND && result["inspectionResolved"] == true);
         let files: Vec<_> = plan
             .files
             .iter()
             .map(|file| {
+                if let Some(receipt) = resolution.and_then(|result| result["files"].as_array()).and_then(|files| files.iter().find(|receipt| receipt["copyId"] == file.copy_id)) {
+                    return receipt.clone();
+                }
                 let receipt = events.iter().rev().find(|event| {
                     event.revision <= task.revision
                         && event.payload["operation"] == COMMAND
@@ -450,7 +453,7 @@ impl LibraryMaintenance {
                 "errorCode":receipt.map(|r|r.payload["errorCode"].clone()).unwrap_or(Value::Null)})
             })
             .collect();
-        let inspect = self.runtime.snapshot(task_id).is_none_or(|s| {
+        let inspect = resolution.is_none() && self.runtime.snapshot(task_id).is_none_or(|s| {
             s.poisoned || s.recovery_disposition == TaskRecoveryDisposition::InspectRequired
         });
         let state = if inspect && !task.state.is_terminal() {
@@ -464,11 +467,46 @@ impl LibraryMaintenance {
                 _ => "running",
             }
         };
-        Ok(
-            json!({"schemaVersion":"0.1","removalId":plan.request.removal_id,"target":plan.request.target,"taskId":task_id,
+        let mut value = json!({"schemaVersion":"0.1","removalId":plan.request.removal_id,"target":plan.request.target,"taskId":task_id,
             "taskState":task.state,"revision":task.revision,"cancelRequested":task.cancel_requested,
-            "recoveryDisposition":if inspect {"inspect_required"} else {"none"},"state":state,"files":files}),
-        )
+            "recoveryDisposition":if inspect {"inspect_required"} else {"none"},"state":state,"files":files});
+        if resolution.is_some() { value["inspectionResolved"] = json!(true); }
+        Ok(value)
+    }
+    fn resolve(&self, removal_id: &str, observed_revision: u64) -> Result<Value, LibraryDownloadError> {
+        let gate = self.downloads.copy_write_lock();
+        let _guard = gate.lock().expect("copy writes poisoned");
+        let (id, plan) = self.prior(removal_id)?.ok_or(LibraryDownloadError("removal_not_found"))?;
+        let before = self.snapshot(&id, &plan)?;
+        if before["inspectionResolved"] == true { return Ok(before); }
+        if before["state"] != "unconfirmed" { return Err(LibraryDownloadError("inspection_not_required")); }
+        if before["revision"].as_u64() != Some(observed_revision) { return Err(LibraryDownloadError("removal_conflict")); }
+        let evidence = self.bdl.library_copy_evidence()?;
+        let mut files = before["files"].as_array().ok_or(LibraryDownloadError("store_failed"))?.clone();
+        for receipt in &mut files {
+            if receipt["phase"] != "pending" { continue; }
+            let file = plan.files.iter().find(|file| receipt["copyId"] == file.copy_id).ok_or(LibraryDownloadError("store_failed"))?;
+            let current = evidence.iter().find(|copy| copy.copy.copy_id == file.copy_id);
+            let result = match current {
+                Some(copy) if copy.copy.stored_path == file.stored_path && copy.copy.warehouse_item_id == file.entry_id
+                    && copy.copy.artifact_sha256 == file.artifact_sha256 && copy.size_bytes == file.size_bytes => match presence(&self.root, copy) {
+                        "present" => Ok("kept"),
+                        "missing" => Ok("missing_after_inspection"),
+                        "changed" => Err("file_changed"),
+                        _ => Err("file_unreadable"),
+                    },
+                _ => Err("copy_changed"),
+            };
+            match result {
+                Ok(phase) => { receipt["phase"] = json!(phase); receipt["errorCode"] = Value::Null; }
+                Err(code) => { receipt["phase"] = json!("failed"); receipt["errorCode"] = json!(code); }
+            }
+        }
+        let result = json!({"operation":COMMAND,"inspectionResolved":true,"files":files});
+        self.runtime.cancel_after_inspection(&id, observed_revision, result).map_err(|error| {
+            LibraryDownloadError(if error.category == ErrorCategory::Conflict { "removal_conflict" } else { "store_failed" })
+        })?;
+        self.snapshot(&id, &plan)
     }
     pub fn apply(
         &self,
@@ -478,6 +516,31 @@ impl LibraryMaintenance {
         recipes: Option<&RecipeDocumentStore>,
     ) -> Result<Value, LibraryDownloadError> {
         match method {
+            "library.pendingRemovals" => {
+                #[derive(Deserialize)]
+                #[serde(deny_unknown_fields, rename_all = "camelCase")]
+                struct Pending { schema_version: String, target: Target }
+                let request: Pending = serde_json::from_value(params)?;
+                if request.schema_version != "0.1" || !request.target.valid() { return Err(LibraryDownloadError("invalid_params")); }
+                let mut items = Vec::new();
+                for row in self.store.idempotent_tasks(COMMAND)? {
+                    let plan: Plan = serde_json::from_str(&row.request_fingerprint).map_err(|_| LibraryDownloadError("store_failed"))?;
+                    if plan.request.target == request.target || plan.files.iter().any(|file| if request.target.kind == "entry" { file.entry_id == request.target.id } else { file.product_ids.contains(&request.target.id) }) {
+                        let snapshot = self.snapshot(&row.task_id, &plan)?;
+                        if snapshot["state"] == "unconfirmed" { items.push(snapshot); }
+                    }
+                }
+                Ok(json!({"schemaVersion":"0.1","target":request.target,"items":items}))
+            }
+            "library.resolveRemoval" => {
+                #[derive(Deserialize)]
+                #[serde(deny_unknown_fields, rename_all = "camelCase")]
+                struct Resolve { schema_version: String, removal_id: String, observed_revision: u64 }
+                let request: Resolve = serde_json::from_value(params)?;
+                identity(&request.schema_version, &request.removal_id)?;
+                if request.observed_revision == 0 || request.observed_revision > 9_007_199_254_740_991 { return Err(LibraryDownloadError("invalid_params")); }
+                self.resolve(&request.removal_id, request.observed_revision)
+            }
             "library.removalPreview" => {
                 if params.get("copyIds").is_some_and(Value::is_null) {
                     return Err(LibraryDownloadError("invalid_params"));

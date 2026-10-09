@@ -648,6 +648,26 @@ impl TaskRuntime {
 
     /// Requests cooperative cancellation; takes effect at the job's next safe
     /// boundary (ORC-CON-001, ORC-CON-006). Idempotent.
+    /// Complete a vanished SQLite worker after explicit domain inspection.
+    /// Inspection and cancellation are recorded together; no worker is resumed.
+    pub fn cancel_after_inspection(&self, task_id: &str, observed_revision: u64, result: Value) -> Result<(), AppErrorV1> {
+        let refused = || AppErrorV1::new("vua.task.inspection_conflict", ErrorCategory::Conflict, "errors.task.inspectionRequired", task_id);
+        let Some(sqlite) = &self.inner.sqlite else { return Err(refused()); };
+        let mut tasks = self.inner.tasks.lock().expect("tasks poisoned");
+        let Some(record) = tasks.get_mut(task_id) else { return Err(refused()); };
+        if record.poisoned || record.recovery_disposition != TaskRecoveryDisposition::InspectRequired { return Err(refused()); }
+        let stored = sqlite.task(task_id).map_err(|error| persistence_failure(&PersistenceFailure::Sqlite(error), task_id))?.ok_or_else(refused)?;
+        if stored.state.is_terminal() || stored.revision != observed_revision { return Err(refused()); }
+        let occurred_at = self.inner.clock.now_rfc3339();
+        let event = sqlite.mutate_task(task_id, observed_revision, &occurred_at, TaskMutation::Complete { state: TaskState::Cancelled, error: None, result: Some(result.clone()) })
+            .map_err(|error| persistence_failure(&PersistenceFailure::Sqlite(error), task_id))?.ok_or_else(refused)?;
+        record.state = TaskState::Cancelled; record.revision = event.revision;
+        record.cancel_requested.store(stored.cancel_requested, Ordering::SeqCst);
+        record.recovery_disposition = TaskRecoveryDisposition::None;
+        self.inner.publish(self.inner.make_event_at(task_id, event.revision, TaskEventKind::Completed, TaskState::Cancelled, result, occurred_at, stored.correlation_id));
+        Ok(())
+    }
+
     pub fn cancel(&self, task_id: &str) -> Result<(), AppErrorV1> {
         // State and revision are captured under the same lock as the flag so
         // the event reports the moment of the request, not a later state the

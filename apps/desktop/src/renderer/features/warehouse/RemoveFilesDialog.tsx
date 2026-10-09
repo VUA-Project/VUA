@@ -26,6 +26,7 @@ export function RemoveFilesDialog({ item, onClose, onChanged }: {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [intent, setIntent] = useState<{ readonly id: string; readonly preview: LibraryRemovalPreviewV01 } | null>(null);
   const [snapshot, setSnapshot] = useState<LibraryRemovalSnapshotV01 | null>(null);
+  const [interruptions, setInterruptions] = useState<readonly LibraryRemovalSnapshotV01[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const currentIntent = useRef<string | null>(null);
   const changed = useRef(onChanged);
@@ -33,8 +34,8 @@ export function RemoveFilesDialog({ item, onClose, onChanged }: {
   useEffect(() => { changed.current = onChanged; }, [onChanged]);
   useEffect(() => {
     let active = true; setLoading(true); setFeedback(null); setInventory(null); setPreview(null);
-    void libraryMaintenance.preview(item.target, item.copyIds).then((value) => {
-      if (active) { setInventory(value); setSelection(new Set(value.files.map((file) => file.copyId))); }
+    void Promise.all([libraryMaintenance.preview(item.target, item.copyIds), libraryMaintenance.pending(item.target)]).then(([value, pending]) => {
+      if (active) { setInventory(value); setInterruptions(pending); setSelection(new Set(value.files.map((file) => file.copyId))); }
     }).catch(() => { if (active) setFeedback(copy.loadFailed); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [item.target.kind, item.target.id, scope, refresh]);
@@ -91,6 +92,16 @@ export function RemoveFilesDialog({ item, onClose, onChanged }: {
     setIntent(request);
     await submit(request);
   };
+  const resolve = async (interrupted: LibraryRemovalSnapshotV01) => {
+    if (submitting) return;
+    setSubmitting(true); setFeedback(null);
+    try {
+      const value = await libraryMaintenance.resolve(interrupted.removalId, interrupted.revision);
+      setSnapshot(value); setInterruptions((prior) => prior.filter((entry) => entry.removalId !== interrupted.removalId));
+      changed.current(); setRefresh((value) => value + 1);
+    } catch { setFeedback(copy.inspectionFailed); }
+    finally { setSubmitting(false); }
+  };
   const counts = { removed: snapshot?.files.filter((f) => f.phase === "removed").length ?? 0,
     missing: snapshot?.files.filter((f) => f.phase === "already_missing").length ?? 0,
     failed: snapshot?.files.filter((f) => f.phase === "failed").length ?? 0, pending: snapshot?.files.filter((f) => f.phase === "pending").length ?? 0 };
@@ -98,7 +109,14 @@ export function RemoveFilesDialog({ item, onClose, onChanged }: {
     <div className="vua-page__stack">
       <p>{format(copy.note, { recipe: termLabel("recipe") })}</p>
       {inventory === null && loading ? <><p role="status">{copy.loading}</p><Skeleton width="100%" height={80} /></> : null}
-      {inventory !== null && intent === null ? <>
+      {interruptions.length > 0 && intent === null ? <section>
+        <h3>{copy.interruptedTitle}</h3><p>{copy.inspectionNote}</p>
+        {interruptions.map((entry) => <div key={entry.removalId}>
+          <ul>{entry.files.map((file) => <li key={file.copyId}>{file.fileName}</li>)}</ul>
+          <Button disabled={submitting} onClick={() => void resolve(entry)}>{copy.inspect}</Button>
+        </div>)}
+      </section> : null}
+      {inventory !== null && intent === null && interruptions.length === 0 ? <>
         <div className="vua-page__actions"><span>{format(copy.selected, { count: selection.size })}</span>
           <Button variant="subtle" disabled={loading} onClick={() => setSelection(new Set(inventory.files.map((file) => file.copyId)))}>{copy.selectAll}</Button>
           <Button variant="subtle" disabled={loading} onClick={() => setSelection(new Set())}>{copy.clear}</Button>
@@ -117,10 +135,12 @@ export function RemoveFilesDialog({ item, onClose, onChanged }: {
         </section> : null}
         <Button variant="danger" disabled={loading || preview === null || preview.files.length === 0 || submitting} onClick={() => void remove()}>{copy.confirm}</Button>
       </> : null}
-      {snapshot !== null ? <div role="status"><p>{format(copy.running, counts)}</p>{snapshot.state !== "running" ? <p>{snapshot.state === "failed" ? copy.failed : copy[snapshot.state]}</p> : null}
+      {snapshot !== null ? <div role="status"><p>{snapshot.inspectionResolved === true ? copy.inspectionComplete : format(copy.running, counts)}</p>{snapshot.state !== "running" && snapshot.inspectionResolved !== true ? <p>{snapshot.state === "failed" ? copy.failed : copy[snapshot.state]}</p> : null}
         <ul>{snapshot.files.map((file) => <li key={file.copyId}>{file.fileName} · {file.phase === "failed" ? copy.fileFailed : copy[file.phase]}
           {file.phase === "failed" ? <p className="vua-caption">{removalError(file.errorCode)}</p> : null}</li>)}</ul>
         {snapshot.state === "running" ? <Button disabled={snapshot.cancelRequested} onClick={() => void libraryMaintenance.cancel(snapshot.taskId, snapshot.revision).catch(() => setFeedback(copy.failed))}>{copy.cancel}</Button> : null}
+        {snapshot.state === "unconfirmed" ? <><p>{copy.inspectionNote}</p><Button disabled={submitting} onClick={() => void resolve(snapshot)}>{copy.inspect}</Button></> : null}
+        {snapshot.inspectionResolved === true && intent !== null ? <Button onClick={() => { currentIntent.current = null; setIntent(null); setSnapshot(null); setRefresh((value) => value + 1); }}>{copy.newSelection}</Button> : null}
       </div> : null}
       {feedback !== null ? <p role="alert">{feedback}</p> : null}
       {intent !== null && snapshot === null && feedback !== null ? <Button variant="default" disabled={submitting} onClick={() => void submit(intent)}>{copy.retryRequest}</Button> : null}

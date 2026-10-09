@@ -492,6 +492,11 @@
         "productionQualification": {
           "const": "not_evaluated"
         },
+        "unexpandedArchives": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
         "supersededGeneratedCopies": {
           "type": "integer",
           "minimum": 0,
@@ -539,8 +544,12 @@
               "$ref": "#/$defs/storage"
             },
             "copyIds": {
-              "type": "array", "uniqueItems": true,
-              "items": { "type": "string", "minLength": 1 }
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
             },
             "operation": {
               "anyOf": [
@@ -551,6 +560,31 @@
                   "$ref": "#/$defs/downloadSnapshot"
                 }
               ]
+            },
+            "localEntries": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 10000,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "entryId",
+                  "displayName"
+                ],
+                "properties": {
+                  "entryId": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+                  },
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500,
+                    "pattern": "^(?=.*\\S)[^\\u0000-\\u001f\\u007f-\\u009f]+$"
+                  }
+                }
+              }
             }
           }
         },
@@ -570,21 +604,57 @@
               "$ref": "#/$defs/entry"
             },
             "copyIds": {
-              "type": "array", "uniqueItems": true,
-              "items": { "type": "string", "minLength": 1 }
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
             },
             "sourceMatch": {
-              "type": "object", "additionalProperties": false,
-              "required": ["product", "sources", "basis", "content"],
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "product",
+                "sources",
+                "basis",
+                "content"
+              ],
               "properties": {
-                "product": { "$ref": "#/$defs/productSummary" },
-                "sources": { "type": "array", "uniqueItems": true, "items": { "enum": ["bought", "gifts", "free_downloads"] } },
-                "basis": { "enum": ["mapping", "product_id", "name"] },
-                "content": { "enum": ["unverified", "different"] }
+                "product": {
+                  "$ref": "#/$defs/productSummary"
+                },
+                "sources": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {
+                    "enum": [
+                      "bought",
+                      "gifts",
+                      "free_downloads"
+                    ]
+                  }
+                },
+                "basis": {
+                  "enum": [
+                    "mapping",
+                    "product_id",
+                    "name"
+                  ]
+                },
+                "content": {
+                  "enum": [
+                    "unverified",
+                    "different"
+                  ]
+                }
               }
             },
             "storage": {
               "$ref": "#/$defs/storage"
+            },
+            "metadata": {
+              "$ref": "#/$defs/entryMetadata"
             }
           }
         }
@@ -657,6 +727,52 @@
           "items": {
             "$ref": "#/$defs/copy"
           }
+        }
+      }
+    },
+    "entryMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "entryId",
+        "revision",
+        "displayName",
+        "productId",
+        "thumbnailRef"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "0.1"
+        },
+        "entryId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "pattern": "^(?=.*\\S)[^\\u0000-\\u001f\\u007f-\\u009f]+$"
+        },
+        "productId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^booth:[0-9]+$"
+        },
+        "thumbnailRef": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^vua-img://local/[a-f0-9]{64}$"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
         }
       }
     }

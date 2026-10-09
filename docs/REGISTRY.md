@@ -8,7 +8,7 @@ Current owners, versions and statuses only. [Governance](meta/documentation-gove
 | Path | Document version | Status | Maintainer | Last review |
 | --- | --- | --- | --- | --- |
 | AGENTS.md | 2.1.0 | Accepted | Integration | 2026-09-28 |
-| docs/product-boundary.md | 2.15.0 | Accepted | Integration | 2026-10-08 |
+| docs/product-boundary.md | 2.17.0 | Accepted | Integration | 2026-10-09 |
 | docs/compatibility/unity-editor.md | 2.0.1 | Accepted | Integration | 2026-10-02 |
 | docs/compatibility/alcom-vcc.md | 1.3.2 | Accepted | Environment | 2026-10-01 |
 | schemas/project-inspection/v0.1 | 0.1 | Superseded | Environment | 2026-09-09 |
@@ -65,9 +65,18 @@ Current owners, versions and statuses only. [Governance](meta/documentation-gove
 | schemas/library-download/v0.1 | 0.1 | Implementation baseline | AMF | 2026-10-08 |
 | docs/protocols/library-download-v0.1.md | 0.1 | Implementation baseline | AMF | 2026-10-08 |
 | schemas/library-view/v0.1 | 0.1 | Implementation baseline | AMF | 2026-10-08 |
-| docs/protocols/library-view-v0.1.md | 0.2 | Implementation baseline | AMF | 2026-10-08 |
-| schemas/library-maintenance/v0.1 | 0.1 | Implementation baseline | AMF | 2026-10-08 |
-| docs/protocols/library-maintenance-v0.1.md | 0.1.0 | Implementation baseline | AMF | 2026-10-08 |
+| docs/protocols/library-view-v0.1.md | 0.5 | Implementation baseline | AMF | 2026-10-09 |
+| schemas/library-records/v0.1 | 0.1 | Implementation baseline | AMF | 2026-10-09 |
+| docs/protocols/library-records-v0.1.md | 0.1 | Implementation baseline | AMF | 2026-10-09 |
+| schemas/bdl/v0.8 | 0.8 | Implementation baseline | Data | 2026-10-09 |
+| schemas/library-entry-metadata/v0.1 | 0.1 | Implementation baseline | AMF | 2026-10-09 |
+| docs/protocols/library-entry-metadata-v0.1.md | 0.1 | Implementation baseline | AMF | 2026-10-09 |
+| schemas/bdl/v0.7 | 0.7 | Implementation baseline | Data | 2026-10-09 |
+| schemas/library-intake/v0.1 | 0.1 | Implementation baseline | AMF | 2026-10-09 |
+| docs/protocols/library-intake-v0.1.md | 0.1 | Implementation baseline | AMF | 2026-10-09 |
+| schemas/bdl/v0.6 | 0.6 | Implementation baseline | Data | 2026-10-09 |
+| schemas/library-maintenance/v0.1 | 0.1 | Implementation baseline | AMF | 2026-10-09 |
+| docs/protocols/library-maintenance-v0.1.md | 0.2.0 | Implementation baseline | AMF | 2026-10-09 |
 | schemas/recipe-selection-draft/v0.1 | 0.1 | Implementation baseline | AMF | 2026-10-08 |
 | docs/protocols/recipe-selection-draft-v0.1.md | 0.1 | Implementation baseline | AMF | 2026-10-08 |
 | schemas/bdl/v0.5 | 0.5 | Implementation baseline | Data | 2026-10-08 |
@@ -123,7 +132,7 @@ Current owners, versions and statuses only. [Governance](meta/documentation-gove
 | docs/protocols/recipe-export-v0.1.md | 0.1.2 | Frozen | Core | 2026-09-22 |
 | docs/release/versioning.md | 3.0.0 | Accepted | Integration | 2026-09-30 |
 | docs/design/design-standard.md | 0.8.0 | Accepted | Desktop | 2026-10-05 |
-| docs/development-outline.md | 3.12.0 | Accepted | Integration | 2026-10-08 |
+| docs/development-outline.md | 3.14.0 | Accepted | Integration | 2026-10-09 |
 | docs/meta/documentation-governance.md | 2.5.0 | Accepted | Integration | 2026-10-01 |
 | CONTRIBUTING.md | 2.1.0 | Accepted | Integration | 2026-09-28 |
 | docs/REGISTRY.md | event-driven | Accepted | Integration | 2026-10-01 |
@@ -135,7 +144,7 @@ Current owners, versions and statuses only. [Governance](meta/documentation-gove
 | docs/development/engineering-rules.md | 1.0.0 | Accepted | Integration | 2026-09-29 |
 | docs/architecture/unity-deployment.md | 2.3.0 | Accepted | Environment | 2026-10-02 |
 | docs/development/n5-capability-audit.md | 1.0.0 | Draft | Data | 2026-10-02 |
-| docs/development/n5-rework-plan.md | 1.7.0 | Accepted | AMF | 2026-10-08 |
+| docs/development/n5-rework-plan.md | 1.13.0 | Accepted | AMF | 2026-10-09 |
 | docs/README.md | 1.2.1 | Accepted | Integration | 2026-10-07 |
 | docs/development/n1-delivery-plan.md | 1.6.1 | Accepted | Environment | 2026-10-07 |
 | docs/development/first-play-delivery-plan.md | 1.2.0 | Accepted | Integration | 2026-10-08 |

@@ -1,0 +1,14 @@
+{
+  "contractVersion": "0.1",
+  "requestId": "intake-1",
+  "correlationId": "intake-1",
+  "kind": "command",
+  "method": "library.importFolders",
+  "commandId": "import-1",
+  "params": {
+    "schemaVersion": "0.1",
+    "sourceFolders": [
+      "C:/synthetic/materials"
+    ]
+  }
+}

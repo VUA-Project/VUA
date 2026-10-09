@@ -1,5 +1,6 @@
 import type { CatalogPriceV03, WarehouseEntryCardV03 } from "./application-contract.js";
 import { isLibraryDownloadSnapshotV01, type LibraryDownloadSnapshotV01 } from "./library-download-v01.js";
+import { isLibraryEntryMetadataV01, type LibraryEntryMetadataV01 } from "./library-entry-metadata-v01.js";
 
 export interface LibraryListParamsV01 {
   readonly schemaVersion: "0.1";
@@ -15,6 +16,7 @@ export interface LibraryStorageV01 {
   readonly changedCopies: number; readonly unreadableCopies: number;
   readonly supersededGeneratedCopies: number; readonly currentGeneratedCopies: number;
   readonly productionQualification: "not_evaluated";
+  readonly unexpandedArchives?: number;
 }
 export interface LibraryProductV01 {
   readonly productId: string; readonly title: string | null; readonly libraryType: "bought" | "gifts" | "free_downloads" | null;
@@ -31,9 +33,10 @@ export interface LibrarySourceMatchV01 {
 }
 export type LibraryRowV01 =
   | { readonly kind: "product"; readonly product: LibraryProductV01; readonly sources: readonly ("bought" | "gifts" | "free_downloads")[];
-      readonly storage: LibraryStorageV01; readonly operation: LibraryDownloadSnapshotV01 | null; readonly copyIds?: readonly string[] }
+      readonly storage: LibraryStorageV01; readonly operation: LibraryDownloadSnapshotV01 | null; readonly copyIds?: readonly string[];
+      readonly localEntries?: readonly { readonly entryId: string; readonly displayName: string }[] }
   | { readonly kind: "local"; readonly entry: WarehouseEntryCardV03; readonly storage: LibraryStorageV01;
-      readonly copyIds?: readonly string[]; readonly sourceMatch?: LibrarySourceMatchV01 };
+      readonly copyIds?: readonly string[]; readonly sourceMatch?: LibrarySourceMatchV01; readonly metadata?: LibraryEntryMetadataV01 };
 export interface LibraryListV01 {
   readonly schemaVersion: "0.1"; readonly total: number; readonly offset: number; readonly limit: number; readonly items: readonly LibraryRowV01[];
 }
@@ -66,9 +69,10 @@ export function isLibraryViewParamsV01(method: string, v: unknown): boolean {
     && (v.offset === undefined || integer(v.offset));
 }
 export function isLibraryStorageV01(v: unknown): v is LibraryStorageV01 {
-  if (!record(v) || !exact(v, ["state", "storedCopies", "presentCopies", "missingCopies", "changedCopies", "unreadableCopies", "supersededGeneratedCopies", "currentGeneratedCopies", "productionQualification"])
+  if (!record(v) || !exact(v, ["state", "storedCopies", "presentCopies", "missingCopies", "changedCopies", "unreadableCopies", "supersededGeneratedCopies", "currentGeneratedCopies", "productionQualification"], ["unexpandedArchives"])
     || !words(v.state, ["cloud_only", "present", "partial", "missing", "changed", "unreadable"]) || v.productionQualification !== "not_evaluated"
     || ![v.storedCopies, v.presentCopies, v.missingCopies, v.changedCopies, v.unreadableCopies, v.supersededGeneratedCopies, v.currentGeneratedCopies].every(integer)
+    || ('unexpandedArchives' in v && (!integer(v.unexpandedArchives) || v.unexpandedArchives > Number(v.storedCopies)))
     || Number(v.supersededGeneratedCopies) + Number(v.currentGeneratedCopies) > Number(v.storedCopies) || Number(v.currentGeneratedCopies) > Number(v.presentCopies)) return false;
   const expected = v.storedCopies === 0 ? "cloud_only" : Number(v.unreadableCopies) > 0 ? "unreadable"
     : Number(v.changedCopies) > 0 ? "changed" : v.presentCopies === v.storedCopies ? "present" : v.presentCopies === 0 ? "missing" : "partial";
@@ -97,12 +101,16 @@ export function isLibraryListV01(v: unknown): v is LibraryListV01 {
       if (!record(row) || !isLibraryStorageV01(row.storage)) return false;
       if (row.copyIds !== undefined && (!Array.isArray(row.copyIds) || !row.copyIds.every(text)
         || new Set(row.copyIds).size !== row.copyIds.length || row.copyIds.length !== row.storage.storedCopies)) return false;
-      if (row.kind === "local") return exact(row, ["kind", "entry", "storage"], ["copyIds", "sourceMatch"]) && isEntry(row.entry)
+      if (row.kind === "local") return exact(row, ["kind", "entry", "storage"], ["copyIds", "sourceMatch", "metadata"]) && isEntry(row.entry)
+        && (!('metadata' in row) || isLibraryEntryMetadataV01(row.metadata) && row.metadata.entryId === row.entry.warehouseItemId && row.metadata.displayName === row.entry.displayName)
         && (row.sourceMatch === undefined || record(row.sourceMatch) && exact(row.sourceMatch, ["product", "sources", "basis", "content"])
           && isProduct(row.sourceMatch.product) && Array.isArray(row.sourceMatch.sources) && row.sourceMatch.sources.every(source)
           && new Set(row.sourceMatch.sources).size === row.sourceMatch.sources.length
           && words(row.sourceMatch.basis, ["mapping", "product_id", "name"]) && words(row.sourceMatch.content, ["unverified", "different"]));
-      return row.kind === "product" && exact(row, ["kind", "product", "sources", "storage", "operation"], ["copyIds"]) && isProduct(row.product)
+      return row.kind === "product" && exact(row, ["kind", "product", "sources", "storage", "operation"], ["copyIds", "localEntries"]) && isProduct(row.product)
+        && (!('localEntries' in row) || Array.isArray(row.localEntries) && row.localEntries.length > 0 && row.localEntries.length <= row.storage.storedCopies
+          && row.localEntries.every((entry) => record(entry) && exact(entry, ["entryId", "displayName"]) && text(entry.entryId) && text(entry.displayName))
+          && new Set(row.localEntries.map((entry: Record<string, unknown>) => entry.entryId)).size === row.localEntries.length)
         && row.product.importedArtifacts === row.storage.presentCopies && Array.isArray(row.sources) && row.sources.every(source) && new Set(row.sources).size === row.sources.length
         && (row.operation === null || isLibraryDownloadSnapshotV01(row.operation) && row.operation.productId === row.product.productId);
     });

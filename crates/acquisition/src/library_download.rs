@@ -207,16 +207,18 @@ impl LibraryDownloadService {
         {
             return Ok(Some(prior.task_id));
         }
-        let copies = self.bdl.library_copy_evidence()?;
+        let removed = self.bdl.removed_local_entries()?;
+        let copies: Vec<_> = self.bdl.library_copy_evidence()?.into_iter().filter(|copy| !removed.contains(&copy.copy.warehouse_item_id)).collect();
         let reference_hashes: HashSet<_> = copies
             .iter()
-            .filter(|copy| copy.downloadable_id.is_some() && copy.copy.role == CopyRole::Original)
+            .filter(|copy| (copy.downloadable_id.is_some() || copy.archive_downloadable_id.is_some() && copy.archive_current) && copy.copy.role == CopyRole::Original)
             .map(|copy| copy.copy.artifact_sha256.as_str())
             .collect();
         let candidate_ids: HashSet<_> = copies
             .iter()
             .filter(|copy| {
                 copy.downloadable_id.is_none()
+                    && copy.archive_downloadable_id.is_none()
                     && copy.copy.role == CopyRole::Original
                     && reference_hashes.contains(copy.copy.artifact_sha256.as_str())
             })
@@ -836,6 +838,15 @@ impl LibraryDownloadService {
                                                 file.phase = FilePhase::Stored;
                                                 file.error_code =
                                                     delivery.cleanup_error.map(str::to_owned);
+                                                if crate::zip_intake::is_zip(&copy.relative_path) {
+                                                    let expansion = crate::zip_intake::expand(
+                                                        &bdl, &root, &copy, &SystemClock.now_rfc3339(),
+                                                        &|| ctx.check_cancel(),
+                                                        &|files, bytes| ctx.emit_progress(json!({"operation":"library.expandArchive","downloadableId":file.downloadable_id,"files":files,"bytes":bytes})),
+                                                    );
+                                                    if expansion.error_code.is_some() { file.error_code = expansion.error_code.clone(); }
+                                                    ctx.emit_progress(json!({"operation":"library.archiveExpanded","downloadableId":file.downloadable_id,"expansion":expansion}));
+                                                }
                                                 file.entry_id = Some(copy.warehouse_item_id);
                                                 file.replaced = file.copy_id.is_some();
                                                 file.copy_id = Some(copy.copy_id);

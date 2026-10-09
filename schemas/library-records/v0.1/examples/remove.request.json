@@ -1,0 +1,14 @@
+{
+  "contractVersion": "0.1",
+  "requestId": "remove-local-entry",
+  "correlationId": "remove-local-entry",
+  "kind": "command",
+  "method": "library.removeLocalEntries",
+  "commandId": "remove-local-entry",
+  "params": {
+    "schemaVersion": "0.1",
+    "entryIds": [
+      "whi-local-one"
+    ]
+  }
+}
