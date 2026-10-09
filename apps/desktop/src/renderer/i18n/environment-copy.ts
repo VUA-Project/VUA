@@ -1,4 +1,5 @@
 const en = {
+  close: "Close",
   network: "Network", details: "See what's included in {name}", prepare: "Prepare {name}", start: "Start {name}", stop: "Close this session of {name}",
   inspect: "Check again", checking: "Checking…", installing: "Preparing…", ready: "Ready", missing: "Needs software", starting: "Starting…", running: "Running", stopping: "Closing…", attention: "Needs attention", unknown: "Not confirmed",
   included: "Included software", install: "Prepare or repair", launch: "Start this environment", closeHint: "Only software started by this card will receive a close request. Software already running stays open.",
@@ -10,6 +11,7 @@ const en = {
 };
 type Copy = { [K in keyof typeof en]: typeof en[K] extends string ? string : { [P in keyof typeof en[K]]: string } };
 const zh: Copy = {
+  close: "关闭",
   network: "网络测试", details: "查看{name}包含的内容", prepare: "准备{name}", start: "启动{name}", stop: "关闭{name}的本次启动",
   inspect: "重新检测", checking: "正在检测…", installing: "正在准备…", ready: "已准备好", missing: "还缺软件", starting: "正在启动…", running: "运行中", stopping: "正在关闭…", attention: "需要处理", unknown: "尚未确认",
   included: "这套环境包含", install: "安装或修复", launch: "启动这套环境", closeHint: "只尝试关闭这张卡本次启动的软件；点击前已在运行的软件会保留。",
@@ -20,6 +22,7 @@ const zh: Copy = {
   issues: { close_pending: "Steam 的启动交接可能还在等待。请在 Steam 中取消；VUA 已停止发送后续启动请求。", not_installed: "还缺少必要软件，或安装不完整。请打开准备计划。", other_route_active: "另一张游玩卡片正在使用这套软件，请先关闭那张卡的本次启动。", start_failed: "启动没有完成。请查看对应软件；可以先关闭这张卡的本次启动，再重试。", start_timeout: "还在等待软件启动。请查看 Steam 登录、下载和弹出的提示；如果在这里停止，也请在 Steam 中取消等待中的启动。", close_failed: "部分软件未能关闭，已保留运行。你可以到软件自己的菜单里退出。", close_timeout: "发出关闭请求后，部分软件仍在运行，已保留。你可以到软件自己的菜单里退出。" },
 };
 const ja: Copy = {
+  close: "閉じる",
   network: "ネットワーク", details: "{name}の内容を見る", prepare: "{name}を準備", start: "{name}を起動", stop: "{name}の今回の起動を閉じる",
   inspect: "再確認", checking: "確認中…", installing: "準備中…", ready: "準備完了", missing: "ソフトウェアが必要", starting: "起動中…", running: "実行中", stopping: "終了を要求中…", attention: "対応が必要", unknown: "未確認",
   included: "含まれるソフトウェア", install: "インストール・修復", launch: "この環境を起動", closeHint: "このカードで起動したソフトウェアだけに終了を要求します。元から実行中のものは残します。",
@@ -30,6 +33,7 @@ const ja: Copy = {
   issues: { close_pending: "Steam の起動処理が待機中の可能性があります。Steam 側で取り消してください。VUA は追加の起動を停止しています。", not_installed: "必要なソフトウェアが不足しているか、インストールが不完全です。準備計画を開いてください。", other_route_active: "別のプレイカードが使用中です。そのカードの今回の起動を先に閉じてください。", start_failed: "起動を完了できませんでした。公式アプリを確認し、今回の起動を閉じてから再試行してください。", start_timeout: "アプリの起動を待っています。Steam のログイン、ダウンロード、表示中の確認を確認してください。ここで停止した場合は Steam 側の待機中の起動も取り消してください。", close_failed: "一部のソフトウェアを終了できず、そのまま実行しています。各アプリのメニューから終了してください。", close_timeout: "終了要求後も一部のソフトウェアが実行中です。各アプリから終了できます。" },
 };
 const ko: Copy = {
+  close: "닫기",
   network: "네트워크", details: "{name} 구성 보기", prepare: "{name} 준비", start: "{name} 시작", stop: "{name}의 이번 실행 닫기",
   inspect: "다시 확인", checking: "확인 중…", installing: "준비 중…", ready: "준비됨", missing: "소프트웨어 필요", starting: "시작 중…", running: "실행 중", stopping: "종료 요청 중…", attention: "확인 필요", unknown: "확인되지 않음",
   included: "포함된 소프트웨어", install: "설치 또는 복구", launch: "이 환경 시작", closeHint: "이 카드가 이번에 시작한 소프트웨어에만 종료를 요청합니다. 원래 실행 중이던 소프트웨어는 유지합니다.",

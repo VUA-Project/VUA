@@ -34,7 +34,7 @@ fn invoke(request: Value) -> Value {
 }
 #[test]
 fn schema_vectors_are_rejected_or_honestly_unavailable_at_the_real_route() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/play-session/v0.1");
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/play-session/v0.2");
     let vectors: Value =
         serde_json::from_slice(&fs::read(root.join("vectors.json")).unwrap()).unwrap();
     for vector in vectors["requests"].as_array().unwrap() {

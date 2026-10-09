@@ -24,75 +24,9 @@ export const strings: Strings = {
     invalid: "请输入名称和不重复的 HTTPS 地址，地址不能含登录信息或片段标记。",
     empty: "点击右上角 + 添加网站。", unavailable: "网站测试暂不可用，可以继续安装软件。",
     storageFailed: "修改本次有效，但未能保存。",
-    help: "连接帮助", detectRegion: "识别地区",
+    europe: "欧洲", america: "美国", japan: "日本", west: "西部", east: "东部", regionUnavailable: "区域延迟暂不可测",
     scope: "显示网站响应时间，不是游戏延迟或下载速度。仅在点击后测试，不携带账号 Cookie。",
     statuses: { timeout: "超时", connection_failed: "失败", probe_error: "不可用", http_error: "HTTP 错误", redirected: "重定向", reachable: "已连接" },
-  },
-  network: {
-    lagTitle: "能进入游戏，但远方房间很卡？",
-    lagRegion: "先在 VRChat 内查看房间实例的服务器地区，对比一个更接近用户和同伴所在地的实例，并查看游戏内的延迟。网页检测正常不代表跨地区房间的延迟低。",
-    lagPerformance: "如果表现为画面卡顿，还要对比游戏帧率。使用 PICO 串流时，再单独检查 PICO Connect 的 USB 或局域网 Wi-Fi 连接；这些与房间服务器的互联网延迟是不同的问题。",
-    regionUse: "网络使用地区",
-    uuQualifier: "此推荐适用于在中国大陆连接网络的用户。",
-    "title": "检查游玩网络",
-    "description": "安装前分项检查 Steam 和 VRChat 的服务入口，再根据结果处理连接问题。",
-    "options": "检测选项",
-    "route": "游玩方式",
-    "routes": {
-      "desktop_play": "桌面游玩",
-      "pico_pcvr": "PICO 串流"
-    },
-    "region": "网络地区",
-    "autoRegion": "自动识别",
-    "regions": {
-      "china_mainland": "中国大陆",
-      "other": "中国大陆以外",
-      "unknown": "未能识别"
-    },
-    "privacy": "检测会访问下列服务，不登录账号。自动识别地区还会访问 Cloudflare，仅使用国家分类，不保存 IP 地址。",
-    "check": "检测网络",
-    "recheck": "重新检测",
-    "continue": "继续安装",
-    "continued": "可以继续下方的软件安装，随时展开网络检测。",
-    "reopen": "展开网络检测",
-    "running": "正在检查各服务入口… 已用 {seconds} 秒，每项检测均设有超时。",
-    "failed": "本次检测未能完成。可以重试，也可以继续安装，在游戏中验证连接。",
-    "summary": "{total} 个服务入口中，{count} 个响应正常。",
-    "checkedAt": "检测时间：{time}",
-    "regionHint": "此结果反映网络出口；如果与当前配置的网络地区不同，可以手动修改。",
-    "targets": {
-      "steam_store": "Steam 注册与商店",
-      "steam_community": "Steam 社区",
-      "steam_download": "Steam 安装包下载",
-      "vrchat_web": "VRChat 网页",
-      "pico_connect": "PICO Connect 下载页"
-    },
-    "statuses": {
-      "reachable": "响应正常",
-      "http_error": "已收到服务器响应，需进一步查看",
-      "redirected": "需要在浏览器确认跳转",
-      "timeout": "连接超时",
-      "connection_failed": "未能建立连接",
-      "probe_error": "检测暂不可用"
-    },
-    "responseTime": "收到响应头用时 {milliseconds} 毫秒",
-    "remedies": {
-      "http_error": "打开官方页面查看。访问限制、浏览器验证或服务异常都可能影响自动检测，此结果不代表整个网络断开。",
-      "redirected": "打开官方页面，在浏览器中完成跳转；网络调整后可重新检测。",
-      "timeout": "确认互联网连接后重试，也可以打开官方页面，对比浏览器是否能连接。",
-      "connection_failed": "先确认官方页面能否打开，必要时检查系统时间、当前代理或加速器，再重新检测。",
-      "probe_error": "请重试检测，期间可以继续安装软件。"
-    },
-    "openService": "打开官方页面",
-    "uuTitle": "中国大陆网络：网易 UU",
-    "uuSteps": "打开网易 UU，选择加速 VRChat，即可同时加速周边的 Steam 商店和 Oculus 商店，无需分别选择。完成后回到这里重新检测。",
-    "uuAffiliation": "VUA 与网易 UU 没有利益关系，服务由网易独立运营，使用条款及费用以其说明为准。",
-    "openUu": "打开网易 UU",
-    "uuRecheck": "已有的加速器可以继续使用。VUA 的检测请求与游戏可能采用不同线路，启用加速后还应在 VRChat 内验证登录和加载。",
-    "scope": "这里检测服务入口的可达性，不测量游戏延迟或下载速度。无论结果如何，都可以继续安装，并在游玩时验证游戏连接。",
-    "picoLocal": "PICO 的 USB 和 Wi-Fi 串流连接在 PICO Connect 中单独检查。互联网正常但头显无法连接时，请在那里检查线缆或局域网连接。",
-    guideCta: "查看 PICO 串流指南",
-    "linkFailed": "页面未能打开，请重试。"
   },
   /** 术语本地注释(键必须与 terms.ts 的 TERMS 一一对应;空串 = 无注释,仅显示术语) */
   terms: {

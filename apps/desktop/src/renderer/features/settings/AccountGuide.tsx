@@ -21,6 +21,6 @@ export function AccountGuide({ account, onBack }: { account: AccountGuideIdV1; o
     <Button variant="subtle" data-back onClick={onBack}>{copy.back}</Button><h2>{title}</h2>
     <ol>{paragraphs?.map((text, index) => <li key={index}><p>{text}</p></li>)}</ol>
     <Button variant="primary" onClick={() => { void open(); }}>{copy.official}</Button>
-    <p>{copy.registrationHint}</p>{openFailed ? <p role="status">{strings.network.linkFailed}</p> : null}
+    <p>{copy.registrationHint}</p>{openFailed ? <p role="status">{copy.linkFailed}</p> : null}
   </section>;
 }

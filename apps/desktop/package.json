@@ -34,6 +34,7 @@
     "smoke:system-tray": "electron scripts/smoke-system-tray.mjs",
     "smoke:library-maintenance": "electron scripts/smoke-library-maintenance.mjs",
     "smoke:network": "electron scripts/smoke-network.mjs",
+    "smoke:game-guide": "electron scripts/smoke-game-guide.mjs",
     "smoke:deployment": "pnpm --filter @vua/contracts build && electron scripts/smoke-deployment.mjs",
     "smoke:import-dialog": "electron scripts/smoke-import-dialog.mjs",
     "smoke:resource-monitor": "electron scripts/smoke-resource-monitor.mjs"

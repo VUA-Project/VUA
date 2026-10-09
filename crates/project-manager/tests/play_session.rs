@@ -107,7 +107,7 @@ fn wait(service: &PlayService, route: PlayRoute, state: &str) -> Value {
     let schema: Value = serde_json::from_slice(
         &std::fs::read(
             Path::new(env!("CARGO_MANIFEST_DIR"))
-                .join("../../schemas/play-session/v0.1/result.schema.json"),
+                .join("../../schemas/play-session/v0.2/result.schema.json"),
         )
         .unwrap(),
     )
@@ -183,6 +183,41 @@ fn wholly_preexisting_software_is_retained_and_restart_has_no_ownership() {
         .unwrap()
         .iter()
         .all(|x| x["owned"] == false));
+}
+
+#[test]
+fn normal_game_exit_keeps_only_owned_survivors_for_cleanup_and_allows_another_play() {
+    for borrowed_steam in [true, false] {
+        let f = Arc::new(Fake::default());
+        if borrowed_steam {
+            f.0.lock().unwrap().processes.push(process("steam", 10));
+        }
+        let s = service(&f);
+        let route = PlayRoute::DesktopPlay;
+        s.start(route, "first-play").unwrap();
+        wait(&s, route, "running");
+        f.0.lock()
+            .unwrap()
+            .processes
+            .retain(|p| p.path != path("vrchat"));
+        let ended = wait(&s, route, if borrowed_steam { "idle" } else { "finished" });
+        assert_eq!(ended["issue"], Value::Null);
+        assert_eq!(ended["canStop"], !borrowed_steam);
+        assert!(f.0.lock().unwrap().closes.is_empty());
+        if !borrowed_steam {
+            s.stop(route, "cleanup").unwrap();
+            wait(&s, route, "idle");
+            assert_eq!(f.0.lock().unwrap().closes.len(), 1);
+            assert_eq!(f.0.lock().unwrap().closes[0].path, path("steam"));
+        }
+        s.start(route, "second-play").unwrap();
+        wait(&s, route, "running");
+        s.stop(route, "second-cleanup").unwrap();
+        wait(&s, route, "idle");
+        if borrowed_steam {
+            assert_eq!(f.0.lock().unwrap().processes, vec![process("steam", 10)]);
+        }
+    }
 }
 #[test]
 fn pico_starts_the_complete_chain_and_does_not_repeat_command_ids() {
@@ -276,7 +311,7 @@ fn launch_failure_and_unknown_observation_are_honest() {
 }
 #[test]
 fn closed_vectors_pin_queries_commands_and_observation_consistency() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/play-session/v0.1");
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/play-session/v0.2");
     let read =
         |file| serde_json::from_slice::<Value>(&std::fs::read(root.join(file)).unwrap()).unwrap();
     let vectors = read("vectors.json");

@@ -15,14 +15,15 @@ const checks: string[] = [];
 let escapes = 0;
 let shellCommand: ((command: DesktopShellCommandV1) => void) | undefined;
 let updateChecks = 0;
-let playUnavailable = false, installationRunning = false, websiteCalls = 0;
+let playUnavailable = false, installationRunning = false, websiteCalls = 0, borrowedSteam = true;
 const playStates: Record<string, string> = { desktop_play: "idle", pico_pcvr: "idle" };
 const playCalls: string[] = [];
 function syntheticPlay(route: string) {
   const state = playStates[route]; const active = state !== "idle";
-  return { playSession: { schemaVersion: "vua.play-session/v0.1", capturedAt: new Date().toISOString(), route, state, issue: null, canStop: active,
+  return { playSession: { schemaVersion: "vua.play-session/v0.2", capturedAt: new Date().toISOString(), route, state, issue: null, canStop: active,
     software: (route === "desktop_play" ? ["steam", "vrchat"] : ["steam", "pico_runtime", "steamvr", "vrchat"]).map(component => ({ component,
-      presence: scenario === "missing" ? "missing" : "verified", running: component === "steam" || state === "running" || state === "stopping", owned: component !== "steam" && (state === "running" || state === "stopping") })) } };
+      presence: scenario === "missing" ? "missing" : "verified", running: component === "steam" ? borrowedSteam || active : state === "running" || state === "stopping",
+      owned: component === "steam" ? !borrowedSteam && active : state === "running" || state === "stopping" })) } };
 }
 const check = (name: string, value: unknown) => { if (!value) throw new Error(name); checks.push(name); };
 const wait = async (predicate: () => unknown, label = "") => {
@@ -76,7 +77,7 @@ window.vua = {
 } as unknown as VuaDesktopApiV1;
 
 async function mount(mode: typeof scenario = "installed", displayMode = "bigscreen", tourStep?: number) {
-  root?.unmount(); localStorage.clear(); location.hash = ""; scenario = mode; playUnavailable = false; installationRunning = false; websiteCalls = 0; playStates.desktop_play = "idle"; playStates.pico_pcvr = "idle"; playCalls.length = 0;
+  root?.unmount(); localStorage.clear(); location.hash = ""; scenario = mode; playUnavailable = false; installationRunning = false; websiteCalls = 0; borrowedSteam = true; playStates.desktop_play = "idle"; playStates.pico_pcvr = "idle"; playCalls.length = 0;
   localStorage.setItem(storageKeys.locale, "en");
   localStorage.setItem(storageKeys.displayMode, displayMode);
   localStorage.setItem(storageKeys.tourProgress, JSON.stringify({ v: 1, status: tourStep === undefined ? "skipped" : "active", step: tourStep ?? 0 }));
@@ -205,16 +206,29 @@ const review = {
     check("play card has two independent halves and a thin separator", halves.length === 2 && !halves[0]!.disabled && separatorWidth > 0 && separatorWidth <= 1);
     check("network is above the environments and has the same height", network.getBoundingClientRect().bottom <= card().getBoundingClientRect().top && Math.abs(network.getBoundingClientRect().height - card().getBoundingClientRect().height) < 1);
     check("entering Play makes no website test requests", websiteCalls === 0);
-    document.querySelector<HTMLButtonElement>('[data-nav-id="play-network-test"]')!.click(); await wait(() => websiteCalls === 1 && network.textContent?.includes(strings.websiteTests.statuses.reachable));
-    check("network batch testing is explicit and presents observed results", websiteCalls === 1);
+    check("unconfirmed regional ping remains unavailable", document.querySelector<HTMLButtonElement>('[data-nav-id="play-network-test"]')!.disabled && network.textContent?.includes(strings.websiteTests.europe) && network.textContent?.includes(strings.websiteTests.west) && network.textContent?.includes(strings.websiteTests.east));
+    document.querySelector<HTMLButtonElement>('[data-nav-id="play-network-details"]')!.click();
+    await wait(() => visible(document.querySelector(".vua-network")!));
+    document.querySelector<HTMLButtonElement>(`.vua-network [aria-label="${strings.websiteTests.testAll}"]`)!.click(); await wait(() => websiteCalls === 1 && document.querySelector(".vua-network")!.textContent?.includes("ms"));
+    check("website tests live only in expanded details and cannot become regional ping", websiteCalls === 1 && !network.textContent?.includes("ms"));
     document.querySelector<HTMLButtonElement>('[data-nav-id="route-desktop"]')!.click(); await wait(() => document.querySelector('[data-route-stage="prepare"]'));
     check("left half opens details without launching software", playCalls.length === 0 && document.querySelector(".vua-environment-software"));
     document.querySelector<HTMLButtonElement>('[data-nav-id="route-desktop-action"]')!.click(); await wait(() => card().dataset.action === "stop");
     check("pending start offers scoped close rather than a second start", card().querySelector(".vua-environment-card__action")!.getAttribute("aria-label")?.includes("Close this session"));
-    await wait(() => card().textContent?.includes(strings.environmentCards.running));
+    await wait(() => card().textContent?.includes(strings.environmentCards.close));
     check("observed running software identifies pre-existing Steam as retained", document.querySelector(".vua-environment-software")!.textContent?.includes(strings.environmentCards.borrowed));
     document.querySelector<HTMLButtonElement>('[data-nav-id="route-desktop-action"]')!.click(); await wait(() => card().dataset.action === "start");
     check("close returns the environment to play after observation", playCalls.join() === "environment.startPlay:desktop_play,environment.stopPlay:desktop_play");
+    borrowedSteam = false;
+    document.querySelector<HTMLButtonElement>('[data-nav-id="route-desktop-action"]')!.click(); await wait(() => playStates.desktop_play === "running");
+    playStates.desktop_play = "finished";
+    await click(strings.environmentCards.inspect);
+    await wait(() => card().textContent?.includes(strings.environmentCards.close) && document.querySelector(".vua-environment-software li")!.textContent?.includes(strings.environmentCards.owned)
+      && document.querySelectorAll(".vua-environment-software li")[1]!.querySelectorAll("span").length === 1, "finished session observed with only owned Steam still running");
+    check("normal game exit keeps Close for owned Steam without a warning or failure", card().dataset.action === "stop" && card().textContent?.includes(strings.environmentCards.close) && !card().querySelector(".vua-environment-card__warning") && !document.querySelector(".vua-play-page [role=alert]"));
+    playStates.desktop_play = "idle";
+    await click(strings.environmentCards.inspect); await wait(() => card().dataset.action === "start");
+    check("exit of all owned software restores Play without an extra close request", playCalls.filter(call => call.startsWith("environment.stopPlay:")).length === 1);
     check("Quest, Vive and Index remain development peers", ["quest", "vive", "index"].every(id => document.querySelector(`[data-card="route-${id}"] .vua-route-tile__tag`)?.textContent === copy.developing));
     playUnavailable = true; await click(strings.environmentCards.inspect); await wait(() => card().dataset.action === "unknown");
     check("provider failure is unknown instead of missing or ready", card().textContent?.includes(strings.environmentCards.unknown));

@@ -4,7 +4,7 @@ import { isPlaySessionResult } from "./play-session.js";
 import { isApplicationRequestV01 } from "./application-contract.js";
 import { isDesktopGatewayRequestV1 } from "./desktop-gateway.js";
 import { isManagerAppsResult } from "./manager-apps.js";
-const vectors = JSON.parse(readFileSync(new URL("../../../schemas/play-session/v0.1/vectors.json", import.meta.url), "utf8")) as Record<"requests" | "results", { valid: boolean; value: Record<string, unknown> }[]>;
+const vectors = JSON.parse(readFileSync(new URL("../../../schemas/play-session/v0.2/vectors.json", import.meta.url), "utf8")) as Record<"requests" | "results", { valid: boolean; value: Record<string, unknown> }[]>;
 describe("closed play-session wire", () => {
   it("pins application requests to the shared schema vectors", () => { for (const vector of vectors.requests) expect(isApplicationRequestV01(vector.value)).toBe(vector.valid); });
   it("pins observed results to the same vectors", () => { for (const vector of vectors.results) expect(isPlaySessionResult(vector.value)).toBe(vector.valid); });

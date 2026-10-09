@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { PlaySession } from "@vua/contracts";
 import type { GatewayClient } from "./gateway-client.ts";
 import { createLivePlayPort } from "./live-play-port.ts";
-const session: PlaySession = { schemaVersion: "vua.play-session/v0.1", capturedAt: "synthetic", route: "desktop_play", state: "idle", canStop: false, issue: null,
+const session: PlaySession = { schemaVersion: "vua.play-session/v0.2", capturedAt: "synthetic", route: "desktop_play", state: "idle", canStop: false, issue: null,
   software: [{ component: "steam", presence: "verified", running: true, owned: false }, { component: "vrchat", presence: "verified", running: false, owned: false }] };
 describe("live play Gateway port", () => {
   it("preserves borrowed software facts and the caller's retry identity across start/stop", async () => {

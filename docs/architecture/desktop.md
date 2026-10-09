@@ -1,7 +1,7 @@
 # Electron desktop and presentation architecture
 
 
-> Document version: 1.12.0
+> Document version: 1.12.1
 > Status: Accepted
 > Scope: `apps/desktop`, `packages/design-system`, frontend Gateway
 > Updated: 2026-10-09
@@ -71,7 +71,9 @@ through their receipts. A connection confirmation is explicitly user-declared, n
 Opening Steam or a guide does not prove installation, login or successful play.
 
 Play now has fixed two-half cards: details on the left and observed status/action on the
-right. Network's equally tall tile is above the grid; the expandable runtime inventory stays
+right. Normal game exit retains **Close** only while owned software survives, with no failure
+warning. Network's equally tall tile is above the grid; its regional Ping is explicitly unavailable
+until targets are verified and website tests remain in expanded details. The expandable runtime inventory stays
 on Play. The retired Software & connections page is absent from Home, sidebar and tour;
 old stored page IDs migrate to Play. Wizard choices still do not control these entries.
 The typed play port consumes the Candidate [play-session family](play-sessions.md), keeps
@@ -122,7 +124,7 @@ through `scripts/generate-tray-icons.ps1`; no new runtime image dependency is in
 ## Account-guide browser
 
 The account guide opens official Steam/VRChat registration pages and optional Unity/BOOTH pages,
-plus manufacturer, headset-store, streaming or accelerator pages required by the selected route.
+plus manufacturer, headset-store or streaming pages required by the selected route.
 Use the existing isolated built-in browser, with phone/headset/native-client handoff and saved
 guide progress where needed. Reuse security enforcement; do not create an
 Auth Broker service. Separate temporary account-guide partitions from AMF's BOOTH acquisition
@@ -187,7 +189,9 @@ preparation reader and a VRChat-window guide. React owns the in-app tour; Main o
 window lifecycles and the game-window follow loop: a pure decision module driven by a 250 ms
 observation of the Provider's read-only `environment.observeGameWindow` query
 (`vua.game-window-observe/v0.1`), showing the guide without stealing focus and hiding it on
-game minimize/exit/app-switch, with a Main-enforced follow toggle. The renderer drives this
+game minimize/exit/app-switch, with a Main-enforced follow toggle. User drags persist normalized
+relative placement; automatic moves do not overwrite it. Background opacity affects the guide's
+matrix/backdrop only, with a transparent outer canvas and opaque text. The renderer drives this
 through two `DesktopWindowApiV1` members (`setGameGuideFollowing`,
 `getGameGuideFollowStatus`). Guide progress is local presentation state;
 business tasks remain authoritative in Orchestrator. The reader, tour and game guide reuse
@@ -279,6 +283,8 @@ redistribution review authorizes each bundled binary before a public release.
 
 ## Document changelog
 
+- 1.12.1 (2026-10-09): align guide transparency/drag memory, normal game-exit cards and the regional-placeholder/expanded-website split with their owning documents.
+
 
 - 1.12.0 (2026-10-09): implement observed two-half play sessions and scoped close, move network/runtime discovery into Play, and add complete-editor and manager-app inventory to Avatar editing.
 - 1.11.0 (2026-10-09): apply the compact-shell ruling, move command search into Settings, replace the appearance select with joined buttons and a Dark default, and retarget the task-tour step to Home.
@@ -292,8 +298,5 @@ redistribution review authorizes each bundled binary before a public release.
 - 1.6.0 (2026-10-03): define standalone ZIP resources/data, the real packaged bootstrap check and the first-play overlay/release subset.
 - 1.5.0 (2026-10-02): describe model-first deployment, silent-install activity and device/service
   account handoffs using existing isolated browser and task surfaces.
-
-- 1.4.1 (2026-10-02): merge the N1 Unity Hub handoff protocol with the status-quo alignment;
-  no rule change.
 
 Earlier entries remain in Git history.

@@ -35,7 +35,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@1.97.1
       - uses: Swatinem/rust-cache@v2
       # Contract anchor per crate (tests that read schemas/ for real):
-      # play_session / play_session_wire additionally cover Candidate play-session v0.1.
+      # play_session / play_session_wire additionally cover Candidate play-session v0.2.
       # - vua-acquisition:    bdl_commands_contract           (bdl-commands v0.1)
       #                       import_downloads_contract_v04   (bdl-commands v0.4)
       #                       import_contract_v03             (bdl-commands v0.3)

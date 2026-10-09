@@ -1,9 +1,9 @@
 # Play environment sessions
 
-> Document version: 1.0.0
+> Document version: 1.1.0
 > Status: Candidate
 > Updated: 2026-10-09
-> Scope: Desktop/PICO software launch and card-scoped close; play-session v0.1
+> Scope: Desktop/PICO software launch and card-scoped close; play-session v0.2
 
 The Play page has fixed environment cards. Their left half opens details; their right half
 reports observed readiness and the current action. Installation remains the reviewed
@@ -15,7 +15,7 @@ connection, account login, or entry into a VRChat world.
 
 `environment.observePlay` is a read-only query for `desktop_play` or `pico_pcvr`.
 `environment.startPlay` and `environment.stopPlay` are explicit commands with an idempotency
-key. The Candidate family lives in `schemas/play-session/v0.1/`; requests never accept a path,
+key. The Candidate family lives in `schemas/play-session/v0.2/`; requests never accept a path,
 executable, shell command or arbitrary launch argument. The Renderer uses the typed Gateway.
 The project-manager adapter resolves executable paths from the existing narrow environment
 probe, verifies the required files, and owns OS interactions. Provider-host only maps the wire.
@@ -48,6 +48,16 @@ cannot act on a later session of the same route.
 The close window also observes a submitted handoff that appears just after Stop; an outstanding
 handoff receives `close_pending` rather than a fabricated successful exit.
 
+After a successful start, a required application disappearing is a normal user exit, not
+`start_failed`. Observation enters `finished` with no issue while any process started by this
+card remains alive; the card shows × and **Close**, without a warning triangle. It does not
+close anything automatically. Once all owned processes are gone, observation releases the
+session and restores Play, even if pre-existing shared software is still running. Real startup,
+inspection and close failures retain their separate recoverable issue. The new Candidate v0.2
+result adds `finished`; v0.1 schemas/vectors remain unchanged under the T2 versioning rule.
+Request/envelope semantics are unchanged. The current provider emits v0.2 and the typed consumer
+requires that exact result version; old v0.1 clients require a coordinated update.
+
 ## Creator inventory
 
 `environment.inspectManagerApps` is a separate, closed read-only Candidate query with empty
@@ -67,9 +77,9 @@ continues to apply.
 
 ## Evidence
 
-Synthetic process fixtures exercise reuse, identity replacement, startup/close failures,
+Synthetic process fixtures exercise reuse, normal game exit with owned or borrowed survivors, identity replacement, startup/close failures,
 pending cancellation, same-route replacement and route contention. Schema vectors pin the closed requests and result
-shape. UI fixtures exercise missing, installed, pending, running and unavailable states.
+shape. UI fixtures exercise missing, installed, pending, running, finished and unavailable states.
 These checks are not vendor or headset acceptance. Real Steam/PICO launch/close, missing
 software installation, and PICO USB/Wi-Fi remain author-run hardware checks before ibis.
 
@@ -79,5 +89,7 @@ OS/launch references: [VRChat launch options](https://docs.vrchat.com/docs/launc
 [GetProcessTimes](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getprocesstimes).
 
 ## Document changelog
+
+- 1.1.0 (2026-10-09): add Candidate v0.2 with finished for normal game exit, owned-survivor cleanup and automatic session release without closing pre-existing software; retain v0.1 unchanged.
 
 - 1.0.0 (2026-10-09): define the Candidate play-session scope, observed readiness, session-specific workers, borrowed-process retention, bounded normal close and separate creator executable inventory.

@@ -1,7 +1,7 @@
-# VUA design standard v0.12.0
+# VUA design standard v0.12.1
 
 
-> Document version: 0.12.0
+> Document version: 0.12.1
 > Status: Accepted
 > Scope: Electron desktop, desktop overlay, and VR overlay presentation  
 > Updated: 2026-10-09
@@ -113,9 +113,17 @@ Each environment card has two equal halves separated by one thin line: the left 
 details, and the right combines current status with the current action. Show + for missing
 software, a spinner for preparation/start/close, a warning triangle for problems, Play after
 fresh file verification, and × for an active card session. Keep details accessible during work.
+A normal manual game exit is not a warning. Label × **Close** even when only this card's
+owned shared software remains; return to Play after all owned software exits. Real failures
+keep their explanation and warning.
 A pending start can be stopped; a close in progress cannot be submitted again. Errors preserve
 an accessible explanation and retry/preparation path. Motion respects resource saving and
 reduced-motion preferences; visible text still reports work when the spinner is static.
+
+The network tile presents Europe, United States (East and West together), and Japan. Until
+reliable game-region targets exist, show unavailable and disable its measurement action.
+Expanded details retain website tests, including Steam and GitHub; their response times cannot
+fill regional Ping. Remove Connection help, usage-region identification and accelerator advice.
 
 Unity 2022 and the development-only Unity 6 peer remain equal entries in Avatar editing.
 Other complete editor installations appear only after read-only discovery and executable
@@ -148,8 +156,10 @@ Settings → Accounts and returns to the source step. Registration and linking h
 
 Help exposes the first-run wizard, VUA app tour, preparation reader and game guide. Contextual help
 opens its destination directly. The [guidance architecture](../architecture/guidance.md) owns the
-window behavior and independent progress. Keep the matrix/grid background, sidebar and small-window
-frosted glass, resource-saving preference and its automatic SteamVR option. Resource saving and
+window behavior and independent progress. In the transparent game guide, fade only the matrix/background
+and preserve readable text/controls; a dragged relative position survives automatic hiding/restoration.
+Keep the matrix/grid background, sidebar and small-window frosted glass, resource-saving preference
+and its automatic SteamVR option. Resource saving and
 reduced motion must preserve all choices, facts, focus and navigation.
 
 A resource reading sits in the topbar left of Settings (the 2026-09-25 user ruling): it shows the
@@ -741,6 +751,8 @@ direction.
 
 ## 12. Document changelog
 
+- **0.12.1 (2026-10-09)**: align normal-exit Close semantics, background-only guide transparency/drag memory and the regional-placeholder/expanded-website split with the author's corrections.
+
 
 - **0.12.0 (2026-10-09)**: replace route-only preparation tiles with two-half play cards, merge network/runtime facts into Play, and add verified editor and separate manager-software/config detection to Avatar editing.
 - **0.11.0 (2026-10-09)**: narrow the sidebar, retire the bottom bar and four redundant header controls, move search into Settings, and adopt connected appearance choices with a Dark default and preserved motion fallbacks.
@@ -782,18 +794,5 @@ direction.
 - **0.7.20 (2026-09-23)**: governance-compliance maintenance — the §12 changelog is trimmed to
   the most recent 10 entries per governance rule 2.2 (0.7.10 and earlier moved out; consult git
   history for older records); zero normative-content change. Mirrors the ZH edition.
-
-- **0.7.19 (2026-09-22)**: user ruling 2026-09-22 (product-boundary 1.5.0) consumed —
-  §2 "Recipe-first and path selection": the fixed five-stage flow becomes "full capability coverage + a wizard selecting the
-  path by goal/device/current state", including guidance not replacing account authentication
-  or platform authorization and the Quest first-time tutorial distinguishing standalone vs
-  PC-connected paths; §8.6 the standalone-inspection-page requirement is superseded by
-  "inspection folds into the production record" (Release run placeholder record at workshop
-  feed + notification-center dual channel, closing a notification is not the issue
-  disappearing, placeholder records never masquerade as completed Build Records, inspection
-  service/recovery admission/evidence recording retained, handoff admission and the standalone
-  open-in-Unity capability retained, handoff failure now jumps to the run record); §8.4 adds
-  the Recipe overlay-conflict four options and the asset-source "fill in at share time"
-  interaction (both marked accepted direction, not yet implemented). ZH mirror synced.
 
 Earlier entries remain in Git history.

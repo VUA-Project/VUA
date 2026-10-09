@@ -10,7 +10,7 @@ use vua_orchestrator::{
     Clock, EnvironmentEngine, EnvironmentPresence, EnvironmentRoots, SystemClock,
 };
 
-pub const SCHEMA_VERSION: &str = "vua.play-session/v0.1";
+pub const SCHEMA_VERSION: &str = "vua.play-session/v0.2";
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PlayRoute {
@@ -119,7 +119,29 @@ impl PlayService {
     pub fn observe(&self, route: PlayRoute) -> Result<PlaySnapshot, &'static str> {
         let software = self.platform.inspect(route)?;
         let processes = self.platform.processes(route)?;
-        let state = self.state.lock().map_err(|_| "unavailable")?;
+        let mut state = self.state.lock().map_err(|_| "unavailable")?;
+        if let Some(session) = state.session.as_mut().filter(|s| s.route == route) {
+            if session.state == "running" && software.iter().any(|s| s.presence != "verified") {
+                session.state = "attention";
+                session.issue = Some("not_installed");
+            }
+            // Disappearance after a successful start is a normal user exit.
+            // Keep the cleanup entry only while this card's owned apps survive.
+            if session.state == "running"
+                && session.software.iter().any(|s| {
+                    !processes
+                        .iter()
+                        .any(|p| s.exe.as_ref().is_some_and(|exe| same_path(exe, &p.path)))
+                })
+            {
+                session.state = "finished";
+                session.issue = None;
+            }
+            if session.state == "finished" && !session.owned.iter().any(|p| processes.contains(p)) {
+                state.session = None;
+                state.issues.remove(&route);
+            }
+        }
         let session = state.session.as_ref().filter(|s| s.route == route);
         let facts: Vec<_> = software
             .iter()
@@ -142,12 +164,6 @@ impl PlayService {
             })
             .collect();
         let (phase, issue) = match session {
-            Some(s)
-                if s.state == "running"
-                    && !facts.iter().all(|f| f.running && f.presence == "verified") =>
-            {
-                ("attention", Some("start_failed"))
-            }
             Some(s) => (s.state, s.issue),
             None => state.issues.get(&route).map_or(("idle", None), |issue| {
                 if (*issue == "other_route_active" && state.session.is_none())

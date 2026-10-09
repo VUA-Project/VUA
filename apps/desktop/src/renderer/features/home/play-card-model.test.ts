@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PlaySession } from "@vua/contracts";
 import { playCardDecision } from "./play-card-model.ts";
-const ready: PlaySession = { schemaVersion: "vua.play-session/v0.1", capturedAt: "fixture", route: "desktop_play", state: "idle", canStop: false, issue: null, software: ["steam", "vrchat"].map(component => ({ component: component as "steam" | "vrchat", presence: "verified", running: false, owned: false })) };
+const ready: PlaySession = { schemaVersion: "vua.play-session/v0.2", capturedAt: "fixture", route: "desktop_play", state: "idle", canStop: false, issue: null, software: ["steam", "vrchat"].map(component => ({ component: component as "steam" | "vrchat", presence: "verified", running: false, owned: false })) };
 describe("environment-card actions", () => {
   it("never offers play from a missing, partial or unavailable observation", () => {
     expect(playCardDecision(ready, false, false, false).action).toBe("start");
@@ -16,5 +16,9 @@ describe("environment-card actions", () => {
     expect(playCardDecision({ ...ready, state: "attention", canStop: true, issue: "start_timeout" }, false, false, false)).toMatchObject({ action: "stop", warning: true });
     expect(playCardDecision({ ...ready, state: "stopping", canStop: true }, false, false, false)).toMatchObject({ action: "stop", disabled: true });
     expect(playCardDecision({ ...ready, state: "attention", issue: "close_timeout" }, false, false, false)).toMatchObject({ action: "attention", status: "attention" });
+  });
+  it("shows Close without a warning after normal game exit, while genuine failures retain the warning", () => {
+    expect(playCardDecision({ ...ready, state: "finished", canStop: true }, false, false, false)).toMatchObject({ action: "stop", status: "close", warning: false });
+    expect(playCardDecision({ ...ready, state: "attention", canStop: true, issue: "close_failed" }, false, false, false)).toMatchObject({ action: "stop", status: "close", warning: true });
   });
 });

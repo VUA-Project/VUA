@@ -12,7 +12,7 @@
  *   (localStorage)与推送 Main,显隐/移动的强制执行在 Main;跟随
  *   开启时轮询跟随状态,仅在观察非 ready 时如实提示(缺席/等待/
  *   通道缺席三态分立),ready 时不占版面;
- * - 透明度滑杆就地调节面板不透明度(缺省 50%,用户裁决),偏好本地
+ * - 透明度滑杆就地调节背景不透明度(缺省 50%,用户裁决),偏好本地
  *   持久化,与进度分键;
  * - 隐藏是显式动作(窗内按钮/Esc),隐藏不销毁——位置与进度保留,
  *   顶栏「游戏引导」重开恢复;本会话内手动隐藏优先(当前游戏会话
@@ -22,7 +22,7 @@
  * - 拖拽条移动窗口(frameless);自动显示由 Main showInactive,不夺
  *   游戏焦点。
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { Icon } from "@vua/design-system";
 import type { GameGuideFollowStatusV1 } from "@vua/contracts";
 import { Button } from "../../components/primitives/Button.tsx";
@@ -127,7 +127,7 @@ export function GameGuideSurface() {
 
   return (
     <div className="vua-game-guide">
-      <div className="vua-game-guide__panel" style={{ opacity }}>
+      <div className="vua-game-guide__panel" style={{ "--vua-guide-opacity": opacity } as CSSProperties}>
         <header className="vua-game-guide__titlebar">
           <h1 className="vua-game-guide__title">{copy.title}</h1>
           <div className="vua-game-guide__titlebar-actions">

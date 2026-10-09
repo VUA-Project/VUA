@@ -1,5 +1,5 @@
-/** Candidate play-session v0.1. Closed routes, observed files/processes, card-scoped close. */
-export const PLAY_SESSION_SCHEMA = "vua.play-session/v0.1" as const;
+/** Candidate play-session v0.2. Closed routes, observed files/processes, card-scoped close. */
+export const PLAY_SESSION_SCHEMA = "vua.play-session/v0.2" as const;
 export const PLAY_ROUTES = ["desktop_play", "pico_pcvr"] as const;
 export type PlayRoute = typeof PLAY_ROUTES[number];
 export const PLAY_COMPONENTS = ["steam", "pico_runtime", "steamvr", "vrchat"] as const;
@@ -16,7 +16,7 @@ export interface PlaySession {
   readonly schemaVersion: typeof PLAY_SESSION_SCHEMA;
   readonly capturedAt: string;
   readonly route: PlayRoute;
-  readonly state: "idle" | "starting" | "running" | "stopping" | "attention";
+  readonly state: "idle" | "starting" | "running" | "finished" | "stopping" | "attention";
   /** True only for a current provider-owned session, including a pending start. */
   readonly canStop: boolean;
   readonly issue: PlayIssue | null;
@@ -38,14 +38,15 @@ export function isPlaySessionResult(value: unknown): value is PlaySessionResult 
   if (!keys(value, ["playSession"]) || !keys(value.playSession, ["schemaVersion", "capturedAt", "route", "state", "canStop", "issue", "software"])) return false;
   const s = value.playSession;
   if (s.schemaVersion !== PLAY_SESSION_SCHEMA || typeof s.capturedAt !== "string" || !s.capturedAt.length || !isPlayRoute(s.route)
-    || typeof s.state !== "string" || !["idle", "starting", "running", "stopping", "attention"].includes(s.state) || typeof s.canStop !== "boolean"
+    || typeof s.state !== "string" || !["idle", "starting", "running", "finished", "stopping", "attention"].includes(s.state) || typeof s.canStop !== "boolean"
     || (s.issue !== null && !PLAY_ISSUES.includes(s.issue as PlayIssue)) || !Array.isArray(s.software)) return false;
   const required = s.route === "desktop_play" ? ["steam", "vrchat"] : [...PLAY_COMPONENTS];
   return s.software.length === required.length && new Set(s.software.map(f => record(f) ? f.component : null)).size === required.length
     && s.software.every(f => keys(f, ["component", "presence", "running", "owned"]) && typeof f.component === "string" && required.includes(f.component)
       && typeof f.presence === "string" && ["verified", "missing", "unusable", "unknown"].includes(f.presence) && typeof f.running === "boolean" && typeof f.owned === "boolean"
       && (!f.owned || (f.running && s.canStop)))
-    && ((s.state !== "starting" && s.state !== "running" && s.state !== "stopping") || s.canStop)
+    && ((s.state !== "starting" && s.state !== "running" && s.state !== "finished" && s.state !== "stopping") || s.canStop)
+    && (s.state !== "finished" || s.issue === null)
     && (s.state !== "running" || (s.issue === null && s.software.every(f => f.running && f.presence === "verified")))
     && (s.state !== "idle" || (!s.canStop && s.issue === null));
 }

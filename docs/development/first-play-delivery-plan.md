@@ -1,6 +1,6 @@
 # First play release: implementation checkpoint and remaining work
 
-> Document version: 1.8.0
+> Document version: 1.9.0
 > Status: Accepted
 > Updated: 2026-10-09
 > Scope: Desktop play, PICO 4 Pro USB/Wi-Fi, optional eye tracking and three guidance contexts
@@ -62,7 +62,7 @@ No new ZIP is produced during the author's development-UI review.
 | Slice | Delivered and checked | What remains outside that result |
 | --- | --- | --- |
 | Windows ZIP bootstrap (`b95ac31a`) | Compiled desktop plus real bundled Provider; fresh extracted launch without a checkout/toolchain, Unicode/space path, moved-directory restart, external data profile and missing-backend failure were exercised | Final release artifact, signing/distribution and actual play acceptance |
-| Regional network checks (`d68490d5`) | Per-service checks, correctable usage region, mainland-only UU guidance, retry/continue and four-language UI; live Provider and controlled UI cases exercised | Integrated game login/loading and physical local-network checks |
+| Historical regional network checks (`d68490d5`) | The original service/region/advice slice was exercised; the 2026-10-09 ruling retires its region identification and accelerator UI | Retained query compatibility only; current website/region-Ping status is recorded below |
 | Guide A (`679db558`, `a3f8feae`, `1fd76422`) | Four-language first-play text, six reusable diagrams, captions, account-route corrections, keyboard navigation and readable panel access | Hardware verification and new room-preparation detail; the new app tour and game guide |
 | Guide B (`c3183dc0`) | Deployment-to-section entries, typed/validated targets, window open/hide/return, reading recovery, relative packaged media URLs and four-language previews | Routing those features to the three distinct contexts |
 | B review fixes (`a6682196`, `524e03f5`) | Single-use URL/IPC targets, status-view return, bounded layout retry, page-bottom positioning and yielding after programmatic positioning; targeted tests and app/renderer reproductions reviewed | One small pre-first-frame manual-scroll edge case, listed under the reader slice |
@@ -75,7 +75,8 @@ separate entry. Automatic VRChat-window following has since landed (§2.C); its 
 acceptance and a checked tutorial-world list remain.
 
 `5ff2dfd1` replaces the main network form with VRChat/Steam/GitHub test cards, custom HTTPS
-destinations and individual/all tests. Regional help remains collapsed and region-aware.
+destinations and individual/all tests. Its regional-help UI is superseded by the 2026-10-09
+network ruling and removed; website tests now live in expanded details on Play.
 `0a00cad0` adds the theme-aware VUA brand mark. The website icons use attributed Simple Icons.
 
 The existing deployment layer inspects software, builds confirmed plans and exposes task progress.
@@ -121,7 +122,7 @@ manual handoff/reinspection, account return, focus/back, mode changes and four-l
 window layout. These checks use synthetic Gateway facts and establish UI behavior only.
 `pnpm --filter @vua/desktop smoke:first-run-ui` reproduces the branching, readiness, account-return
 and Chromium keyboard cases in an isolated Electron session without installing software or signing in.
-Its 73 checks also cover settings-only navigation, source/focus preservation, tray-renderer
+Its checks also cover settings-only navigation, source/focus preservation, tray-renderer
 gestures, live task-port selection in DEV, compact navigation/search, the Home task-tour anchor,
 a Dark default on a Light system, connected appearance choices, reduced-motion/resource-saving
 fallbacks, visible search with scrolling settings categories in a small big-screen window,
@@ -149,6 +150,38 @@ Chromium checks are separate from real installer, game, controller and headset e
 Restart development once to load the new native operations; `pnpm dev:desktop` now rebuilds
 the native provider before opening Electron. An already running old provider is not replaced
 or terminated by a failed build.
+
+### Author-reported guide/game-exit corrections (2026-10-09)
+
+The author reports that the Desktop card starts an actual game window. Manual game exit left
+an incorrect warning, and the guide's opacity slider failed to reveal the game background;
+focus restoration also discarded dragged placement. These observations identify defects,
+not acceptance of the whole Desktop/PICO journey.
+
+The guide now keeps its native/outer canvas transparent and applies the slider only to the
+matrix/background. Text remains opaque. Native user drags update a normalized local preference;
+automatic moves do not overwrite it. App switching, minimize/restore, manual reopen, new game
+sessions and application restart retain relative placement within available game bounds.
+
+Play observation treats process disappearance after a successful start as normal completion.
+If owned applications survive, show × **Close** without a false warning; once all owned apps
+are gone, release the session and restore Play. Observation never closes a borrowed application.
+
+The network tile has Europe, United States East/West together, and Japan. No reliable public
+game-region targets have been verified; regional Ping is explicitly unavailable. Website tests,
+including Steam and GitHub, stay in expanded details. Connection help, usage-region identification
+and accelerator recommendations are removed. The author will investigate actual room connections;
+this placeholder does not block the play path or add a separate publication gate.
+
+The repaired source passed 125 desktop test files / 1126 tests, 14 contract test files / 211 tests,
+the ten native play-session tests, two provider wire tests and affected Clippy/type checks.
+Play's Candidate v0.2 adds normal completion while retaining v0.1 schemas/vectors unchanged.
+The isolated real Chromium guide smoke measured background alpha 51/255 and 204/255 at 20%/80%,
+with eight checks. Four-language website UI checks passed ten cases per locale. The 76 main-page
+UI checks, build/boundary/i18n/contrast and production leak results are recorded with this source; none of
+these tests launches the real game, vendor installers or headset. The author still needs to
+recheck the repaired guide and actual exit behavior after fully quitting the old development
+instance and restarting `pnpm dev:desktop`. No ZIP is produced during this UI review.
 Unit/type/boundary/i18n/contrast/leak checks and the integrated preview build are recorded with
 the candidate. The author's acceptance of the design is distinct from review of the running app.
 Physical controller input, missing-software installers, actual desktop/PICO play and four-language
@@ -204,20 +237,24 @@ The delivered behavior implements the accepted defaults and lifecycle from
 [guidance architecture](../architecture/guidance.md#4-vrchat-game-guide):
 following enabled by default, 50% transparency, persisted preferences, game-bound positioning,
 background/minimize hiding, restoration without focus stealing, and manual hide taking
-precedence. Workspace and contract tests plus a local fake-window smoke cover the loop.
+precedence. Dragged relative placement is now retained and background-only transparency is
+covered by a real Chromium alpha check. Workspace and contract tests plus a local fake-window
+smoke cover the loop; the author's reported defects and subsequent repairs are recorded above.
 
 Remaining work: prepare a small checked tutorial-world list by learning language, with a
 local-guide route when no suitable world is listed; no game-account session is needed. Remaining
 acceptance: exercise the actual VRChat window — absent game, startup, movement/resize,
 minimize/restore, Alt-Tab, clicking guide controls, explicit hide/reopen, exit/relaunch and
 monitor/DPI changes. Verify readable default transparency and independent progress in all three
-contexts. This desktop-window feature does not require a native headset overlay.
+contexts, including background adjustment and dragged placement after focus/restore/restart. These
+repairs still require the author's current-build check. This desktop-window feature does not
+require a native headset overlay.
 
 ## 3. Finish the usable play paths
 
 | Work | Concrete implementation still needed | Completion run |
 | --- | --- | --- |
-| One desktop/PICO route | Implemented in the first-run UI and fixed feature routes: network, selected prerequisites, plan/task return, PICO connection guidance and Steam play handoff. Real play remains unverified | Start with either choice and reach the next useful action without configuring unrelated creator software |
+| One desktop/PICO route | Implemented in the first-run UI and fixed feature routes: network, selected prerequisites, plan/task return, PICO connection guidance and Steam play handoff. The author reports Desktop launch; integrated Desktop/PICO acceptance remains pending | Start with either choice and reach the next useful action without configuring unrelated creator software |
 | Steam and PICO acquisition | Implemented on `slice/steam-pico-acquisition`: official download/trust gates, explicit mainland/global PICO selection, `/S` native elevation, activity/errors, entry-file reinspection and task return. Vendor-specific silent behavior and actual completion still need acceptance | Follow the [slice checklist](steam-pico-acquisition-checklist.md) for missing-software, failure/cancellation and reuse. The integrated UI keeps Steam library installation/launch as explicit user handoffs |
 | Steam library and game launch | Hand VRChat/SteamVR installation to Steam, explain the expected Steam action, reinspect after return and launch the selected play mode. Keep the task/guide usable during downloads | Steam registration/login or existing account → install VRChat → start desktop mode → enter a world and use controls/audio/microphone |
 | Account handoffs | Connect official registration pages and client/headset handoffs to resumable guide steps; retain external-browser fallback and separate opened/user-confirmed/detected states | Interrupt and return from a page/client without losing the selected route; the player performs login, verification and agreements |
@@ -282,6 +319,8 @@ integration, not a substitute for N5's own review and acceptance.
 
 ## Document changelog
 
+- 1.9.0 (2026-10-09): record author-reported guide/normal-exit defects and source repairs, background-alpha evidence, removed network advice and unavailable regional Ping without another ZIP or physical-acceptance claim.
+
 - 1.8.0 (2026-10-09): record two-half play cards, scoped observed launch/close and creator inventory while retaining real vendor/device checks and the author’s no-package UI review.
 - 1.7.0 (2026-10-09): record the compact shell and Settings search/appearance corrections, update the task-tour destination and expand the controlled UI checks to 56; no new ZIP or physical-acceptance claim.
 - 1.6.0 (2026-10-09): record the author's development-mode UI corrections, task/theme separation, settings return, headset glyphs and native tray checks; defer another ZIP while the UI is under review.
@@ -293,4 +332,5 @@ integration, not a substitute for N5's own review and acceptance.
   installation and play acceptance as pending.
 - 1.2.0 (2026-10-08): record the delivered game-window observer and automatic game-guide following; real-machine acceptance and the curated tutorial-world list remain.
 - 1.1.0 (2026-10-07): record the reader, app tour, manual game guide, website cards and brand mark in PR #61; retain automatic following and play/release completion for subsequent work.
-- 1.0.0 (2026-10-05): record the completed ZIP/network/A/B/profile slices, prioritize three guidance contexts and enumerate the remaining play/release work separately from N5.
+
+Earlier entries remain in Git history.

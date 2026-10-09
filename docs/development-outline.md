@@ -1,9 +1,9 @@
 # VUA development sequence
 
-> Document version: 3.11.0
+> Document version: 3.12.0
 > Status: Accepted
-> Updated: 2026-10-08
-> Authority: User rulings of 2026-09-28 through 2026-10-08, including independent release numbering, three guidance contexts and the Ibis core-journey criterion
+> Updated: 2026-10-09
+> Authority: User rulings of 2026-09-28 through 2026-10-09, including independent release numbering, three guidance contexts, the Ibis core-journey criterion and the current network presentation
 > Scope: N1-N7, real-machine deployment and real-material workflows, continuing Beta
 > Normative effect: Schedules accepted product work; product scope belongs to product-boundary.md
 
@@ -124,7 +124,7 @@ afterward; it does not add material-management prerequisites to these play cases
 | --- | --- |
 | Standalone ZIP | On the recorded Windows x64 test environment, extract the complete ZIP to a path containing spaces and non-ASCII characters and launch VUA without a source checkout, Node, pnpm or Rust. Its real packaged Provider responds, local assets load, and settings/task data remain outside the program directory. Moving/replacing the program directory preserves that data |
 | Relevant checks | Desktop play needs Steam and VRChat only; missing SteamVR, PICO or Unity does not block it. PICO streaming adds SteamVR and PICO Connect. Windows, graphics/driver, storage and software findings explain the next action instead of a generic failure |
-| Network | Report the affected official service/download source separately from local headset discovery. Show a relevant remedy and recheck after it. Existing network software can be retained; regional accelerator advice includes no-affiliation wording and a skip option |
+| Network | Keep website observations in expanded details, separate from local headset discovery and game latency. Regional Ping covers Europe, United States East/West and Japan only when reliable targets exist; otherwise show unavailable without blocking preparation. No usage-region identification, Connection help or accelerator recommendations |
 | Account guide | A new player reaches official Steam registration and client login; an existing player skips registration. Continue through VRChat first login with Steam and explain optional full-account/linking steps. PICO account/headset actions use official UI. Closing a page or encountering unsupported embedding leaves a resume or system-browser route |
 | Missing software | Starting with the selected software absent, obtain/install it through official sources and return to VUA for inspection. Prefer supported unattended steps; show installation phase/activity and required interaction. Steam-owned downloads are clearly handed to Steam and checked afterward |
 | Desktop play | Launch VRChat in desktop mode, enter the game, and follow the guide for movement, menus, sound, microphone and basic safety settings. Installed files alone do not pass this row |
@@ -134,7 +134,7 @@ afterward; it does not add material-management prerequisites to these play cases
 | Return/recovery | Repeat deployment without reinstalling satisfied components. Interrupt one download/install or user handoff, restart VUA, inspect the result and explicitly continue/retry. A later play session has a direct start path |
 | VUA app tour | Inside VUA, follow ordered highlights on actual controls through route selection, checks, plan/progress and play/guide entries. Page changes, back/next, skip/exit and restart work; absent controls have an understandable next action. The transparent tour stays within VUA, keeps text readable and does not cancel a task when exited |
 | Preparation reader | Open a normal opaque, resizable window for room setup, equipment connection and reference instructions without requiring VRChat or AMF. It is not globally pinned. A help entry opens its section once; ordinary reopen restores reading. Manual scrolling wins over positioning, keyboard reading and illustrations work, and closing leaves tasks/game running |
-| VRChat game guide | With following enabled by default and transparency initially 50%, use a readable guide over the Windows VRChat game window. It follows movement/resize, hides on minimize or switching apps, restores without taking focus, stays usable when clicked and respects manual hide. Persist changed preferences. Follow controls/microphone and suggested Personal Space/Allow Untrusted URLs steps by confirmation or skip; use checked tutorial-world entries by learning language when available and local guidance otherwise |
+| VRChat game guide | With following enabled by default and background opacity initially 50%, use a readable guide over the Windows VRChat game window. Adjust the matrix/background without fading text. It follows movement/resize, remembers a dragged relative position, hides on minimize or switching apps, restores without taking focus, stays usable when clicked and respects manual hide. Persist changed preferences. Follow controls/microphone and suggested Personal Space/Allow Untrusted URLs steps by confirmation or skip; use checked tutorial-world entries by learning language when available and local guidance otherwise |
 | Guidance separation | App-tour completion, preparation reading and game-guide progress do not overwrite one another. Shared four-language text/media remain consistent. Exercise absent-game, exit/relaunch, keyboard access and monitor/DPI changes; task-status access remains available during the migration |
 | Headset guide access | On the PICO test path, open SteamVR's desktop view, read/operate the preparation reader and return to play. Record this as desktop-view guidance, not a native VUA VR overlay |
 | Distribution | Include exact-build license notices, version/source identification, ZIP update/removal instructions, actual screenshots and known issues. Record signature status. Human UI review covers the guide and handoffs; remote build/smoke checks and physical headset tests retain their separate evidence |
@@ -161,7 +161,7 @@ a general environment version manager are not prerequisites.
 | Validate | Reinspect after install; actually launch Unity and open a disposable project with real SDK/MA dependencies; test play launch separately from device behavior |
 | Repeat | A second run reuses satisfied prerequisites and installs only missing components; failed operations have a usable retry or manual path |
 | Device route | For each supported model, complete one official-first installation/connection route, including required PC and headset software, pairing and game launch. Record the exact model and connection used; expand alternative streaming choices afterwards |
-| Network and activation | Guide regional service access and headset activation. Mainland-China suggestions include dedicated accelerators with a no-financial-relationship disclosure and an existing-service/skip choice. Check target-service reachability separately from LAN streaming; exercise headset update, phone login and pairing for the selected Quest activation route |
+| Network and activation | Guide official service access and headset activation without usage-region identification or accelerator recommendations. Check target-service reachability separately from LAN streaming; exercise headset update, phone login and pairing for the selected Quest activation route |
 
 Subsequent creator path: keep existing SteamVR/PICO/VRChat, choose PC Avatar editing, install global
 Unity 2022.3.22f1 (China 2022.3.22f1c1 fallback) following the
@@ -186,7 +186,7 @@ a generic account/token manager before this path works.
 | New player | Offer Steam and VRChat registration guidance; users submit official forms themselves. Guide adding VRChat to the Steam library and installing/launching through Steam. An opened page is recorded as opened, not as an account or successful installation |
 | Existing player | Allow skipping existing accounts; guide the official Steam-platform-account upgrade/link path when needed, without storing credentials or inventing a VUA binding |
 | Optional creator | Offer Unity and BOOTH/pixiv registration only for the creator route. Explain purchase, official Unity authorization/licensing and SDK handoffs; Hub is optional. Skipping them leaves the play route usable |
-| Device/service accounts | Add only accounts or store authorizations needed by the selected manufacturer, streaming or accelerator route. Save guide progress; support existing accounts, phone/headset/client handoff and return after interruption |
+| Device/service accounts | Add only accounts or store authorizations needed by the selected manufacturer or streaming route. Save guide progress; support existing accounts, phone/headset/client handoff and return after interruption |
 | Upload eligibility | Explain full VRChat account plus New User or higher; show user-reported or unknown eligibility honestly. Normal-play guidance promises no promotion date. A Visitor can continue local preparation/testing; only upload remains gated |
 | Interrupt/decline | Closing a page, refusing consent, failed registration or blocked embedding leaves a resume/manual route. CAPTCHA, terms, account linking and payment stay with the user |
 | Privacy | First-slice registration sessions are nonpersistent and isolated; no cookie/password/token values in app state, IPC, Agent context or logs. Ending the guide session clears its temporary state. Saved progress does not imply authenticated verification |
@@ -426,6 +426,8 @@ do not turn documentation completeness, speculative coverage, or idle agent acti
 
 ## Document changelog
 
+- 3.12.0 (2026-10-09): align network acceptance with the latest regional-Ping/website split and removal ruling; require background-only guide opacity and remembered relative placement.
+
 - 3.11.0 (2026-10-08): distinguish the author's Ibis publication criterion from completion of every accepted play/N2 row; retain real-run evidence and pending optional outcomes.
 - 3.10.0 (2026-10-05): define observable acceptance for three guidance contexts, their independent state and the separate N5 co-release review.
 - 3.9.0 (2026-10-03): advance PICO eye tracking into first-play acceptance and define seven N2 Steam connections with shared inventory/install/launch acceptance and focused tracking guides.
@@ -444,6 +446,5 @@ do not turn documentation completeness, speculative coverage, or idle agent acti
   inventory claim and note its mutation by deployment work, replace the N5 audit "where possible"
   hedge with blocked-with-reason recording, expand first-use jargon (MA/OSC/VPM/BDL), and fix the
   circular Integration role wording; no acceptance change.
-- 3.4.0 (2026-09-30): decouple N stages from product versions while retaining every delivery outcome and acceptance requirement.
 
 Earlier entries remain in Git history.

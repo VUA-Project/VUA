@@ -1,0 +1,400 @@
+{
+  "requests": [
+    {
+      "valid": true,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "fixture",
+        "correlationId": "fixture",
+        "kind": "query",
+        "method": "environment.observePlay",
+        "params": {
+          "route": "desktop_play"
+        }
+      }
+    },
+    {
+      "valid": true,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "fixture",
+        "correlationId": "fixture",
+        "kind": "command",
+        "method": "environment.startPlay",
+        "params": {
+          "route": "desktop_play"
+        },
+        "commandId": "start-1"
+      }
+    },
+    {
+      "valid": true,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "fixture",
+        "correlationId": "fixture",
+        "kind": "command",
+        "method": "environment.stopPlay",
+        "params": {
+          "route": "desktop_play"
+        },
+        "commandId": "stop-1"
+      }
+    },
+    {
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "fixture",
+        "correlationId": "fixture",
+        "kind": "query",
+        "method": "environment.observePlay",
+        "params": {
+          "route": "quest"
+        }
+      }
+    },
+    {
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "fixture",
+        "correlationId": "fixture",
+        "kind": "query",
+        "method": "environment.observePlay",
+        "params": {
+          "route": "desktop_play",
+          "exe": "cmd.exe"
+        }
+      }
+    },
+    {
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "fixture",
+        "correlationId": "fixture",
+        "kind": "command",
+        "method": "environment.observePlay",
+        "params": {
+          "route": "desktop_play"
+        }
+      }
+    },
+    {
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "fixture",
+        "correlationId": "fixture",
+        "kind": "query",
+        "method": "environment.observePlay",
+        "params": {
+          "route": "desktop_play"
+        },
+        "commandId": "unexpected"
+      }
+    },
+    {
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "fixture",
+        "correlationId": "fixture",
+        "kind": "command",
+        "method": "environment.startPlay",
+        "params": {
+          "route": "desktop_play"
+        },
+        "commandId": "bad command"
+      }
+    }
+  ],
+  "results": [
+    {
+      "valid": true,
+      "value": {
+        "playSession": {
+          "schemaVersion": "vua.play-session/v0.2",
+          "capturedAt": "2026-10-09T00:00:00Z",
+          "route": "desktop_play",
+          "state": "idle",
+          "canStop": false,
+          "issue": null,
+          "software": [
+            {
+              "component": "steam",
+              "presence": "verified",
+              "running": false,
+              "owned": false
+            },
+            {
+              "component": "vrchat",
+              "presence": "verified",
+              "running": false,
+              "owned": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "valid": false,
+      "value": {
+        "playSession": {
+          "schemaVersion": "vua.play-session/v0.2",
+          "capturedAt": "2026-10-09T00:00:00Z",
+          "route": "desktop_play",
+          "state": "idle",
+          "canStop": false,
+          "issue": null,
+          "software": [
+            {
+              "component": "steam",
+              "presence": "verified",
+              "running": false,
+              "owned": false
+            },
+            {
+              "component": "vrchat",
+              "presence": "verified",
+              "running": false,
+              "owned": false
+            }
+          ]
+        },
+        "arbitrary": true
+      }
+    },
+    {
+      "valid": false,
+      "value": {
+        "playSession": {
+          "schemaVersion": "vua.play-session/v0.2",
+          "capturedAt": "2026-10-09T00:00:00Z",
+          "route": "desktop_play",
+          "state": "running",
+          "canStop": false,
+          "issue": null,
+          "software": [
+            {
+              "component": "steam",
+              "presence": "verified",
+              "running": false,
+              "owned": false
+            },
+            {
+              "component": "vrchat",
+              "presence": "verified",
+              "running": false,
+              "owned": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "valid": false,
+      "value": {
+        "playSession": {
+          "schemaVersion": "vua.play-session/v0.2",
+          "capturedAt": "2026-10-09T00:00:00Z",
+          "route": "desktop_play",
+          "state": "idle",
+          "canStop": true,
+          "issue": null,
+          "software": [
+            {
+              "component": "steam",
+              "presence": "verified",
+              "running": false,
+              "owned": false
+            },
+            {
+              "component": "vrchat",
+              "presence": "verified",
+              "running": false,
+              "owned": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "valid": false,
+      "value": {
+        "playSession": {
+          "schemaVersion": "vua.play-session/v0.2",
+          "capturedAt": "2026-10-09T00:00:00Z",
+          "route": "desktop_play",
+          "state": "idle",
+          "canStop": false,
+          "issue": null,
+          "software": []
+        }
+      }
+    },
+    {
+      "valid": true,
+      "value": {
+        "playSession": {
+          "schemaVersion": "vua.play-session/v0.2",
+          "capturedAt": "2026-10-09T00:00:00Z",
+          "route": "desktop_play",
+          "state": "running",
+          "canStop": true,
+          "issue": null,
+          "software": [
+            {
+              "component": "steam",
+              "presence": "verified",
+              "running": true,
+              "owned": true
+            },
+            {
+              "component": "vrchat",
+              "presence": "verified",
+              "running": true,
+              "owned": true
+            }
+          ]
+        }
+      }
+    },
+    {
+      "valid": false,
+      "value": {
+        "playSession": {
+          "schemaVersion": "vua.play-session/v0.2",
+          "capturedAt": "2026-10-09T00:00:00Z",
+          "route": "desktop_play",
+          "state": "idle",
+          "canStop": false,
+          "issue": null,
+          "software": [
+            {
+              "component": "steam",
+              "presence": "verified",
+              "running": false,
+              "owned": false
+            },
+            {
+              "component": "steam",
+              "presence": "verified",
+              "running": false,
+              "owned": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "valid": true,
+      "value": {
+        "playSession": {
+          "schemaVersion": "vua.play-session/v0.2",
+          "capturedAt": "synthetic",
+          "route": "desktop_play",
+          "state": "finished",
+          "canStop": true,
+          "issue": null,
+          "software": [
+            {
+              "component": "steam",
+              "presence": "verified",
+              "running": true,
+              "owned": true
+            },
+            {
+              "component": "vrchat",
+              "presence": "verified",
+              "running": false,
+              "owned": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "valid": false,
+      "value": {
+        "playSession": {
+          "schemaVersion": "vua.play-session/v0.2",
+          "capturedAt": "synthetic",
+          "route": "desktop_play",
+          "state": "finished",
+          "canStop": false,
+          "issue": null,
+          "software": [
+            {
+              "component": "steam",
+              "presence": "verified",
+              "running": true,
+              "owned": false
+            },
+            {
+              "component": "vrchat",
+              "presence": "verified",
+              "running": false,
+              "owned": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "valid": false,
+      "value": {
+        "playSession": {
+          "schemaVersion": "vua.play-session/v0.2",
+          "capturedAt": "synthetic",
+          "route": "desktop_play",
+          "state": "finished",
+          "canStop": true,
+          "issue": "start_failed",
+          "software": [
+            {
+              "component": "steam",
+              "presence": "verified",
+              "running": true,
+              "owned": true
+            },
+            {
+              "component": "vrchat",
+              "presence": "verified",
+              "running": false,
+              "owned": false
+            }
+          ]
+        }
+      }
+    },
+    {
+      "valid": false,
+      "value": {
+        "playSession": {
+          "schemaVersion": "vua.play-session/v0.1",
+          "capturedAt": "2026-10-09T00:00:00Z",
+          "route": "desktop_play",
+          "state": "idle",
+          "canStop": false,
+          "issue": null,
+          "software": [
+            {
+              "component": "steam",
+              "presence": "verified",
+              "running": false,
+              "owned": false
+            },
+            {
+              "component": "vrchat",
+              "presence": "verified",
+              "running": false,
+              "owned": false
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,10 +1,10 @@
 # VUA product boundary
 
 
-> Document version: 2.14.0
+> Document version: 2.15.0
 > Status: Accepted
 > Scope: Entire VUA product
-> Updated: 2026-10-08
+> Updated: 2026-10-09
 > Normative effect: Yes
 
 ## Product definition
@@ -255,8 +255,7 @@ or PICO Connect streaming. It delivers the following bounded scope:
 
 - Inspect the relevant Internet services and download sources; distinguish these failures from
   local PC/headset connectivity. Explain useful remedies and recheck after the user's action.
-  The first mainland-China accelerator recommendation is only NetEase UU, with the existing
-  no-financial-relationship disclosure. Region is a correctable hint, not a connectivity verdict.
+  The 2026-10-09 network ruling below supersedes usage-region detection and accelerator advice.
 - Guide Steam registration, verification and client login. Existing accounts skip registration.
   Explain VRChat's first login with Steam; a full VRChat account and account linking remain
   optional guidance. Hand off PICO account/device confirmations when its official flow needs them.
@@ -296,6 +295,20 @@ The [delivery plan](development/first-play-delivery-plan.md) records completed s
 remaining work. N5 is reviewed separately when complete and can accompany this release after
 that review; its work is not part of the current first-play checklist or a play prerequisite.
 
+### Play network presentation (user ruling, 2026-10-09)
+
+Play shows Europe, the United States (East and West together), and Japan as the intended VRChat
+instance-latency destinations. Only a verified game-region target can produce a regional Ping;
+website response time is not a substitute. Until targets are established, report that regional
+latency is unavailable and keep the play journey accessible. Editable website tests, including
+Steam and GitHub, belong in expanded details.
+
+Remove Connection help, usage-region identification and third-party accelerator recommendations
+from the player flow. This supersedes the 2026-10-03 UU recommendation and the earlier N1
+region-based advice. It does not change the explicit mainland/global PICO installer choice or
+the independently owned Unity download policy. The [network architecture](architecture/network-onboarding.md)
+owns observation limits and current implementation status.
+
 ### Subsequent device expansion
 
 The device pool from the 2026-10-02 ruling remains the subsequent expansion direction after
@@ -313,10 +326,9 @@ manufacturer's software, ALVR, Virtual Desktop and Steam Link as model-specific 
 Prefer supported silent installation with a visible task: actual phase, elapsed time, available
 progress/activity, interaction requests and next actions during prolonged inactivity. Verify
 installed results and keep user actions attached to that task. Route-specific account guidance,
-headset activation and regional connectivity are N1 prerequisites. For mainland-China users,
-evaluate dedicated activation/acceleration services; the first accelerator recommendation is NetEase UU with
-an explicit no-financial-relationship disclosure. Region informs suggestions; target-service
-reachability and user correction refine the plan. Existing privacy boundaries apply.
+headset activation and service connectivity are N1 prerequisites. Use official device/account
+handoffs and concrete service observations under the network ruling above, without usage-region
+identification or accelerator recommendations. Existing privacy boundaries apply.
 See the [N1 delivery plan](development/n1-delivery-plan.md).
 
 ## Unity deployment
@@ -347,7 +359,7 @@ The first play release uses the subset defined above; creator account guidance f
 creator delivery. N1 account guidance uses official pages in the built-in browser, with
 client, phone-app or headset handoffs where required. The base scope is Steam and VRChat for play,
 with optional Unity and BOOTH/pixiv registration guidance for the creator route. Add manufacturer,
-headset-store, streaming and accelerator account guidance when the selected device route requires
+headset-store and streaming account guidance when the selected device route requires
 it (user ruling 2026-10-02). Existing users
 can skip registration. VUA explains each step; users enter account information, solve challenges,
 accept terms, add VRChat to their Steam library, and perform account upgrade/linking themselves.
@@ -531,6 +543,8 @@ plugin execution and a marketplace still require their separately accepted secur
 
 ## Document changelog
 
+- 2.15.0 (2026-10-09): adopt regional Ping placeholders and folded website tests, retiring usage-region identification and accelerator recommendations under the author's network ruling.
+
 - 2.14.0 (2026-10-08): adopt the author's newcomer core-journey criterion for Ibis publication, allow clear manual handoffs and retain unfinished optional work without making it an independent release gate.
 - 2.13.0 (2026-10-08): preserve records/references after local-file removal and retain superseded VPM output after changed managed originals; link the maintenance ruling.
 - 2.12.0 (2026-10-08): retain all downloaded formats with separate production qualification and allow provisional Recipe selection drafts without deciding the production format.
@@ -542,15 +556,5 @@ plugin execution and a marketplace still require their separately accepted secur
 
 - 2.8.0 (2026-10-03): bound the first play release to desktop/PICO onboarding, a desktop guide overlay and ZIP distribution; retain wider N1 work for later deliveries.
 - 2.7.0 (2026-10-02): make CLI-led official acquisition first in every region and identify the actual downloaded edition; mirrors are optional backups.
-
-- 2.6.0 (2026-10-02): accept the f1/c1 development pair and global → China → Hub deployment order while retaining actual identities.
-
-- 2.5.0 (2026-10-02): adopt model-driven official-first headset routes, observable silent installs
-  and N1 activation/network guidance; make WMR first-delivery support conditional on investigation.
-
-- 2.4.1 (2026-10-02): state the first-delivery account exclusions at full strength (not "required")
-  and compress the active-delivery policy to boundary rulings, linking acceptance definitions to
-  the development outline; no scope change.
-- 2.4.0 (2026-10-01): select region-aware Unity/NoUnityCN source priority, a mirror switch and Hub fallback; authorize original-installer deployment with official CLI registration during N1 development.
 
 Earlier entries remain in Git history.

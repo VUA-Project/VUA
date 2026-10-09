@@ -1,8 +1,8 @@
 # N1 delivery plan: from a device choice to a working environment
 
-> Document version: 1.6.1
+> Document version: 1.7.0
 > Status: Accepted
-> Updated: 2026-10-07
+> Updated: 2026-10-09
 > Scope: First play release, followed by the wider N1 device/creator routes
 
 For people: the first release prepares desktop VRChat play or PICO Connect streaming, including
@@ -99,7 +99,7 @@ account registration/linking is optional. Add PICO's official account/device han
 The creator/other-manufacturer directions below apply when those later routes are delivered.
 
 Steam and VRChat serve play; Unity and BOOTH/pixiv are optional creator steps. Add manufacturer,
-headset-store, streaming or accelerator account guidance when the selected route needs it.
+headset-store or streaming account guidance when the selected route needs it.
 Reuse the existing isolated temporary browser and official destinations. Keep registration,
 login, store entitlement, device pairing and license selection as separate steps.
 
@@ -112,38 +112,25 @@ Users complete account submissions, CAPTCHA, purchases, agreements and license s
 
 This investigation follows the first play release and does not block its PICO route.
 
-Target activation without requiring the player to configure a general-purpose VPN. Evaluate
-dedicated acceleration/activation services and their hotspot or gateway instructions. The real
-trial covers headset update, phone/Meta account access and device pairing separately.
+Investigate the official activation/account flow and record the tested headset/firmware,
+network method and result. The real trial covers headset update, phone/Meta account access
+and device pairing separately. The 2026-10-09 network ruling removes third-party accelerator
+recommendations from the player flow; the earlier named-service research is no longer a
+current guide instruction. Independent installation work can continue while an account step waits.
 
-NetEase UU and the independently operated Meta/Oculus Helper are research candidates; the latter
-is not a Meta product. Follow the selected service's actual instructions and record tool version,
-headset/firmware, network method and result. A working route becomes an N1 guide with explicit
-fees and user actions. Independent installation work can continue while an account step waits.
+### Network observations belong to N1
 
-### Regional connectivity belongs to N1
+Follow the [2026-10-09 network ruling](../product-boundary.md#play-network-presentation-user-ruling-2026-10-09)
+and [current implementation](../architecture/network-onboarding.md): Play keeps a regional-Ping
+tile above its environment cards, while editable VRChat/Steam/GitHub website tests are in
+expanded details. Europe, United States East/West and Japan require verified game-region
+destinations; until those exist, show unavailable without blocking software setup.
 
-The first accelerator recommendation is only [NetEase UU](https://uu.163.com/), with
-existing-service and skip options. Tell users to select VRChat in UU; per the author's
-2026-10-03 practical guidance, this also accelerates the surrounding Steam and Oculus stores.
-Disclose that VUA has no financial relationship with the suggested provider; the provider
-operates and charges for its service independently.
-
-Region is a default recommendation hint which the user can correct. Inspect the actual target
-service: Steam, Meta, VRChat and Unity may follow different network routes. Distinguish local
-computer/headset connectivity from Internet access before recommending a remedy.
-
-The [network implementation](../architecture/network-onboarding.md) provides an explicit
-four-target desktop/five-target PICO HTTPS check, correctable region hint, per-service results,
-UU guidance, continue/recheck actions and four-language UI. Recommendations depend on usage
-region, independently of UI language; outside mainland China and unknown regions do not
-recommend UU. Cross-region instance latency has a separate guide for instance-region/ping
-checks and distinguishing FPS/streaming issues. Its
-[Candidate query](../protocols/environment-network-v0.1.md) is separate from legacy TCP facts.
-Acceptance for this slice: a mixed-success run preserves each result, manual region overrides
-the hint, only PICO mode checks the PICO entrance, retry replaces old results, and neither
-timeout nor unknown region blocks software setup. Verify actual game login/loading later in
-the first-play path; website response time is not the game latency measurement.
+Connection help, usage-region identification and accelerator recommendations are removed.
+The old Candidate regional query is retained only for compatibility and is not called by the
+player flow. Acceptance covers independent website results, explicit testing, editing/removal
+and honest separation from game Ping and local headset connectivity. Verify actual game
+login/loading later in the first-play path; a website response time does not establish it.
 
 ## Unity: first working creator environment
 
@@ -230,10 +217,10 @@ checks; the first-play task does not dispatch agents or rewrite N5's plan.
 - [PS VR2 PC preparation](https://www.playstation.com/en-us/support/hardware/pc-prepare-ps-vr2/).
 - [Microsoft WMR](https://learn.microsoft.com/en-us/windows/mixed-reality/enthusiast-guide/mixed-reality-software)
   and [Oasis](https://store.steampowered.com/app/3824490/Oasis_Driver_for_Windows_Mixed_Reality/).
-- [NetEase UU](https://uu.163.com/). Future Quest activation research (outside the first play
-  release): [third-party Meta Helper](https://ochelper.xlemon.cn/home.html).
 
 ## Document changelog
+
+- 1.7.0 (2026-10-09): replace region-based service advice with the current regional-Ping/expanded-website split and retire accelerator recommendations from N1 player guidance.
 
 - 1.6.1 (2026-10-07): advance the checkpoint to the implemented reader, tour and manual game guide.
 - 1.6.0 (2026-10-05): route the updated first-play checkpoint and remaining work to its own plan, prioritize three guidance contexts and separate N5 review.

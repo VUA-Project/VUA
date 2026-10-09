@@ -77,10 +77,12 @@ import {
   applyManualShow,
   decideFollowTick,
   initialGameGuideFollowState,
+  recordGuideDrag,
   recordUnknownTick,
   type DipRect,
   type GameGuideFollowState,
 } from "./game-guide-follow.js";
+import { readGuidePlacement, writeGuidePlacement } from "./game-guide-placement-store.js";
 import {
   installLocalContentNavigationPolicy,
   installPermissionDenyPolicy,
@@ -164,7 +166,8 @@ function sendShellCommand(command: DesktopShellCommandV1): void {
 // game-guide-follow.ts(纯函数可测);此处只持有状态、250ms 定时器与请求
 // 序号。跟随开关缺省 ON(用户裁决),渲染层持久化并经 set-following 推送,
 // Main 强制执行
-let gameGuideFollow: GameGuideFollowState = initialGameGuideFollowState;
+const gameGuidePlacementFile = path.join(app.getPath("userData"), "game-guide-placement.json");
+let gameGuideFollow: GameGuideFollowState = { ...initialGameGuideFollowState, relativePlacement: readGuidePlacement(gameGuidePlacementFile) };
 let gameGuideFollowTimer: ReturnType<typeof setInterval> | null = null;
 let gameGuideFollowSeq = 0;
 
@@ -1089,6 +1092,7 @@ function createGameGuideWindow(): void {
     show: false,
     frame: false,
     transparent: true,
+    backgroundColor: "#00000000",
     resizable: true,
     skipTaskbar: true,
     hasShadow: false,
@@ -1097,6 +1101,16 @@ function createGameGuideWindow(): void {
   tagDevelopmentWindow(win, desktopProfile);
   win.setAlwaysOnTop(true, GAME_GUIDE_WINDOW_LEVEL);
   gameGuideWindow = win;
+  let savedPlacementKey = JSON.stringify(gameGuideFollow.relativePlacement);
+  // will-move is emitted for a player drag, not an automatic setBounds.
+  win.on("will-move", (_event, bounds) => {
+    if (win.isVisible()) gameGuideFollow = recordGuideDrag(gameGuideFollow, bounds);
+  });
+  win.on("moved", () => {
+    const placement = gameGuideFollow.relativePlacement;
+    const key = JSON.stringify(placement);
+    if (placement && key !== savedPlacementKey && writeGuidePlacement(gameGuidePlacementFile, placement)) savedPlacementKey = key;
+  });
   // 跟随定时器随窗口创建惰性启动(跟随开启时);窗口销毁即停,绝不并跑
   ensureGameGuideFollowTimer();
   win.once("ready-to-show", () => {
@@ -1216,12 +1230,12 @@ async function gameGuideFollowTick(): Promise<void> {
     gameGuideFollow = recordUnknownTick(gameGuideFollow);
     return;
   }
-  if (win.isDestroyed()) return;
+  if (win.isDestroyed() || gameGuideWindow !== win || !gameGuideFollow.followEnabled) return;
   const { action, next } = decideFollowTick(
     gameGuideFollow,
     response.value.gameWindow,
     { visible: win.isVisible(), focused: win.isFocused() },
-    { width: GAME_GUIDE_WINDOW_WIDTH, height: GAME_GUIDE_WINDOW_HEIGHT },
+    win.getBounds(),
     gameWindowRectToDip,
   );
   gameGuideFollow = next;
