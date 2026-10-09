@@ -1,0 +1,10 @@
+{
+  "method": "library.pendingRemovals",
+  "params": {
+    "schemaVersion": "0.1",
+    "target": {
+      "kind": "product",
+      "id": "booth:90"
+    }
+  }
+}

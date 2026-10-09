@@ -43,9 +43,12 @@ import { useCardSpotlight } from "./use-card-spotlight.ts";
 import type { RecipeAssetRef } from "../../gateway/index.ts";
 import { AddToRecipeDialog } from "./AddToRecipeDialog.tsx";
 import { CompatibleItemsDialog } from "./CompatibleItemsDialog.tsx";
+import { DependencyLookupDialog } from "./DependencyLookupDialog.tsx";
 import { registerTaskIdentity } from "../../gateway/index.ts";
 import { CardAlbumMedia, DetailAlbum } from "./WarehouseAlbum.tsx";
 import { ArtifactCard, EntryDetail } from "./WarehouseAcquire.tsx";
+import { EditSourceDialog } from "./EditSourceDialog.tsx";
+import { RemoveEntriesDialog } from "./RemoveEntriesDialog.tsx";
 import { artifactCardMatches, artifactCards, inferGlobalDefaultMode } from "./acquire-model.ts";
 import { ContentDialog } from "../../components/primitives/ContentDialog.tsx";
 import { ImportPage } from "../import/ImportPage.tsx";
@@ -60,6 +63,7 @@ import {
 import { BOOTH_SIGN_IN_URL } from "../import/import-model.ts";
 import { openLoginBrowser, useLoginBrowserRequest } from "../../app/login-browser-store.ts";
 import { useDownloadChecklist } from "../../app/download-checklist-flag.ts";
+import { useDependencyClues } from "../../app/dependency-clues-flag.ts";
 import { DownloadChecklistDialog } from "./DownloadChecklistDialog.tsx";
 import { RemoveFilesDialog, type RemovalDialogTarget } from "./RemoveFilesDialog.tsx";
 import "./warehouse.css";
@@ -140,7 +144,12 @@ function LibraryBadges({ facts }: { facts: LibraryCardFacts | undefined }) {
     <Badge tone={facts.storage.state === "present" || facts.storage.state === "cloud_only" ? "neutral" : "warning"}>
       {copy.libraryState[facts.storage.state]}
     </Badge>
+    {facts.sourceMatch === undefined ? null : <>
+      {facts.sourceMatch.basis !== "mapping" ? <Badge tone="neutral">{copy.libraryState.sourceSuggested}</Badge> : null}
+      <Badge tone="neutral">{facts.sourceMatch.content === "different" ? copy.libraryState.contentDifferent : copy.libraryState.contentUnverified}</Badge>
+    </>}
     {facts.storage.supersededGeneratedCopies > 0 ? <Badge tone="neutral">{copy.removeFiles.oldVersion}</Badge> : null}
+    {(facts.storage.unexpandedArchives ?? 0) > 0 ? <Badge tone="warning">{copy.libraryState.unexpandedArchives}</Badge> : null}
     {facts.storage.supersededGeneratedCopies > 0 && facts.storage.currentGeneratedCopies === 0 ? <Badge tone="warning">{copy.removeFiles.regenerate}</Badge> : null}
     {facts.operation?.inspectRequired ? <Badge tone="warning">{copy.libraryState.inspectRequired}</Badge>
       : facts.operation?.state === "running" ? <Badge tone="neutral">{copy.libraryState.downloading}</Badge>
@@ -570,12 +579,22 @@ export function WarehousePage({
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(new Set());
   const [recipeDialogOpen, setRecipeDialogOpen] = useState(false);
   const [contextSelection, setContextSelection] = useState<readonly RecipeAssetRef[]>([]);
-  // 适配依赖小窗(N5):query 即打开意图,null = 关闭
+  const [dependencyCluesOn] = useDependencyClues();
+  const [lookupName, setLookupName] = useState<string | null>(null);
+  // Optional, unconfirmed dependency observations.
   const [compatibleQuery, setCompatibleQuery] = useState<{
     productId: string;
     title: string;
   } | null>(null);
+  useEffect(() => {
+    if (dependencyCluesOn) return;
+    setCompatibleQuery(null);
+    setLookupName(null);
+    setCardMenu(null);
+  }, [dependencyCluesOn]);
   const [removalTarget, setRemovalTarget] = useState<RemovalDialogTarget | null>(null);
+  const [metadataEntries, setMetadataEntries] = useState<readonly { readonly entryId: string; readonly displayName: string }[] | null>(null);
+  const [removedEntries, setRemovedEntries] = useState<readonly { readonly entryId: string; readonly displayName: string }[] | null>(null);
   const [downloadNotice, setDownloadNotice] = useState<string | null>(null);
   // 静默下载观察(人审 E18 修复):受理后记住商品,下载任务静默 + 目录里
   // 该商品已入库(自动采纳完成写 mappings)即刷新卡片墙并提示——用户看
@@ -963,6 +982,9 @@ export function WarehousePage({
     return () => window.removeEventListener("focus", refresh);
   }, []);
   useEffect(() => window.vua?.events.subscribe((event) => {
+    if ("taskId" in event && typeof event.payload === "object" && event.payload !== null && "operation" in event.payload && event.payload.operation === "library.reconcileSources") {
+      registerTaskIdentity(event.taskId, { title: copy.libraryState.reconciliationTitle, originPage: "warehouse", notifyOnComplete: true });
+    }
     if (event.kind === "task.completed" || event.kind === "task.persistenceFailed") {
       setReloadKey((key) => key + 1); setDetailReloadKey((key) => key + 1);
     }
@@ -1086,6 +1108,12 @@ export function WarehousePage({
     setSelectedIds(new Set([item.productId]));
     const menuItems: ContextMenuState["items"] = [
       { id: "open", label: copy.card.detailsCta, onSelect: () => setSelectedId(item.productId) },
+      ...(dataSource === "live" && (libraryPage?.facts.get(item.productId)?.localEntries?.length ?? 0) > 0 ? [{
+        id: "editLocalSource", label: copy.editSource.title,
+        onSelect: () => setMetadataEntries(libraryPage!.facts.get(item.productId)!.localEntries!),
+      }, { id: "removeLocalEntries", label: copy.removeEntries.title,
+        onSelect: () => setRemovedEntries(libraryPage!.facts.get(item.productId)!.localEntries!),
+      }] : []),
         {
           id: "download",
           label: (libraryPage?.facts.get(item.productId)?.storage.storedCopies ?? item.importedArtifacts) > 0 ? copy.cardMenu.reDownload : copy.cardMenu.download,
@@ -1120,17 +1148,18 @@ export function WarehousePage({
               id: "deleteLocal",
               label: copy.cardMenu.deleteLocal,
               onSelect: () => {
-                setRemovalTarget({ target: { kind: "product", id: item.productId }, title: item.title ?? item.productId });
+                setRemovalTarget({ target: { kind: "product", id: item.productId }, title: item.title ?? item.productId,
+                  ...(libraryPage?.facts.get(item.productId)?.copyIds === undefined ? {} : { copyIds: libraryPage.facts.get(item.productId)!.copyIds! }) });
               },
             }]
           : []),
-        {
+        ...(dependencyCluesOn ? [{
           id: "showCompatible",
           label: copy.cardMenu.showCompatible,
           onSelect: () => {
             setCompatibleQuery({ productId: item.productId, title: item.title ?? item.productId });
           },
-        },
+        }] : []),
     ];
     const anchor = event.currentTarget.getBoundingClientRect();
     setCardMenu({ x: event.detail === 0 ? anchor.left : event.clientX, y: event.detail === 0 ? anchor.bottom : event.clientY, items: menuItems });
@@ -1165,6 +1194,7 @@ export function WarehousePage({
           {viewMode === "cards" ? copy.viewList : copy.viewCards}
         </button>
         {/* 来源筛选(用户方向 2026-10-02):云端/本地合并为单库页,来源只作筛选 */}
+        {dependencyCluesOn && connected ? <Button variant="subtle" onClick={() => setLookupName("")}>{copy.dependencyLookup.open}</Button> : null}
         <select
           className="vua-warehouse__filter"
           aria-label={copy.filters.source}
@@ -1479,13 +1509,15 @@ export function WarehousePage({
                         )
                       )
                   }
-                  {source !== "gifts" && source !== "bought" && source !== "free"
+                  {dataSource === "live" || source !== "gifts" && source !== "bought" && source !== "free"
                     ? localCards.map((card) => (
                         <div key={card.key}>
                         <LibraryBadges facts={libraryPage?.facts.get(card.entry.warehouseItemId)} />
                         <ArtifactCard
                           key={card.key}
                           card={card}
+                          source={libraryPage?.facts.get(card.entry.warehouseItemId)?.sourceMatch?.product}
+                          metadata={libraryPage?.facts.get(card.entry.warehouseItemId)?.metadata}
                           selected={selectedLocalId === card.entry.warehouseItemId}
                           onOpen={() => {
                             setSelectedId(null);
@@ -1519,8 +1551,14 @@ export function WarehousePage({
                                     setRecipeDialogOpen(true);
                                   },
                                 },
+                                ...(dataSource === "live" && card.entry.kind === "imported_material" ? [{ id: "editSource", label: copy.editSource.title,
+                                  onSelect: () => setMetadataEntries([{ entryId: card.entry.warehouseItemId, displayName: card.entry.displayName }]),
+                                }, { id: "removeEntry", label: copy.removeEntries.title,
+                                  onSelect: () => setRemovedEntries([{ entryId: card.entry.warehouseItemId, displayName: card.entry.displayName }]),
+                                }] : []),
                                 ...(dataSource === "live" ? [{ id: "removeFiles", label: copy.cardMenu.deleteLocal,
-                                  onSelect: () => setRemovalTarget({ target: { kind: "entry", id: card.entry.warehouseItemId }, title: card.entry.displayName }),
+                                  onSelect: () => setRemovalTarget({ target: { kind: "entry", id: card.entry.warehouseItemId }, title: card.entry.displayName,
+                                    ...(libraryPage?.facts.get(card.entry.warehouseItemId)?.copyIds === undefined ? {} : { copyIds: libraryPage.facts.get(card.entry.warehouseItemId)!.copyIds! }) }),
                                 }] : []),
                               ],
                             });
@@ -1677,6 +1715,10 @@ export function WarehousePage({
       />
       {removalTarget !== null ? <RemoveFilesDialog key={`${removalTarget.target.kind}:${removalTarget.target.id}`} item={removalTarget}
         onClose={() => setRemovalTarget(null)} onChanged={() => { setReloadKey((key) => key + 1); setDetailReloadKey((key) => key + 1); }} /> : null}
+      {metadataEntries !== null ? <EditSourceDialog key={metadataEntries.map((entry) => entry.entryId).join(",")} entries={metadataEntries}
+        onClose={() => setMetadataEntries(null)} onChanged={() => { setReloadKey((key) => key + 1); setDetailReloadKey((key) => key + 1); }} /> : null}
+      {removedEntries !== null ? <RemoveEntriesDialog key={removedEntries.map((entry) => entry.entryId).join(",")} entries={removedEntries}
+        onClose={() => setRemovedEntries(null)} onChanged={() => { setSelectedLocalId(null); setReloadKey((key) => key + 1); setDetailReloadKey((key) => key + 1); }} /> : null}
       <DownloadChecklistDialog
         product={checklistProduct}
         onClose={() => setChecklistProduct(null)}
@@ -1686,13 +1728,18 @@ export function WarehousePage({
         }}
       />
       <CompatibleItemsDialog
+        enabled={dependencyCluesOn}
         query={compatibleQuery}
         onClose={() => setCompatibleQuery(null)}
         onSelectProduct={(productId) => {
           setCompatibleQuery(null);
           setSelectedId(productId);
         }}
+        onLookupName={(name) => { setCompatibleQuery(null); setLookupName(name); }}
       />
+      {dependencyCluesOn && lookupName !== null ? <DependencyLookupDialog key={lookupName}
+        enabled={dependencyCluesOn} initialName={lookupName} onClose={() => setLookupName(null)}
+        onSelectProduct={(productId) => { setLookupName(null); setSelectedId(productId); }} /> : null}
     </div>
   );
 }

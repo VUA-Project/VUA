@@ -217,8 +217,26 @@ function toApplicationRequest(
       return { ...base, kind: "query", method: request.method, params: request.params };
     case "library.removalStatus":
       return { ...base, kind: "query", method: request.method, params: request.params };
+    case "library.pendingRemovals":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "library.resolveRemoval":
+      return { ...base, kind: "command", commandId: request.requestId, method: request.method, params: request.params };
     case "library.removeFiles":
       return { ...base, kind: "command", commandId: request.params.removalId, method: request.method, params: request.params };
+    case "library.importFolders": {
+      const { commandId, ...params } = request.params;
+      return { ...base, kind: "command", commandId, method: request.method, params };
+    }
+    case "library.entryMetadata":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "library.updateEntryMetadata": {
+      const { commandId, ...params } = request.params;
+      return { ...base, kind: "command", commandId, method: request.method, params };
+    }
+    case "library.removeLocalEntries": {
+      const { commandId, ...params } = request.params;
+      return { ...base, kind: "command", commandId, method: request.method, params };
+    }
     case "recipeDraft.list":
       return { ...base, kind: "query", method: request.method, params: request.params };
     case "recipeDraft.get": case "recipeDraft.selectionStatus":

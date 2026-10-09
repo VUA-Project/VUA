@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import type { DesktopGatewayRequestV1, DesktopGatewaySuccessValueV1 } from "@vua/contracts";
 import {
   createLiveDependenciesPort,
@@ -17,7 +18,7 @@ import { strings as stringsKo } from "../i18n/strings.ko.ts";
 /**
  * 依赖反查/观察列窄端口测试(bdl-queries v0.5 消费准备切片,2026-09-22;
  * 030 §5.7 案 A,数据席第 168 批 FROZEN):
- * - 收窄按冻结 Schema 键形:信封族常量 schemaVersion "0.5" + operation 精确
+ * - 收窄按冻结 Schema 键形:信封族常量 schemaVersion "0.6" + operation 精确
  *   命中;闭集词表外取值(恰钉五值草案成员 unity_or_sdk_version 拒绝 =
  *   BDL v0.2 N1 同一裁决面)、REQUIRED-nullable 键缺席、resolution 空
  *   evidence、身份形态不齐 = 整份不可解释 → absent(观察面是无过滤面,
@@ -85,10 +86,10 @@ function fakeClient(
   return { invoke, subscribe: () => () => {} };
 }
 
-/* 冻结正例向量逐字锚(schemas/bdl-queries/v0.5/examples,合成数据) */
+/* 冻结正例向量逐字锚(schemas/bdl-queries/v0.6/examples,合成数据) */
 
 const LOOKUP_RESULT = {
-  schemaVersion: "0.5",
+  schemaVersion: "0.6",
   operation: "dependencies.lookup",
   result: {
     total: 2,
@@ -126,7 +127,7 @@ const LOOKUP_RESULT = {
 };
 
 const LIST_BY_PRODUCT_RESULT = {
-  schemaVersion: "0.5",
+  schemaVersion: "0.6",
   operation: "dependencies.listByProduct",
   result: {
     productId: "booth:6584744",
@@ -278,6 +279,21 @@ describe("narrowDependencyObservation (unfiltered clue face, frozen key shapes)"
 });
 
 describe("createLiveDependenciesPort (mock exhaustive arms)", () => {
+  it("consumes the current v0.6 wire vectors for both dependency methods", async () => {
+    const vector = (name: string) => JSON.parse(readFileSync(new URL(`../../../../../schemas/bdl-queries/v0.6/examples/${name}.result.json`, import.meta.url), "utf8"));
+    const lookup = vector("dependencies-lookup");
+    const observations = vector("dependencies-listbyproduct");
+    const port = createLiveDependenciesPort(fakeClient(async (request) => ok(
+      request.method === "dependencies.lookup" ? lookup : observations,
+    )));
+    const matches = await port.lookup({ name: "liltoon" });
+    expect(matches.kind).toBe("results");
+    if (matches.kind === "results") expect(matches.matches).toHaveLength(lookup.result.matches.length);
+    const clues = await port.listByProduct(observations.result.productId);
+    expect(clues.kind).toBe("observations");
+    if (clues.kind === "observations") expect(clues.observations).toHaveLength(observations.result.observations.length);
+  });
+
   it("drives the lookup suggestion face: request shape, results view, honest empty set", async () => {
     const seen: DesktopGatewayRequestV1[] = [];
     const port = createLiveDependenciesPort(
@@ -303,7 +319,7 @@ describe("createLiveDependenciesPort (mock exhaustive arms)", () => {
     const empty = await createLiveDependenciesPort(
       fakeClient(async () =>
         ok({
-          schemaVersion: "0.5",
+          schemaVersion: "0.6",
           operation: "dependencies.lookup",
           result: { total: 0, matches: [] },
         }),
@@ -400,10 +416,10 @@ describe("createLiveDependenciesPort (mock exhaustive arms)", () => {
         }),
       ).listByProduct("booth:6584744"),
     ).toEqual({ kind: "absent" });
-    // 信封族常量/operation 词外 → absent(v0.4 版本重放同拒)
+    // 信封族常量/operation 词外 → absent(旧 v0.5 版本重放同拒)
     expect(
       await createLiveDependenciesPort(
-        fakeClient(async () => ok({ ...LOOKUP_RESULT, schemaVersion: "0.4" })),
+        fakeClient(async () => ok({ ...LOOKUP_RESULT, schemaVersion: "0.5" })),
       ).lookup({ name: "lilToon" }),
     ).toEqual({ kind: "absent" });
     expect(

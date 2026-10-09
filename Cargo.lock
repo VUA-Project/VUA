@@ -2885,6 +2885,7 @@ dependencies = [
  "vua-bdl-store",
  "vua-orchestrator",
  "vua-unity-bridge",
+ "zip",
 ]
 
 [[package]]
@@ -2946,6 +2947,7 @@ dependencies = [
  "vua-project-manager",
  "vua-unity-bridge",
  "windows-sys 0.61.2",
+ "zip",
 ]
 
 [[package]]

@@ -1,0 +1,6 @@
+.vua-edit-source { display: grid; gap: var(--vua-space-3, 12px); max-width: 640px; margin: 0 auto; }
+.vua-edit-source label { display: grid; gap: var(--vua-space-2, 8px); }
+.vua-edit-source input, .vua-edit-source select { padding: 8px 12px; border-radius: 6px; border: 1px solid var(--vua-border); background: var(--vua-bg-canvas); color: inherit; font: inherit; }
+.vua-edit-source__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.vua-edit-source__image { display: grid; place-items: center; width: 160px; height: 160px; border: 1px solid var(--vua-border); border-radius: 8px; overflow: hidden; }
+.vua-edit-source__image img { width: 100%; height: 100%; object-fit: contain; }

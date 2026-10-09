@@ -1,4 +1,5 @@
 import { useEffect, useState, type MouseEvent as ReactMouseEvent } from "react";
+import type { LibraryEntryMetadataV01 } from "@vua/contracts";
 import { catalogBrowser } from "../../app/catalog-browser-instance.ts";
 import { Badge } from "../../components/primitives/Badge.tsx";
 import { Button } from "../../components/primitives/Button.tsx";
@@ -20,6 +21,7 @@ import {
   type WarehouseArtifactState,
   type WarehouseCommandOutcome,
   type WarehouseEntryDetail,
+  type CatalogProductSummary,
 } from "../../gateway/index.ts";
 import { format, strings, termLabel } from "../../i18n/index.ts";
 import {
@@ -79,13 +81,19 @@ export function ArtifactCard({
   selected,
   onOpen,
   onMenu,
+  source,
+  metadata,
 }: {
   card: AcquireArtifactCard;
   selected: boolean;
   onOpen: () => void;
   onMenu: (event: ReactMouseEvent<HTMLElement>) => void;
+  source?: CatalogProductSummary | undefined;
+  metadata?: LibraryEntryMetadataV01 | undefined;
 }) {
   const { entry, artifact } = card;
+  const title = metadata?.displayName ?? source?.title ?? entry.displayName;
+  const image = metadata?.thumbnailRef ?? source?.imageUrl;
   return (
     <article
       className="vua-warehouse-card"
@@ -104,15 +112,15 @@ export function ArtifactCard({
       }}
     >
       <div className="vua-warehouse-card__media">
-        {/* 预览提取未接入(F4-6 裁决):诚实空槽,升版随检查钩子切片回归 */}
-        <div className="vua-warehouse-card__no-image">
+        {image ? <img src={image} alt={title} loading="lazy" /> : <div className="vua-warehouse-card__no-image">
           <span className="vua-caption vua-text-secondary">{copy.previewEmpty}</span>
-        </div>
+        </div>}
       </div>
       <div className="vua-warehouse-card__body">
-        <p className="vua-warehouse-card__title" title={entry.displayName}>
-          {entry.displayName}
+        <p className="vua-warehouse-card__title" title={title}>
+          {title}
         </p>
+        <p className="vua-caption vua-text-secondary" title={artifact.relativePath}>{artifact.relativePath}</p>
         <div className="vua-warehouse-card__meta">
           <span>{artifactSize(artifact)}</span>
           <span className="vua-caption vua-text-secondary">{copy.kind[entry.kind]}</span>

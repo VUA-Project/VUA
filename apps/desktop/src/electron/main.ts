@@ -29,7 +29,7 @@ import {
   startCatalogSync,
   type CatalogSyncRun,
 } from "./catalog-sync.js";
-import { registerImageCacheProtocol, registerImageCacheScheme } from "./image-cache.js";
+import { importLocalThumbnail, registerImageCacheProtocol, registerImageCacheScheme } from "./image-cache.js";
 import { RemoteContentManager } from "./remote-content.js";
 import { createDesktopOrchestratorProvider } from "./provider-bootstrap.js";
 import {
@@ -384,6 +384,13 @@ function registerIpc(provider: OrchestratorProviderV01): void {
     });
     if (result.canceled || result.filePaths.length === 0) return null;
     return result.filePaths;
+  });
+  ipcMain.handle("vua:dialog:pick-library-thumbnail", async (event, locale: unknown) => {
+    assertLocalSender(senderFrameUrl(event));
+    const result = await dialog.showOpenDialog({ title: dialogStrings(locale).libraryThumbnail,
+      filters: [{ name: "PNG / JPEG / WebP", extensions: ["png", "jpg", "jpeg", "webp"] }], properties: ["openFile"] });
+    if (result.canceled || result.filePaths.length === 0) return null;
+    return importLocalThumbnail(result.filePaths[0]!);
   });
 
   // U10 手选编辑器路径(021 收敛点 4:单一「浏览」入口双态):exe 文件本身

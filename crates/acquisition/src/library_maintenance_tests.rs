@@ -433,6 +433,72 @@ fn removal_waits_for_active_download() {
 }
 
 #[test]
+fn removal_product_scope_includes_zip_members_and_verified_migrated_files() {
+    let w = World::new();
+    let local = w.import_local("Migrated deletion", &[("Avatar.unitypackage", b"avatar bytes")]);
+    let archive = zip_bytes(&[("Avatar.unitypackage", b"avatar bytes"), ("texture.psd", b"texture bytes")]);
+    w.begin("zip-removal", &[902]); w.delivery(902, "dl-zip-removal", &archive, "bundle.zip");
+    w.observe("zip-removal", 902, "settled", Some("dl-zip-removal")).unwrap(); w.wait("zip-removal");
+    w.verify_sources("zip-removal-merge");
+    let s = service(&w); let drafts = RecipeSelectionDrafts::new(w.base.join("drafts"));
+    let row = &library_view(&w, json!({"schemaVersion":"0.1"}))["items"][0];
+    let ids: Vec<String> = serde_json::from_value(row["copyIds"].clone()).unwrap();
+    let p = preview(&s, &drafts, None, Some(ids));
+    assert_eq!(p["files"].as_array().unwrap().len(), 4);
+    s.apply("library.removeFiles", command(&p, "zip-members"), &drafts, None).unwrap();
+    let done = wait(&s, &drafts, "zip-members");
+    assert_eq!(done["state"], "succeeded");
+    assert!(done["files"].as_array().unwrap().iter().all(|file| file["phase"] == "removed"));
+    assert!(w.bdl.entry_copies(&local.warehouse_item_id).unwrap().iter().all(|copy| !Path::new(&copy.stored_path).exists()));
+}
+
+#[test]
+fn explicit_inspection_closes_interrupted_removal_without_unlinking_remaining_files() {
+    let w = World::new();
+    let missing = stored(&w, 901, "inspect-one");
+    let remaining = stored(&w, 902, "inspect-two");
+    let s = service(&w);
+    let drafts = RecipeSelectionDrafts::new(w.base.join("drafts"));
+    let p = preview(&s, &drafts, None, None);
+    let request = command(&p, "inspect");
+    let evidence = w.bdl.library_copy_evidence().unwrap();
+    let mut files = p["files"].clone();
+    for file in files.as_array_mut().unwrap() {
+        let copy = evidence.iter().find(|copy| file["copyId"] == copy.copy.copy_id).unwrap();
+        file["storedPath"] = json!(copy.copy.stored_path);
+        file["productIds"] = json!(["booth:90"]);
+    }
+    let plan = json!({"request":request,"files":files});
+    w.store.accept_idempotent_task("library.removeFiles","library-removal-inspect",&plan.to_string(),&vua_orchestrator::NewTask {
+        task_id:"task-inspect-removal".into(),correlation_id:"library-removal-inspect".into(),occurred_at:"t".into()
+    },&json!({"schemaVersion":"0.1","taskId":"task-inspect-removal","acceptedRevision":1,"initialState":"queued"})).unwrap();
+    std::fs::remove_file(&missing.stored_path).unwrap();
+    let runtime = TaskRuntime::with_sqlite(w.store.clone(), Arc::new(SystemClock), Arc::new(NanosTaskIdGenerator::default())).unwrap();
+    let resumed = LibraryMaintenance::new(w.store.clone(), w.bdl.clone(), runtime.clone(), w.base.join("warehouse"), w.service.clone());
+    let pending = resumed.apply("library.pendingRemovals", json!({"schemaVersion":"0.1","target":{"kind":"product","id":"booth:90"}}), &drafts, None).unwrap();
+    assert_eq!(pending["items"].as_array().unwrap().len(), 1);
+    assert_eq!(resumed.apply("library.resolveRemoval", json!({"schemaVersion":"0.1","removalId":"library-removal-inspect","observedRevision":2}), &drafts, None).unwrap_err().0, "removal_conflict");
+    let resolve = json!({"schemaVersion":"0.1","removalId":"library-removal-inspect","observedRevision":1});
+    let done = resumed.apply("library.resolveRemoval", resolve.clone(), &drafts, None).unwrap();
+    assert_eq!(done["state"], "cancelled");
+    assert_eq!(done["inspectionResolved"], true);
+    assert_eq!(done["recoveryDisposition"], "none");
+    assert_eq!(done["files"].as_array().unwrap().iter().find(|file| file["copyId"] == missing.copy_id).unwrap()["phase"], "missing_after_inspection");
+    assert_eq!(done["files"].as_array().unwrap().iter().find(|file| file["copyId"] == remaining.copy_id).unwrap()["phase"], "kept");
+    assert_eq!(std::fs::read(&remaining.stored_path).unwrap(), b"original bytes");
+    assert!(!done.to_string().contains("storedPath"));
+    assert_eq!(runtime.snapshot("task-inspect-removal").unwrap().state, TaskState::Cancelled);
+    assert_eq!(runtime.snapshot("task-inspect-removal").unwrap().recovery_disposition, vua_orchestrator::TaskRecoveryDisposition::None);
+    assert_eq!(resumed.apply("library.resolveRemoval", resolve.clone(), &drafts, None).unwrap(), done);
+    let restarted_runtime = TaskRuntime::with_sqlite(w.store.clone(), Arc::new(SystemClock), Arc::new(NanosTaskIdGenerator::default())).unwrap();
+    let restarted = LibraryMaintenance::new(w.store.clone(), w.bdl.clone(), restarted_runtime, w.base.join("warehouse"), w.service.clone());
+    assert_eq!(restarted.apply("library.resolveRemoval", resolve, &drafts, None).unwrap(), done);
+    assert!(restarted.apply("library.pendingRemovals", json!({"schemaVersion":"0.1","target":{"kind":"product","id":"booth:90"}}), &drafts, None).unwrap()["items"].as_array().unwrap().is_empty());
+    w.begin("unblocked-after-inspection", &[901]);
+    w.observe("unblocked-after-inspection", 901, "initiation_failed", None).unwrap();
+}
+
+#[test]
 fn durable_interrupted_intent_replays_without_restarting_deletion() {
     let w = World::new();
     let copy = stored(&w, 901, "one");

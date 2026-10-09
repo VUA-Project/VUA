@@ -20,7 +20,7 @@ try {
   await app.whenReady();
   server = await createServer({ configFile: false, appType: "custom", root, plugins: [react()],
     server: { host: "127.0.0.1", port: 0, strictPort: false },
-    optimizeDeps: { include: ["react", "react-dom/client", "@vua/contracts"] } });
+    optimizeDeps: { force: true, include: ["react", "react-dom/client", "@vua/contracts"] } });
   server.middlewares.use(async (req, res, next) => {
     if (req.url !== "/__library-maintenance") return next();
     res.setHeader("Content-Type", "text/html");

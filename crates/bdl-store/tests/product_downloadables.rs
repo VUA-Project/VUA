@@ -2,9 +2,9 @@
 //! migration 005; N5 silent-download slice 2026-10-05).
 //!
 //! Behavior under test — the store's OWN faces and migration execution:
-//! - fresh stores are born v0.4 and serve an empty downloadables read;
+//! - fresh stores apply the current chain and serve an empty downloadables read;
 //! - an existing v0.3 database (user_version = 4, format_version '0.3')
-//!   migrates on open: the table appears, format stamp becomes '0.4',
+//!   migrates on open: the table appears with the current format stamp,
 //!   pre-existing product rows carry over verbatim;
 //! - the write face is idempotent per downloadable id: re-sighting updates
 //!   last_seen_at / anchor_text / run / library_type but never rewrites
@@ -55,9 +55,9 @@ fn seed_product(store: &BdlStore, id: &str) {
 }
 
 #[test]
-fn fresh_store_is_v04_with_empty_downloadables_read() {
+fn fresh_store_applies_current_chain_with_empty_downloadables_read() {
     let store = BdlStore::open_in_memory().unwrap();
-    assert_eq!(vua_bdl_store::BDL_FORMAT_VERSION, "0.5");
+    assert_eq!(vua_bdl_store::BDL_FORMAT_VERSION, "0.8");
     seed_product(&store, "1001");
     assert!(store.downloadables_for_product("booth:1001").unwrap().is_empty());
     // Unknown product is an honest empty read (the download-time flow
@@ -66,7 +66,7 @@ fn fresh_store_is_v04_with_empty_downloadables_read() {
 }
 
 #[test]
-fn v03_database_migrates_to_v04_on_open() {
+fn v03_database_migrates_to_current_chain_and_serves_downloadables() {
     let dir = std::env::temp_dir().join(format!("bdl-v04-migrate-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let db = dir.join("bdl.db");

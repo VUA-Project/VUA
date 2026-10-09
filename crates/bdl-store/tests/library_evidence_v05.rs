@@ -56,7 +56,7 @@ fn migration_preserves_old_rows_and_backfills_only_observed_membership() {
             |row| row.get(0),
         )
         .unwrap();
-    assert_eq!(version, "0.5");
+    assert_eq!(version, vua_bdl_store::BDL_FORMAT_VERSION);
     let dates:(String,String)=connection.query_row("SELECT first_seen_at,last_seen_at FROM product_downloadables WHERE downloadable_id=901",[],|row|Ok((row.get(0)?,row.get(1)?))).unwrap();
     assert_eq!(
         dates,

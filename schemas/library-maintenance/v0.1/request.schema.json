@@ -190,6 +190,106 @@
           }
         }
       }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "params"
+      ],
+      "properties": {
+        "method": {
+          "const": "library.pendingRemovals"
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schemaVersion",
+            "target"
+          ],
+          "properties": {
+            "schemaVersion": {
+              "const": "0.1"
+            },
+            "target": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "kind",
+                    "id"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "product"
+                    },
+                    "id": {
+                      "type": "string",
+                      "pattern": "^booth:[0-9]+$"
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "kind",
+                    "id"
+                  ],
+                  "properties": {
+                    "kind": {
+                      "const": "entry"
+                    },
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_.:-]{1,128}$"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method",
+        "params"
+      ],
+      "properties": {
+        "method": {
+          "const": "library.resolveRemoval"
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schemaVersion",
+            "removalId",
+            "observedRevision"
+          ],
+          "properties": {
+            "schemaVersion": {
+              "const": "0.1"
+            },
+            "removalId": {
+              "type": "string",
+              "pattern": "^library-removal-[A-Za-z0-9_.:-]{1,100}$"
+            },
+            "observedRevision": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            }
+          }
+        }
+      }
     }
   ]
 }
