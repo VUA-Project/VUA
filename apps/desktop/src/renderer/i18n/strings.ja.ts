@@ -1,3 +1,4 @@
+import { moduleCopy } from "./module-copy.ts";
 import { environmentCopy } from "./environment-copy.ts";
 import { journeyCopy } from "./journey-copy.ts";
 import type { Strings } from "./strings.en.ts";
@@ -10,6 +11,7 @@ import type { Strings } from "./strings.en.ts";
  * - {placeholder} の名前はソース表と完全一致させること。
  */
 export const strings: Strings = {
+  amfModule: moduleCopy["ja"],
   environmentCards: environmentCopy["ja"],
   journey: journeyCopy["ja"],
   websiteTests: {
@@ -191,6 +193,7 @@ demoTaskTitle: "デモタスク",
       toolsDevices: "デバイスとトラッキング",
       toolsCalibration: "キャリブレーション",
       toolsInstalled: "インストール済みツール",
+      settingsModules: "機能モジュール",
       settingsGoals: "目標の再選択",
       settingsEnvironment: "環境とパス",
       settingsAccounts: "アカウント管理",

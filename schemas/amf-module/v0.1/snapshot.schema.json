@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vua.dev/schemas/amf-module/v0.1/snapshot.schema.json",
+  "title": "Host-owned optional AMF module snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "moduleId", "installed", "state"],
+  "properties": {
+    "schemaVersion": { "const": "0.1" },
+    "moduleId": { "const": "amf" },
+    "installed": { "type": "boolean" },
+    "state": { "enum": ["absent", "starting", "ready", "failed", "stopping"] }
+  },
+  "if": { "properties": { "installed": { "const": false } } },
+  "then": { "properties": { "state": { "const": "absent" } } },
+  "else": { "properties": { "state": { "enum": ["starting", "ready", "failed", "stopping"] } } }
+}

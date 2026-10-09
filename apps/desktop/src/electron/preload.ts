@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
 import type {
   ApplicationEventV01,
+  AmfModuleSnapshotV01,
   DesktopGatewayRequestV1,
   DesktopShellCommandV1,
   EditorSettingsV1,
@@ -53,6 +54,15 @@ const shellCommandListeners = new WeakMap<
 >();
 
 const api: VuaDesktopApiV1 = Object.freeze({
+  amfModule: Object.freeze({
+    snapshot: () => ipcRenderer.invoke("vua:amf-module:snapshot"),
+    setEnabled: (enabled: boolean) => ipcRenderer.invoke("vua:amf-module:set-enabled", enabled),
+    subscribe: (listener: (snapshot: AmfModuleSnapshotV01) => void) => {
+      const wrapped = (_event: IpcRendererEvent, payload: AmfModuleSnapshotV01) => listener(payload);
+      ipcRenderer.on("vua:amf-module:changed", wrapped);
+      return () => ipcRenderer.removeListener("vua:amf-module:changed", wrapped);
+    },
+  }),
   gateway: Object.freeze({
     version: DESKTOP_GATEWAY_VERSION,
     invoke: (request: DesktopGatewayRequestV1) => ipcRenderer.invoke("vua:gateway:invoke", request),

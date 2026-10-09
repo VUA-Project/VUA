@@ -62,6 +62,7 @@ interface DownloadRecord {
   attempt: number;
   /** 已弃件:等待经 downloadURL 重发起的下一个 item 重绑定(downloadId 不变) */
   abandoned: boolean;
+  transportActive: boolean;
   lastProgressAt: number;
   lastProgressBytes: number;
 }
@@ -76,6 +77,12 @@ export class DownloadPort {
   constructor(options: DownloadPortOptions) {
     this.#options = options;
     fs.mkdirSync(options.stagingRoot, { recursive: true });
+  }
+
+  /** Includes paused/resumable items and retries not yet rebound. A lifecycle
+   * change must not discard a transfer before its first native task receipt. */
+  hasActiveTransfers(): boolean {
+    return this.#pendingRestarts.size > 0 || [...this.#records.values()].some(record => record.transportActive && !record.abandoned);
   }
 
   /**
@@ -125,6 +132,7 @@ export class DownloadPort {
       item,
       attempt,
       abandoned: false,
+      transportActive: true,
       lastProgressAt: 0,
       lastProgressBytes: -1,
     };
@@ -136,6 +144,7 @@ export class DownloadPort {
     });
     item.on("done", (_event, state) => {
       if (record.abandoned) return;
+      record.transportActive = state === "interrupted" && item.canResume();
       if (state === "completed") {
         this.#emit({
           kind: "download.completed",

@@ -202,7 +202,7 @@ export function overlayViewModel(
   }
 
   const taskCards = snapshot.tasks.map(projectTaskCard);
-  const productionCard = projectProductionCard(snapshot.productionCard);
+  const productionCard = snapshot.productionCard ? projectProductionCard(snapshot.productionCard) : { currentPlan: null, latestRecord: null };
   const downloadCard = projectDownloadCard(snapshot.downloadCard);
 
   // tone 推导(呈现映射,冻结词表):有非终态任务 → active;无进行中但有

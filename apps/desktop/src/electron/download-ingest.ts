@@ -45,6 +45,7 @@ export interface DownloadEventSinkOptions {
 
 export interface DownloadEventSink {
   emit(event: DownloadEventV01): void;
+  pending(): boolean;
   /** 丢弃待冲刷缓冲并取消定时器（窗口关闭路径） */
   dispose(): void;
 }
@@ -152,6 +153,7 @@ export function createDownloadEventSink(options: DownloadEventSinkOptions): Down
   };
 
   return {
+    pending: () => buffer.length > 0 || flushing,
     emit(event: DownloadEventV01): void {
       if (disposed) return;
       buffer.push({ event });

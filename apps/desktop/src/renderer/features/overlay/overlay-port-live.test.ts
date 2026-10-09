@@ -15,9 +15,11 @@ import type {
   ApplicationEventV01,
   DesktopGatewayRequestV1,
   DesktopGatewaySuccessValueV1,
+  AmfModuleApiV01,
+  AmfModuleSnapshotV01,
 } from "@vua/contracts";
 import { createGatewayClient, type DesktopGatewayHost, type GatewayClient } from "../../gateway/gateway-client.ts";
-import { createLiveOverlayPort } from "./overlay-port-live.ts";
+import { createHostOverlayPort, createLiveOverlayPort } from "./overlay-port-live.ts";
 
 interface ScriptedResponse {
   readonly value?: DesktopGatewaySuccessValueV1;
@@ -129,6 +131,35 @@ function makeEvent(kind: ApplicationEventV01["kind"]): ApplicationEventV01 {
 function clientOf(host: DesktopGatewayHost): GatewayClient {
   return createGatewayClient(host);
 }
+
+const hostTasks: DesktopGatewaySuccessValueV1 = { contractVersion: "0.1", revision: 1, tasks: [{
+  contractVersion: "0.1", taskId: "host-deployment", state: "succeeded", revision: 1,
+  correlationId: "host", cancellationRequested: false, recoveryDisposition: "none", updatedAt: "2026-10-09T00:00:00Z",
+}] };
+function modulesWith(state: AmfModuleSnapshotV01["state"]): AmfModuleApiV01 {
+  const snapshot: AmfModuleSnapshotV01 = { schemaVersion: "0.1", moduleId: "amf", installed: state !== "absent", state };
+  return { snapshot: async () => snapshot, setEnabled: async () => ({ outcome: "failed", snapshot }), subscribe: () => () => {} };
+}
+
+describe("host task window independent of AMF", () => {
+  for (const state of ["absent", "failed"] as const) test(`host tasks remain available with AMF ${state}`, async () => {
+    const { host, requests } = makeHost({ "task.list": [{ value: hostTasks }] });
+    const snapshot = await createHostOverlayPort(clientOf(host), modulesWith(state)).snapshot();
+    assert.ok(snapshot.schemaVersion === 3 && snapshot.availability === "available");
+    assert.equal(snapshot.amfUnavailable, state === "failed");
+    assert.deepEqual(snapshot.tasks, [{ taskId: "host-deployment", state: "succeeded", correlationId: "host" }]);
+    assert.equal(snapshot.productionCard, undefined);
+    assert.deepEqual(requests.map(request => request.method), ["task.list"]);
+  });
+  test("AMF disconnect between readiness and its card query does not hide the host tasks", async () => {
+    const { host } = makeHost({ "task.list": [{ value: hostTasks }], "overlay.getSnapshot": [{ reject: true }] });
+    const snapshot = await createHostOverlayPort(clientOf(host), modulesWith("ready")).snapshot();
+    assert.ok(snapshot.schemaVersion === 3 && snapshot.availability === "available");
+    assert.equal(snapshot.tasks.length, 1);
+    assert.equal(snapshot.productionCard, undefined);
+    assert.equal(snapshot.amfUnavailable, true);
+  });
+});
 
 describe("overlay live 端口(017 批 1 消费)", () => {
   test("ok 回执 → available 快照原样透传,查询词表为 overlay.getSnapshot 且空参", async () => {

@@ -1,8 +1,8 @@
 # N-sequence architecture evolution
 
-> Document version: 1.6.0
+> Document version: 1.7.0
 > Status: Accepted
-> Updated: 2026-10-05
+> Updated: 2026-10-09
 > Last conformance review: 2026-10-05 (first-play source/evidence checkpoint; remaining paths tracked separately)
 > Scope: Incremental software and documentation structure for N1-N7
 > Normative effect: Accepted incremental direction; existing wire/storage contracts remain authoritative
@@ -10,9 +10,14 @@
 ## Accepted direction
 
 Keep Electron/React, the supervised Rust Provider, SQLite task persistence, and Unity Bridge.
-Organize new work around user use cases inside the existing six-crate workspace. Start with the
+Organize new work around user use cases inside the existing workspace. Start with the
 N1 deployment path; do not make a repository-wide rewrite, new plugin framework, new transport,
 or full environment version manager a prerequisite for the first desktop/PICO play release.
+
+The current module extraction addresses a concrete lifecycle problem: AMF/BDL startup or data
+failure must not prevent host play/setup. The first-party AMF payload is a separately selected
+process with its own task/data authority; [module architecture](modules.md) owns that boundary.
+Subsequent scenario integrations use the host, while N3–N5 production work stays inside AMF.
 
 The [first play release acceptance](../development-outline.md#first-play-release-acceptance)
 is the current delivery slice. The [delivery plan](../development/first-play-delivery-plan.md)
@@ -22,8 +27,9 @@ optional eye tracking and targeted recovery/release checks. Retain creator and o
 code for subsequent delivery. Use one packaging layout for ZIP now and NSIS later; packaged
 processes resolve bundled resources instead of a developer checkout. N5 review stays separate.
 
-The [network onboarding architecture](network-onboarding.md) details the first-play HTTPS
-checks, mainland-only UU recommendation, correctable region and cross-region latency guidance.
+The [network onboarding architecture](network-onboarding.md) owns the first-play checks and their
+evidence limits. Current product rulings retire usage-region detection and accelerator advice;
+regional room Ping stays unavailable until reliable endpoints are verified.
 
 This design distinguishes a logical responsibility from a crate, process, or user-facing page.
 A new capability normally starts as a small module in an existing owner. Extract a crate only
@@ -194,6 +200,7 @@ installer choices above are not frozen interfaces; define them from the first ex
 
 ## Document changelog
 
+- 1.7.0 (2026-10-09): place the concrete host/AMF lifecycle extraction before scenario integrations and route current network rulings.
 - 1.6.0 (2026-10-05): prioritize three guidance contexts on the completed first-play foundation and link the current delivery checkpoint.
 - 1.5.2 (2026-10-03): route the expanded N2 inventory to the shared Steam adapter and include the first-play PICO eye-tracking slice.
 - 1.5.1 (2026-10-03): route the implemented network slice to its owning architecture.
@@ -209,4 +216,4 @@ installer choices above are not frozen interfaces; define them from the first ex
 - 1.3.0 (2026-09-30): prefer official standalone Unity CLI deployment; retain existing Hub only as optional fallback.
 - 1.2.0 (2026-09-30): link the implemented purpose-plan/confirmation slice and distinguish remaining N1 functional acceptance.
 - 1.1.0 (2026-09-30): add minimal account-guide state and external-only N2 adapter responsibilities.
-- 1.0.0 (2026-09-28): user accepted retaining the stack and incrementally reorganizing software responsibilities and documentation for N1-N7.
+Earlier entries remain in Git history.

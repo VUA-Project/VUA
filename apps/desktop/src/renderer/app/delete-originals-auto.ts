@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useAcquireView, useGateway } from "../gateway/index.ts";
+import { useAmfModule, useAcquireView, useGateway } from "../gateway/index.ts";
 import { newlyGeneratedEntryIds } from "../features/warehouse/acquire-model.ts";
 import { useDeleteOriginalsAfterGenerate } from "./delete-originals-flag.ts";
 
@@ -14,14 +14,16 @@ import { useDeleteOriginalsAfterGenerate } from "./delete-originals-flag.ts";
  * 中心如实呈现,可手动补发起);开关关闭时只维护快照不触发。
  */
 export function useAutoDeleteOriginals(): void {
+  const amf = useAmfModule();
   const acquire = useAcquireView();
   const gateway = useGateway();
   const [deleteFlag] = useDeleteOriginalsAfterGenerate();
-  const previousIds = useRef<ReadonlySet<string>>(new Set());
+  const previousIds = useRef<ReadonlySet<string> | null>(null);
 
   useEffect(() => {
+    if (amf.state !== "ready") { previousIds.current = null; return; }
     if (acquire.kind !== "entries") return;
-    const fresh = deleteFlag ? newlyGeneratedEntryIds(previousIds.current, acquire.entries) : [];
+    const fresh = deleteFlag && previousIds.current !== null ? newlyGeneratedEntryIds(previousIds.current, acquire.entries) : [];
     previousIds.current = new Set(acquire.entries.filter(
       (entry) => entry.artifacts.some((artifact) => artifact.role === "generated_vpm"),
     ).map((entry) => entry.warehouseItemId));
@@ -30,5 +32,5 @@ export function useAutoDeleteOriginals(): void {
         /* 受理/拒绝都进任务面(独立审计);此处不重试、不建第二事实源 */
       });
     }
-  }, [acquire, deleteFlag, gateway]);
+  }, [acquire, deleteFlag, gateway, amf.state]);
 }

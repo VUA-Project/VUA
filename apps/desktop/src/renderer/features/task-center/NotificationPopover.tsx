@@ -1,7 +1,8 @@
+import { useAmfModule } from "../../gateway/index.ts";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@vua/design-system";
-import { format, strings } from "../../i18n/index.ts";
+import { format, strings, TERMS } from "../../i18n/index.ts";
 import type { PageId } from "../../app/nav-model.ts";
 import type { TaskItem } from "../../gateway/index.ts";
 import { NotificationList } from "./NotificationList.tsx";
@@ -26,6 +27,7 @@ const PANEL_EXIT_MS = 140;
  * 入口显隐(§2.6):任务引擎 capability 非 ready 时整条不出现(而非禁用)。
  */
 export function NotificationPopover({ navigate }: { navigate: (target: PageId) => void }) {
+  const amf = useAmfModule();
   const center = useNotificationCenter();
   const [phase, setPhase] = useState<"closed" | "open" | "closing">("closed");
   const toggleRef = useRef<HTMLButtonElement | null>(null);
@@ -141,6 +143,7 @@ export function NotificationPopover({ navigate }: { navigate: (target: PageId) =
                     <Icon name="close" size={16} />
                   </button>
                 </div>
+                {amf.state === "failed" ? <p role="status">{format(strings.amfModule.failed, { amf: TERMS.amf })}</p> : null}
                 <NotificationList
                   notifications={center.notifications}
                   rejectedId={center.rejectedId}

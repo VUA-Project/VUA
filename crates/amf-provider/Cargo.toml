@@ -1,0 +1,18 @@
+[package]
+name = "vua-amf-provider"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Optional AMF module: warehouse, Recipe, assembly, release and private BDL."
+license = "Apache-2.0"
+
+[[bin]]
+name = "vua-amf-provider"
+path = "src/main.rs"
+
+[dependencies]
+vua-bdl-store = { path = "../bdl-store" }
+vua-orchestrator = { path = "../orchestrator" }
+vua-project-manager = { path = "../project-manager" }
+vua-provider-host = { path = "../provider-host" }
+vua-unity-bridge = { path = "../unity-bridge" }

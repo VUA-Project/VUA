@@ -1,3 +1,4 @@
+import { moduleCopy } from "./module-copy.ts";
 import { environmentCopy } from "./environment-copy.ts";
 import { journeyCopy } from "./journey-copy.ts";
 import type { Strings } from "./strings.en.ts";
@@ -10,6 +11,7 @@ import type { Strings } from "./strings.en.ts";
  * - {placeholder} 이름은 소스 테이블과 정확히 일치해야 함.
  */
 export const strings: Strings = {
+  amfModule: moduleCopy["ko"],
   environmentCards: environmentCopy["ko"],
   journey: journeyCopy["ko"],
   websiteTests: {
@@ -191,6 +193,7 @@ demoTaskTitle: "데모 작업",
       toolsDevices: "디바이스와 트래킹",
       toolsCalibration: "캘리브레이션",
       toolsInstalled: "설치된 도구",
+      settingsModules: "기능 모듈",
       settingsGoals: "목표 다시 선택",
       settingsEnvironment: "환경 및 경로",
       settingsAccounts: "계정 관리",

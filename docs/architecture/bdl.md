@@ -1,12 +1,16 @@
 # BDL architecture boundary
 
 
-> Document version: 1.2.5
+> Document version: 1.3.0
 > Status: Accepted
 > Scope: AMF-owned BDL module
-> Updated: 2026-10-01
+> Updated: 2026-10-09
 > Last conformance review: 2026-10-01 (source/layout review, not runtime acceptance)
 > Normative effect: Yes
+
+BDL base storage is always available **inside an enabled AMF**, independently of its experimental
+forensics switch. AMF itself is optional; the VUA host never opens BDL, and stores module selection
+and host tasks separately. See [module ownership and migration](modules.md).
 
 ## Ownership
 
@@ -152,6 +156,8 @@ Base storage and source-correlation responsibilities remain; automatic evidence 
 experimental and off by default. No runtime acceptance is asserted by this source check.
 
 ## Document changelog
+
+- 1.3.0 (2026-10-09): scope base BDL storage to an enabled AMF; keep host module selection and task authority independent.
 
 - 1.2.5 (2026-10-01): point the wire-semantics citations at the current frozen bdl-queries
   v0.4/v0.5 faces instead of the superseded v0.2/v0.3 and refresh header dates; no behavior change.

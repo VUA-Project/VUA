@@ -1,3 +1,4 @@
+import { moduleCopy } from "./module-copy.ts";
 import { environmentCopy } from "./environment-copy.ts";
 import { journeyCopy } from "./journey-copy.ts";
 /**
@@ -16,6 +17,7 @@ import { journeyCopy } from "./journey-copy.ts";
  *   (DEV-only, reachable only from gateway fixtures, tree-shaken in release).
  */
 export const strings = {
+  amfModule: moduleCopy["en"],
   environmentCards: environmentCopy["en"],
   journey: journeyCopy["en"],
   websiteTests: {
@@ -199,6 +201,7 @@ demoTaskTitle: "Demo task",
       toolsDevices: "Devices & Tracking",
       toolsCalibration: "Calibration",
       toolsInstalled: "Installed Tools",
+      settingsModules: "Modules",
       settingsGoals: "Reset Goals",
       settingsEnvironment: "Environment & Paths",
       settingsAccounts: "Accounts",

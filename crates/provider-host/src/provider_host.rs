@@ -749,7 +749,7 @@ pub fn run_provider_host_with_services(
 #[allow(clippy::too_many_arguments)]
 pub fn run_provider_host_full(
     input: impl BufRead + Send + 'static,
-    mut output: impl Write,
+    output: impl Write,
     database_path: impl AsRef<Path>,
     production: Option<ProductionConfig>,
     downloads: Option<DownloadConfig>,
@@ -760,9 +760,33 @@ pub fn run_provider_host_full(
     editor_verifier: Option<EditorPathVerifier>,
     vpm: Option<Arc<dyn VpmBackend>>,
 ) -> Result<(), ProviderHostError> {
+    run_provider_host_with_legacy(input, output, database_path, production, downloads, warehouse,
+        use_cases, project_ops, environment, editor_verifier, vpm, None)
+}
+
+/// Separate process authorities import their legacy tasks once, under the
+/// destination's instance lock. The original database stays untouched.
+#[allow(clippy::too_many_arguments)]
+pub fn run_provider_host_with_legacy(
+    input: impl BufRead + Send + 'static,
+    mut output: impl Write,
+    database_path: impl AsRef<Path>,
+    production: Option<ProductionConfig>,
+    downloads: Option<DownloadConfig>,
+    warehouse: Option<WarehouseConfig>,
+    use_cases: Option<ProductionUseCaseConfig>,
+    project_ops: Option<ProjectOpsConfig>,
+    environment: Option<EnvironmentConfig>,
+    editor_verifier: Option<EditorPathVerifier>,
+    vpm: Option<Arc<dyn VpmBackend>>,
+    legacy: Option<(&Path, vua_orchestrator::LegacyTaskOwner)>,
+) -> Result<(), ProviderHostError> {
     let database_path = database_path.as_ref();
     let _instance_lock = ProviderInstanceLock::acquire(database_path)?;
     let store = Arc::new(SqliteTaskStore::open(database_path)?);
+    if let Some((source, owner)) = legacy {
+        store.import_legacy_tasks(source, owner)?;
+    }
     let provider_instance_id = provider_instance_id();
     let recovered_nonterminal_tasks: HashSet<String> = store
         .tasks()?

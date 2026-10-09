@@ -18,3 +18,4 @@ export * from "./website-test.js";
 export * from "./account-guide.js";
 export * from "./play-session.js";
 export * from "./manager-apps.js";
+export * from "./amf-module.js";

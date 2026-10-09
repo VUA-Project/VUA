@@ -16,6 +16,7 @@ vi.mock("node:child_process", () => ({
 import { desktopProviderProcessFactory } from "./provider-bootstrap.js";
 
 const ENDPOINT_ROOTS = {
+  role: "amf" as const,
   providerDataRoot: "C:/Users/test/AppData/Roaming/vua",
   warehouseRoot: "C:/Users/test/AppData/Roaming/vua/warehouse",
   projectRoot: "C:/Users/test/AppData/Roaming/vua/production/synthetic-avatar-project",
@@ -25,6 +26,16 @@ describe("desktop provider process factory environment injection", () => {
   beforeEach(() => {
     spawn.mockReset();
     spawn.mockReturnValue({ fake: "child" });
+  });
+
+  it("host composition rejects AMF roots even when ambient variables or obsolete callers supply them", () => {
+    const factory = desktopProviderProcessFactory({ ...ENDPOINT_ROOTS, role: "host", legacyDatabasePath: "C:/vua/legacy.db" });
+    factory("C:/vua/host.exe", "C:/vua/host.db");
+    const options = spawn.mock.calls[0]![2] as { env: Record<string, string | undefined> };
+    expect(options.env.VUA_PROVIDER_DATA).toBeUndefined();
+    expect(options.env.VUA_WAREHOUSE_ROOT).toBeUndefined();
+    expect(options.env.VUA_PROJECT_ROOT).toBeUndefined();
+    expect(options.env.VUA_LEGACY_TASK_DB).toBe("C:/vua/legacy.db");
   });
 
   it("spawns with the runtime-config variables the provider bin reads", () => {
@@ -43,6 +54,26 @@ describe("desktop provider process factory environment injection", () => {
     expect(options.env.VUA_PROVIDER_DATA).toBe(ENDPOINT_ROOTS.providerDataRoot);
     expect(options.env.VUA_WAREHOUSE_ROOT).toBe(ENDPOINT_ROOTS.warehouseRoot);
     expect(options.env.VUA_PROJECT_ROOT).toBe(ENDPOINT_ROOTS.projectRoot);
+  });
+
+  it.each(["host", "amf"] as const)("injects only Main-selected OS profile folders into %s", (role) => {
+    vi.stubEnv("USERPROFILE", "C:/ambient-home");
+    vi.stubEnv("LOCALAPPDATA", "C:/ambient-local");
+    vi.stubEnv("APPDATA", "C:/ambient-roaming");
+    vi.stubEnv("VUA_TOKEN", "synthetic-secret");
+    try {
+      const factory = desktopProviderProcessFactory({ ...ENDPOINT_ROOTS, role, profileRoots: {
+        home: "C:/selected/home", localAppData: "C:/selected/local", appData: "C:/selected/roaming",
+      } });
+      factory("C:/vua/provider.exe", "C:/vua/provider.db");
+      const options = spawn.mock.calls[0]![2] as { env: Record<string, string | undefined> };
+      expect(options.env.USERPROFILE).toBe("C:/selected/home");
+      expect(options.env.LOCALAPPDATA).toBe("C:/selected/local");
+      expect(options.env.APPDATA).toBe("C:/selected/roaming");
+      expect(options.env.VUA_TOKEN).toBeUndefined();
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("keeps the sanitize base: host variables other than the injected set stay stripped", () => {

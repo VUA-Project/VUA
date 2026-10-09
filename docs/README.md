@@ -1,8 +1,8 @@
 # Documentation guide
 
-> Document version: 1.2.1
+> Document version: 1.3.0
 > Status: Accepted
-> Updated: 2026-10-07
+> Updated: 2026-10-09
 > Scope: Current documentation routes for ordinary single-line N-sequence development
 
 ## Choose your reading context
@@ -29,6 +29,7 @@ Both readers use the same definitions below; these introductions change navigati
 | What does the product include? | [Product boundary](product-boundary.md) |
 | What comes next and what counts as passing? | [N sequence](development-outline.md) |
 | Where does each responsibility live? | [System map](architecture/system.md) |
+| How do scenarios and optional AMF＋BDL relate? | [Host and modules](architecture/modules.md) |
 | Which exact contract do I need? | [Protocol guide](protocols/README.md) |
 
 Read only the owning documents needed for the task. Collab is [archived and retired](archive/2026-09-29/README.md).
@@ -95,6 +96,7 @@ remain local. Registry and document changes ride with the feature, not a separat
 
 ## Document changelog
 
+- 1.3.0 (2026-10-09): route scenario/module ownership, optional AMF activation and legacy data preservation.
 - 1.2.1 (2026-10-07): route subsequent work from the delivered guidance checkpoint.
 - 1.2.0 (2026-10-05): add direct routes to the three-context guidance architecture and first-play delivery checkpoint, with N5 reviewed separately.
 - 1.1.2 (2026-10-03): update the N2 inventory route and include first-play PICO eye tracking.

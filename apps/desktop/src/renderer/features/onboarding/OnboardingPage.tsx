@@ -1,3 +1,5 @@
+import { useAmfModule } from "../../gateway/index.ts";
+import { ModulesPage } from "../modules/ModulesPage.tsx";
 import { useEffect, useState } from "react";
 import type { DeploymentPurpose } from "@vua/contracts";
 import type { EnvGoalId, GoalId } from "../../app/onboarding-model.ts";
@@ -21,6 +23,7 @@ export interface OnboardingResult {
 export function OnboardingPage({ onComplete, onAccounts }: {
   onComplete: (result: OnboardingResult) => void; onAccounts: () => void;
 }) {
+  const amf = useAmfModule();
   const [state, setState] = useState(() => { try { return parseJourney(localStorage.getItem(storageKeys.firstRunJourney)); } catch { return initialJourney; } });
   const [ready, setReady] = useState(false);
   const focus = useRouteFocus(state.step);
@@ -38,7 +41,7 @@ export function OnboardingPage({ onComplete, onAccounts }: {
     <RouteTile title={title} description={description} {...(kind ? { kind } : {})} onClick={() => move(step, purpose ?? null)} id={`wizard-${step}-${purpose ?? title}`} />;
   const steps = copy.steps;
   const phase = ["network", "prepare"].includes(state.step) ? 1 : ["connection", "launch", "creator-done", "library"].includes(state.step) ? 2 : 0;
-  const title = ({ goal: copy.goal, "play-mode": copy.playMode, headset: copy.headset, "creator-start": copy.creatorStart,
+  const title = ({ goal: copy.goal, "play-mode": copy.playMode, headset: copy.headset, "creator-start": amf.state === "ready" ? copy.creatorStart : strings.amfModule.choose,
     target: copy.target, editor: copy.editor, network: copy.network, prepare: copy.prepare, connection: copy.connection,
     launch: copy.launch, library: copy.assetsGoal, "creator-done": copy.creatorReady })[state.step];
   const hints: Partial<Record<JourneyStep, string>> = { goal: copy.goalHint, editor: copy.editorHint, network: copy.networkHint, prepare: copy.prepareHint, library: copy.assetsHint };
@@ -57,7 +60,8 @@ export function OnboardingPage({ onComplete, onAccounts }: {
           {choose(copy.vr, copy.vrHint, "headset", undefined, "headset")}
         </div> : null}
         {state.step === "headset" ? <HeadsetChoices onPico={() => move("network", "pico_pcvr")} /> : null}
-        {state.step === "creator-start" ? <div className="vua-route-grid">
+        {state.step === "creator-start" && amf.state !== "ready" ? <ModulesPage embedded onOpen={() => move("library")} /> : null}
+        {state.step === "creator-start" && amf.state === "ready" ? <div className="vua-route-grid">
           {choose(copy.assetsGoal, copy.assetsHint, "library")}{choose(copy.environmentGoal, copy.environmentHint, "target", undefined, "unity")}
         </div> : null}
         {state.step === "target" ? <div className="vua-route-grid">
@@ -80,7 +84,8 @@ export function OnboardingPage({ onComplete, onAccounts }: {
           <p>{copy.declared}</p><Button variant="primary" onClick={() => move("launch")}>{copy.connectionConfirm}</Button>
         </div> : null}</> : null}
         {state.step === "launch" ? <><PlayLaunch onAccounts={onAccounts} /><Button variant="subtle" onClick={() => done("home")}>{copy.finish}</Button></> : null}
-        {state.step === "library" ? <Button variant="primary" onClick={() => done("warehouse")}>{copy.openLibrary}</Button> : null}
+        {state.step === "library" && amf.state !== "ready" ? <ModulesPage embedded onOpen={() => done("warehouse")} /> : null}
+        {state.step === "library" && amf.state === "ready" ? <Button variant="primary" onClick={() => done("warehouse")}>{copy.openLibrary}</Button> : null}
         {state.step === "creator-done" ? <Button variant="primary" onClick={() => done("home")}>{copy.finish}</Button> : null}
       </div>
       <footer className="vua-onboarding__footer">

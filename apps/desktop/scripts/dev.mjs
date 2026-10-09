@@ -135,7 +135,7 @@ if (dependencyCode !== 0) throw new Error("Desktop runtime dependencies failed t
 // Renderer hot reload cannot update the native Gateway operations. Build the
 // provider before starting Vite/Electron so development never mixes new UI
 // with a stale backend. Leave an already running provider intact on failure.
-const backend = spawn("cargo", ["build", "--release", "-p", "vua-provider-host", "--bin", "vua-orchestrator-provider"], {
+const backend = spawn("cargo", ["build", "--release", "-p", "vua-provider-host", "-p", "vua-amf-provider", "--bins"], {
   cwd: REPO_ROOT, stdio: "inherit", shell: useShell,
 });
 const backendCode = await new Promise((resolve) => backend.once("exit", resolve));

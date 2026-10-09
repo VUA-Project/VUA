@@ -35,7 +35,7 @@ import { Badge } from "../../components/primitives/Badge.tsx";
 import { Button } from "../../components/primitives/Button.tsx";
 import { EmptyState } from "../../components/primitives/EmptyState.tsx";
 import { Skeleton } from "../../components/primitives/Skeleton.tsx";
-import { format, strings } from "../../i18n/index.ts";
+import { format, strings, TERMS } from "../../i18n/index.ts";
 import "./overlay.css";
 
 const copy = strings.overlay;
@@ -204,7 +204,8 @@ export function VrOverlaySurface() {
 
             {model.taskCards.length > 0 ? (
               <section className="vua-overlay__task" aria-label={copy.taskSectionLabel}>
-                {model.taskCards.map((card) => (
+                {snapshot?.schemaVersion === 3 && snapshot.amfUnavailable ? <p role="status">{format(strings.amfModule.failed, { amf: TERMS.amf })}</p> : null}
+              {model.taskCards.map((card) => (
                   <div key={card.taskId} className="vua-overlay__task-row">
                     {cancelTarget === card.taskId ? (
                       // 确认态下只留确认/返回两个目标(动作 ≤3,确认语境不混排)

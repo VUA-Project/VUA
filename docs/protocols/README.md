@@ -1,8 +1,8 @@
 # Protocol reading guide
 
-> Document version: 1.6.0
+> Document version: 1.7.0
 > Status: Accepted
-> Updated: 2026-10-08
+> Updated: 2026-10-09
 > Scope: Navigation and retention guidance; no wire-format changes
 
 **For people:** use this index when a contribution affects an API or stored format; read only
@@ -67,7 +67,16 @@ retirement, then update the registry and links.
 
 For upstream-driven changes, follow the [third-party compatibility and licensing policy](../release/versioning.md#third-party-changes-and-compatibility).
 
+## Optional module lifecycle
+
+[AMF module lifecycle v0.1](../../schemas/amf-module/v0.1/README.md) is a separate Candidate desktop
+face for host-owned selection/readiness. It does not replace or edit frozen Provider frames, task
+rows, Recipe/BDL families or Unity Bridge contracts. [Module architecture](../architecture/modules.md)
+owns routing and legacy-data migration.
+
 ## Document changelog
+
+- 1.7.0 (2026-10-09): index the Candidate host-owned AMF lifecycle face separately from frozen AMF/Provider contracts.
 
 - 1.6.0 (2026-10-08): index selected-file maintenance and reference-presence reads, retaining the merged N1 protocol routes.
 - 1.5.0 (2026-10-08): index the whole-run sync, managed download, unified library and separate selection-draft baselines.

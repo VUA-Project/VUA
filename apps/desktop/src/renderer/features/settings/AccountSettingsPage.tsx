@@ -1,3 +1,4 @@
+import { useAmfModule } from "../../gateway/index.ts";
 import { useEffect, useState } from "react";
 import { Badge } from "../../components/primitives/Badge.tsx";
 import { Button } from "../../components/primitives/Button.tsx";
@@ -20,6 +21,7 @@ const copy = strings.settings.accounts;
  * 按钮禁用不猜状态。
  */
 export function AccountSettingsPage() {
+  const amf = useAmfModule();
   const [auth, setAuth] = useState<
     { authOk: boolean; accountName: string | null } | null
   >(null);
@@ -36,8 +38,9 @@ export function AccountSettingsPage() {
   };
 
   useEffect(() => {
-    refreshAuth();
-  }, []);
+    if (amf.state === "ready") refreshAuth();
+    else setAuth(null);
+  }, [amf.state]);
 
   const signOut = async () => {
     setSigningOut(true);
@@ -60,7 +63,7 @@ export function AccountSettingsPage() {
       </section>
       {guide ? <AccountGuide account={guide} onBack={() => setGuide(null)} /> : null}
       <div className="vua-account-grid" hidden={guide !== null}>
-        <Card>
+        {amf.installed ? <Card>
           <div className="vua-settings-account">
             <div className="vua-settings-account__head">
               <h2 className="vua-title">{copy.boothTitle}</h2>
@@ -82,6 +85,7 @@ export function AccountSettingsPage() {
               {signedIn ? null : (
                 <Button
                   variant="default"
+                  disabled={amf.state !== "ready"}
                   onClick={() => openLoginBrowser(BOOTH_SIGN_IN_URL)}
                 >
                   {copy.signIn}
@@ -93,7 +97,7 @@ export function AccountSettingsPage() {
               </Button>
             </div>
           </div>
-        </Card>
+        </Card> : null}
         {([
           { id: "steam", title: copy.steamTitle, description: copy.steamDescription },
           { id: "vrchat", title: copy.vrchatTitle, description: copy.vrchatDescription },

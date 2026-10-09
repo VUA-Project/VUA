@@ -2889,6 +2889,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "vua-amf-provider"
+version = "0.1.0"
+dependencies = [
+ "vua-bdl-store",
+ "vua-orchestrator",
+ "vua-project-manager",
+ "vua-provider-host",
+ "vua-unity-bridge",
+]
+
+[[package]]
 name = "vua-bdl-store"
 version = "0.1.0"
 dependencies = [

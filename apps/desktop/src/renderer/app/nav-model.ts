@@ -28,6 +28,7 @@ export type PageId =
   | "tools-devices"
   | "tools-calibration"
   | "tools-installed"
+  | "settings-modules"
   | "settings-goals"
   | "settings-environment"
   | "settings-accounts"
@@ -132,6 +133,7 @@ export const settingsModule: ModuleDef = {
   groups: [
     {
       pages: [
+        { id: "settings-modules", labelKey: "settingsModules" },
         { id: "settings-goals", labelKey: "settingsGoals" },
         { id: "settings-environment", labelKey: "settingsEnvironment" },
         { id: "settings-accounts", labelKey: "settingsAccounts" },
@@ -242,3 +244,7 @@ export function navMeasureChanged(
     || prev.required !== next.required
     || prev.available !== next.available;
 }
+
+/** Installed module state, never onboarding goals, controls AMF navigation. */
+export function isAmfPage(page: PageId): boolean { return moduleOf(page) === "production"; }
+export function availablePage(page: PageId, amfInstalled: boolean): PageId { return !amfInstalled && isAmfPage(page) ? "settings-modules" : page; }

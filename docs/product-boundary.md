@@ -1,7 +1,7 @@
 # VUA product boundary
 
 
-> Document version: 2.18.0
+> Document version: 2.19.0
 > Status: Accepted
 > Scope: Entire VUA product
 > Updated: 2026-10-09
@@ -9,14 +9,19 @@
 
 ## Product definition
 
-VUA is a Windows-first, local VRChat desktop production environment for players who want to move
-from asset discovery and environment preparation through Avatar production and runtime-tool setup.
-The core audience is VRChat players who are unfamiliar with Unity and may not even know what they
-need (user ruling, 2026-09-22). It is Recipe-first, local-first, capability-aware, and designed
-for recoverable execution: new users get a Wizard that selects a path by goal, device, and current
-state instead of everyone being marched through one fixed master flow (end-to-end flow coverage
-remains a valuable capability), while experienced users keep inspectable, reproducible production
-records.
+VUA is a Windows-first, local-first VRChat **scenario** host (the author's term: “情景”).
+It installs, manages and launches the capabilities a scenario needs, with a SOP list for preparation,
+use and recovery. The core audience includes players unfamiliar with Unity or the required software.
+PC screen play and PICO streaming are play scenarios; self-built AMF and an external MioVRC
+integration are intended peer Avatar-editing scenarios. MioVRC integration remains a development
+placeholder. AMF is opt-in on fresh profiles; its Warehouse, Recipe, Assembly, checks and Release
+navigation appears after enabling the module. BDL stays private inside AMF.
+
+Recipe-first production and reproducible production records belong to AMF. The VUA host remains
+usable without AMF/BDL, and the Wizard chooses a path by goal, device and current facts. Wizard goal
+preferences do not determine which installed modules appear in the main directory. Concrete
+ownership, local payload activation, migration and lifecycle are owned by
+[host/module architecture](architecture/modules.md).
 
 ## Accepted product areas
 
@@ -585,6 +590,8 @@ plugin execution and a marketplace still require their separately accepted secur
 
 ## Document changelog
 
+- 2.19.0 (2026-10-09): accept VUA as a scenario host with optional AMF＋BDL, independent fresh startup/navigation and retained module data.
+
 - 2.18.0 (2026-10-09): integrate the author's Ibis newcomer core-journey criterion and current regional-Ping/website presentation with the N5 scope, retaining pending optional outcomes and retiring usage-region identification and accelerator recommendations.
 - 2.17.0 (2026-10-09): require managed ZIP extraction for local imports and BOOTH downloads while preserving original archives and separate production qualification.
 - 2.16.0 (2026-10-09): bound N5 closure to intact local-file retention, UnityPackage production intake, official lookup/minimal manual metadata and optional dependency clues; defer third-party search.
@@ -594,5 +601,4 @@ plugin execution and a marketplace still require their separately accepted secur
 - 2.12.0 (2026-10-08): retain all downloaded formats with separate production qualification and allow provisional Recipe selection drafts without deciding the production format.
 - 2.11.0 (2026-10-07): record the user ruling that managed library re-downloads replace the existing selected file while preserving entry identity; link the owning replacement decision.
 - 2.10.0 (2026-10-05): separate app, preparation and game guidance in the first play scope and retain N5 as an independently reviewed co-release.
-- 2.9.0 (2026-10-03): add PICO eye tracking to the first play release and expand N2 to seven external tools with shared Steam inventory/install/launch acceptance.
 Earlier entries remain in Git history.

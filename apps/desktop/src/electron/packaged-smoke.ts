@@ -55,7 +55,7 @@ class PackagedSmoke {
       return { previousMarker, version: snapshot.value.productVersion, capabilities: snapshot.value.capabilities.operations.length };
     })()`) as { previousMarker: string | null; version: string; capabilities: number };
     await window.webContents.session.flushStorageData();
-    const database = path.join(this.directory, "orchestrator", "provider.db");
+    const database = path.join(this.directory, "host", "tasks.db");
     if (!fs.statSync(database).isFile()) throw new Error("Provider database was not created in the isolated profile");
     const shutdown = await provider.prepareShutdown({ timeoutMs: 5_000 });
     if (shutdown.outcome === "needs_user_choice") throw new Error("Read-only smoke unexpectedly left a running task");

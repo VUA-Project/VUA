@@ -10,7 +10,7 @@ const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..
 const result = spawnSync("cargo", [
   "build", "--release", "--locked", "--target", "x86_64-pc-windows-msvc",
   "--config", 'target.x86_64-pc-windows-msvc.rustflags=["-C","target-feature=+crt-static"]',
-  "-p", "vua-provider-host", "--bin", "vua-orchestrator-provider",
+  "-p", "vua-provider-host", "-p", "vua-amf-provider", "--bins",
 ], { cwd: workspace, stdio: "inherit", shell: false, windowsHide: true });
 if (result.error) throw result.error;
 if (result.status !== 0) throw new Error(`Windows Provider build failed (${result.status ?? result.signal})`);

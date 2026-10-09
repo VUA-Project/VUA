@@ -136,6 +136,7 @@ pub use runtime::{
     TaskRuntime, TaskSnapshot,
 };
 pub use sqlite_task_store::{
+    LegacyTaskOwner,
     IdempotentCancellation, IdempotentTaskAcceptance, NewTask, ProjectMutationLease,
     SqliteStoreError, SqliteTaskStore, StoredCancellationOutcome, StoredCancellationResult,
     StoredTask, StoredTaskEvent, TaskMutation,
