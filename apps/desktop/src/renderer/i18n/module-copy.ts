@@ -1,7 +1,7 @@
 const en = {
   title: "Modules", choose: "Choose how to create your Avatar", amf: "{amf}",
   description: "Import assets, save outfits as Recipes, and assemble and check Avatars with Unity.",
-  hint: "Enable a module when you need it. Play and device setup work on their own.",
+  hint: "{amf} is installed with VUA. Enable it when you need it; play and device setup work on their own.",
   enable: "Enable {amf}", disable: "Disable {amf}", retry: "Retry startup", open: "Open asset library",
   retained: "Disabling keeps your assets, Recipes and projects. Finish or cancel active tasks first.",
   absent: "Not enabled", starting: "Starting…", ready: "Enabled", failed: "{amf} could not start. Play is still available.", stopping: "Stopping…",
@@ -14,7 +14,7 @@ export const moduleCopy: Record<"en" | "zh-CN" | "ja" | "ko", Copy> = {
   "zh-CN": {
     title: "功能模块", choose: "想用哪种方式改模？", amf: "{amf}",
     description: "导入和整理素材，用配方保存搭配，再通过 Unity 装配和检查 Avatar。",
-    hint: "需要时再启用模块。游玩和设备准备可以单独使用。",
+    hint: "{amf} 已随 VUA 安装，需要时点击启用即可。游玩和设备准备可以单独使用。",
     enable: "启用 {amf}", disable: "停用 {amf}", retry: "重试启动", open: "打开素材库",
     retained: "停用会保留素材、配方和项目。正在进行的任务需要先完成或取消。",
     absent: "尚未启用", starting: "正在启动…", ready: "已启用", failed: "{amf} 启动失败，游玩仍可使用。", stopping: "正在停止…",
@@ -24,7 +24,7 @@ export const moduleCopy: Record<"en" | "zh-CN" | "ja" | "ko", Copy> = {
   ja: {
     title: "機能モジュール", choose: "どの方法で Avatar を編集しますか？", amf: "{amf}",
     description: "素材を整理し、コーディネートを Recipe に保存。Unity で Avatar を組み立ててチェックします。",
-    hint: "必要なときに有効にできます。プレイとデバイスの準備は単独で使えます。",
+    hint: "{amf} は VUA と一緒にインストールされます。必要なときに有効にしてください。プレイとデバイスの準備は単独で使えます。",
     enable: "{amf} を有効にする", disable: "{amf} を無効にする", retry: "起動を再試行", open: "素材ライブラリを開く",
     retained: "無効にしても素材、Recipe、プロジェクトは残ります。実行中のタスクを完了またはキャンセルしてください。",
     absent: "未有効", starting: "起動中…", ready: "有効", failed: "{amf} を起動できませんでした。プレイは利用できます。", stopping: "停止中…",
@@ -34,7 +34,7 @@ export const moduleCopy: Record<"en" | "zh-CN" | "ja" | "ko", Copy> = {
   ko: {
     title: "기능 모듈", choose: "어떤 방식으로 Avatar를 편집할까요?", amf: "{amf}",
     description: "에셋을 정리하고 코디를 Recipe로 저장한 다음 Unity에서 Avatar를 조립하고 검사합니다.",
-    hint: "필요할 때 모듈을 켜세요. 플레이와 기기 준비는 따로 사용할 수 있습니다.",
+    hint: "{amf}는 VUA와 함께 설치됩니다. 필요할 때 켜세요. 플레이와 기기 준비는 따로 사용할 수 있습니다.",
     enable: "{amf} 켜기", disable: "{amf} 끄기", retry: "시작 다시 시도", open: "에셋 라이브러리 열기",
     retained: "꺼도 에셋, Recipe와 프로젝트는 유지됩니다. 진행 중인 작업을 먼저 완료하거나 취소하세요.",
     absent: "꺼짐", starting: "시작 중…", ready: "켜짐", failed: "{amf}를 시작하지 못했습니다. 플레이는 계속 사용할 수 있습니다.", stopping: "중지 중…",

@@ -7,8 +7,8 @@ export interface AmfRegistration {
   readonly dataLayout: "legacy" | "isolated";
 }
 
-/** Module selection belongs to the host. Only file presence is used for the
- * legacy opt-in; the host never opens the BDL database. */
+/** Module selection belongs to the host. Legacy file presence selects only
+ * the retained data layout, never activation; the host does not open BDL. */
 export class AmfRegistry {
   readonly file: string;
   readonly registration: AmfRegistration;
@@ -28,7 +28,7 @@ export class AmfRegistry {
       }
     } else {
       const legacy = fs.existsSync(path.join(userData, "bdl", "bdl.db"));
-      this.registration = { schemaVersion: "0.1", enabled: legacy, dataLayout: legacy ? "legacy" : "isolated" };
+      this.registration = { schemaVersion: "0.1", enabled: false, dataLayout: legacy ? "legacy" : "isolated" };
     }
   }
 

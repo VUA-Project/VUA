@@ -4,7 +4,6 @@ import { format, strings, TERMS } from "../../i18n/index.ts";
 import { Button } from "../../components/primitives/Button.tsx";
 import { Card } from "../../components/primitives/Card.tsx";
 import { Badge } from "../../components/primitives/Badge.tsx";
-import { RouteTile } from "../../components/RouteTile.tsx";
 
 export function ModulesPage({ onOpen, embedded = false }: { onOpen: () => void; embedded?: boolean }) {
   const snapshot = useAmfModule();
@@ -36,6 +35,5 @@ export function ModulesPage({ onOpen, embedded = false }: { onOpen: () => void; 
         {outcome ? <p role="status">{outcome === "busy" ? text("busy") : text("changeFailed")}</p> : null}
       </div>
     </Card>
-    <div className="vua-route-grid"><RouteTile title="MioVRC" icon="avatar" disabled /></div>
   </div>;
 }

@@ -1,8 +1,8 @@
 # First play release: implementation checkpoint and remaining work
 
-> Document version: 1.10.0
+> Document version: 1.11.0
 > Status: Accepted
-> Updated: 2026-10-09
+> Updated: 2026-10-10
 > Scope: Desktop play, PICO 4 Pro USB/Wi-Fi, optional eye tracking and three guidance contexts
 
 For people: this release takes a player from missing play software to playing VRChat, with
@@ -319,14 +319,19 @@ integration, not a substitute for N5's own review and acceptance.
 
 ## Optional AMF boundary
 
-The host starts without AMF on a fresh profile; enabling AMF supplies its navigation and separately
-supervised services. AMF failure/disable leaves play, device detection and game guidance available.
+Ibis installs AMF with VUA but requires a separate enable action under Settings → Modules.
+Without a saved enable choice, fresh and legacy profiles start the host alone; enabling AMF supplies
+its navigation and separately supervised services. External Avatar-editing modules and their
+placeholder entries are deferred beyond Ibis under the 2026-10-10 user ruling.
+AMF failure/disable leaves play, device detection and game guidance available.
 The host task window reads core tasks without requiring production documents. Legacy AMF data stays
 in place, with owner-specific transactional task imports; [module architecture](../architecture/modules.md)
 owns the detailed lifecycle/data rules. Controlled isolation evidence is separate from real software
 installation, PICO connection, real-material production and four-language human acceptance above.
 
 ## Document changelog
+
+- 1.11.0 (2026-10-10): keep AMF installed with VUA but require explicit first activation, retain saved choices/data and defer external Avatar-editing module integration from Ibis.
 
 - 1.10.0 (2026-10-09): record optional AMF startup and core task/guidance independence without replacing pending physical release acceptance.
 
@@ -341,6 +346,5 @@ installation, PICO connection, real-material production and four-language human 
 - 1.2.0 (2026-10-08): record the Steam/PICO acquisition implementation and region choice;
   record local reuse/replay verification and prepared isolated inputs; retain missing-software
   installation and play acceptance as pending.
-- 1.2.0 (2026-10-08): record the delivered game-window observer and automatic game-guide following; real-machine acceptance and the curated tutorial-world list remain.
 
 Earlier entries remain in Git history.

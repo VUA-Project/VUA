@@ -58,6 +58,7 @@ async function run() {
     // Goal preference must not install a module or expose its deep link.
     await js('localStorage.setItem("vua-goals",JSON.stringify({version:1,onboarding:"completed",goals:["production"],environments:[]})); window.location.hash="/warehouse"');
     await waitFor(() => js('!!document.querySelector("[data-nav-id=enable-amf]")'), "uninstalled deep link routes to modules");
+    assert(await js('!document.querySelector("main").textContent.includes("MioVRC")'), "Ibis module selection has no external editing placeholder");
     assert(await js('!document.querySelector("[data-nav-id=nav-warehouse]")'), "old creator goals do not enable AMF");
     await js('document.querySelector("[data-nav-id=enable-amf]").click()');
     await waitFor(() => js('window.vua.amfModule.snapshot().then(value=>value.state==="ready")'), "native AMF startup");
