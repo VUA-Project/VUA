@@ -1,7 +1,7 @@
 # VUA product boundary
 
 
-> Document version: 2.21.0
+> Document version: 2.21.1
 > Status: Accepted
 > Scope: Entire VUA product
 > Updated: 2026-10-10
@@ -68,7 +68,7 @@ ownership, local payload activation, migration and lifecycle are owned by
    [Editor compatibility policy](compatibility/unity-editor.md). During development, global
    `2022.3.22f1` and China `2022.3.22f1c1` form the accepted pair; historical projects enter
    through the documented migration boundary. Existing frozen protocol migrations remain explicit.
-7. **Guidance and desktop presentation:** an in-app VUA tour, an ordinary preparation reader,
+7. **Guidance and desktop presentation:** an in-app VUA tour, a knowledge encyclopedia inside Help,
    and a guide associated with the VRChat game window; task/runtime status retains its own
    application authority. **VR overlay:** remains unscheduled outside the active
    [N acceptance sequence](development-outline.md).
@@ -321,12 +321,13 @@ or PICO Connect streaming. It delivers the following bounded scope:
   Prefer supported silent installation with visible progress and explicit user handoffs.
   Reuse installed software and recover interrupted work through inspection and explicit retry.
 - Provide three guidance contexts (user ruling, 2026-10-05): a transparent, ordered tour over
-  VUA's own controls; a normal readable window for room/equipment preparation; and a transparent
+  VUA's own controls; readable room/equipment preparation; and a transparent
   guide over the Windows VRChat game window for controls/settings and available tutorial worlds.
   The game guide defaults to following VRChat and 50% transparency. Reuse shared instructions
   and illustrations, with independent progress for each context. Guidance works without AMF.
   The [guidance architecture](architecture/guidance.md) owns presentation and window behavior.
-  Test the preparation reader through SteamVR's desktop view on the headset; a native VUA
+  The 2026-10-10 presentation ruling places preparation and hardware reading in the main Help
+  encyclopedia. Test it through SteamVR's desktop view on the headset; a native VUA
   VR overlay remains later work.
 - Include optional PICO 4 Pro eye tracking through independently installed VRCFaceTracking.
   Guide Steam installation, the PICO hardware module, headset calibration and VRChat OSC;
@@ -598,6 +599,7 @@ plugin execution and a marketplace still require their separately accepted secur
 
 ## Document changelog
 
+- 2.21.1 (2026-10-10): align preparation-reading wording with the main Help encyclopedia ruling without changing guidance scope or acceptance.
 - 2.21.0 (2026-10-10): distinguish ordinary local-material intake from active support for pirated acquisition sources, without introducing rights classification or new intake gates.
 - 2.20.0 (2026-10-10): bundle AMF with Ibis while requiring explicit first activation, retain saved choices and legacy data, and defer external Avatar-editing modules.
 
@@ -609,6 +611,4 @@ plugin execution and a marketplace still require their separately accepted secur
 - 2.15.0 (2026-10-08): add content-based migration reconciliation and narrow N5 to local record removal and persisted link clues; defer final Recipe/VPM and production-loop work.
 - 2.14.0 (2026-10-08): replace the missing-file relink requirement with explicit BOOTH re-download and record official-ID, third-party and manual source-supplementation routes.
 - 2.13.0 (2026-10-08): preserve records/references after local-file removal and retain superseded VPM output after changed managed originals; link the maintenance ruling.
-- 2.12.0 (2026-10-08): retain all downloaded formats with separate production qualification and allow provisional Recipe selection drafts without deciding the production format.
-
 Earlier entries remain in Git history.

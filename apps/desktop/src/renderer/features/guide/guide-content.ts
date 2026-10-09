@@ -14,6 +14,7 @@ import { strings } from "../../i18n/index.ts";
  *  + 阅读型 VUA 使用教程。房间准备是三类引导裁决后阅读器的首个主题——
  *  准备阅读器在没有软件安装前就有用(物理空间先于软件) */
 export type GuideTopicId =
+  | "guide-hardware"
   | "guide-room"
   | "guide-start"
   | "guide-basics"
@@ -24,6 +25,7 @@ export type GuideTopicId =
 
 /** 主题顺序即阅读器/覆盖层主题切换条的展示顺序(房间准备殿先,VUA 使用教程殿后) */
 export const GUIDE_TOPIC_IDS: readonly GuideTopicId[] = [
+  "guide-hardware",
   "guide-room",
   "guide-start",
   "guide-basics",
@@ -35,6 +37,7 @@ export const GUIDE_TOPIC_IDS: readonly GuideTopicId[] = [
 
 /** 主题 id → strings.guide.pages 键(主题内容与 i18n 的接缝) */
 export const GUIDE_TOPIC_COPY_KEY: Record<GuideTopicId, keyof typeof strings.guide.pages> = {
+  "guide-hardware": "hardware",
   "guide-room": "room",
   "guide-start": "start",
   "guide-basics": "basics",
@@ -47,7 +50,7 @@ export const GUIDE_TOPIC_COPY_KEY: Record<GuideTopicId, keyof typeof strings.gui
 /** 教程支撑子集:主题 → 内容包教程 id(教程 id 与主题 id 同名是约定)。
  *  guide-vua 与 guide-room 是阅读型主题,无教程支撑——教程端口未接入前
  *  不伪造内容包行。 */
-export type GuideTutorialTopicId = Exclude<GuideTopicId, "guide-vua" | "guide-room">;
+export type GuideTutorialTopicId = Exclude<GuideTopicId, "guide-vua" | "guide-room" | "guide-hardware">;
 
 export const GUIDE_PAGE_TUTORIAL: Record<GuideTutorialTopicId, string> = {
   "guide-start": "guide-start",

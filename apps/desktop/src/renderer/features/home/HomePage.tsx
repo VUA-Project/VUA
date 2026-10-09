@@ -3,27 +3,21 @@ import { strings, TERMS } from "../../i18n/index.ts";
 import { RouteTile } from "../../components/RouteTile.tsx";
 const copy = strings.journey;
 export const directory = {
-  env: [{ id: "env-play", title: copy.play, icon: "anim" }, { id: "env-create", title: copy.create, icon: "flask" }],
+  env: [{ id: "env-play", title: copy.play, icon: "anim" }, { id: "env-create", title: copy.create, icon: "flask" }, { id: "tools-discover", title: copy.tools, icon: "outfit" }, { id: "help", title: copy.help, icon: "question" }],
   production: [{ id: "warehouse", title: copy.library, icon: "folder" }, { id: "recipe", title: copy.recipes, icon: "outfit" }, { id: "workshop", title: copy.production, icon: "avatar" }, { id: "inspection", title: strings.terms.inspection, icon: "check" }],
 } as const;
-export function HomePage({ page, bigscreen, navigate, startWizard, startTour, amfInstalled = false }: {
-  page: "home" | "environment-hub" | "avatar-hub" | "help"; bigscreen: boolean;
-  navigate: (page: PageId) => void; startWizard: () => void; startTour: () => void; amfInstalled?: boolean;
+export function HomePage({ page, bigscreen, navigate, amfInstalled = false }: {
+  page: "home" | "environment-hub" | "avatar-hub"; bigscreen: boolean;
+  navigate: (page: PageId) => void; amfInstalled?: boolean;
 }) {
   const global = <div className="vua-route-grid vua-home__global">
     <RouteTile title={copy.tasks} icon="clock" onClick={() => void window.vua?.window.showOverlay("status")} id="home-tasks" />
-    <RouteTile title={copy.help} icon="question" onClick={() => navigate("help")} id="home-help" />
     <RouteTile title={strings.amfModule.title} icon="folder" onClick={() => navigate("settings-modules")} id="home-modules" />
     <RouteTile title={strings.nav.tabs.settings} icon="edit" onClick={() => navigate("settings-theme")} id="home-settings" />
   </div>;
   return <div className="vua-page vua-home" data-focus-scope>
-    <header className="vua-page__hero"><h1 className="vua-display">{page === "home" ? "VUA" : page === "environment-hub" ? copy.environment : page === "avatar-hub" ? copy.avatar : copy.help}</h1></header>
-    {page === "help" ? <div className="vua-route-grid">
-      <RouteTile title={copy.wizard} icon="arrow-right" onClick={startWizard} id="help-wizard" />
-      <RouteTile title={strings.tour.paletteEntry} icon="question" onClick={startTour} />
-      <RouteTile title={copy.guide} icon="folder" onClick={() => void window.vua?.window.showReader()} />
-      <RouteTile title={copy.gameGuide} icon="anim" onClick={() => void window.vua?.window.showGameGuide()} />
-    </div> : <>
+    <header className="vua-page__hero"><h1 className="vua-display">{page === "home" ? "VUA" : page === "environment-hub" ? copy.environment : copy.avatar}</h1></header>
+    <>
       {page === "home" && bigscreen ? <div className="vua-route-grid vua-home__groups">
         <RouteTile title={copy.environment} icon="flask" onClick={() => navigate("environment-hub")} id="home-environment" />
         {amfInstalled ? <RouteTile title={TERMS.amf} icon="avatar" onClick={() => navigate("avatar-hub")} id="home-avatar" /> : <RouteTile title={strings.amfModule.title} icon="folder" onClick={() => navigate("settings-modules")} id="home-modules-group" />}
@@ -37,6 +31,6 @@ export function HomePage({ page, bigscreen, navigate, startWizard, startTour, am
         <RouteTile title={strings.terms.release} icon="anim" onClick={() => navigate("release")} />
       </div> : null}
       {page === "home" ? global : null}
-    </>}
+    </>
   </div>;
 }

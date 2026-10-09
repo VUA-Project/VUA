@@ -1,7 +1,7 @@
 # Electron desktop and presentation architecture
 
 
-> Document version: 1.14.0
+> Document version: 1.15.0
 > Status: Accepted
 > Scope: `apps/desktop`, `packages/design-system`, frontend Gateway
 > Updated: 2026-10-10
@@ -63,6 +63,13 @@ restoring the old two-tab presentation. Wizard choices never hide features or ch
 The [design standard](../design/design-standard.md#3-platform-and-information-architecture)
 owns the accepted layout, logo colors, unavailable peers and preserved visual preferences.
 
+Environment contains Play, Avatar editing, Tools and Help. Tools groups the planned tracking,
+translation, VR utilities and capture integrations, independently of AMF. Its unwired entries
+are disabled development peers, not installed/launchable plugin claims. Help replaces the
+former topbar entry and contains Getting started, the app tour, Knowledge encyclopedia and
+In-game assistant. The encyclopedia is a main-window page with hardware introductions and
+the existing shared preparation chapters/bookmark. Play links directly to hardware reading.
+
 `journey-model.ts` stores only a versioned reading/selection bookmark. Desktop/PICO and creator
 routes use the existing typed network/deployment ports. A fresh plan or a task completed during
 the current visit can establish software readiness; a restored terminal receipt alone cannot.
@@ -72,7 +79,8 @@ Opening Steam or a guide does not prove installation, login or successful play.
 
 Play now has fixed two-half cards: details on the left and observed status/action on the
 right. Normal game exit retains **Close** only while owned software survives, with no failure
-warning. Network's equally tall tile is above the grid; its regional Ping is explicitly unavailable
+warning. Desktop cards are 88 px high and big-screen cards 108 px, half their previous heights;
+the two action/detail halves remain intact. Network's equally tall tile is above the grid; its regional Ping is explicitly unavailable
 until targets are verified and website tests remain in expanded details. The expandable runtime inventory stays
 on Play. The retired Software & connections page is absent from Home, sidebar and tour;
 old stored page IDs migrate to Play. Wizard choices still do not control these entries.
@@ -100,7 +108,8 @@ the bottom taskbar is no longer mounted, and feature search is a Settings-sideba
 with the existing global shortcut. Appearance changes use joined native buttons backed by the
 same three-value preference. A missing/invalid preference resolves to Dark; saved preferences
 and cross-window/system subscriptions stay compatible. The app tour's task step navigates to
-the fixed Home Tasks tile rather than a retired taskbar anchor.
+the fixed Home Tasks tile rather than a retired taskbar anchor. The resource panel keeps its
+observed RAM/VRAM facts without a sampled-time label; the underlying snapshot is unchanged.
 
 Account-help navigation uses that same settings return path.
 Settings → Accounts retains the N5 BOOTH sign-in/probe/logout surface; Steam, VRChat and Unity
@@ -184,9 +193,9 @@ Main-managed `WebContentsView` is the remote-content surface.
 
 ## Overlay always-on-top window
 
-The accepted [guidance architecture](guidance.md) separates an in-app tour, an ordinary
-preparation reader and a VRChat-window guide. React owns the in-app tour; Main owns the two
-window lifecycles and the game-window follow loop: a pure decision module driven by a 250 ms
+The accepted [guidance architecture](guidance.md) separates an in-app tour, the knowledge
+encyclopedia in Help and a VRChat-window guide. React owns the tour and encyclopedia;
+Main owns native windows and the game-window follow loop: a pure decision module driven by a 250 ms
 observation of the Provider's read-only `environment.observeGameWindow` query
 (`vua.game-window-observe/v0.1`), showing the guide without stealing focus and hiding it on
 game minimize/exit/app-switch, with a Main-enforced follow toggle. User drags persist normalized
@@ -194,8 +203,12 @@ relative placement; automatic moves do not overwrite it. Background opacity affe
 matrix/backdrop only, with a transparent outer canvas and opaque text. The renderer drives this
 through two `DesktopWindowApiV1` members (`setGameGuideFollowing`,
 `getGameGuideFollowStatus`). Guide progress is local presentation state;
-business tasks remain authoritative in Orchestrator. The reader, tour and game guide reuse
-A/B content, targets and reading recovery.
+business tasks remain authoritative in Orchestrator. The encyclopedia, tour and game guide
+reuse A/B content, targets and reading recovery. [Desktop-window v0.2](../protocols/desktop-window-v0.2.md)
+adds targeted encyclopedia navigation to Main through a local preload subscription. It queues
+the latest target until the main renderer is listening and resets readiness on a full document
+navigation, not an in-page route change. Legacy V1 reader calls retain the ordinary separate
+window for compatibility; current preparation entries use the new face.
 
 The following describes the retained task-status overlay, not the ordinary reader's window flags.
 The desktop Overlay is a separate `BrowserWindow` inside the same Electron process (frameless,
@@ -212,7 +225,7 @@ desktop statement, 2026-09-10).
 
 The Tasks entry requests the status view and has no guide/status switch. Production details
 remain collapsed until requested. Existing explicit `showGuide` and view/target events remain
-compatible; ordinary guidance uses Help, the preparation reader and the game guide. The task
+compatible; ordinary guidance uses Help, its encyclopedia and the game guide. The task
 window applies shared saved appearance before paint, listens for cross-window storage and system
 theme changes, and honors saved contrast/resource-saving preferences. Normal `pnpm dev:desktop`
 uses the real Gateway task projection; only an explicit DEV `overlayPreview=1` enables demo data
@@ -234,9 +247,9 @@ and its badge. `preview-overlay.mjs` opts into that isolated demonstration.
   Overlay boundary section in integrations-and-overlays.md), and Overlay failures never block the
   desktop mainline (standing delivery rule). `overlay.getSnapshot` is wired through Gateway and
   Provider to the production projection. Preserve task-status access while separating guides.
-  First-play guidance works independently of that projection. The preparation reader uses a
-  normal window; the game guide has adjustable transparency and automatic VRChat-window following. Headset
-  access uses SteamVR's desktop view of the reader, with its own real-device acceptance.
+  First-play guidance works independently of that projection. The encyclopedia uses the main
+  Help page; the game guide has adjustable transparency and automatic VRChat-window following.
+  Headset reading uses SteamVR's desktop view of Main, with its own real-device acceptance.
 
 ## Standalone Windows packaging
 
@@ -291,6 +304,7 @@ redistribution review authorizes each bundled binary before a public release.
 
 ## Document changelog
 
+- 1.15.0 (2026-10-10): add environment Tools/Help, embed the knowledge encyclopedia through desktop-window v0.2, halve Play card heights and remove the resource-panel sampling-time label.
 - 1.14.0 (2026-10-10): clarify AMF's bundled installation and separate activation for fresh/legacy profiles; retain saved choices and omit external editing placeholders from Ibis.
 
 - 1.13.0 (2026-10-09): scope optional AMF frontend/BOOTH services to module readiness and document the two-provider payload; retain host task-window independence and legacy data paths.
@@ -305,6 +319,4 @@ redistribution review authorizes each bundled binary before a public release.
   v0.1 observation, follow decision module, and the setGameGuideFollowing /
   getGameGuideFollowStatus desktop API faces).
 - 1.7.1 (2026-10-07): record separate guidance presentations and retain automatic following as unfinished work.
-- 1.7.0 (2026-10-05): route three guidance contexts to their owning design and distinguish the current combined overlay from its planned replacements.
-
 Earlier entries remain in Git history.

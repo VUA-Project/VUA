@@ -102,11 +102,11 @@ test("environment module carries the merged tools group with labels, page ids un
   );
   assert.deepEqual(
     env?.groups[0]?.pages.map((p) => p.id),
-    ["env-play", "env-create"],
+    ["env-play", "env-create", "tools-discover", "help"],
   );
   assert.deepEqual(
     env?.groups[1]?.pages.map((p) => p.id),
-    ["tools-discover", "tools-devices", "tools-calibration", "tools-installed"],
+    ["tools-devices", "tools-calibration", "tools-installed"],
   );
   assert.equal(strings.nav.groups.env, "环境");
   assert.equal(strings.nav.groups.tools, "工具");

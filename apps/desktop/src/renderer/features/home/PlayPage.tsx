@@ -10,6 +10,7 @@ import { EnvironmentCard } from "./EnvironmentCard.tsx";
 import { playCardDecision } from "./play-card-model.ts";
 import { usePlaySessions } from "./use-play-sessions.ts";
 import { RuntimeFactsPanel } from "./RuntimeFactsPanel.tsx";
+import { openEncyclopedia } from "../help/encyclopedia-navigation.ts";
 const copy = strings.environmentCards;
 export function PlayPage({ onAccounts }: { onAccounts: () => void }) {
   const [selected, setSelected] = useState<PlayRoute | null>(null);
@@ -38,6 +39,7 @@ export function PlayPage({ onAccounts }: { onAccounts: () => void }) {
       <EnvironmentCard title="HTC VIVE" brand="htcvive" id="route-vive" action="unknown" status="" developing />
       <EnvironmentCard title="Valve Index" brand="valve" id="route-index" action="unknown" status="" developing />
     </div>
+    <Button variant="subtle" className="vua-play-hardware" data-nav-id="play-hardware-help" onClick={() => openEncyclopedia(GUIDE_TARGETS.hardware)}>{strings.journey.identifyHardware}</Button>
     {PLAY_ROUTES.map(route => live.sessions[route]?.issue && selected !== route ? <p className="vua-environment-notice" role="status" key={route}>{title(route)}{": "}{copy.issues[live.sessions[route]!.issue!]} <Button variant="subtle" onClick={() => open(route)}>{strings.journey.guide}</Button></p> : null)}
     {PLAY_ROUTES.map(route => {
       const session = live.sessions[route]; const installed = session?.software.every(s => s.presence === "verified") && !live.unavailable[route];

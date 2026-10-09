@@ -45,7 +45,7 @@ export const TOUR_STEPS: readonly TourStepDef[] = [
   { id: "checks", page: "env-play", anchor: '[data-tour-anchor="play-environments"]' },
   { id: "plan", page: "env-play", anchor: '[data-nav-id="route-desktop-action"]' },
   { id: "tasks", page: "home", anchor: '[data-nav-id="home-tasks"]' },
-  { id: "guide", page: "env-play", anchor: '[data-tour-anchor="tour-guide-entry"]' },
+  { id: "guide", page: "help", anchor: '[data-nav-id="help-encyclopedia"]' },
 ];
 
 /** 词表外/越界步号钳回合法区间(存储损坏时诚实回落,不抛异常) */

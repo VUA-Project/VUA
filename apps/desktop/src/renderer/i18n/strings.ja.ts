@@ -1,4 +1,5 @@
 import { moduleCopy } from "./module-copy.ts";
+import { hardwareCopy } from "./hardware-copy.ts";
 import { environmentCopy } from "./environment-copy.ts";
 import { journeyCopy } from "./journey-copy.ts";
 import type { Strings } from "./strings.en.ts";
@@ -184,12 +185,13 @@ demoTaskTitle: "デモタスク",
     pages: {
       envPlay: "プレイ",
       envCreate: "アバター編集",
+      help: "ヘルプ",
       guideStart: "はじめに",
       guideBasics: "基本操作",
       guideSafety: "安全設定",
       guideDevices: "デバイスのコツ",
       guideTutorials: "デスクトップ/VR チュートリアル",
-      toolsDiscover: "ツールを探す",
+      toolsDiscover: "ツール",
       toolsDevices: "デバイスとトラッキング",
       toolsCalibration: "キャリブレーション",
       toolsInstalled: "インストール済みツール",
@@ -393,7 +395,7 @@ demoTaskTitle: "デモタスク",
       },
       guide: {
         title: "ガイドはいつでも開けます",
-        body: "ヘルプから準備の説明やゲームガイドを開けます。環境の詳細にも関連する章への入口があります。機能検索（Ctrl+P）からこのツアーを再生できます。",
+        body: "「環境 → ヘルプ」に入門ガイド、知識百科、ゲーム内アシスタントがあります。百科はこのウィンドウで読めます。環境の詳細から関連する章も開けます。機能検索（Ctrl+P）からこのツアーを再生できます。",
       },
     },
   },
@@ -931,6 +933,7 @@ rolled_back: "ロールバック済み",
         "アイトラッキングデータの流れ図: PICO ヘッドセットから PC のトラッキングソフトを経てアバターの目へ",
     },
     pages: {
+      hardware: hardwareCopy["ja"],
       room: {
         title: "部屋とプレイスペース",
         intro:

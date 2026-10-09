@@ -20,7 +20,7 @@ import {
   validateGuideContent,
 } from "./guide-content.ts";
 
-test("七主题结构校验通过(真实内容包)", () => {
+test("八主题结构校验通过(真实内容包)", () => {
   assert.doesNotThrow(() => validateGuideContent(contentPack));
 });
 
@@ -34,9 +34,10 @@ test("教程支撑主题 id 与内容包教程同名且在内容包内;阅读型
   // 阅读型主题:不伪造内容包行——内容包内不存在 guide-vua/guide-room 教程
   assert.ok(!ids.has("guide-vua"));
   assert.ok(!ids.has("guide-room"));
-  assert.equal(GUIDE_TOPIC_IDS.length, 7);
-  assert.equal(GUIDE_TOPIC_IDS[0], "guide-room");
-  assert.equal(GUIDE_TOPIC_IDS[6], "guide-vua");
+  assert.ok(!ids.has("guide-hardware"));
+  assert.equal(GUIDE_TOPIC_IDS.length, 8);
+  assert.equal(GUIDE_TOPIC_IDS[0], "guide-hardware");
+  assert.equal(GUIDE_TOPIC_IDS[7], "guide-vua");
 });
 
 test("每个主题 id 都映射到 strings.guide.pages 的合法键", () => {

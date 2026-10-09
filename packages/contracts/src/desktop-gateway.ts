@@ -1666,6 +1666,18 @@ export interface SystemResourceUsageV1 {
   readonly sampledAt: string;
 }
 
+/** Desktop-window v0.2 adds main Help navigation without changing V1 window semantics. */
+export interface DesktopWindowApiV2 extends DesktopWindowApiV1 {
+  showEncyclopedia(target?: GuideTargetV1 | null): Promise<{ readonly visible: boolean }>;
+  encyclopediaTargetEvents: {
+    subscribe(listener: (target: GuideTargetV1 | null) => void): () => void;
+  };
+}
+
+export interface VuaDesktopApiV2 extends Omit<VuaDesktopApiV1, "window"> {
+  readonly window: DesktopWindowApiV2;
+}
+
 export interface VuaDesktopApiV1 {
   readonly amfModule?: import("./amf-module.js").AmfModuleApiV01;
   readonly gateway: DesktopGatewayApiV1;

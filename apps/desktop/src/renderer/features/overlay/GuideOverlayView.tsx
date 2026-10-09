@@ -92,8 +92,10 @@ export function shouldClearGuideRequest(
 export function GuideOverlayView({
   guideRequest,
   onGuideRequestApplied,
+  embedded = false,
 }: {
   guideRequest?: GuideRequest | null;
+  embedded?: boolean;
   /** 定位请求已应用的回执(按 nonce 清除,防重挂载重放) */
   onGuideRequestApplied?: (nonce: number) => void;
 }) {
@@ -112,6 +114,8 @@ export function GuideOverlayView({
   const pendingScroll = useRef<string | null>(initialTarget.section ?? null);
   const appliedNonce = useRef(0);
   const topicCopy = copy.pages[GUIDE_TOPIC_COPY_KEY[topic]];
+  const TopicHeading = embedded ? "h2" : "h1";
+  const SectionHeading = embedded ? "h3" : "h2";
 
   const scroller = () => panelRef.current?.closest(".vua-overlay__body");
 
@@ -140,13 +144,15 @@ export function GuideOverlayView({
     // 页底钳制:期望偏移不得超过最大滚动;到达判定用「分节进入视口 +
     // 滚动真正落地或钳在页底 + 布局稳定」(guideSectionArrival)
     const maxScroll = Math.max(0, body.scrollHeight - body.clientHeight);
+    // Main's encyclopedia keeps its topic strip sticky; do not put a heading behind it.
+    const stickyHeight = embedded ? (stripRef.current?.offsetHeight ?? 0) : 0;
     const desired = Math.min(
       Math.max(
         0,
         anchor.getBoundingClientRect().top -
           body.getBoundingClientRect().top +
           body.scrollTop -
-          8,
+          (stickyHeight + 8),
       ),
       maxScroll,
     );
@@ -154,7 +160,7 @@ export function GuideOverlayView({
     lastProgrammaticScroll.current = body.scrollTop;
     const anchorTop = anchor.getBoundingClientRect().top;
     return guideSectionArrival(
-      guideAnchorVisible(anchorTop, body.getBoundingClientRect().top, body.clientHeight),
+      guideAnchorVisible(anchorTop, body.getBoundingClientRect().top + stickyHeight, body.clientHeight - stickyHeight),
       layoutSettled,
       Math.abs(body.scrollTop - desired) <= 2 && maxScroll > 0,
       maxScroll === 0 || body.scrollTop >= maxScroll - 2,
@@ -317,7 +323,7 @@ export function GuideOverlayView({
         tabIndex={0}
         ref={panelRef}
       >
-        <h1 className="vua-overlay-guide__title">{topicCopy.title}</h1>
+        <TopicHeading className="vua-overlay-guide__title">{topicCopy.title}</TopicHeading>
         <p className="vua-overlay-guide__intro">{topicCopy.intro}</p>
         {topicCopy.sections.map((section) => {
           const media =
@@ -335,7 +341,7 @@ export function GuideOverlayView({
               id={guideSectionId(section.id)}
               data-guide-section={section.id}
             >
-              <h2 className="vua-overlay-guide__section-title">{section.title}</h2>
+              <SectionHeading className="vua-overlay-guide__section-title">{section.title}</SectionHeading>
               {section.paragraphs.map((paragraph) => (
                 <p key={paragraph} className="vua-overlay-guide__paragraph">
                   {paragraph}

@@ -9,7 +9,7 @@ import type {
   NavigationConfirmRequestV1,
   OverlayViewV1,
   RemoteContentEventV1,
-  VuaDesktopApiV1,
+  VuaDesktopApiV2,
 } from "@vua/contracts";
 
 // 沙箱 preload 只允许 require electron 白名单模块:@vua/contracts 在此仅做
@@ -47,13 +47,14 @@ const readerTargetListeners = new WeakMap<
   (target: GuideTargetV1 | null) => void,
   (event: IpcRendererEvent, payload: GuideTargetV1 | null) => void
 >();
+let encyclopediaSubscriberCount = 0;
 
 const shellCommandListeners = new WeakMap<
   (command: DesktopShellCommandV1) => void,
   (event: IpcRendererEvent, payload: unknown) => void
 >();
 
-const api: VuaDesktopApiV1 = Object.freeze({
+const api: VuaDesktopApiV2 = Object.freeze({
   amfModule: Object.freeze({
     snapshot: () => ipcRenderer.invoke("vua:amf-module:snapshot"),
     setEnabled: (enabled: boolean) => ipcRenderer.invoke("vua:amf-module:set-enabled", enabled),
@@ -138,9 +139,24 @@ const api: VuaDesktopApiV1 = Object.freeze({
         };
       },
     }),
-    // 准备阅读器(三类引导裁决 additive):普通阅读窗口,打开允许夺焦点;
-    // 无定位参数 = 普通打开(渲染层恢复上次阅读位置);undefined 经 IPC
-    // 序列化为 null,Main 侧按 null=缺省收窄
+    // V2 knowledge navigation targets Main's Help page; null restores its bookmark.
+    showEncyclopedia: (target?: GuideTargetV1 | null) =>
+      ipcRenderer.invoke("vua:knowledge:show", target ?? null),
+    encyclopediaTargetEvents: Object.freeze({
+      subscribe: (listener: (target: GuideTargetV1 | null) => void) => {
+        const wrapped = (_event: IpcRendererEvent, target: GuideTargetV1 | null) => listener(target);
+        ipcRenderer.on("vua:knowledge:target", wrapped);
+        if (++encyclopediaSubscriberCount === 1) ipcRenderer.send("vua:knowledge:listening", true);
+        let subscribed = true;
+        return () => {
+          if (!subscribed) return;
+          subscribed = false;
+          ipcRenderer.removeListener("vua:knowledge:target", wrapped);
+          if (--encyclopediaSubscriberCount === 0) ipcRenderer.send("vua:knowledge:listening", false);
+        };
+      },
+    }),
+    // Retained V1 reader: an ordinary separate reading window with explicit focus.
     showReader: (target?: GuideTargetV1 | null) =>
       ipcRenderer.invoke("vua:reader:show", target ?? null),
     // 阅读器定位事件:additive;Main 只投递给阅读器窗口本身

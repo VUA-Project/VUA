@@ -1,10 +1,10 @@
-# VUA design standard v0.12.1
+# VUA design standard v0.13.0
 
 
-> Document version: 0.12.1
+> Document version: 0.13.0
 > Status: Accepted
 > Scope: Electron desktop, desktop overlay, and VR overlay presentation  
-> Updated: 2026-10-09
+> Updated: 2026-10-10
 > Last conformance review: 2026-10-09 (two-half environment cards, observed session actions, creator inventory and preserved shell preferences; author app/device review pending)
 > Normative effect: Governs interaction, visual, and accessibility implementation;
 > does not expand product scope or replace versioned application contracts
@@ -106,9 +106,22 @@ to Dark (superseding the earlier system default); keep existing saved choices. S
 selected while the effective theme follows Windows. Reduced motion and resource saving flatten
 the frame movement without changing selection, keyboard access or theme propagation.
 
-The environment directory contains **Play** and **Avatar editing** (游玩 / 改模). Remove
+The 2026-10-10 ruling adds **Tools** and **Help** under Environment and removes the topbar Help
+button. Help's destinations are Getting started (入门引导), the existing app tour, Knowledge
+encyclopedia (知识百科) and In-game assistant (游戏内助手). The encyclopedia is a page inside
+Help with an explicit return to Help, sharing Main's appearance and display mode. Hardware
+introductions are a peer chapter; Play's "What device do I have?" link opens it directly.
+Tools groups tracking, translation, VR utilities and capture entries. Unwired integrations stay
+disabled with the same development badge as other unavailable peers. These navigation changes
+do not activate AMF or expand release acceptance. The system-resource panel omits its sampling
+time label while keeping the observed resource values and unavailable states.
+
+The environment directory contains **Play** and **Avatar editing** (游玩 / 改模), plus Tools
+and Help. Remove
 Software & connections as a separate feature. Play owns network diagnostics and runtime facts.
 Its network tile sits above the environment grid and has the same height as an environment card.
+Play cards are half their former height: 88 px in desktop mode and 108 px in big screen.
+Arrange the icon/title and state/action compactly without clipping content or merging the halves.
 Each environment card has two equal halves separated by one thin line: the left always opens
 details, and the right combines current status with the current action. Show + for missing
 software, a spinner for preparation/start/close, a warning triangle for problems, Play after
@@ -656,12 +669,13 @@ changelog history already uses.
   (capability_missing) and engine absence (unavailable) are presented distinctly; repeated
   toggles claim no idempotence and refusals surface as refusals.
 - **Guidance and overlays:** use a transparent highlight layer over actual VUA controls for the
-  app tour, an ordinary opaque reading window for preparation, and a compact translucent guide
+  app tour, a main-window Help encyclopedia for preparation, and a compact translucent guide
   associated with VRChat for in-game steps. The app tour supports ordered page changes and
-  back/next/skip/restart. The reader supports long-form content, resizing and keyboard reading.
+  back/next/skip/restart. The encyclopedia supports long-form content and keyboard reading
+  inside its own scroll container, with topic navigation staying accessible during reading.
   The game guide has short instructions, readable controls and the following/transparency
   preferences defined in [guidance architecture](../architecture/guidance.md). Do not apply its
-  transparency default to the reader or app-tour mask. All three use the same i18n/content
+  transparency default to the encyclopedia or app-tour mask. All three use the same i18n/content
   sources while preserving their separate progress; actual window and headset UI need human review.
   Task/runtime overlays use stronger text contrast, fewer levels, larger targets, stable snapshots
   and semantic actions. No blur, complex background or long lists; desktop fallback remains available.
@@ -751,6 +765,7 @@ direction.
 
 ## 12. Document changelog
 
+- **0.13.0 (2026-10-10)**: move Tools/Help into Environment, embed knowledge and hardware reading, halve Play card heights and remove the resource sampling-time label while preserving themes, glass and resource saving.
 - **0.12.1 (2026-10-09)**: align normal-exit Close semantics, background-only guide transparency/drag memory and the regional-placeholder/expanded-website split with the author's corrections.
 
 
@@ -790,9 +805,5 @@ direction.
   backdrop-filter globally; the §10 item 10 acceptance bar moved to the two-level ladder. Consumed from the
   shipped implementation by the desktop-code reverse review of 2026-09-25; zero wire or
   contract-face change.
-
-- **0.7.20 (2026-09-23)**: governance-compliance maintenance — the §12 changelog is trimmed to
-  the most recent 10 entries per governance rule 2.2 (0.7.10 and earlier moved out; consult git
-  history for older records); zero normative-content change. Mirrors the ZH edition.
 
 Earlier entries remain in Git history.

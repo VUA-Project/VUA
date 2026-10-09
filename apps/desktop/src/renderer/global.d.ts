@@ -1,8 +1,8 @@
-import type { VuaDesktopApiV1 } from "@vua/contracts";
+import type { VuaDesktopApiV2 } from "@vua/contracts";
 
 declare global {
   interface Window {
-    readonly vua?: VuaDesktopApiV1;
+    readonly vua?: VuaDesktopApiV2;
   }
   /** 构建期注入(vite.config.mts define;scripts/build-info.mjs 为事实源) */
   const __VUA_BUILD_INFO__: {

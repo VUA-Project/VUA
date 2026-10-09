@@ -86,7 +86,6 @@ export function ResourceMonitor() {
   if (snapshot === null) return null;
 
   const view = usagePercents(snapshot);
-  const sampledAt = new Date(snapshot.sampledAt);
 
   return (
     <>
@@ -166,11 +165,6 @@ export function ResourceMonitor() {
                 ) : (
                   <span className="vua-usage-panel__unavailable">{copy.vramUnavailable}</span>
                 )}
-              </div>
-              <div className="vua-usage-panel__footer vua-caption vua-text-secondary">
-                {format(copy.sampledAt, {
-                  time: sampledAt.toLocaleTimeString(undefined, { hour12: false }),
-                })}
               </div>
             </div>,
             document.body,

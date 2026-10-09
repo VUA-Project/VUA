@@ -1,4 +1,5 @@
 import { moduleCopy } from "./module-copy.ts";
+import { hardwareCopy } from "./hardware-copy.ts";
 import { environmentCopy } from "./environment-copy.ts";
 import { journeyCopy } from "./journey-copy.ts";
 /**
@@ -192,12 +193,13 @@ demoTaskTitle: "Demo task",
     pages: {
       envPlay: "Play",
       envCreate: "Avatar editing",
+      help: "Help",
       guideStart: "Getting Started",
       guideBasics: "Basic Controls",
       guideSafety: "Safety Settings",
       guideDevices: "Device Tips",
       guideTutorials: "Desktop/VR Tutorials",
-      toolsDiscover: "Discover Tools",
+      toolsDiscover: "Tools",
       toolsDevices: "Devices & Tracking",
       toolsCalibration: "Calibration",
       toolsInstalled: "Installed Tools",
@@ -405,7 +407,7 @@ demoTaskTitle: "Demo task",
       },
       guide: {
         title: "Guidance is always reachable",
-        body: "Help opens preparation and game guidance. Environment details link directly to relevant chapters. Replay this tour from feature search (Ctrl+P).",
+        body: "Environment → Help contains Getting started, the knowledge encyclopedia and the in-game assistant. Read the encyclopedia here or open a chapter from environment details. Replay this tour from feature search (Ctrl+P).",
       },
     },
   },
@@ -963,6 +965,7 @@ demoTaskTitle: "Demo task",
         "Diagram of eye-tracking data flowing from a PICO headset through tracking software on the PC to an avatar's eyes",
     },
     pages: {
+      hardware: hardwareCopy["en"],
       room: {
         title: "Room & Play Area",
         intro:

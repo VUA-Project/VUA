@@ -33,6 +33,7 @@
     "smoke:production-review": "electron scripts/smoke-production-review.mjs",
     "smoke:first-run-ui": "electron scripts/smoke-first-run-ui.mjs",
     "smoke:amf-module": "electron scripts/smoke-amf-module.mjs",
+    "smoke:help-navigation": "electron scripts/smoke-help-navigation.mjs",
     "smoke:system-tray": "electron scripts/smoke-system-tray.mjs",
     "smoke:library-maintenance": "electron scripts/smoke-library-maintenance.mjs",
     "smoke:dependency-clues": "electron scripts/smoke-dependency-clues.mjs",

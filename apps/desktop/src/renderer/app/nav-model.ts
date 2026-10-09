@@ -16,6 +16,7 @@ export type PageId =
   | "environment-hub"
   | "avatar-hub"
   | "help"
+  | "help-encyclopedia"
   | "env-play"
   | "env-create"
   | "warehouse"
@@ -86,12 +87,13 @@ export const businessModules: readonly ModuleDef[] = [
         pages: [
           { id: "env-play", labelKey: "envPlay" },
           { id: "env-create", labelKey: "envCreate" },
+          { id: "tools-discover", labelKey: "toolsDiscover" },
+          { id: "help", labelKey: "help" },
         ],
       },
       {
         labelKey: "tools",
         pages: [
-          { id: "tools-discover", labelKey: "toolsDiscover" },
           { id: "tools-devices", labelKey: "toolsDevices" },
           { id: "tools-calibration", labelKey: "toolsCalibration" },
           { id: "tools-installed", labelKey: "toolsInstalled" },
@@ -154,7 +156,7 @@ const pageModule = new Map<PageId, AppSectionId>(
   modules.flatMap((m) => m.groups.flatMap((g) => g.pages.map((p) => [p.id, m.id] as const))),
 );
 
-for (const [page, section] of [["home", "settings"], ["help", "settings"], ["environment-hub", "env"], ["avatar-hub", "production"]] as const) pageModule.set(page, section);
+for (const [page, section] of [["home", "settings"], ["help-encyclopedia", "env"], ["environment-hub", "env"], ["avatar-hub", "production"]] as const) pageModule.set(page, section);
 
 const pageIds = new Set<string>(pageModule.keys());
 

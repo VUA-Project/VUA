@@ -129,6 +129,8 @@ const packagedSmoke = preparePackagedSmoke();
 let mainWindow: BrowserWindow | null = null;
 let systemTray: ReturnType<typeof createVuaTray> | null = null;
 let shellListening = false;
+let encyclopediaListening = false;
+let pendingEncyclopediaTarget: GuideTargetV1 | null | undefined;
 let shellLocale: string | null = null;
 let pendingShellCommand: DesktopShellCommandV1 | null = null;
 let overlayWindow: BrowserWindow | null = null;
@@ -536,6 +538,30 @@ function registerIpc(provider: ModuleProvider): void {
   ipcMain.handle("vua:reader:show", (event, target: unknown) => {
     assertLocalSender(senderFrameUrl(event));
     return showReaderWindow(parseGuideTargetPayload(target));
+  });
+
+  // V2 adds main-page knowledge navigation; legacy V1 reader behavior stays intact.
+  ipcMain.handle("vua:knowledge:show", (event, target: unknown) => {
+    assertLocalSender(senderFrameUrl(event));
+    const parsed = parseGuideTargetPayload(target);
+    if (mainWindow === null || mainWindow.isDestroyed()) return { visible: false };
+    pendingEncyclopediaTarget = parsed;
+    focusMainWindow();
+    if (encyclopediaListening) {
+      mainWindow.webContents.send("vua:knowledge:target", parsed);
+      pendingEncyclopediaTarget = undefined;
+    }
+    return { visible: true };
+  });
+  ipcMain.on("vua:knowledge:listening", (event, listening: unknown) => {
+    if (typeof listening !== "boolean" || mainWindow === null || mainWindow.isDestroyed()
+      || event.sender !== mainWindow.webContents || event.senderFrame !== event.sender.mainFrame
+      || !isAllowedLocalSender(event.senderFrame?.url ?? "", rendererUrl)) return;
+    encyclopediaListening = listening;
+    if (listening && pendingEncyclopediaTarget !== undefined) {
+      mainWindow.webContents.send("vua:knowledge:target", pendingEncyclopediaTarget);
+      pendingEncyclopediaTarget = undefined;
+    }
   });
 
   // 打开/聚焦游戏引导小窗(三类引导 §4 additive):只受理本地来源;
@@ -1308,6 +1334,8 @@ async function createWindow(): Promise<void> {
 
   tagDevelopmentWindow(mainWindow, desktopProfile);
   mainWindow.webContents.on("did-start-loading", () => { shellListening = false; });
+  // Hash navigation can emit did-start-loading without remounting the shell listener.
+  mainWindow.webContents.on("did-navigate", () => { encyclopediaListening = false; });
 
   // U9 四分法(本地壳窗口):http/https 弹窗不再交系统浏览器——清单内直行/
   // 清单外确认后转当前内嵌视图(RemoteContentManager);外部协议手势+确认后
@@ -1339,6 +1367,8 @@ async function createWindow(): Promise<void> {
   mainWindow.on("closed", () => {
     mainWindow = null;
     shellListening = false;
+    encyclopediaListening = false;
+    pendingEncyclopediaTarget = undefined;
     pendingShellCommand = null;
     // 主窗口关闭＝应用退出语义:悬浮窗、阅读器与游戏引导窗都不拖住
     // window-all-closed(窗口随主窗口生命周期销毁,closed 处理器自行清引用)

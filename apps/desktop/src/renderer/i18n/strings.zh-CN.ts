@@ -1,4 +1,5 @@
 import { moduleCopy } from "./module-copy.ts";
+import { hardwareCopy } from "./hardware-copy.ts";
 import { environmentCopy } from "./environment-copy.ts";
 import { journeyCopy } from "./journey-copy.ts";
 import type { Strings } from "./strings.en.ts";
@@ -195,12 +196,13 @@ demoTaskTitle: "演示任务",
     pages: {
       envPlay: "游玩",
       envCreate: "改模",
+      help: "帮助",
       guideStart: "开始游玩",
       guideBasics: "基础操作",
       guideSafety: "安全设置",
       guideDevices: "设备提示",
       guideTutorials: "桌面/VR 教程",
-      toolsDiscover: "工具发现",
+      toolsDiscover: "工具",
       toolsDevices: "设备与追踪",
       toolsCalibration: "校准",
       toolsInstalled: "已安装工具",
@@ -400,7 +402,7 @@ demoTaskTitle: "演示任务",
       },
       guide: {
         title: "引导随时可达",
-        body: "「帮助」可打开准备说明和游戏指南；环境详情里也有直达相关章节的入口。随时可从功能搜索（Ctrl+P）重播本导览。",
+        body: "「环境 → 帮助」里有入门引导、知识百科和游戏内助手。百科在当前窗口阅读；环境详情也能直达相关章节。功能搜索（Ctrl+P）可重播本导览。",
       },
     },
   },
@@ -964,6 +966,7 @@ rolled_back: "已回滚",
       vrcftFlow: "眼追数据流示意图:从 PICO 头显经 PC 上的追踪软件流向模型眼睛",
     },
     pages: {
+      hardware: hardwareCopy["zh-CN"],
       room: {
         title: "房间与游玩空间",
         intro: "先整理物理空间再装软件——一个安全舒适的空间,让之后的每一步都更省心。",

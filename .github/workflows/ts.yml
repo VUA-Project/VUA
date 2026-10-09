@@ -54,3 +54,5 @@ jobs:
         run: node apps/desktop/scripts/build-electron.mjs
       - name: AMF activation and isolation (isolated profile, native providers)
         run: pnpm --filter @vua/desktop smoke:amf-module
+      - name: Help, knowledge and compact Play navigation (isolated profile)
+        run: pnpm --filter @vua/desktop smoke:help-navigation

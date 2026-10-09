@@ -1,13 +1,13 @@
 # First play release: implementation checkpoint and remaining work
 
-> Document version: 1.11.0
+> Document version: 1.12.0
 > Status: Accepted
 > Updated: 2026-10-10
 > Scope: Desktop play, PICO 4 Pro USB/Wi-Fi, optional eye tracking and three guidance contexts
 
 For people: this release takes a player from missing play software to playing VRChat, with
-instructions in the place where each activity happens. VUA's own tour, a preparation reader
-and the manual VRChat game guide now have separate presentations.
+instructions in the place where each activity happens. VUA's own tour, the knowledge encyclopedia
+inside Help and the manual VRChat game guide have distinct presentations and progress.
 
 For Agents: build on the `72a22e15` baseline collected in PR #61 and the subsequent slices
 recorded below. This plan records delivery
@@ -189,24 +189,45 @@ human review still need the same candidate at the author's chosen test location.
 was added. Temporary embedded registration sessions remain parked; the official browser handoff
 is available without importing credentials or sessions. N5 merge is not an N5 stage-acceptance claim.
 
+## Help and compact Play checkpoint (2026-10-10)
+
+Environment now contains Play, Avatar editing, Tools and Help. The topbar Help button is removed.
+Help exposes Getting started, the existing app tour, Knowledge encyclopedia and In-game assistant.
+The encyclopedia reuses the preparation content, reading bookmark, targeted sections and media
+inside Main. Hardware introductions explain model identification and play/connection choices;
+Play links directly to this chapter. All Play cards, including network, are half-height at
+88 px desktop / 108 px big screen, retaining the two halves. Resource details omit sampling time.
+
+Tools reserves grouped entries for the seven N2 Steam integrations and the separately requested
+VRCS translation tool. These are honest disabled development entries: this navigation slice
+adds no installer, tool adapter or plugin-host authority and does not make all of N2 an Ibis gate.
+The existing VRCFT detection/install/launch gap remains. AMF activation stays independent.
+
+Controlled Main/preload/renderer checks cover navigation, same-window hardware reading,
+contextual section requests, reading return, settings/light appearance, compact layout and big
+screen. Source checks and unit tests remain separate from physical controller input, vendor
+installation, actual desktop/PICO play and four-language human review. No new ZIP is produced
+during the author's development-UI review.
+
 ## 2. Next focus: deliver the three guidance contexts
 
-### A. Ordinary preparation reader
+### A. Knowledge encyclopedia (formerly the preparation reader)
 
-Implemented in `aa5ada4c`; the following describes its delivered behavior and focused acceptance.
+The ordinary reader landed in `aa5ada4c`. The 2026-10-10 ruling supersedes its separate-window
+presentation with a page inside Help; legacy V1 calls retain their original window compatibility.
 
-Create a normal, opaque, resizable guide window. Reuse A/B text, media, section links, reading
-recovery and keyboard controls. Route preparation help there, preserve the current reading
+Reuse A/B text, media, section links, reading recovery and keyboard controls in Main's Help page.
+Route preparation help there through desktop-window v0.2, preserve the current reading
 bookmark, and keep task-status access working separately. Add practical room/play-area
 preparation instructions and retain hardware-specific detail for the real-machine pass.
 
 The pre-first-frame manual-scroll follow-up from B is fixed in the reader commit, with a narrow
 regression case alongside the existing positioning tests.
 
-Check the new window in development and packaged form: explicit section opens once, ordinary
+Check the encyclopedia in development and packaged form: explicit section opens once, ordinary
 reopen restores reading, a page-bottom target settles, user scroll stays in control, illustrations
-load, keyboard reading works, and closing does not stop installation or the game. Review four
-locales at the supported window sizes. Headset readability is checked in the PICO run below.
+load, keyboard reading works, and leaving Help does not stop installation or the game. Review
+four locales at the supported window sizes. Headset readability is checked in the PICO run below.
 
 ### B. VUA app tour
 
@@ -331,6 +352,7 @@ installation, PICO connection, real-material production and four-language human 
 
 ## Document changelog
 
+- 1.12.0 (2026-10-10): record environment Tools/Help, embedded hardware/knowledge reading and compact Play checks without claiming new tool integrations, hardware acceptance or another ZIP.
 - 1.11.0 (2026-10-10): keep AMF installed with VUA but require explicit first activation, retain saved choices/data and defer external Avatar-editing module integration from Ibis.
 
 - 1.10.0 (2026-10-09): record optional AMF startup and core task/guidance independence without replacing pending physical release acceptance.
@@ -343,8 +365,4 @@ installation, PICO connection, real-material production and four-language human 
 - 1.5.0 (2026-10-08): record the integrated wizard/Home implementation and controlled UI checks, with official account handoff and real-device/installer/human review still separate.
 - 1.4.0 (2026-10-08): integrate the independently delivered acquisition and game-guide-follow slices without changing their pending real-machine acceptance.
 - 1.3.0 (2026-10-08): prioritize download-to-play blockers under the author's Ibis criterion, record return/next-action repairs and keep optional automation and the deferred Sandbox method outside independent release gates.
-- 1.2.0 (2026-10-08): record the Steam/PICO acquisition implementation and region choice;
-  record local reuse/replay verification and prepared isolated inputs; retain missing-software
-  installation and play acceptance as pending.
-
 Earlier entries remain in Git history.

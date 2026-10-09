@@ -94,6 +94,7 @@ export function stripGuideTargetFromLocation(): boolean {
 /** 覆盖首玩验收的业务步骤:Steam 注册、VRChat 安装与首次登录、PICO 串流
  *  准备,以及 USB / Wi-Fi / 眼追——尚未存在的业务入口同样只准备定位能力 */
 export const GUIDE_TARGETS = {
+  hardware: { topic: "guide-hardware", section: "identify-device" },
   steamAccount: { topic: "guide-start", section: "steam-account" },
   vrchatInstall: { topic: "guide-start", section: "install-vrchat" },
   vrchatFirstLaunch: { topic: "guide-start", section: "first-launch" },

@@ -1,4 +1,5 @@
 import { moduleCopy } from "./module-copy.ts";
+import { hardwareCopy } from "./hardware-copy.ts";
 import { environmentCopy } from "./environment-copy.ts";
 import { journeyCopy } from "./journey-copy.ts";
 import type { Strings } from "./strings.en.ts";
@@ -184,12 +185,13 @@ demoTaskTitle: "데모 작업",
     pages: {
       envPlay: "플레이",
       envCreate: "아바타 편집",
+      help: "도움말",
       guideStart: "시작하기",
       guideBasics: "기본 조작",
       guideSafety: "안전 설정",
       guideDevices: "디바이스 팁",
       guideTutorials: "데스크톱/VR 튜토리얼",
-      toolsDiscover: "도구 찾기",
+      toolsDiscover: "도구",
       toolsDevices: "디바이스와 트래킹",
       toolsCalibration: "캘리브레이션",
       toolsInstalled: "설치된 도구",
@@ -393,7 +395,7 @@ demoTaskTitle: "데모 작업",
       },
       guide: {
         title: "가이드는 언제나 열립니다",
-        body: "도움말에서 준비 안내와 게임 가이드를 엽니다. 환경 상세에서도 관련 장으로 바로 이동할 수 있습니다. 기능 검색（Ctrl+P）에서 이 안내를 다시 볼 수 있습니다.",
+        body: "‘환경 → 도움말’에는 입문 안내, 지식 백과, 게임 내 도우미가 있습니다. 백과는 현재 창에서 읽으며 환경 상세에서도 관련 장을 열 수 있습니다. 기능 검색（Ctrl+P）에서 이 안내를 다시 볼 수 있습니다.",
       },
     },
   },
@@ -930,6 +932,7 @@ rolled_back: "롤백됨",
         "아이트래킹 데이터 흐름 도식: PICO 헤드셋에서 PC의 트래킹 소프트웨어를 거쳐 아바타의 눈으로",
     },
     pages: {
+      hardware: hardwareCopy["ko"],
       room: {
         title: "방과 플레이 공간",
         intro:
