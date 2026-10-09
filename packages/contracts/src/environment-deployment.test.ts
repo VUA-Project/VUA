@@ -8,6 +8,37 @@ const vectors = JSON.parse(readFileSync(new URL("../../../schemas/environment-de
 const intent = { purposes: ["pc_avatar"], editorRoot: "C:\\VUA Test\\Editors" };
 const digest = "a".repeat(64);
 describe("deployment v0.1 closed boundary", () => {
+  it("accepts vendor acquisition without a Unity identity and rejects mismatched targets", () => {
+    const playIntent = { purposes: ["pico_pcvr"], editorRoot: intent.editorRoot, picoRegion: "china_mainland" };
+    const steam = { component: "steam", action: "install_steam", reason: "missing", location: null, version: null, officialUrl: "https://store.steampowered.com/about/" };
+    const pico = { ...steam, component: "pico_runtime", action: "install_pico_runtime", officialUrl: "https://www.picoxr.com/cn/software/pico-link" };
+    const plan = { schemaVersion: DEPLOYMENT_SCHEMA, intent: playIntent, steps: [steam, pico], digest, prerequisitesReady: false, installer: null };
+    expect(isDeploymentPlanResult({ deploymentPlan: plan })).toBe(true);
+    expect(isDeploymentPlanResult({ deploymentPlan: { ...plan, intent: { ...playIntent, picoRegion: "other" } } })).toBe(false);
+    expect(isDeploymentPlanResult({ deploymentPlan: { ...plan, intent: { purposes: playIntent.purposes, editorRoot: intent.editorRoot } } })).toBe(false);
+    expect(isDeploymentPlanResult({ deploymentPlan: { ...plan, intent: { ...playIntent, picoRegion: "other" }, steps: [steam, { ...pico, officialUrl: "https://www.picoxr.com/global/software/pico-link" }] } })).toBe(true);
+    for (const changed of [
+      { ...steam, action: "install_pico_runtime" },
+      { ...steam, component: "vrchat" },
+      { ...steam, reason: "unsuitable" },
+      { ...steam, reason: "verified" },
+      { ...steam, officialUrl: "https://example.com/SteamSetup.exe" },
+    ]) expect(isDeploymentPlanResult({ deploymentPlan: { ...plan, steps: [changed, pico] } })).toBe(false);
+  });
+  it("decodes vendor bytes and failures without inventing a Unity edition or mirror", () => {
+    for (const [component, action] of [["steam", "install_steam"], ["pico_runtime", "install_pico_runtime"]]) {
+      const progress = { operation: "environment.executeDeployment", component, action, source: "official", phase: "downloading", completedBytes: 1024, totalBytes: 2048 };
+      expect(readDeploymentProgress(progress)).toMatchObject({ component, action, completedBytes: 1024 });
+      for (const phase of ["source_failed", "installation_failed"]) {
+        const failure = { ...progress, phase, cause: "vua.deployment.installer_download_failed" };
+        expect(readDeploymentProgress(failure)).toMatchObject({ component, phase });
+        expect(readDeploymentProgress({ ...failure, cause: undefined })).toBeNull();
+      }
+      for (const changed of [{ component: "unity_editor" }, { source: "nounitycn" }, { editorVersion: "2022.3.22f1" }]) {
+        expect(readDeploymentProgress({ ...progress, ...changed })).toBeNull();
+      }
+    }
+  });
   it("keeps real bytes separate from steps and rejects malformed progress", () => {
     const facts = { operation: "environment.executeDeployment", component: "unity_editor", action: "install_editor", phase: "downloading", source: "nounitycn", completedBytes: 1024, totalBytes: 2048 };
     expect(readDeploymentProgress(facts)).toMatchObject({ phase: "downloading", source: "nounitycn", completedBytes: 1024, totalBytes: 2048 });

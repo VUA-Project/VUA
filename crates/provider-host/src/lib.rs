@@ -24,4 +24,5 @@ pub use provider_job::ProviderJobGuard;
 
 mod deployment_routes;
 mod game_window_routes;
+mod play_session_routes;
 mod network_routes;

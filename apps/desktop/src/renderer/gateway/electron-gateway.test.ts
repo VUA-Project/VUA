@@ -71,6 +71,28 @@ describe("N1 deployment consumer", () => {
   const intent = { purposes: ["pc_avatar"] as const, editorRoot: "C:\\VUA Test\\Editors" };
   const plan = { schemaVersion: "vua.environment-deployment/v0.1" as const, intent, digest: "a".repeat(64), prerequisitesReady: false, installer: null,
     steps: ["unity_hub", "unity_editor"].map(component => ({ component, action: "manual_install" as const, reason: "missing" as const, location: null, version: null, officialUrl: "https://unity.com/download" })) };
+  it("renders real vendor plans and forwards vendor installation/failure activity", async () => {
+    const playIntent = { purposes: ["pico_pcvr"] as const, editorRoot: intent.editorRoot, picoRegion: "china_mainland" as const };
+    const vendorPlan = { ...plan, intent: playIntent, steps: [
+      { component: "steam", action: "install_steam" as const, reason: "missing" as const, location: null, version: null, officialUrl: "https://store.steampowered.com/about/" },
+      { component: "pico_runtime", action: "install_pico_runtime" as const, reason: "missing" as const, location: null, version: null, officialUrl: "https://www.picoxr.com/cn/software/pico-link" },
+    ] };
+    const { host, emit } = stubHost(() => ok({ deploymentPlan: vendorPlan }));
+    const port = createElectronGateway(host, null).environment.deployment!;
+    expect(await port.plan(playIntent)).toEqual(vendorPlan);
+    const callback = vi.fn();
+    const unsubscribe = port.subscribe("vendor-1", callback);
+    const event: ApplicationEventV01 = { contractVersion: "0.1", kind: "task.progressed", eventId: "vendor-event", taskId: "vendor-1", revision: 2,
+      correlationId: "vendor-corr", occurredAt: "2026-10-08T00:00:00Z", state: "running", payload: { completed: 0, total: 4,
+        messageKey: "deployment.actions.install_steam", params: { operation: "environment.executeDeployment", component: "steam", action: "install_steam", phase: "downloading", source: "official", completedBytes: 1024, totalBytes: 2048 } } };
+    emit(event);
+    expect(callback).toHaveBeenLastCalledWith({ component: "steam", action: "install_steam", phase: "downloading", source: "official", completedBytes: 1024, totalBytes: 2048 });
+    emit({ ...event, payload: { ...event.payload, params: { ...event.payload.params, phase: "installation_failed", cause: "vua.deployment.installer_timed_out" } } });
+    expect(callback).toHaveBeenLastCalledWith(expect.objectContaining({ phase: "installation_failed", cause: "vua.deployment.installer_timed_out" }));
+    emit({ ...event, payload: { ...event.payload, params: { ...event.payload.params, component: "vrchat" } } });
+    unsubscribe(); emit(event);
+    expect(callback).toHaveBeenCalledTimes(2);
+  });
   it("requires both served deployment capabilities rather than inferring them from inspection", async () => {
     for (const available of [true, false]) {
       const { host } = stubHost(() => ok({ capabilities: { operations: available

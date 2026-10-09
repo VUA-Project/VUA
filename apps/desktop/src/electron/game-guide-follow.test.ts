@@ -11,6 +11,7 @@ import {
   computeGuidePlacement,
   decideFollowTick,
   initialGameGuideFollowState,
+  recordGuideDrag,
   recordUnknownTick,
   type DipRect,
   type GameGuideFollowState,
@@ -259,5 +260,37 @@ describe("recordUnknownTick(观察通道缺席的诚实记录)", () => {
     expect(next.lastGameForeground).toBe(false);
     expect(next.boundSession).toBe("vrchat-1");
     expect(next.manualHiddenSession).toBe("vrchat-0");
+  });
+});
+
+describe("player placement survives automatic following", () => {
+  it("keeps a drag through Alt-Tab, minimize and explicit reopen", () => {
+    const shown = decideFollowTick(followState(), observation("ready"), { visible: false, focused: false }, GUIDE_SIZE, identityDip);
+    const placement = { x: 280, y: 160, ...GUIDE_SIZE };
+    const dragged = recordGuideDrag(shown.next, placement);
+    expect(decideFollowTick(dragged, observation("ready"), { visible: true, focused: true }, GUIDE_SIZE, identityDip).action).toBeNull();
+    for (const inactive of [{ foreground: false }, { minimized: true, foreground: false }]) {
+      const hidden = decideFollowTick(dragged, observation("ready", inactive), { visible: true, focused: false }, GUIDE_SIZE, identityDip);
+      const restored = decideFollowTick(hidden.next, observation("ready"), { visible: false, focused: false }, GUIDE_SIZE, identityDip);
+      expect(restored.action).toEqual({ kind: "show", placement });
+    }
+    const reopened = decideFollowTick(applyManualShow(applyManualHide(dragged)), observation("ready"), { visible: false, focused: false }, GUIDE_SIZE, identityDip);
+    expect(reopened.action).toEqual({ kind: "show", placement });
+  });
+  it("retains relative placement across game movement, resizing and a new session", () => {
+    const shown = decideFollowTick(followState(), observation("ready"), { visible: false, focused: false }, GUIDE_SIZE, identityDip);
+    const dragged = recordGuideDrag(shown.next, { x: 100 + 1560 / 4, y: 50 + 520 / 4, ...GUIDE_SIZE });
+    const ended = decideFollowTick(dragged, observation("absent"), { visible: true, focused: false }, GUIDE_SIZE, identityDip);
+    const resumed = decideFollowTick(ended.next, observation("ready", { sessionId: "new-session", rectPhysical: { x: -1200, y: 200, width: 1280, height: 720 } }), { visible: false, focused: false }, GUIDE_SIZE, identityDip);
+    expect(resumed.action).toEqual({ kind: "show", placement: { x: -970, y: 240, ...GUIDE_SIZE } });
+    const resizedGuide = computeGuidePlacement({ x: 0, y: 0, width: 1280, height: 720 }, { width: 480, height: 640 }, dragged.relativePlacement);
+    expect(resizedGuide).toEqual({ x: 200, y: 20, width: 480, height: 640 });
+  });
+  it("does not record unbound or disabled manual windows; clamps an outside drag", () => {
+    const bounds = { x: -10000, y: 10000, ...GUIDE_SIZE };
+    expect(recordGuideDrag(followState(), bounds).relativePlacement).toBeNull();
+    const shown = decideFollowTick(followState(), observation("ready"), { visible: false, focused: false }, GUIDE_SIZE, identityDip);
+    expect(recordGuideDrag({ ...shown.next, followEnabled: false }, bounds).relativePlacement).toBeNull();
+    expect(recordGuideDrag(shown.next, bounds).relativePlacement).toEqual({ x: 0, y: 1 });
   });
 });

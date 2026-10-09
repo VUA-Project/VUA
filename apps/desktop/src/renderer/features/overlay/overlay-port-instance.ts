@@ -4,7 +4,7 @@
  * 017 表面批 1 消费接线后生产装配 = live 端口(经 Desktop Gateway,见
  * overlay-port-live.ts)。无 preload 宿主(浏览器预览)时 GatewayClient
  * 全部 invoke 返回 unavailable → 快照诚实缺席空态,不再需要 inactive
- * 占位实现。DEV 构建额外装配演示端口(本目录 demo/overlay-demo-port.ts),
+ * 占位实现。仅显式 overlayPreview=1 的 DEV 预览装配演示端口,
  * 加载守卫与 main.tsx 的 PreviewLabPage 同模式:import.meta.env.DEV 折叠 +
  * 动态 import——生产构建中该分支是死代码,demo chunk 不产出,check-leak
  * 以 fixture 文案指纹把守(mock 不出 DEV)。
@@ -57,7 +57,10 @@ export const overlayPort: OverlaySurfacePort = {
   dispatch: (action, payload) => inner.dispatch(action, payload),
 };
 
-if (import.meta.env.DEV) {
+export const overlayPreviewEnabled = import.meta.env.DEV
+  && new URLSearchParams(window.location.search).get("overlayPreview") === "1";
+
+if (overlayPreviewEnabled) {
   void import("./demo/overlay-demo-port.ts").then((module) => {
     activateInner(module.createDemoOverlayPort());
   });

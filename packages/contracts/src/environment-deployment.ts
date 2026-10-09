@@ -4,10 +4,12 @@ export const DEPLOYMENT_SCHEMA = "vua.environment-deployment/v0.1" as const;
 export const UNITY_HUB_INSTALL_LINK = "unityhub://2022.3.22f1/887be4894c44" as const;
 export const DEPLOYMENT_PURPOSES = ["desktop_play", "pico_pcvr", "pc_avatar", "quest_avatar"] as const;
 export type DeploymentPurpose = typeof DEPLOYMENT_PURPOSES[number];
+export type PicoInstallRegion = "china_mainland" | "other";
 export interface DeploymentIntent {
   readonly purposes: readonly DeploymentPurpose[];
   readonly editorRoot: string;
   readonly useMirrors?: boolean;
+  readonly picoRegion?: PicoInstallRegion;
 }
 export interface EditorDownloadPolicy {
   readonly region: "china_mainland" | "other" | "unknown";
@@ -18,9 +20,11 @@ export interface EditorDownloadPolicy {
   readonly hubFallbackUrl: typeof UNITY_HUB_INSTALL_LINK;
 }
 export type DeploymentPresence = "verified" | "missing" | "unsuitable" | "detection_failed";
+export const DEPLOYMENT_ACTIONS = ["retain", "manual_install", "inspect", "install_editor", "add_android_modules", "install_unity_cli", "install_steam", "install_pico_runtime"] as const;
+export type DeploymentAction = typeof DEPLOYMENT_ACTIONS[number];
 export interface DeploymentStep {
   readonly component: string;
-  readonly action: "retain" | "manual_install" | "inspect" | "install_editor" | "add_android_modules" | "install_unity_cli";
+  readonly action: DeploymentAction;
   readonly reason: DeploymentPresence;
   readonly location: string | null;
   readonly version: string | null;
@@ -75,7 +79,7 @@ export interface DeploymentProgress {
 export function readDeploymentProgress(v: unknown): DeploymentProgress | null {
   if (!record(v) || v.operation !== "environment.executeDeployment"
     || typeof v.component !== "string" || !["steam", "vrchat", "steamvr", "pico_runtime", "unity_hub", "unity_cli", "unity_editor", "android_modules"].includes(v.component)
-    || typeof v.action !== "string" || !["retain", "manual_install", "inspect", "install_editor", "add_android_modules", "install_unity_cli"].includes(v.action)
+    || !DEPLOYMENT_ACTIONS.some(action => action === v.action)
     || !DEPLOYMENT_PHASES.some(p => p === v.phase)
     || (v.source !== undefined && v.source !== "official" && v.source !== "nounitycn")
     || (v.editorVersion !== undefined && v.editorVersion !== "2022.3.22f1" && v.editorVersion !== "2022.3.22f1c1")
@@ -84,8 +88,12 @@ export function readDeploymentProgress(v: unknown): DeploymentProgress | null {
     if (v[key] !== undefined && (typeof v[key] !== "number" || !Number.isSafeInteger(v[key]) || v[key] < 0)) return null;
   }
   if (typeof v.totalBytes === "number" && (v.totalBytes === 0 || typeof v.completedBytes !== "number" || v.completedBytes > v.totalBytes)) return null;
+  const vendorComponent = vendorInstallComponent(v.action);
+  if (vendorComponent !== null && (v.component !== vendorComponent || v.editorVersion !== undefined
+    || (v.source !== undefined && v.source !== "official"))) return null;
   if (v.phase === "source_failed" && (v.source === undefined || v.cause === undefined)) return null;
-  if (v.phase === "installation_failed" && (v.editorVersion === undefined || v.cause === undefined)) return null;
+  if (v.phase === "installation_failed" && (v.cause === undefined
+    || (vendorComponent === null && v.editorVersion === undefined))) return null;
   return { component: v.component, action: v.action as DeploymentStep["action"], phase: v.phase as DeploymentProgress["phase"],
     ...(v.source === undefined ? {} : { source: v.source }),
     ...(v.editorVersion === undefined ? {} : { editorVersion: v.editorVersion }),
@@ -100,10 +108,14 @@ function record(v: unknown): v is Record<string, unknown> {
 function keys(v: Record<string, unknown>, expected: readonly string[]): boolean {
   return Object.keys(v).length === expected.length && expected.every(k => Object.hasOwn(v, k));
 }
+function vendorInstallComponent(action: unknown): "steam" | "pico_runtime" | null {
+  return action === "install_steam" ? "steam" : action === "install_pico_runtime" ? "pico_runtime" : null;
+}
 /** Closed user intent. Windows aliases are refused before a request crosses the Gateway;
  * the adapter additionally checks actual filesystem ancestors before an automatic write. */
 export function isDeploymentIntent(v: unknown): v is DeploymentIntent {
-  return record(v) && keys(v, Object.hasOwn(v, "useMirrors") ? ["purposes", "editorRoot", "useMirrors"] : ["purposes", "editorRoot"])
+  return record(v) && keys(v, ["purposes", "editorRoot", ...(Object.hasOwn(v, "useMirrors") ? ["useMirrors"] : []), ...(Object.hasOwn(v, "picoRegion") ? ["picoRegion"] : [])])
+    && (!Object.hasOwn(v, "picoRegion") || v.picoRegion === "china_mainland" || v.picoRegion === "other")
     && (!Object.hasOwn(v, "useMirrors") || typeof v.useMirrors === "boolean") && Array.isArray(v.purposes)
     && v.purposes.length >= 1 && v.purposes.length <= 4 && new Set(v.purposes).size === v.purposes.length
     && v.purposes.every(p => DEPLOYMENT_PURPOSES.some(allowed => p === allowed))
@@ -149,9 +161,12 @@ export function isDeploymentPlanResult(v: unknown): v is DeploymentPlanResult {
     && p.prerequisitesReady === p.steps.every(s => record(s) && s.action === "retain")
     && p.steps.every(s => record(s) && keys(s, ["component", "action", "reason", "location", "version", "officialUrl"])
       && typeof s.component === "string" && ["steam", "vrchat", "steamvr", "pico_runtime", "unity_hub", "unity_cli", "unity_editor", "android_modules"].includes(s.component)
-      && typeof s.action === "string" && ["retain", "manual_install", "inspect", "install_editor", "add_android_modules", "install_unity_cli"].includes(s.action)
+      && typeof s.action === "string" && DEPLOYMENT_ACTIONS.some(action => action === s.action)
       && typeof s.reason === "string" && ["verified", "missing", "unsuitable", "detection_failed"].includes(s.reason)
       && ((s.action === "retain") === (s.reason === "verified"))
+      && (vendorInstallComponent(s.action) === null || (s.component === vendorInstallComponent(s.action) && s.reason === "missing"))
+      && (s.action !== "install_pico_runtime" || (record(p.intent) && (p.intent.picoRegion === "china_mainland" || p.intent.picoRegion === "other")
+        && s.officialUrl === (p.intent.picoRegion === "china_mainland" ? "https://www.picoxr.com/cn/software/pico-link" : "https://www.picoxr.com/global/software/pico-link")))
       && (s.action !== "install_unity_cli" || (s.component === "unity_cli" && s.reason === "missing"
         && record(p.installer) && p.installer.kind === "unity_cli_bootstrap"))
       && (!["install_editor", "add_android_modules"].includes(s.action) || (s.reason === "missing"
@@ -181,6 +196,7 @@ const ALLOWED_DESTINATIONS = [
   MIRROR_EDITOR_ENTRY, OFFICIAL_EDITOR_ENTRY,
   "https://store.steampowered.com/about/", "https://store.steampowered.com/app/438100/",
   "https://store.steampowered.com/app/250820/", "https://www.picoxr.com/software/pico-connect",
+  "https://www.picoxr.com/cn/software/pico-link", "https://www.picoxr.com/global/software/pico-link",
   "https://docs.unity.com/en-us/unity-cli/use-unity-cli", "https://unity.com/download",
   "https://docs.unity.com/en-us/hub/add-modules",
 ];

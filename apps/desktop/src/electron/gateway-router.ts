@@ -106,6 +106,12 @@ function toApplicationRequest(
       return { ...base, kind: "query", method: request.method, params: request.params };
     case "environment.planDeployment":
       return { ...base, kind: "query", method: request.method, params: request.params };
+    case "environment.observePlay":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "environment.inspectManagerApps":
+      return { ...base, kind: "query", method: request.method, params: {} };
+    case "environment.startPlay": case "environment.stopPlay":
+      return { ...base, kind: "command", method: request.method, commandId: request.params.commandId, params: { route: request.params.route } };
     case "environment.executeDeployment":
       return { ...base, kind: "command", method: request.method, commandId: request.params.commandId, params: { intent: request.params.intent, confirmedDigest: request.params.confirmedDigest } };
     case "environment.getSnapshot":

@@ -34,6 +34,9 @@ export interface DipRect {
   readonly height: number;
 }
 
+/** User placement within the available travel, independent of monitor/DPI. */
+export interface GuideRelativePlacement { readonly x: number; readonly y: number }
+
 /** 跟随状态(全量不可变;事件 reducer 与 tick 各返新值) */
 export interface GameGuideFollowState {
   /** 跟随开关(缺省 true,用户裁决;持久化在渲染层,Main 强制执行) */
@@ -48,6 +51,9 @@ export interface GameGuideFollowState {
   readonly lastObservation: "absent" | "waiting" | "ready" | "unknown";
   /** 最近一次观察中游戏窗口是否前台(未观察到时为 false) */
   readonly lastGameForeground: boolean;
+  readonly lastGameRect: DipRect | null;
+  /** Only a player drag changes this preference; automatic moves never learn it. */
+  readonly relativePlacement: GuideRelativePlacement | null;
 }
 
 export const initialGameGuideFollowState: GameGuideFollowState = {
@@ -57,6 +63,8 @@ export const initialGameGuideFollowState: GameGuideFollowState = {
   lastPlacementKey: null,
   lastObservation: "unknown",
   lastGameForeground: false,
+  lastGameRect: null,
+  relativePlacement: null,
 };
 
 /** 跟随动作意图:show/move 携带落位;hide 不带(接缝侧幂等) */
@@ -75,14 +83,30 @@ export const GAME_GUIDE_FOLLOW_MARGIN = 12;
 export function computeGuidePlacement(
   game: DipRect,
   guide: { readonly width: number; readonly height: number },
+  relative: GuideRelativePlacement | null = null,
 ): DipRect {
   const width = Math.trunc(guide.width);
   const height = Math.trunc(guide.height);
   const maxX = game.x + Math.max(0, game.width - width);
   const maxY = game.y + Math.max(0, game.height - height);
-  const x = Math.round(Math.min(Math.max(game.x + game.width - width - GAME_GUIDE_FOLLOW_MARGIN, game.x), maxX));
-  const y = Math.round(Math.min(Math.max(game.y + (game.height - height) / 2, game.y), maxY));
+  const desiredX = relative ? game.x + (maxX - game.x) * relative.x : game.x + game.width - width - GAME_GUIDE_FOLLOW_MARGIN;
+  const desiredY = relative ? game.y + (maxY - game.y) * relative.y : game.y + (game.height - height) / 2;
+  const x = Math.round(Math.min(Math.max(desiredX, game.x), maxX));
+  const y = Math.round(Math.min(Math.max(desiredY, game.y), maxY));
   return { x, y, width, height };
+}
+
+/** Called only by Electron's user-only will-move event, never by setBounds. */
+export function recordGuideDrag(state: GameGuideFollowState, guide: DipRect): GameGuideFollowState {
+  const game = state.lastGameRect;
+  if (!state.followEnabled || state.boundSession === null || state.lastObservation !== "ready" || game === null) return state;
+  const travelX = Math.max(0, game.width - guide.width);
+  const travelY = Math.max(0, game.height - guide.height);
+  const clamp = (value: number) => Math.max(0, Math.min(1, value));
+  return { ...state, relativePlacement: {
+    x: travelX ? clamp((guide.x - game.x) / travelX) : state.relativePlacement?.x ?? 1,
+    y: travelY ? clamp((guide.y - game.y) / travelY) : state.relativePlacement?.y ?? 0.5,
+  }, lastPlacementKey: JSON.stringify(guide) };
 }
 
 /**
@@ -123,7 +147,7 @@ export function decideFollowTick(
     const wasBound = state.boundSession !== null;
     return {
       action: wasBound && guide.visible ? { kind: "hide" } : null,
-      next: { ...observed, boundSession: null, manualHiddenSession: null, lastPlacementKey: null },
+      next: { ...observed, boundSession: null, manualHiddenSession: null, lastPlacementKey: null, lastGameRect: null },
     };
   }
 
@@ -161,9 +185,10 @@ export function decideFollowTick(
   }
 
   // 游戏上下文活跃:落位在游戏可用区内右侧;显示/移动都去重
-  const placement = computeGuidePlacement(toDip(game.rectPhysical), guideSize);
+  const gameRect = toDip(game.rectPhysical);
+  const placement = computeGuidePlacement(gameRect, guideSize, state.relativePlacement);
   const placementKey = JSON.stringify(placement);
-  const bound: GameGuideFollowState = { ...observed, boundSession: game.sessionId };
+  const bound: GameGuideFollowState = { ...observed, boundSession: game.sessionId, lastGameRect: gameRect };
   if (!guide.visible) {
     return { action: { kind: "show", placement }, next: { ...bound, lastPlacementKey: placementKey } };
   }

@@ -1,37 +1,21 @@
 import type { Strings } from "../i18n/strings.en.ts";
 import type { TermId } from "../i18n/terms.ts";
 
-/**
- * 信息架构与导航模型(美术方案 v0.5.0 §2.1)。
- * 一级 Tab = 两个用户目标(环境部署/模型生产;2026-09-26 用户裁决:
- * 工具合集模块并入环境部署,成为其第二个侧栏分组,页面 id 不变,
- * 组标签机制随之启用——环境/工具;游戏引导模块退役——引导内容迁至
- * 置顶覆盖层窗口(引导为宿主视图),导航模型不再持有引导页面),
- * 设置不是用户目标,固定在顶部最右侧但仍参与路由、颜色辖区与侧栏计算;
- * 模型生产侧栏与其余模块一致为无组标签平铺(2026-09-20 导航重构,用户
- * 裁决):素材导入与搭配草稿不再是独立页,分别收敛为仓储页/配方页
- * hero 内的内容型弹窗,导航模型不产生对应页面;
- * 指挥台(home)页 2026-09-25 退役(用户裁决):其独有内容均为装饰性
- * (全息 3D/速达卡重复顶部 Tab/环境状态带重复环境部署页),整页删除,
- * 默认落点改为环境部署;任意已开放功能进入对应 Tab 后一次点击到达
- * (验收 §12-6)。
- *
- * 门控语义(v0.3.3 §2.1 的页面粒度解释):
- * 不自动切页、不强制重定向。车间依赖生产环境,未就绪时车间页内显示
- * 诚实阻断态与"前往准备生产环境"按钮(见 WorkshopPage),用户点击后才跳转;
- * S-XIII-2 起模型生产 Tab 不再持角标,未就绪信息由页面自身表达。
- *
- * 文案纪律(i18n 预备):本文件不持有任何文案字面量,只持有字符串表
- * key 与术语 id;显示文案由表现层经 strings / termLabel 解析。
- */
+/** Stable feature ownership and deep links. The visible shell uses one fixed directory
+ * and a Home entry on the brand mark (2026-10-08 user ruling). Business module IDs
+ * remain compatible with existing settings, task origins and provider adapters. */
 
 /** 两类用户目标(业务模块);与首次引导的目标 id 一致(onboarding-model.GoalId) */
 export type BusinessModuleId = "env" | "production";
 
-/** 应用区块:业务模块 + 独立的设置区(指挥台区块随 home 页退役移除) */
+/** Stable business ownership plus the independent settings section. Home is global. */
 export type AppSectionId = BusinessModuleId | "settings";
 
 export type PageId =
+  | "home"
+  | "environment-hub"
+  | "avatar-hub"
+  | "help"
   | "env-play"
   | "env-create"
   | "warehouse"
@@ -82,11 +66,12 @@ export interface ModuleDef {
   hideSidebar?: boolean;
 }
 
-/** 默认落点:无历史页面时打开环境部署(2026-09-25 用户裁决:指挥台
+/** Default landing (2026-10-08): Home replaces the retired two-tab landing.
+ * Historical rationale:无历史页面时打开环境部署(2026-09-25 用户裁决:指挥台
  *  页退役,生产着陆前移——环境部署是四类用户目标之首的默认页) */
-export const defaultPage: PageId = "env-play";
+export const defaultPage: PageId = "home";
 
-/** Tab 顺序即顶部从左到右:两个业务模块(指挥台 Tab 随 home 页退役移除) */
+/** Stable business ownership for existing pages and deep links, independent of visible Home. */
 export const businessModules: readonly ModuleDef[] = [
   {
     id: "env",
@@ -166,6 +151,8 @@ export const modules: readonly ModuleDef[] = [...businessModules, settingsModule
 const pageModule = new Map<PageId, AppSectionId>(
   modules.flatMap((m) => m.groups.flatMap((g) => g.pages.map((p) => [p.id, m.id] as const))),
 );
+
+for (const [page, section] of [["home", "settings"], ["help", "settings"], ["environment-hub", "env"], ["avatar-hub", "production"]] as const) pageModule.set(page, section);
 
 const pageIds = new Set<string>(pageModule.keys());
 

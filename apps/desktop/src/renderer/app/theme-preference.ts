@@ -1,5 +1,5 @@
 /**
- * 主题偏好(2026-09-26 用户裁决:跟随系统):偏好三值 dark|light|system,
+ * 主题偏好(2026-10-09 用户裁决:默认深色):偏好三值 dark|light|system,
  * 生效主题 = 偏好经系统深浅色解析后的值;pref=system 时由 App 壳订阅
  * prefers-color-scheme 变化实时重解析。本模块只持纯逻辑(解析、翻转、
  * 存储读写形状守卫);matchMedia/localStorage 接缝在 App 壳,存储键沿用
@@ -36,7 +36,7 @@ export function toggledPreference(resolved: ResolvedTheme): ThemePreference {
 
 /**
  * 存储读取(形状守卫):旧版 dark|light 仍然合法;无值/非法值回落缺省
- * system(2026-09-26 裁决:全新安装的默认偏好)。读取异常按"存储不可用"
+ * dark(2026-10-09 裁决:全新安装的默认偏好)。读取异常按"存储不可用"
  * 处理,仅本次会话生效。
  */
 export function loadThemePreference(read: (key: string) => string | null): ThemePreference {
@@ -46,7 +46,7 @@ export function loadThemePreference(read: (key: string) => string | null): Theme
   } catch {
     /* localStorage 不可用时仅本次会话生效 */
   }
-  return "system";
+  return "dark";
 }
 
 /** 存储写入:偏好三值原样落盘;写入异常静默(同读取纪律) */

@@ -138,7 +138,10 @@ fn deployment_plan_is_an_actual_missing_prerequisite_plan_or_explicitly_unavaila
     let plan = &response["value"]["deploymentPlan"];
     assert_eq!(plan["schemaVersion"], "vua.environment-deployment/v0.1");
     assert_eq!(plan["steps"].as_array().unwrap().len(), 2);
-    assert_eq!(plan["steps"][0]["action"], "manual_install");
+    assert_eq!(plan["steps"][0]["component"], "steam");
+    assert_eq!(plan["steps"][0]["action"], "install_steam");
+    assert_eq!(plan["steps"][1]["component"], "vrchat");
+    assert_eq!(plan["steps"][1]["action"], "manual_install");
     assert_eq!(plan["prerequisitesReady"], false);
     std::fs::remove_dir_all(base).unwrap();
 }

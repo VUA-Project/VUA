@@ -77,12 +77,12 @@ export function saveUpdateCheckCache(result: UpdateCheckResultV1): void {
 }
 
 /**
- * 执行一次检测并落缓存:开关关闭或 preload 缺席时安静返回 null;
+ * 执行一次检测并落缓存:自动检测遵守开关,显式手动检查仍可执行;
  * checkUpdate 本身永不抛(失败 = check-failed),此处仍兜底拒 Promise
  * 以防御 preload 漂移。
  */
-export async function runUpdateCheck(): Promise<UpdateCheckResultV1 | null> {
-  if (!loadUpdateCheckEnabled()) return null;
+export async function runUpdateCheck({ manual = false }: { manual?: boolean } = {}): Promise<UpdateCheckResultV1 | null> {
+  if (!manual && !loadUpdateCheckEnabled()) return null;
   const system = window.vua?.system;
   if (!system) return null;
   try {

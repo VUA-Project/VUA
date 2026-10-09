@@ -1,0 +1,305 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.vua.local/play-session/v0.1/result.schema.json",
+  "title": "Play session result v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "playSession"
+  ],
+  "properties": {
+    "playSession": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "capturedAt",
+        "route",
+        "state",
+        "canStop",
+        "issue",
+        "software"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "vua.play-session/v0.1"
+        },
+        "capturedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "route": {
+          "enum": [
+            "desktop_play",
+            "pico_pcvr"
+          ]
+        },
+        "state": {
+          "enum": [
+            "idle",
+            "starting",
+            "running",
+            "stopping",
+            "attention"
+          ]
+        },
+        "canStop": {
+          "type": "boolean"
+        },
+        "issue": {
+          "enum": [
+            null,
+            "not_installed",
+            "other_route_active",
+            "start_failed",
+            "start_timeout",
+            "close_failed",
+            "close_timeout",
+            "close_pending"
+          ]
+        },
+        "software": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "component",
+              "presence",
+              "running",
+              "owned"
+            ],
+            "properties": {
+              "component": {
+                "enum": [
+                  "steam",
+                  "pico_runtime",
+                  "steamvr",
+                  "vrchat"
+                ]
+              },
+              "presence": {
+                "enum": [
+                  "verified",
+                  "missing",
+                  "unusable",
+                  "unknown"
+                ]
+              },
+              "running": {
+                "type": "boolean"
+              },
+              "owned": {
+                "type": "boolean"
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "owned": {
+                      "const": true
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "running": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "maxItems": 4,
+          "minItems": 2,
+          "allOf": [
+            {
+              "contains": {
+                "properties": {
+                  "component": {
+                    "const": "steam"
+                  }
+                },
+                "required": [
+                  "component"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "component": {
+                    "const": "pico_runtime"
+                  }
+                },
+                "required": [
+                  "component"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "component": {
+                    "const": "steamvr"
+                  }
+                },
+                "required": [
+                  "component"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "component": {
+                    "const": "vrchat"
+                  }
+                },
+                "required": [
+                  "component"
+                ]
+              },
+              "minContains": 0,
+              "maxContains": 1
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "route": {
+                "const": "desktop_play"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "software": {
+                "minItems": 2,
+                "maxItems": 2,
+                "items": {
+                  "properties": {
+                    "component": {
+                      "enum": [
+                        "steam",
+                        "vrchat"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "software": {
+                "minItems": 4,
+                "maxItems": 4
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "enum": [
+                  "starting",
+                  "running",
+                  "stopping"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "canStop": {
+                "const": true
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "running"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "issue": {
+                "const": null
+              },
+              "software": {
+                "items": {
+                  "properties": {
+                    "running": {
+                      "const": true
+                    },
+                    "presence": {
+                      "const": "verified"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "state": {
+                "const": "idle"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "issue": {
+                "const": null
+              },
+              "canStop": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "canStop": {
+                "const": false
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "software": {
+                "items": {
+                  "properties": {
+                    "owned": {
+                      "const": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

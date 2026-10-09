@@ -4,6 +4,9 @@ import { Button } from "../../components/primitives/Button.tsx";
 import { Card } from "../../components/primitives/Card.tsx";
 import { openLoginBrowser } from "../../app/login-browser-store.ts";
 import { BOOTH_SIGN_IN_URL } from "../import/import-model.ts";
+import { openExternalUrl } from "../../app/open-external.ts";
+import { AccountGuide } from "./AccountGuide.tsx";
+import { useRouteFocus } from "../../app/use-route-focus.ts";
 import { strings } from "../../i18n/index.ts";
 
 const copy = strings.settings.accounts;
@@ -20,6 +23,8 @@ export function AccountSettingsPage() {
   const [auth, setAuth] = useState<
     { authOk: boolean; accountName: string | null } | null
   >(null);
+  const [guide, setGuide] = useState<"steam" | "vrchat" | "unity" | "booth" | "linking" | null>(null);
+  const focus = useRouteFocus(guide ?? "accounts");
   const [signingOut, setSigningOut] = useState(false);
 
   const refreshAuth = () => {
@@ -49,11 +54,12 @@ export function AccountSettingsPage() {
   const signedIn = auth?.authOk === true;
 
   return (
-    <div className="vua-page">
+    <div className="vua-page" ref={focus.root} onClickCapture={focus.remember}>
       <section className="vua-page__hero">
         <h1 className="vua-title">{strings.nav.pages.settingsAccounts}</h1>
       </section>
-      <div className="vua-page__stack">
+      {guide ? <AccountGuide account={guide} onBack={() => setGuide(null)} /> : null}
+      <div className="vua-account-grid" hidden={guide !== null}>
         <Card>
           <div className="vua-settings-account">
             <div className="vua-settings-account__head">
@@ -81,6 +87,7 @@ export function AccountSettingsPage() {
                   {copy.signIn}
                 </Button>
               )}
+              <Button data-nav-id="register-booth" onClick={() => setGuide("booth")}>{strings.journey.registration}</Button>
               <Button variant="subtle" disabled={!signedIn || signingOut} onClick={() => void signOut()}>
                 {copy.signOut}
               </Button>
@@ -88,9 +95,9 @@ export function AccountSettingsPage() {
           </div>
         </Card>
         {([
-          { title: copy.steamTitle, description: copy.steamDescription },
-          { title: copy.vrchatTitle, description: copy.vrchatDescription },
-          { title: copy.unityTitle, description: copy.unityDescription },
+          { id: "steam", title: copy.steamTitle, description: copy.steamDescription },
+          { id: "vrchat", title: copy.vrchatTitle, description: copy.vrchatDescription },
+          { id: "unity", title: copy.unityTitle, description: copy.unityDescription },
         ] as const).map((placeholder) => (
           <Card key={placeholder.title}>
             <div className="vua-settings-account">
@@ -103,6 +110,10 @@ export function AccountSettingsPage() {
                 <Button variant="default" disabled>
                   {copy.signIn}
                 </Button>
+                <Button data-nav-id={`register-${placeholder.id}`} onClick={() => setGuide(placeholder.id)}>{strings.journey.registration}</Button>
+                {placeholder.id === "vrchat" ? <Button data-nav-id="register-linking" onClick={() => setGuide("linking")}>{strings.journey.linking}</Button> : null}
+                {placeholder.id === "steam" ? <Button onClick={() => void openExternalUrl("steam://nav/games/details/438100")}>{strings.journey.openSteam}</Button> : null}
+
               </div>
             </div>
           </Card>

@@ -207,9 +207,9 @@ test("nav measure snapshot: 外部事实未变即观察者噪声,判定跳过(#2
   assert.equal(navMeasureChanged(snapshot, { ...snapshot, available: 701 }), true);
 });
 
-test("default landing is the environment module default page", () => {
+test("default landing is the independent home", () => {
   // 2026-09-25 用户裁决:指挥台(home)页退役,默认落点为环境部署
-  assert.equal(defaultPage, "env-play");
+  assert.equal(defaultPage, "home");
 });
 
 test("isPageId rejects unknown and legacy ids", () => {
@@ -220,7 +220,7 @@ test("isPageId rejects unknown and legacy ids", () => {
   assert.ok(!isPageId("compose"));
   // 2026-09-25 用户裁决:指挥台(home)页退役——存储的 home 落点同判非法,
   // resolveEntry 回退默认页(env-play)
-  assert.ok(!isPageId("home"));
+  assert.ok(isPageId("home"));
   // 2026-09-26 用户裁决:游戏引导页退役(引导内容迁至覆盖层窗口)——存储的
   // guide-* 落点同判非法,resolveEntry 回退默认页(env-play)
   assert.ok(!isPageId("guide-start"));

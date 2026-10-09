@@ -5,6 +5,7 @@ import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import os from "node:os";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.resolve(root, "../../_local_real_machine/network-ui");
 app.setPath("userData", path.join(output, "profile"));
@@ -15,6 +16,7 @@ try {
   await mkdir(output, { recursive: true });
   await app.whenReady();
   server = await createServer({ configFile: false, appType: "custom", root, plugins: [react()],
+    cacheDir: path.join(os.tmpdir(), "vua-network-ui-vite"),
     server: { host: "127.0.0.1", port: 0 }, optimizeDeps: { include: ["react", "react-dom/client", "@vua/contracts"] } });
   server.middlewares.use(async (req, res, next) => {
     if (!req.url?.startsWith("/__network")) return next();
@@ -23,7 +25,8 @@ try {
   });
   await server.listen();
   window = new BrowserWindow({ show: false, width: 1200, height: 1200,
-    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true } });
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false,
+      partition: `vua-network-smoke-${Date.now()}` } });
   window.webContents.on("console-message", event => { if (event.level === "error") console.error(event.message); });
   const results = {};
   for (const locale of ["en", "zh-CN", "ja", "ko"]) {

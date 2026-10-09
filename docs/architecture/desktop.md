@@ -1,11 +1,11 @@
 # Electron desktop and presentation architecture
 
 
-> Document version: 1.8.0
+> Document version: 1.12.1
 > Status: Accepted
 > Scope: `apps/desktop`, `packages/design-system`, frontend Gateway
-> Updated: 2026-10-08
-> Last conformance review: 2026-10-08 (reader, tour and game guide; window observer and following implemented)
+> Updated: 2026-10-09
+> Last conformance review: 2026-10-09 (two-half environment cards, creator inventory and preserved shell preferences; physical app/device review pending)
 > Normative effect: Yes
 
 ## Technology decision
@@ -54,10 +54,77 @@ Main returns normalized navigation/download events through narrow ports and reta
 into Main application state, Gateway, Orchestrator or Agent inputs. AMF owns acquisition intent, task and source
 correlation, post-download inspection, and Warehouse/BDL decisions.
 
+## Fixed directory and first-run journey
+
+The main shell has one fixed Home, opened by its left logo. Desktop mode shows the fixed
+Environment/Avatar directory in the sidebar; big-screen mode groups those domains into larger
+focusable tiles. `nav-model.ts` retains internal page ownership for tasks and deep links without
+restoring the old two-tab presentation. Wizard choices never hide features or change Home actions.
+The [design standard](../design/design-standard.md#3-platform-and-information-architecture)
+owns the accepted layout, logo colors, unavailable peers and preserved visual preferences.
+
+`journey-model.ts` stores only a versioned reading/selection bookmark. Desktop/PICO and creator
+routes use the existing typed network/deployment ports. A fresh plan or a task completed during
+the current visit can establish software readiness; a restored terminal receipt alone cannot.
+Reopening a completed preparation step reinspects files, and accepted tasks remain observable
+through their receipts. A connection confirmation is explicitly user-declared, not headset evidence.
+Opening Steam or a guide does not prove installation, login or successful play.
+
+Play now has fixed two-half cards: details on the left and observed status/action on the
+right. Normal game exit retains **Close** only while owned software survives, with no failure
+warning. Network's equally tall tile is above the grid; its regional Ping is explicitly unavailable
+until targets are verified and website tests remain in expanded details. The expandable runtime inventory stays
+on Play. The retired Software & connections page is absent from Home, sidebar and tour;
+old stored page IDs migrate to Play. Wizard choices still do not control these entries.
+The typed play port consumes the Candidate [play-session family](play-sessions.md), keeps
+unavailable observations distinct from missing software, and disables launch while installation
+is active. Scoped deployment bookmarks retain Desktop and PICO work independently while
+reading a matching legacy bookmark. Hidden details keep accepted installation receipts alive.
+
+Avatar editing reuses `project.environmentManagers` and `environment.verifyEditor` to show
+complete discovered editors; Unity 6 remains a development entry even when files are found.
+The read-only `environment.inspectManagerApps` Candidate query reports Hub/VCC/ALCOM
+executable findings from known roots and registry paths. Configuration findings keep their
+original frozen semantics and do not imply that an executable is installed. Version/path data
+remain local; unsupported versions only offer the accepted preparation route.
+
+Settings navigation keeps the underlying route or wizard mounted and returns to its source
+step and focus. The sidebar contains only settings categories while Settings is open, also in
+big screen mode; the upper-left Back action and the active Settings button return to the same
+source page. Category changes do not replace the return destination. Inspection belongs to the
+Avatar directory; Help and Settings have no duplicate bottom-left entry, and the topbar does
+not repeat the page name beside the Home logo.
+
+The compact shell follows the [design standard](../design/design-standard.md#3-platform-and-information-architecture):
+the bottom taskbar is no longer mounted, and feature search is a Settings-sidebar footer action
+with the existing global shortcut. Appearance changes use joined native buttons backed by the
+same three-value preference. A missing/invalid preference resolves to Dark; saved preferences
+and cross-window/system subscriptions stay compatible. The app tour's task step navigates to
+the fixed Home Tasks tile rather than a retired taskbar anchor.
+
+Account-help navigation uses that same settings return path.
+Settings → Accounts retains the N5 BOOTH sign-in/probe/logout surface; Steam, VRChat and Unity
+authentication remain honest placeholders. Registration/linking pages add an official browser
+handoff through `RemoteContentApiV1.openAccountGuideInBrowser(AccountGuideIdV1)` and the matching
+preload/Main channel. This is an additive native desktop port, not a new Provider method or a
+change to the frozen application envelope. Main checks local sender identity and maps the closed
+ID to a fixed public URL; arbitrary URLs, page data and credentials do not cross this port.
+
+Main owns a VUA system tray icon throughout normal application execution. Double-click restores
+and focuses the existing main window. The localized menu exposes update checking, big screen
+mode and application exit. `DesktopWindowApiV1.shellCommandEvents` is an additive, closed native
+desktop event face (`check-updates` / `bigscreen`), not a Provider method. Preload subscription
+signals readiness; Main accepts that signal only from the local main frame and retains the latest
+gesture until it is listening. Update checking opens the Version settings page and runs a manual
+read-only check independent of the automatic-check preference; big screen changes the existing
+shell mode. Exit uses normal application shutdown. Closing Main still exits, and the tray is
+destroyed at process shutdown. Theme/DPI variants rasterize the accepted VUA mark and design tokens
+through `scripts/generate-tray-icons.ps1`; no new runtime image dependency is introduced.
+
 ## Account-guide browser
 
 The account guide opens official Steam/VRChat registration pages and optional Unity/BOOTH pages,
-plus manufacturer, headset-store, streaming or accelerator pages required by the selected route.
+plus manufacturer, headset-store or streaming pages required by the selected route.
 Use the existing isolated built-in browser, with phone/headset/native-client handoff and saved
 guide progress where needed. Reuse security enforcement; do not create an
 Auth Broker service. Separate temporary account-guide partitions from AMF's BOOTH acquisition
@@ -76,7 +143,10 @@ the flow and the distinction between opened, user-confirmed and actually detecte
 The product boundary records later web-reading and experimental persistence intent; neither is
 enabled by this first slice. Any future persisted profile needs explicit consent, local browser
 storage and tested clearing/logout semantics, without secrets in application or Agent data paths.
-This is intended architecture, not evidence that existing browser code already meets these cases.
+Temporary embedded guide sessions remain intended architecture. The current UI uses the
+official system-browser handoff, keeps the selected route available on return and imports no
+browser session. This avoids routing registration through the persistent BOOTH acquisition
+profile. Temporary embedding and authenticated platform adapters remain unimplemented.
 
 ## Deployment presentation
 
@@ -119,7 +189,9 @@ preparation reader and a VRChat-window guide. React owns the in-app tour; Main o
 window lifecycles and the game-window follow loop: a pure decision module driven by a 250 ms
 observation of the Provider's read-only `environment.observeGameWindow` query
 (`vua.game-window-observe/v0.1`), showing the guide without stealing focus and hiding it on
-game minimize/exit/app-switch, with a Main-enforced follow toggle. The renderer drives this
+game minimize/exit/app-switch, with a Main-enforced follow toggle. User drags persist normalized
+relative placement; automatic moves do not overwrite it. Background opacity affects the guide's
+matrix/backdrop only, with a transparent outer canvas and opaque text. The renderer drives this
 through two `DesktopWindowApiV1` members (`setGameGuideFollowing`,
 `getGameGuideFollowStatus`). Guide progress is local presentation state;
 business tasks remain authoritative in Orchestrator. The reader, tour and game guide reuse
@@ -138,13 +210,21 @@ isolated by the Electron process model — no separate Gateway connection instan
 (archived [proposal 017](../archive/2026-09-29/collab/proposals/017-overlay-surface.md) §4
 desktop statement, 2026-09-10).
 
+The Tasks entry requests the status view and has no guide/status switch. Production details
+remain collapsed until requested. Existing explicit `showGuide` and view/target events remain
+compatible; ordinary guidance uses Help, the preparation reader and the game guide. The task
+window applies shared saved appearance before paint, listens for cross-window storage and system
+theme changes, and honors saved contrast/resource-saving preferences. Normal `pnpm dev:desktop`
+uses the real Gateway task projection; only an explicit DEV `overlayPreview=1` enables demo data
+and its badge. `preview-overlay.mjs` opts into that isolated demonstration.
+
 - Business events broadcast to every locally-originated window by local origin checks, and
   Overlay windows are naturally on that list. Business snapshots use the existing query path;
   guide-target requests use their separate validated desktop-window event/acknowledgment path;
 - No Overlay session identity: actions submitted from Overlay go through the existing command face
   with the same acceptance path and nine-state discipline; the service side does not distinguish
   whether an action came from the main window or an Overlay window;
-- The entry is the formal main-window top-bar action (outside DevScenario); show/hide toggling is
+- The entry is the fixed Home Tasks tile (outside DevScenario); show/hide toggling is
   arbitrated by Main (the decision face is a pure, testable function in `overlay-window.ts`);
   showing never steals focus; closing the Overlay window itself only clears the reference (the next
   toggle recreates it), and closing the main window destroys the Overlay — main-window close keeps
@@ -203,6 +283,13 @@ redistribution review authorizes each bundled binary before a public release.
 
 ## Document changelog
 
+- 1.12.1 (2026-10-09): align guide transparency/drag memory, normal game-exit cards and the regional-placeholder/expanded-website split with their owning documents.
+
+
+- 1.12.0 (2026-10-09): implement observed two-half play sessions and scoped close, move network/runtime discovery into Play, and add complete-editor and manager-app inventory to Avatar editing.
+- 1.11.0 (2026-10-09): apply the compact-shell ruling, move command search into Settings, replace the appearance select with joined buttons and a Dark default, and retarget the task-tour step to Home.
+- 1.10.0 (2026-10-09): implement settings-only sidebar/return, separate real task status and appearance from guides/demo previews, and add the localized VUA tray with typed main-renderer gestures and normal shutdown.
+- 1.9.0 (2026-10-08): record fixed navigation, desktop/big-screen focus, independent wizard/task facts and the closed official account-page browser handoff; temporary embedding and device acceptance remain pending.
 - 1.8.0 (2026-10-08): record the implemented game-window follow loop in Main (game-window-observe
   v0.1 observation, follow decision module, and the setGameGuideFollowing /
   getGameGuideFollowStatus desktop API faces).
@@ -211,18 +298,5 @@ redistribution review authorizes each bundled binary before a public release.
 - 1.6.0 (2026-10-03): define standalone ZIP resources/data, the real packaged bootstrap check and the first-play overlay/release subset.
 - 1.5.0 (2026-10-02): describe model-first deployment, silent-install activity and device/service
   account handoffs using existing isolated browser and task surfaces.
-
-- 1.4.1 (2026-10-02): merge the N1 Unity Hub handoff protocol with the status-quo alignment;
-  no rule change.
-- 1.4.0 (2026-10-01): allow the Unity Hub installation handoff under the existing per-action external-protocol confirmation.
-- 1.3.1 (2026-10-01): status-quo alignment — Main supervises the Provider as a separate process
-  (orchestrator.md wording); U9 external-protocol list phrasing defers to the owning product
-  boundary; overlay shape parameters cite the spike-overlay.mjs verification; proposal 017 cited
-  as a dated archived proposal; "core freeze batch" scheduling residue removed; four-locale UI
-  i18n fact recorded with the §2.3 policy link. No rule change.
-
-- 1.3.0 (2026-09-30): specify isolated temporary account-guide pages and credential-free application state.
-
-- 1.2.2 (2026-09-28): remove obsolete mirror metadata and clarify current ownership where needed during the N documentation audit.
 
 Earlier entries remain in Git history.

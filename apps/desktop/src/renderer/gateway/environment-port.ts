@@ -1,6 +1,8 @@
 import type { DeploymentIntent, DeploymentPlan, DeploymentProgress, TaskSnapshotV01 } from "@vua/contracts";
 import type { NetworkIntent, NetworkReport } from "@vua/contracts";
 import type { WebsiteObservation } from "@vua/contracts";
+import type { PlayRoute, PlaySession } from "@vua/contracts";
+import type { CreatorManagers } from "./creator-inventory-port.ts";
 import type { CheckZone, DeployerView, VersionTrack } from "../features/deployer/deployer-model.ts";
 import type { FixPlanV1 } from "../features/deployer/fix-plan-model.ts";
 import type { CapabilityReport, Unsubscribe } from "./types.ts";
@@ -35,6 +37,8 @@ export interface DeploymentPort {
 }
 
 export interface EnvironmentPort {
+  readonly play?: PlayPort;
+  readonly managers?: { inspect(): Promise<CreatorManagers> };
   readonly network?: NetworkPort;
   readonly deployment?: DeploymentPort;
   /** 只读快照:渲染前拉取;订阅推送到达前不得把本地缓存当事实来源 */
@@ -56,6 +60,12 @@ export interface EnvironmentPort {
    */
   planFix(checkId: string): Promise<FixPlanResult>;
   capability(): Promise<CapabilityReport>;
+}
+
+export interface PlayPort {
+  observe(route: PlayRoute): Promise<PlaySession>;
+  start(route: PlayRoute, commandId: string): Promise<PlaySession>;
+  stop(route: PlayRoute, commandId: string): Promise<PlaySession>;
 }
 
 /** Explicit HTTPS diagnostics, independent of software readiness and the legacy TCP check. */

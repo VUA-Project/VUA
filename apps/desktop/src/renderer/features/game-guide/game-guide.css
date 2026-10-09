@@ -1,12 +1,16 @@
 /* 游戏引导小窗样式(三类引导架构 §4):
- * - 透明窗体:根透明,面板承担底色——透明度滑杆只调面板 opacity
- *   (缺省 50%),文字与控件同受其影响,是玩家在游戏画面上权衡可读性
- *   的自选折衷;
+ * - 透明窗体:根透明,面板伪元素承担底色和矩阵——滑杆只调背景
+ *   (缺省 50%),文字与控件保持可读;
  * - 跟随条:跟随开关 + 观察非 ready 时的诚实状态提示(缺席/等待/通道
  *   缺席三态);标题栏是拖拽区,本条不参与拖拽;
  * - 拖拽条:标题栏整条可拖(frameless 小窗),交互元素显式 no-drag;
  * - 单步指引:计数 + 标题 + 少量段落 + 确认/跳过;颜色/间距只消费
  *   语义 token,与覆盖层同纪律。 */
+
+html[data-vua-surface="game-guide"],
+html[data-vua-surface="game-guide"] body {
+  background: transparent;
+}
 
 .vua-game-guide {
   display: flex;
@@ -18,17 +22,34 @@
 }
 
 .vua-game-guide__panel {
+  position: relative;
+  isolation: isolate;
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--vua-bg-panel);
-  border: 1px solid var(--vua-border);
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: var(--vua-radius-overlay, 12px);
   overflow: hidden;
   font-family: var(--vua-font-family);
   font-size: 14px;
   color: var(--vua-text-strong);
+}
+
+.vua-game-guide__panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border: 1px solid var(--vua-border);
+  border-radius: inherit;
+  background-color: var(--vua-bg-canvas);
+  background-image:
+    repeating-linear-gradient(0deg, color-mix(in srgb, var(--vua-text-strong) 4%, transparent) 0 1px, transparent 1px 44px),
+    repeating-linear-gradient(90deg, color-mix(in srgb, var(--vua-text-strong) 4%, transparent) 0 1px, transparent 1px 44px);
+  opacity: var(--vua-guide-opacity, 0.5);
 }
 
 .vua-game-guide__titlebar {

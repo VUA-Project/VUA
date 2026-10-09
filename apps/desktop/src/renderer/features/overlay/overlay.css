@@ -78,41 +78,6 @@ body:has(.vua-overlay) {
   color: var(--vua-on-status);
 }
 
-/* 视图切换(2026-09-26 引导宿主裁决):标题栏下的 segmented 控件,
- * 引导 | 状态两格;桌面形态 32px 目标,窄窗横排不折行 */
-.vua-overlay__view-switch {
-  display: flex;
-  gap: 2px;
-  padding: var(--vua-space-2) var(--vua-space-3);
-  border-bottom: 1px solid var(--vua-border);
-  flex: none;
-}
-
-.vua-overlay__view-tab {
-  flex: 1;
-  min-height: 32px;
-  border: none;
-  border-radius: var(--vua-radius-control);
-  background: transparent;
-  color: var(--vua-text-secondary);
-  font: inherit;
-  cursor: pointer;
-  transition:
-    background-color 120ms ease-out,
-    color 120ms ease-out;
-}
-
-.vua-overlay__view-tab:hover {
-  background: var(--vua-bg-elevated);
-  color: var(--vua-text-strong);
-}
-
-.vua-overlay__view-tab[data-active] {
-  background: var(--vua-bg-elevated);
-  color: var(--vua-text-strong);
-  box-shadow: inset 0 0 0 1px var(--vua-border-strong, var(--vua-border));
-}
-
 /* ---------- 引导视图(2026-09-26 裁决):窄窗引导内容 ---------- */
 
 .vua-overlay-guide {
@@ -309,6 +274,11 @@ body:has(.vua-overlay) {
   gap: var(--vua-space-1);
   padding: var(--vua-space-3);
   margin-top: var(--vua-space-2);
+}
+
+.vua-overlay__production-details > summary {
+  cursor: pointer;
+  padding-block: 8px;
 }
 
 .vua-overlay__production:first-of-type {

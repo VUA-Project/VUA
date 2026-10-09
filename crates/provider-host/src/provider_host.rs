@@ -222,6 +222,8 @@ pub struct EnvironmentConfig {
 }
 
 struct EnvironmentServices {
+    roots: EnvironmentRoots,
+    play: vua_project_manager::play_session::PlayService,
     network: vua_orchestrator::network::NetworkService,
     deployment: vua_orchestrator::deployment::DeploymentService,
     engine: EnvironmentEngine,
@@ -903,6 +905,8 @@ pub fn run_provider_host_full(
         .transpose()?;
     let environment = environment.map(|config| -> Result<_, SqliteStoreError> {
         Ok(Arc::new(EnvironmentServices {
+            roots: config.roots.clone(),
+            play: vua_project_manager::play_session::PlayService::windows(config.roots.clone()),
             network: vua_orchestrator::network::NetworkService::new(
                 Arc::new(vua_project_manager::network_probe::HttpsNetworkProbe),
                 Arc::new(SystemClock),
@@ -1392,6 +1396,12 @@ fn handle_application_request(state: &mut HostState, request: &Value) -> FrameOu
     if method == "environment.observeGameWindow" {
         return crate::game_window_routes::request(request, request_id, correlation_id);
     }
+    if method == "environment.inspectManagerApps" {
+        return crate::play_session_routes::manager_apps(state.environment.as_ref().map(|s| &s.roots), request, request_id, correlation_id);
+    }
+    if matches!(method, "environment.observePlay" | "environment.startPlay" | "environment.stopPlay") {
+        return crate::play_session_routes::request(state.environment.as_ref().map(|s| &s.play), request, request_id, correlation_id);
+    }
     if matches!(method, "environment.planDeployment" | "environment.executeDeployment") {
         return crate::deployment_routes::request(state.environment.as_ref().map(|s| &s.deployment), method, request, request_id, correlation_id);
     }
@@ -1685,6 +1695,10 @@ fn served_capabilities(state: &HostState) -> Value {
         {"operationId": "environment.checkNetwork", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
         {"operationId": "environment.testWebsites", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
         {"operationId": "environment.observeGameWindow", "availability": "available"},
+        {"operationId": "environment.inspectManagerApps", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "environment.observePlay", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "environment.startPlay", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "environment.stopPlay", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
         deployment_capability(state, "environment.planDeployment"),
         deployment_capability(state, "environment.executeDeployment"),
         {"operationId": "environment.verifyEditor", "availability": "available"},

@@ -1,32 +1,22 @@
 import { formatDateTime } from "./i18n/index.ts";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import type { DesktopShellCommandV1 } from "@vua/contracts";
 import { saveDebugMode, useDebugMode } from "./app/debug-mode.ts";
 import {
-  businessModules,
   defaultPage,
   isPageId,
   moduleDef,
   moduleOf,
   modules,
-  navLevelNext,
-  navMeasureChanged,
-  resolveTabLanding,
-  type AppSectionId,
   type ModuleDef,
-  type NavLevel,
-  type NavMeasureSnapshot,
   type PageId,
-  type SidebarGroup,
   type SidebarPage,
 } from "./app/nav-model.ts";
 import {
-  envGoalEnabled,
-  goalEnabled,
   goalsStorageKey,
   parseStoredGoals,
   resolveEntry,
   serializeGoals,
-  type GoalId,
   type StoredGoalsV1,
 } from "./app/onboarding-model.ts";
 import { resourceSaverActive, resourceSaverSource } from "./app/resource-saver.ts";
@@ -61,7 +51,6 @@ import { Icon } from "@vua/design-system";
 import { format, strings, termLabel, termSequence, TERMS } from "./i18n/index.ts";
 import { currentLocale, localeRegistry } from "./i18n/index.ts";
 import { creatorEnvReady } from "./features/deployer/deployer-model.ts";
-import { DeployerPage } from "./features/deployer/DeployerPage.tsx";
 import { OnboardingPage, type OnboardingResult } from "./features/onboarding/OnboardingPage.tsx";
 import { NavigationConfirmOverlay } from "./app/NavigationConfirmOverlay.tsx";
 import { AppTour } from "./features/tour/AppTour.tsx";
@@ -70,7 +59,6 @@ import { PackagesPage } from "./features/packages/PackagesPage.tsx";
 import { RecipePage } from "./features/recipe/RecipePage.tsx";
 import { ReleasePage } from "./features/release/ReleasePage.tsx";
 import { InspectionPage } from "./features/inspection/InspectionPage.tsx";
-import { Taskbar } from "./features/task-center/Taskbar.tsx";
 import { NotificationPopover } from "./features/task-center/NotificationPopover.tsx";
 import { ResourceMonitor } from "./features/resource-monitor/ResourceMonitor.tsx";
 import { BootSplash } from "./components/splash/BootSplash.tsx";
@@ -94,7 +82,7 @@ import {
   useUpdateCheckEnabled,
 } from "./app/update-check-store.ts";
 import { appMeta } from "./app/app-meta.ts";
-import { NavOverflowMenu } from "./app/NavOverflowMenu.tsx";
+
 import { openExternalUrl } from "./app/open-external.ts";
 import { isPaletteToggle } from "./app/shortcuts.ts";
 import {
@@ -110,7 +98,11 @@ import {
   useSettingsView,
   type VuaGateway,
 } from "./gateway/index.ts";
+import { HomePage, directory } from "./features/home/HomePage.tsx";
+import { RouteEnvironmentPage } from "./features/home/RouteEnvironmentPage.tsx";
+import { directionalTarget, visibleControls, type Direction } from "./app/bigscreen-navigation.ts";
 import "./app-shell.css";
+import "./features/home/home.css";
 import "./features/settings/settings.css";
 
 /** 高对比度(C-I18N):auto = 跟随系统 forced-colors;on = 显式高对比配色 */
@@ -176,10 +168,6 @@ function readStoredGoals(override: OnboardingOverride): StoredGoalsV1 | null {
 
 function tabLabel(def: ModuleDef): string {
   return strings.nav.tabs[def.labelKey];
-}
-
-function groupLabel(group: SidebarGroup): string | null {
-  return group.labelKey ? strings.nav.groups[group.labelKey] : null;
 }
 
 function pageLabel(page: SidebarPage): string {
@@ -276,6 +264,7 @@ function ExperimentalSettingsPage({
 }
 
 function ThemeSettingsPage({
+  displayMode, onDisplayModeChange,
   theme,
   hc,
   saverOn,
@@ -287,6 +276,11 @@ function ThemeSettingsPage({
   onSaverAutoChange,
 }: PagePrefs) {
   const copy = strings.settings.theme;
+  const themeOptions = [
+    { value: "dark", label: copy.dark },
+    { value: "light", label: copy.light },
+    { value: "system", label: copy.system },
+  ] as const;
   const saverSource = resourceSaverSource({
     manualOn: saverOn,
     autoEnabled: saverAuto,
@@ -297,20 +291,31 @@ function ThemeSettingsPage({
       <section className="vua-page__hero">
         <h1 className="vua-title">{strings.nav.pages.settingsTheme}</h1>
       </section>
+      <Card><h2>{strings.journey.display}</h2><div className="vua-route-platform">
+        <Button aria-pressed={displayMode === "desktop"} onClick={() => onDisplayModeChange("desktop")}>{strings.journey.desktopMode}</Button>
+        <Button aria-pressed={displayMode === "bigscreen"} onClick={() => onDisplayModeChange("bigscreen")}>{strings.journey.bigscreenMode}</Button>
+      </div></Card>
       <Card>
         <div className="vua-page__stack">
           <h2 className="vua-title">{copy.appearanceHeading}</h2>
-          <div>
-            <select
-              className="vua-settings-select"
-              aria-label={copy.appearanceAria}
-              value={theme}
-              onChange={(event) => onThemeChange(event.target.value as ThemePreference)}
-            >
-              <option value="system">{copy.system}</option>
-              <option value="dark">{copy.dark}</option>
-              <option value="light">{copy.light}</option>
-            </select>
+          <div className="vua-theme-choice" role="group" aria-label={copy.appearanceAria}>
+            <span
+              className="vua-theme-choice__selection"
+              aria-hidden="true"
+              style={{ transform: `translateX(${themeOptions.findIndex(option => option.value === theme) * 100}%)` }}
+            />
+            {themeOptions.map(option => (
+              <button
+                type="button"
+                key={option.value}
+                className="vua-theme-choice__button"
+                aria-pressed={theme === option.value}
+                data-nav-id={`theme-${option.value}`}
+                onClick={() => onThemeChange(option.value)}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
         </div>
       </Card>
@@ -407,20 +412,20 @@ function LanguageSettingsPage() {
 }
 
 function GoalsSettingsPage({ onRestart }: { onRestart: () => void }) {
-  const copy = strings.settings.goals;
+  const copy = strings.journey;
   return (
     <div className="vua-page">
       <section className="vua-page__hero">
-        <h1 className="vua-title">{strings.nav.pages.settingsGoals}</h1>
+        <h1 className="vua-title">{copy.wizard}</h1>
       </section>
       {/* 应用导览「route」步锚点(三类引导裁决 2026-10-05) */}
       <Card data-tour-anchor="tour-goals">
         <div className="vua-page__stack">
-          <h2 className="vua-title">{copy.heading}</h2>
-          <p className="vua-text-secondary">{copy.description}</p>
+          <h2 className="vua-title">{copy.wizard}</h2>
+          <p className="vua-text-secondary">{copy.goalHint}</p>
           <div>
             <Button variant="primary" onClick={onRestart}>
-              {copy.restartCta}
+              {copy.resume}
             </Button>
           </div>
         </div>
@@ -453,7 +458,7 @@ function VersionPage() {
 
   const checkNow = () => {
     setUpdateChecking(true);
-    void runUpdateCheck().finally(() => setUpdateChecking(false));
+    void runUpdateCheck({ manual: true }).finally(() => setUpdateChecking(false));
   };
 
   return (
@@ -596,10 +601,14 @@ interface PageActions {
   openPalette: () => void;
   /** 指挥台首页(S-VFX-2):速达卡跳转 */
   navigate: (target: PageId) => void;
+  openAccounts: () => void;
+  startTour: () => void;
 }
 
 /** 主题页偏好管道(C-I18N/主题页):AppShell 持有的主题偏好/HC/资源节约状态下传给主题设置页 */
 interface PagePrefs {
+  displayMode: "desktop" | "bigscreen";
+  onDisplayModeChange: (mode: "desktop" | "bigscreen") => void;
   /** 外观选择当前值:跟随系统时为偏好值;走查覆盖(?theme=)时为覆盖值 */
   theme: ThemePreference;
   hc: HcMode;
@@ -617,24 +626,18 @@ interface PagePrefs {
 
 function renderPage(
   page: PageId,
-  goals: StoredGoalsV1 | null,
   creatorReady: boolean,
   actions: PageActions,
   prefs: PagePrefs,
   uiRoot: UiRootId,
   onUiRootChange: (root: UiRootId) => void,
+  bigscreen: boolean,
 ) {
   switch (page) {
-    case "env-play":
-    case "env-create": {
-      const zone = page === "env-play" ? ("play" as const) : ("create" as const);
-      const goal = !goalEnabled(goals, "env")
-        ? ("goal-off" as const)
-        : envGoalEnabled(goals, zone)
-          ? ("active" as const)
-          : ("env-off" as const);
-      return <DeployerPage zone={zone} goal={goal} onChooseGoals={actions.chooseGoals} />;
-    }
+    case "home": case "environment-hub": case "avatar-hub": case "help":
+      return <HomePage page={page} bigscreen={bigscreen} navigate={actions.navigate} startWizard={actions.restartOnboarding} startTour={actions.startTour} />;
+    case "env-play": case "env-create":
+      return <RouteEnvironmentPage zone={page === "env-play" ? "play" : "create"} onAccounts={actions.openAccounts} />;
     case "warehouse":
       return <WarehousePage onNavigate={actions.navigate} />;
     case "recipe":
@@ -689,26 +692,25 @@ function renderPage(
   }
 }
 
-/** 顶栏折叠相位(S-XIII-3):过渡相位承载飞入飞出动画窗 */
-type NavPhase = "expanded" | "collapsing" | "collapsed" | "expanding";
-
 /**
  * 应用壳(G3):在 GatewayProvider 内渲染,页面数据一律经 Gateway hooks
  * 取得;creatorReady 由环境快照计算,不再读 scenario 负载。
  */
 function AppShell({
   page,
-  navigate,
-  goals,
+  navigate: navigatePage,
+  showOnboarding,
+  onOnboardingComplete,
   actions,
   uiRoot,
   onUiRootChange,
 }: {
   page: PageId;
   navigate: (target: PageId) => void;
-  goals: StoredGoalsV1 | null;
+  showOnboarding: boolean;
+  onOnboardingComplete: (result: OnboardingResult) => void;
   /** 壳层注入的动作(openPalette/navigate 由 AppShell 内部补齐,见 pageActions) */
-  actions: Omit<PageActions, "openPalette" | "navigate">;
+  actions: Omit<PageActions, "openPalette" | "navigate" | "openAccounts" | "startTour">;
   /** 多套 UI 根(019 批 A):共享容器持有,切换不重建 Gateway */
   uiRoot: UiRootId;
   onUiRootChange: (root: UiRootId) => void;
@@ -738,13 +740,112 @@ function AppShell({
     themeOverride ?? resolveTheme(themePref, systemDark);
   const environmentView = useEnvironmentView();
   const creatorReady = creatorEnvReady(environmentView.deployer);
-  const activeModule: AppSectionId = moduleOf(page);
+  const activeModule = page === "home" || page === "help" ? "global" : moduleOf(page);
+  const [displayMode, setDisplayMode] = useState<"desktop" | "bigscreen">(() => { try { return localStorage.getItem(storageKeys.displayMode) === "bigscreen" ? "bigscreen" : "desktop"; } catch { return "desktop"; } });
+  const bigscreen = displayMode === "bigscreen";
+  const settingsOpen = page.startsWith("settings-");
+  // Settings temporarily covers the source page; its local workflow stays mounted.
+  const [settingsReturn, setSettingsReturn] = useState<PageId | null>(null);
+  const history = useRef<PageId[]>([]);
+  const focusMemory = useRef(new Map<PageId, string>());
+  const returnFocus = useRef<string | null>(null);
+  const shellRef = useRef<HTMLDivElement | null>(null);
+  const navigate = (target: PageId) => {
+    if (target === page) {
+      if (showOnboarding && !settingsOpen) onOnboardingComplete({ status: "skipped", goals: [], environments: [] });
+      return;
+    }
+    const focused = document.activeElement?.getAttribute("data-nav-id");
+    if (focused) focusMemory.current.set(page, focused);
+    if (target.startsWith("settings-")) {
+      if (!settingsOpen) setSettingsReturn(page);
+      navigatePage(target);
+      return;
+    }
+    const source = settingsOpen ? settingsReturn : page;
+    if (source !== null && source !== target) history.current.push(source);
+    if (history.current.length > 32) history.current.shift();
+    setSettingsReturn(null);
+    if (showOnboarding) onOnboardingComplete({ status: "skipped", goals: [], environments: [] });
+    navigatePage(target);
+  };
+  const returnFromSettings = () => {
+    const target = settingsReturn ?? "home";
+    returnFocus.current = focusMemory.current.get(target) ?? null;
+    navigatePage(target);
+    setSettingsReturn(null);
+  };
+  const goBack = () => {
+    if (settingsOpen) { returnFromSettings(); return; }
+    const target = history.current.pop() ?? "home";
+    returnFocus.current = focusMemory.current.get(target) ?? null;
+    navigatePage(target);
+  };
+  const backCurrentView = () => {
+    const back = visibleControls(shellRef.current?.querySelector("main") ?? document)
+      .filter(el => el.hasAttribute("data-back")).at(-1);
+    if (back) back.click();
+    else if (settingsOpen) returnFromSettings();
+    else if (showOnboarding) onOnboardingComplete({ status: "skipped", goals: [], environments: [] });
+    else goBack();
+  };
+  const onShellCommand = useEffectEvent((command: DesktopShellCommandV1) => {
+    if (command === "bigscreen") setDisplayMode("bigscreen");
+    else {
+      navigate("settings-version");
+      void runUpdateCheck({ manual: true });
+    }
+  });
+  useEffect(() => window.vua?.window.shellCommandEvents?.subscribe(onShellCommand), []);
+  useEffect(() => { try { localStorage.setItem(storageKeys.displayMode, displayMode); } catch { /* Keep the mode for this session. */ } }, [displayMode]);
+  useEffect(() => {
+    if (!bigscreen) return;
+    const frame = requestAnimationFrame(() => {
+      const controls = visibleControls(shellRef.current ?? document);
+      const saved = returnFocus.current;
+      returnFocus.current = null;
+      const target = saved ? controls.find(el => el.getAttribute("data-nav-id") === saved) : undefined;
+      const main = shellRef.current?.querySelector("main");
+      const scope = Array.from(main?.querySelectorAll<HTMLElement>("[data-focus-scope]") ?? [])
+        .find(el => !el.closest("[hidden]") && el.getClientRects().length > 0);
+      (target ?? visibleControls(scope ?? main ?? document)[0])?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [page, bigscreen, showOnboarding]);
+  useEffect(() => {
+    if (!bigscreen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (document.querySelector(".vua-boot-splash")) return;
+      const dialogs = Array.from(document.querySelectorAll<HTMLElement>("[role='dialog'], [role='alertdialog'], [role='menu']")).filter(el => el.getClientRects().length);
+      if (dialogs.length) return; // Composite widgets retain their own keyboard behavior.
+      if (event.target instanceof Element && event.target.closest("input, textarea, select, [contenteditable='true'], [role='tablist'], [role='tree']")) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        backCurrentView();
+        return;
+      }
+      if (event.key === "Home") { event.preventDefault(); navigate("home"); return; }
+      if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+      const controls = visibleControls(shellRef.current ?? document);
+      const rects = controls.map(el => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+      const next = directionalTarget(rects, controls.indexOf(document.activeElement as HTMLElement), event.key as Direction);
+      event.preventDefault();
+      if (next !== null) { controls[next]?.focus(); controls[next]?.scrollIntoView({ block: "nearest", inline: "nearest" }); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   // 命令面板(C-EFFICIENCY,ui-ux §6.1):Ctrl/Cmd+P 开关;命令 = 全部页面跳转 + 主题切换
   const [paletteOpen, setPaletteOpen] = useState(false);
   // 应用导览重播信号(三类引导裁决 2026-10-05):命令面板动作递增,
   // AppTour 据此从第一步重开;导览的进度/自动开始在其内部自治
   const [tourStartRequest, setTourStartRequest] = useState(0);
+  const startTour = () => {
+    if (showOnboarding) onOnboardingComplete({ status: "skipped", goals: [], environments: [] });
+    setTourStartRequest(value => value + 1);
+  };
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (isPaletteToggle(event)) {
@@ -755,117 +856,6 @@ function AppShell({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
-
-  // 顶栏折叠(2026-09-25 两级化):梯子 0=完整 / 1=Tab 收进折叠按钮。
-  // 量尺行测全量 Tab 自然宽;轨道与量尺的 ResizeObserver 在窗口/语言
-  // 变化时重新触发判定。相位机只管 0↔1 的飞入飞出动画窗。
-  // 首次判定直接落位不播动画(启动即窄窗不应看到整排 Tab 飞走);
-  // 每次判定循环至不动点——几何与级别解耦(品牌区宽度恒定),一次外部
-  // 事件直接落到最终级,不留中间卡态
-  const [navLevel, setNavLevel] = useState<NavLevel>(0);
-  const navCollapsed = navLevel === 1;
-  const [navPhase, setNavPhase] = useState<NavPhase>("expanded");
-  /** 折叠菜单打开状态:null 即关闭;x/y 为折叠按钮下缘的视口坐标 */
-  const [navMenu, setNavMenu] = useState<{ x: number; y: number } | null>(null);
-  const tabsRef = useRef<HTMLElement | null>(null);
-  const tabsMeasureRef = useRef<HTMLDivElement | null>(null);
-  const navToggleRef = useRef<HTMLButtonElement | null>(null);
-  const navMeasuredRef = useRef(false);
-  /** 上次判定的输入快照(#28 抖动修复):轨道/品牌几何不随折叠动作变化,
-   *  快照未变的 resize 触发即观察者噪声,跳过判定断开临界宽度振荡环 */
-  const lastMeasureRef = useRef<NavMeasureSnapshot | null>(null);
-  useEffect(() => {
-    const nav = tabsRef.current;
-    const measure = tabsMeasureRef.current;
-    if (!nav || !measure) return;
-    const settle = (from: NavLevel, required: number, available: number): NavLevel => {
-      let level = from;
-      for (let step = 0; step < 4; step += 1) {
-        const next = navLevelNext({ level, required, available });
-        if (next === level) return level;
-        level = next;
-      }
-      return level;
-    };
-    const update = () => {
-      // #28 自反馈断链:外部事实(窗口宽/量尺行/轨道宽)未变时不喂回判定
-      const style = getComputedStyle(nav);
-      const available =
-        nav.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
-      const snapshot: NavMeasureSnapshot = {
-        windowWidth: window.innerWidth,
-        required: measure.offsetWidth,
-        available,
-      };
-      if (!navMeasureChanged(lastMeasureRef.current, snapshot)) return;
-      lastMeasureRef.current = snapshot;
-      if (!navMeasuredRef.current) {
-        navMeasuredRef.current = true;
-        // 首判落位:一步收敛到终态,不播折叠动画
-        const level = settle(0, snapshot.required, available);
-        setNavLevel(level);
-        setNavPhase(level === 1 ? "collapsed" : "expanded");
-        return;
-      }
-      setNavLevel((level) => settle(level, snapshot.required, available));
-    };
-    // W25 走查缺陷①修复(2026-09-23):首判前等字体就绪——首判若在
-    // webfont 加载完成前量测,fallback 字体宽度偏大,量尺行 required 虚高,
-    // 启动即误判收缩。document.fonts.ready 在字体已就绪时立即 resolve
-    // (零等待,行为不变);不可用环境(极老内核)诚实降级为原时序。
-    // observer 同样在就绪后挂载,字体加载触发的布局变化照常重判。
-    let disposed = false;
-    const observer = new ResizeObserver(update);
-    const start = (): void => {
-      if (disposed) return;
-      update();
-      observer.observe(nav);
-      observer.observe(measure);
-    };
-    const fontsReady: Promise<unknown> | undefined =
-      typeof document !== "undefined" && "fonts" in document
-        ? document.fonts.ready
-        : undefined;
-    if (fontsReady === undefined) {
-      start();
-    } else {
-      void fontsReady.then(start, start);
-    }
-    return () => {
-      disposed = true;
-      observer.disconnect();
-    };
-  }, []);
-
-  // 目标态变化 → 进入过渡相位;过渡窗(与 CSS 动画时长对齐)结束 → 落定
-  useEffect(() => {
-    setNavPhase((phase) => {
-      if (navCollapsed) {
-        return phase === "collapsed" || phase === "collapsing" ? phase : "collapsing";
-      }
-      return phase === "expanded" || phase === "expanding" ? phase : "expanding";
-    });
-  }, [navCollapsed]);
-
-  useEffect(() => {
-    if (navPhase !== "collapsing" && navPhase !== "expanding") return;
-    /* 动效被全局压平时(reduced-motion / 特效关)不空等动画窗,立即落定;
-     * 读根元素 dataset 而非 effects state:该 state 声明在组件后部 */
-    const flattened =
-      document.documentElement.dataset.effects === "off" ||
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const ms = flattened ? 0 : navPhase === "collapsing" ? 300 : 430;
-    const timer = window.setTimeout(
-      () => setNavPhase(navPhase === "collapsing" ? "collapsed" : "expanded"),
-      ms,
-    );
-    return () => window.clearTimeout(timer);
-  }, [navPhase]);
-
-  // 离开折叠态时折叠菜单若还开着,其坐标已失效,直接关闭
-  useEffect(() => {
-    if (navPhase !== "collapsed") setNavMenu(null);
-  }, [navPhase]);
 
   const commands = useMemo<CommandItem[]>(() => {
     const pages: CommandItem[] = modules.flatMap((module) =>
@@ -885,7 +875,7 @@ function AppShell({
         group: "actions",
         label: strings.tour.paletteEntry,
         keywords: "tour guide onboarding",
-        run: () => setTourStartRequest((value) => value + 1),
+        run: startTour,
       },
       {
         id: "toggle-theme",
@@ -917,8 +907,13 @@ function AppShell({
   // 顶栏 palette 按钮,动作注入面不变)
   const pageActions: PageActions = {
     ...actions,
+    chooseGoals: () => navigate("settings-goals"),
+    prepareEnv: () => navigate("env-create"),
+    restartOnboarding: () => { if (settingsOpen) returnFromSettings(); actions.restartOnboarding(); },
     openPalette: () => setPaletteOpen(true),
     navigate,
+    openAccounts: () => navigate("settings-accounts"),
+    startTour,
   };
 
   // 生效主题 → data-theme:单次 dataset 写入,变化才触发,不做二次翻转
@@ -1029,10 +1024,29 @@ function AppShell({
     }
   }, [effectsAuto]);
 
+  const pagePrefs: PagePrefs = {
+    displayMode, onDisplayModeChange: setDisplayMode,
+    theme: themeOverride ?? themePref, hc,
+    onThemeChange: (next) => {
+      if (themeOverride !== null) {
+        if (next === "dark" || next === "light") setThemeOverride(next);
+        return;
+      }
+      setThemePref(next);
+    },
+    onHcChange: setHc,
+    saverOn: effects === "off",
+    onSaverToggle: () => setEffects(current => current === "off" ? "on" : "off"),
+    saverAuto: effectsAuto, onSaverAutoChange: setEffectsAuto, steamVRRunning,
+  };
+  const contentPage = settingsOpen ? settingsReturn : page;
+
   return (
     <div
       className="vua-shell"
       data-module={activeModule}
+      data-display-mode={displayMode}
+      ref={shellRef}
       // 右键纪律(S-XII,用户裁定):大部分区域不放右键菜单——统一抑制浏览器
       // 默认菜单;仅文本输入框放行原生编辑菜单。素材/配方/成品卡片的自定义
       // 菜单(ContextMenu)在各自组件的冒泡阶段接管,与此捕获层互不冲突。
@@ -1048,83 +1062,12 @@ function AppShell({
       {/* 沉浸式标题栏(§氛围基线 #12):顶栏即标题栏,空白处可拖拽;
        *  拖拽属性只放在容器与品牌元素上,Tabs/按钮保持可点 */}
       <header className="vua-shell__header vua-drag-region">
-        <div className="vua-shell__brand vua-drag-region">
-          {/* 正式字标(品牌候选 06「Level」,2026-10-07 用户裁决):随模块辖区
-           *  变色——环境部署紫、模型生产橙(--vua-accent 别名自动切换),
-           *  设置 = 三色混合(V 紫/U 中性/A 橙)。「中性色不随模块变」的
-           *  占位字标纪律随之退役 */}
-          <span className="vua-shell__wordmark vua-drag-region">
-            <BrandMark variant={activeModule === "settings" ? "mixed" : "solid"} />
-          </span>
+        <button type="button" className="vua-shell__logo-home" aria-label={strings.journey.home} title={strings.journey.home} data-nav-id="logo-home" onClick={() => navigate("home")}>
+          <span className="vua-shell__wordmark"><BrandMark variant={activeModule === "env" || activeModule === "production" ? "solid" : "mixed"} /></span>
+        </button>
+        <div className="vua-shell__location vua-drag-region">
+          {settingsOpen || (bigscreen && page !== "home") ? <Button variant={settingsOpen ? "primary" : "subtle"} className="vua-shell__back" data-nav-id="shell-back" onClick={settingsOpen ? returnFromSettings : backCurrentView}><Icon name="arrow-left" size={20} />{strings.journey.back}</Button> : null}
         </div>
-        {/* tabs 容器 flex:1 占满中段——拖拽属性必须落在容器上,否则按钮右侧的
-         *  空白属于 nav 而非 header,无法拖动窗口(按钮自身不受影响) */}
-        <nav
-          className={
-            navPhase === "collapsing"
-              ? "vua-shell__tabs vua-shell__tabs--leaving"
-              : navPhase === "expanding"
-                ? "vua-shell__tabs vua-shell__tabs--entering"
-                : "vua-shell__tabs"
-          }
-          aria-label={strings.app.moduleNavAria}
-          ref={tabsRef}
-        >
-          {navPhase === "collapsed" ? (
-            /* 窄窗折叠:整排 Tab 收进一个按钮,点击在按钮下方弹出原两项;
-             * 标签显示当前模块(落在设置页时退回通用导航名);
-             * 当前模块是业务模块时带 aria-current,按下态视觉与展开时一致 */
-            <button
-              type="button"
-              className="vua-shell__tab vua-shell__tab--nav-toggle"
-              aria-haspopup="menu"
-              aria-expanded={navMenu !== null}
-              aria-current={
-                businessModules.some((m) => m.id === activeModule) ? "page" : undefined
-              }
-              ref={navToggleRef}
-              onClick={(event) => {
-                if (navMenu) {
-                  setNavMenu(null);
-                  return;
-                }
-                const rect = event.currentTarget.getBoundingClientRect();
-                setNavMenu({ x: rect.left, y: rect.bottom + 6 });
-              }}
-            >
-              <span className="vua-shell__tab-label">
-                {businessModules.some((m) => m.id === activeModule)
-                  ? tabLabel(moduleDef(activeModule))
-                  : strings.app.moduleNavAria}
-              </span>
-              <span className="vua-shell__tab-chevron">
-                <Icon name="chevron-down" size={16} />
-              </span>
-            </button>
-          ) : (
-            businessModules.map((m, index) => (
-              <button
-                key={m.id}
-                type="button"
-                className="vua-shell__tab"
-                style={{ "--tab-index": index } as CSSProperties}
-                aria-current={activeModule === m.id ? "page" : undefined}
-                onClick={() => navigate(resolveTabLanding(m.id))}
-              >
-                <span className="vua-shell__tab-label">{tabLabel(m)}</span>
-              </button>
-            ))
-          )}
-          {/* 量尺:不可见的全量 Tab 行,内容与真实 Tab 一一对应;绝对定位
-           *  脱离布局流,offsetWidth 恒为自然总宽,不受轨道收缩影响 */}
-          <div className="vua-shell__tabs-measure" aria-hidden="true" ref={tabsMeasureRef}>
-            {businessModules.map((m) => (
-              <span key={m.id} className="vua-shell__tab">
-                <span className="vua-shell__tab-label">{tabLabel(m)}</span>
-              </span>
-            ))}
-          </div>
-        </nav>
         {/* 占用查看器(2026-09-25 用户裁决):设置按钮左侧常驻读数,
          *  RAM/VRAM 取高;点击展开右上角详情小窗 */}
         <ResourceMonitor />
@@ -1133,52 +1076,14 @@ function AppShell({
         <button
           type="button"
           className="vua-shell__tab vua-shell__settings"
-          aria-current={activeModule === "settings" ? "page" : undefined}
-          onClick={() => navigate(resolveTabLanding("settings"))}
+          aria-current={settingsOpen ? "page" : undefined}
+          data-nav-id="shell-settings"
+          onClick={() => settingsOpen ? returnFromSettings() : navigate("settings-theme")}
         >
           <span className="vua-shell__tab-label">{tabLabel(moduleDef("settings"))}</span>
         </button>
-        <button
-          type="button"
-          className="vua-shell__palette-cta vua-caption"
-          onClick={() => setPaletteOpen(true)}
-        >
-          {strings.commandPalette.cta} · {strings.commandPalette.ctaHint}
-        </button>
-        {/* 准备阅读器入口(三类引导裁决 2026-10-05:长篇引导迁入普通阅读
-         *  窗口):showReader() 无定位 = 普通打开并恢复上次阅读位置;带定位
-         *  的上下文帮助(GuideEntryButton)同样进入阅读器。无 preload 环境
-         *  (浏览器直开主壳)可选链安全退化为无动作 */}
-        <button
-          type="button"
-          className="vua-shell__theme-toggle vua-caption"
-          title={strings.app.overlayGuide}
-          data-tour-anchor="tour-guide-entry"
-          onClick={() => void window.vua?.window.showReader()}
-        >
-          {strings.app.overlayGuide}
-        </button>
-        {/* 任务状态置顶窗入口(阅读器迁移后状态访问保持独立):打开即状态
-         *  视图;关闭阅读器或本窗口不影响任何任务 */}
-        <button
-          type="button"
-          className="vua-shell__theme-toggle vua-caption"
-          title={strings.overlay.views.status}
-          onClick={() => void window.vua?.window.showOverlay("status")}
-        >
-          {strings.overlay.views.status}
-        </button>
-        {/* 游戏引导小窗入口(三类引导 §4):透明置顶窗,打开不夺
-         *  焦点;隐藏不销毁,进度/透明度/跟随偏好本地持久化 */}
-        <button
-          type="button"
-          className="vua-shell__theme-toggle vua-caption"
-          title={strings.app.gameGuide}
-          onClick={() => void window.vua?.window.showGameGuide()}
-        >
-          {strings.app.gameGuide}
-        </button>
-        {/* 通知中心顶栏入口(对标 Comfy 铃铛,自绘):与底部任务条共用同一通知投影;
+        <button type="button" className="vua-shell__utility" data-tour-anchor="tour-guide-entry" onClick={() => navigate("help")}>{strings.journey.help}</button>
+        {/* 通知中心顶栏入口(对标 Comfy 铃铛,自绘):保留任务与通知投影;
          *  capability 非 ready 时组件自身不渲染 */}
         <NotificationPopover navigate={navigate} />
         {inShell ? (
@@ -1211,78 +1116,46 @@ function AppShell({
         ) : null}
       </header>
       <div className="vua-shell__body">
-        {/* 整页宽模块(hideSidebar)不渲染二级侧栏;指挥台退役后当前
-            所有模块均带侧栏,机制保留 */}
-        {!moduleDef(activeModule).hideSidebar ? (
-        <aside className="vua-shell__sidebar" aria-label={strings.app.sidebarAria}>
-          {moduleDef(activeModule).groups.map((group, index) => (
-            <div className="vua-shell__sidebar-group" key={group.labelKey ?? index}>
-              {groupLabel(group) ? (
-                <span className="vua-shell__sidebar-label">{groupLabel(group)}</span>
-              ) : null}
-              {group.pages.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  className="vua-shell__sidebar-item"
-                  aria-current={page === p.id ? "page" : undefined}
-                  onClick={() => navigate(p.id)}
-                >
-                  {pageLabel(p)}
-                </button>
-              ))}
-            </div>
-          ))}
-        </aside>
-        ) : null}
+        {!bigscreen || settingsOpen ? <aside className={`vua-shell__sidebar${settingsOpen ? " vua-shell__sidebar--settings" : ""}`} aria-label={settingsOpen ? strings.nav.tabs.settings : strings.app.sidebarAria}>
+          {settingsOpen ? <div className="vua-shell__sidebar-group vua-shell__sidebar-group--settings" data-module="settings">
+            {moduleDef("settings").groups.flatMap(g => g.pages).map(p => <button type="button" key={p.id} className="vua-shell__sidebar-item" aria-current={page === p.id ? "page" : undefined} onClick={() => navigate(p.id)} data-nav-id={`nav-${p.id}`}>{pageLabel(p)}</button>)}
+          </div> : (["env", "production"] as const).map(group => <div className="vua-shell__sidebar-group" key={group} data-module={group}>
+            <button type="button" className="vua-shell__sidebar-label" onClick={() => navigate(group === "env" ? "environment-hub" : "avatar-hub")}>{group === "env" ? strings.journey.environment : strings.journey.avatar}</button>
+            {directory[group].map(item => <button type="button" key={item.id} className="vua-shell__sidebar-item" aria-current={page === item.id ? "page" : undefined} onClick={() => navigate(item.id)} data-nav-id={`nav-${item.id}`}>{item.title}</button>)}
+          </div>)}
+          {settingsOpen ? <div className="vua-shell__sidebar-footer">
+            <button
+              type="button"
+              className="vua-shell__sidebar-search"
+              data-nav-id="settings-search"
+              aria-keyshortcuts="Control+P Meta+P"
+              title={`${strings.commandPalette.cta} · ${strings.commandPalette.ctaHint}`}
+              onClick={() => setPaletteOpen(true)}
+            >
+              {strings.commandPalette.cta}
+            </button>
+          </div> : null}
+        </aside> : null}
         <main className="vua-shell__main">
-          <div key={page} className="vua-page-enter">
-            {renderPage(page, goals, creatorReady, pageActions, {
-              theme: themeOverride ?? themePref,
-              hc,
-              onThemeChange: (next) => {
-                // 走查覆盖在时:dark|light 选择翻转覆盖值(不写存储);
-                // 跟随系统无法由覆盖表达,忽略(开发面,不猜态)
-                if (themeOverride !== null) {
-                  if (next === "dark" || next === "light") setThemeOverride(next);
-                  return;
-                }
-                setThemePref(next);
-              },
-              onHcChange: setHc,
-              saverOn: effects === "off",
-              onSaverToggle: () =>
-                setEffects((current) => (current === "off" ? "on" : "off")),
-              saverAuto: effectsAuto,
-              onSaverAutoChange: setEffectsAuto,
-              steamVRRunning,
-            }, uiRoot, onUiRootChange)}
-          </div>
+          {contentPage !== null ? <div hidden={showOnboarding || settingsOpen} key={contentPage} className="vua-page-enter">
+            {renderPage(contentPage, creatorReady, pageActions, pagePrefs, uiRoot, onUiRootChange, bigscreen)}
+          </div> : null}
+          {showOnboarding ? <div key="first-run" hidden={settingsOpen}><OnboardingPage onComplete={onOnboardingComplete} onAccounts={pageActions.openAccounts} /></div> : null}
+          {settingsOpen ? <div key={page} className="vua-page-enter">{renderPage(page, creatorReady, pageActions, pagePrefs, uiRoot, onUiRootChange, bigscreen)}</div> : null}
         </main>
       </div>
-      {/* 任务中心(ui-ux §4.2 底部入口):capability 非 ready 时组件自身不渲染 */}
-      <Taskbar navigate={navigate} />
       {/* 导航确认卡(015 §12,批 B-3):U9(1)/(3) 确认层的渲染层载体,全局一次挂载 */}
       <NavigationConfirmOverlay />
       {/* 应用导览(三类引导裁决 2026-10-05):主窗口内有序高亮;从未运行自动
        *  开始,active 按步号恢复,重播经命令面板;状态独立于阅读器/安装 */}
-      <AppTour page={page} navigate={navigate} startRequest={tourStartRequest} />
+      {!showOnboarding ? <AppTour page={page} navigate={navigate} startRequest={tourStartRequest} autoStart={false} /> : null}
       {/* 窗口级登录浏览器(2026-10-05 用户裁决):无开启意图时零渲染;视图
           生命周期归组件(卸载即关),宿主不依赖任何页面/弹窗 */}
       <LoginBrowserOverlay />
       {paletteOpen ? (
         <CommandPalette commands={commands} onClose={() => setPaletteOpen(false)} />
       ) : null}
-      {navMenu && navPhase === "collapsed" ? (
-        <NavOverflowMenu
-          x={navMenu.x}
-          y={navMenu.y}
-          activeModule={activeModule}
-          toggleRef={navToggleRef}
-          onSelect={(id) => navigate(resolveTabLanding(id))}
-          onClose={() => setNavMenu(null)}
-        />
-      ) : null}
+
     </div>
   );
 }
@@ -1382,25 +1255,10 @@ export function App() {
     // 设置端口内状态同步(G3):端口为查询事实来源,持久化仍由 App 壳负责
     if (stored) void gateway.settings.setGoals(stored);
     setShowOnboarding(false);
-    // §2.2 步骤 3:按顶部导航从左到右进入第一个已选目标;跳过则进默认落点
-    const first = businessModules.find((m) => goalEnabled(stored, m.id as GoalId));
-    navigate(first ? first.defaultPage : defaultPage);
+    if (result.page) navigate(result.page);
   }
 
-  if (showOnboarding) {
-    return (
-      <>
-        {!splashDone ? <BootSplash onDone={() => setSplashDone(true)} /> : null}
-        <OnboardingPage
-          initialGoals={storedGoals?.goals ?? []}
-          initialEnvs={storedGoals?.environments ?? []}
-          onComplete={handleOnboardingComplete}
-        />
-      </>
-    );
-  }
-
-  const actions: Omit<PageActions, "openPalette" | "navigate"> = {
+  const actions: Omit<PageActions, "openPalette" | "navigate" | "openAccounts" | "startTour"> = {
     chooseGoals: () => navigate("settings-goals"),
     prepareEnv: () => navigate("env-create"),
     restartOnboarding: () => setShowOnboarding(true),
@@ -1415,7 +1273,8 @@ export function App() {
         <AppShell
           page={page}
           navigate={navigate}
-          goals={storedGoals}
+          showOnboarding={showOnboarding}
+          onOnboardingComplete={handleOnboardingComplete}
           actions={actions}
           uiRoot={uiRoot}
           onUiRootChange={setUiRoot}

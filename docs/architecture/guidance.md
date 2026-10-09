@@ -1,9 +1,9 @@
 # Guidance architecture: app tour, preparation reader and game guide
 
-> Document version: 1.2.0
+> Document version: 1.5.0
 > Status: Accepted
-> Updated: 2026-10-08
-> Last conformance review: 2026-10-08 (reader, tour and game guide with automatic following; real-machine acceptance pending)
+> Updated: 2026-10-09
+> Last conformance review: 2026-10-09 (background-alpha and relative-placement repairs with controlled Chromium/decision checks; author recheck pending)
 > Scope: First play release guidance in Electron and React
 
 For people: VUA teaches three different activities in three appropriate places: using VUA,
@@ -31,6 +31,13 @@ The preparation reader is useful before VRChat exists or starts. The game guide 
 Windows game window; headset reading uses SteamVR's desktop view of the preparation reader.
 A native in-headset VUA overlay remains later work.
 
+The Tasks window is a queue/status entry, without an onboarding switch. Preparation and game
+guidance stay in their own presentations; retained legacy explicit guide calls do not add a
+guide tab to Tasks. Account guidance opens Settings → Accounts with a settings-only sidebar.
+The upper-left Back action or clicking Settings again returns to the source workflow; a guide's
+content Back returns one level to its account cards. These actions preserve the wizard step and
+accepted tasks. The [desktop architecture](desktop.md) owns settings/tray lifecycle and appearance.
+
 ## 2. VUA app tour
 
 Render the tour in the main React tree. Highlight real VUA controls over a highly transparent
@@ -41,6 +48,10 @@ The initial tour follows the first-play route: choose desktop or PICO, read netw
 inspect software, review the installation plan, find progress/user handoffs, and locate the
 play and guide entries. Page navigation follows those steps. Limit this delivery to available
 first-play controls; Avatar production tours follow their own delivery.
+
+The first-run branching wizard is independent of this control-location tour. Open the tour
+explicitly from Help or command search; completing/exiting the wizard does not automatically
+start a second overlay. Resume an already-active tour using its own bookmark.
 
 Provide back, next, skip/exit and restart. A real action can advance its associated step, but
 opening an installer is not installation success. Waiting for a download does not trap the
@@ -76,7 +87,9 @@ without launching VRChat or using an overlay.
 The initial controls are **Follow VRChat window**, enabled by default, and a transparency
 adjustment starting at **50%**. Persist subsequent user choices. This default belongs to the
 game guide only; it does not make the preparation reader translucent or determine the app-tour
-mask. Keep text and controls readable at the default setting.
+mask. The slider changes only the panel's matrix/background opacity; text and controls remain
+fully readable. The outer Chromium canvas and native window are transparent, so reducing the
+panel background actually reveals the application underneath.
 
 Electron Main owns a Windows window observer behind a narrow desktop interface. Identify the
 visible game window belonging to `VRChat.exe`; a running process without a usable game window
@@ -87,6 +100,10 @@ With following enabled:
 
 - Keep the guide associated with the game window as it moves or resizes, including monitor/DPI
   changes. Place instructions inside its usable bounds without covering the whole game.
+- Initially place it toward the right and vertically centered. A player drag replaces that
+  default with a remembered relative position within the available travel area. Retain that
+  preference across app switches, minimize/restore, manual reopen, new game sessions and VUA
+  restart. Clamp to the game bounds and use the guide's actual current size when resizing.
 - Show/restore it when the game becomes the active usable window; hide it when the game is
   minimized, closes, or the player switches to another application. Do not minimize or activate
   VRChat on the player's behalf.
@@ -121,7 +138,7 @@ illustration. Map sections deliberately: eye-tracking equipment/module setup bel
 reader, while its in-game OSC step belongs in the game guide. An entire old topic need not move
 to one surface unchanged.
 
-The topbar Guide entry exposes the three clearly named destinations; contextual help goes
+The topbar Help entry exposes the first-run wizard and three clearly named guide destinations; contextual help goes
 directly to the appropriate destination/step. Opening a preparation section must not switch the
 player into a tour or enable game following. Keep the ordinary reader reachable when the game
 is absent. These are guide destinations, not additional business tabs.
@@ -131,7 +148,8 @@ is absent. These are guide destinations, not additional business tabs.
 | App-tour position, completion and skip | Local UI preferences, separate from installation success |
 | Preparation topic/section | Reader state; migrate the existing reading bookmark |
 | Game-guide step and confirmation/skip | Separate local game-guide progress |
-| Follow preference and transparency | Desktop preferences enforced by Main |
+| Follow preference and background opacity | Separate renderer-local preferences; Main enforces following |
+| Dragged relative position | Main's local layout preference, normalized per axis; no game/process/monitor identifiers persisted |
 | Transient target and window-follow observations | Consumed request / current observation, not permanent reading progress |
 | Installation and other business tasks | Existing Orchestrator authority; guide windows only display or navigate to them |
 
@@ -140,6 +158,9 @@ view, not a fourth tutorial, and closing any guide does not cancel a task. Avoid
 progress part of the production display snapshot.
 
 Renderer code requests typed semantic actions; Main owns windows and native observations.
+Only the native user-drag event changes the saved layout; automatic placement never learns
+its own move as a new preference. The preference file is `game-guide-placement.json` in the
+local application profile. Missing, corrupt or unsupported values restore the default position.
 Reuse the existing targeting validation and single-consumption behavior. Add narrowly scoped
 desktop API fields only when needed, with both ends and tests updated together; this design
 does not silently change a frozen wire contract.
@@ -162,6 +183,11 @@ The delivery plan names the outstanding code and real-machine checks.
 
 ## Document changelog
 
+- 1.5.0 (2026-10-09): fix background-only guide opacity and define persisted relative drag placement across focus, window and session changes without retaining machine identifiers.
+
+
+- 1.4.0 (2026-10-09): separate the daily Tasks entry from guidance and route account-help return through the independent settings area; retain legacy guide-call compatibility.
+- 1.3.0 (2026-10-08): keep the independent first-run wizard and manually opened app tour distinct; route Help and tour anchors through the fixed directory.
 - 1.2.0 (2026-10-08): record the delivered game-window observer and automatic guide following (game-window-observe v0.1); real-machine acceptance remains in the delivery plan.
 - 1.1.0 (2026-10-07): distinguish the delivered three presentations from the remaining game-window observer and automatic lifecycle.
 - 1.0.0 (2026-10-05): accept three guidance contexts, define their window/state responsibilities and map migration from completed A/B slices.

@@ -17,7 +17,7 @@ const PANEL_EXIT_MS = 140;
 /**
  * 顶栏通知入口(对标 Comfy-Desktop 右上角铃铛,按用户裁定自绘):
  * 铃铛按钮 + 进行中徽标;点击后整屏毛玻璃 backdrop 上动画展开面板,
- * 内容与底部任务条共用 NotificationList(同一通知投影)。
+ * 内容经 NotificationList 投影任务事实;底部任务条已退出主壳。
  *
  * 定位纪律:header 自身带 backdrop-filter,会囚禁 fixed 后代(BOARD #38),
  * 因此 backdrop 与面板一律 portal 到 document.body;面板本体实底不模糊

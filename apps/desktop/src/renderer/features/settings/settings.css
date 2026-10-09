@@ -18,6 +18,61 @@
   background: var(--vua-bg-panel);
 }
 
+/* 连体外观按钮:选中框随偏好滑动;减动/省资源由 base.css 全局规则压平。 */
+.vua-theme-choice {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  max-width: 480px;
+  padding: 4px;
+  border: 1px solid var(--vua-border);
+  border-radius: var(--vua-radius-control);
+  background: var(--vua-bg-panel);
+}
+
+.vua-theme-choice__selection {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / 3);
+  border: 1px solid var(--vua-accent);
+  border-radius: calc(var(--vua-radius-control) - 2px);
+  background: var(--vua-accent-tint);
+  pointer-events: none;
+  transition: transform 220ms ease;
+}
+
+.vua-theme-choice__button {
+  position: relative;
+  min-height: var(--vua-control-height);
+  padding: 8px;
+  border: 0;
+  border-radius: calc(var(--vua-radius-control) - 2px);
+  background: transparent;
+  color: var(--vua-text-secondary);
+  font: var(--vua-font-body);
+  cursor: pointer;
+}
+
+.vua-theme-choice__button[aria-pressed="true"] {
+  color: var(--vua-accent-text);
+  font-weight: 600;
+}
+
+.vua-theme-choice__button:hover:not([aria-pressed="true"]) {
+  color: var(--vua-text-strong);
+  background: color-mix(in srgb, var(--vua-text-strong) 6%, transparent);
+}
+
+.vua-shell[data-display-mode="bigscreen"] .vua-theme-choice { max-width: 640px; }
+.vua-shell[data-display-mode="bigscreen"] .vua-theme-choice__button { min-height: 64px; font-size: 18px; }
+
+@media (forced-colors: active) {
+  .vua-theme-choice__selection { border-color: Highlight; }
+}
+
 /* 资源节约模式:按钮+状态行与勾选行的横向排布(复用通用间距 token) */
 .vua-settings-row {
   display: flex;

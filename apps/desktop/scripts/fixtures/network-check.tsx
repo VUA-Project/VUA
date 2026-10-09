@@ -2,7 +2,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import type { NetworkIntent, NetworkReport, WebsiteObservation } from "@vua/contracts";
-import { NETEASE_UU_URL } from "@vua/contracts";
 import { GatewayProvider } from "../../src/renderer/gateway/GatewayProvider.tsx";
 import { emptyGateway } from "../../src/renderer/gateway/empty-gateway.ts";
 import { NetworkPanel } from "../../src/renderer/features/deployer/NetworkPanel.tsx";
@@ -16,11 +15,12 @@ const root = createRoot(document.getElementById("root")!);
 const base = emptyGateway();
 let pending: { urls: readonly string[]; resolve: (rows: readonly WebsiteObservation[]) => void; reject: () => void } | null = null;
 let requestCount = 0;
+let regionRequests = 0;
 const gateway = { ...base, environment: { ...base.environment, network: {
   capability: async () => ({ state: "ready" as const }),
   websiteCapability: async () => ({ state: "ready" as const }),
-  check: async (intent: NetworkIntent): Promise<NetworkReport> => ({ schemaVersion: "0.1", intent,
-    detectedRegion: "unknown", effectiveRegion: "unknown", capturedAt: "2026-10-07T00:00:00Z", durationMs: 0, results: [] }),
+  check: async (intent: NetworkIntent): Promise<NetworkReport> => { regionRequests++; return { schemaVersion: "0.1", intent,
+    detectedRegion: "unknown", effectiveRegion: "unknown", capturedAt: "2026-10-07T00:00:00Z", durationMs: 0, results: [] }; },
   testWebsites: (urls: readonly string[]) => new Promise<readonly WebsiteObservation[]>((resolve, reject) => {
     requestCount++; pending = { urls, resolve, reject: () => reject(Error("synthetic transport failure")) };
   }),
@@ -54,12 +54,7 @@ Object.assign(window, { networkReview: { run: async () => {
   await click(strings.websiteTests.add);
   assert(Boolean(document.querySelector('[role="dialog"]')), "add opens an editor");
   await click(strings.websiteTests.cancel);
-  const help = document.querySelector("details")!; help.open = true; await tick();
-  const region = document.querySelector("select")!;
-  region.value = "china_mainland"; region.dispatchEvent(new Event("change", { bubbles: true })); await tick();
-  assert(Boolean(document.querySelector(`a[href="${NETEASE_UU_URL}"]`)), "mainland advice remains available");
-  region.value = "other"; region.dispatchEvent(new Event("change", { bubbles: true })); await tick();
-  assert(!document.querySelector(`a[href="${NETEASE_UU_URL}"]`), "overseas never recommends UU");
-  help.open = false;
+  assert(!document.querySelector(".vua-network__help, select, .vua-network a"), "connection help, region selection and product recommendations are removed");
+  assert(regionRequests === 0, "website testing never invokes country detection");
   return checks;
 } } });

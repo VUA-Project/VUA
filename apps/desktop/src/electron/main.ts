@@ -8,6 +8,7 @@ import type {
   CatalogSyncFinishV03,
   CatalogSyncPageV03,
   DownloadEventV01,
+  DesktopShellCommandV1,
   EditorSettingsV1,
   GameGuideFollowStatusV1,
   GameWindowRectPhysicalV1,
@@ -16,7 +17,7 @@ import type {
   OverlayViewV1,
   RemoteContentEventV1,
 } from "@vua/contracts";
-import { APPLICATION_CONTRACT_VERSION, isGameWindowObservationResult, isLibraryDownloadParamsV01, isLibraryDownloadSnapshotV01 } from "@vua/contracts";
+import { APPLICATION_CONTRACT_VERSION, accountGuideDestination, isGameWindowObservationResult, isLibraryDownloadParamsV01, isLibraryDownloadSnapshotV01 } from "@vua/contracts";
 import type { OrchestratorProviderV01 } from "@vua/orchestrator-provider";
 import { routeDesktopGatewayInvoke } from "./gateway-router.js";
 import { DownloadPort } from "./download-port.js";
@@ -76,10 +77,12 @@ import {
   applyManualShow,
   decideFollowTick,
   initialGameGuideFollowState,
+  recordGuideDrag,
   recordUnknownTick,
   type DipRect,
   type GameGuideFollowState,
 } from "./game-guide-follow.js";
+import { readGuidePlacement, writeGuidePlacement } from "./game-guide-placement-store.js";
 import {
   installLocalContentNavigationPolicy,
   installPermissionDenyPolicy,
@@ -92,6 +95,7 @@ import { createFsDirectory, listFsDirectory } from "./fs-directory.js";
 import { resolveDesktopRuntime } from "./runtime-paths.js";
 import { preparePackagedSmoke } from "./packaged-smoke.js";
 import { configureDesktopProfile, resolveDesktopProfile, tagDevelopmentWindow } from "./runtime-profile.js";
+import { createVuaTray } from "./system-tray.js";
 
 registerImageCacheScheme();
 
@@ -121,6 +125,10 @@ if (desktopProfile.kind !== "release") {
 }
 const packagedSmoke = preparePackagedSmoke();
 let mainWindow: BrowserWindow | null = null;
+let systemTray: ReturnType<typeof createVuaTray> | null = null;
+let shellListening = false;
+let shellLocale: string | null = null;
+let pendingShellCommand: DesktopShellCommandV1 | null = null;
 let overlayWindow: BrowserWindow | null = null;
 let readerWindow: BrowserWindow | null = null;
 let gameGuideWindow: BrowserWindow | null = null;
@@ -140,11 +148,26 @@ let providerHandshake: Awaited<ReturnType<OrchestratorProviderV01["start"]>> | n
 const lastAppliedIntentSeq = new Map<string, number>();
 let shutdownStarted = false;
 
+function focusMainWindow(): void {
+  if (mainWindow === null || mainWindow.isDestroyed()) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+function sendShellCommand(command: DesktopShellCommandV1): void {
+  focusMainWindow();
+  if (shellListening && mainWindow !== null && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("vua:window:shell-command", command);
+  } else pendingShellCommand = command;
+}
+
 // 游戏引导跟随(game-guide follow 切片,guidance §4):状态机与决策在
 // game-guide-follow.ts(纯函数可测);此处只持有状态、250ms 定时器与请求
 // 序号。跟随开关缺省 ON(用户裁决),渲染层持久化并经 set-following 推送,
 // Main 强制执行
-let gameGuideFollow: GameGuideFollowState = initialGameGuideFollowState;
+const gameGuidePlacementFile = path.join(app.getPath("userData"), "game-guide-placement.json");
+let gameGuideFollow: GameGuideFollowState = { ...initialGameGuideFollowState, relativePlacement: readGuidePlacement(gameGuidePlacementFile) };
 let gameGuideFollowTimer: ReturnType<typeof setInterval> | null = null;
 let gameGuideFollowSeq = 0;
 
@@ -561,15 +584,34 @@ function registerIpc(provider: OrchestratorProviderV01): void {
   // 主窗口」),允许切换焦点;最小化先还原;主窗口缺席(启动中/已关闭)幂等
   ipcMain.handle("vua:window:focus-main", (event) => {
     assertLocalSender(senderFrameUrl(event));
-    if (mainWindow === null || mainWindow.isDestroyed()) return;
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.show();
-    mainWindow.focus();
+    focusMainWindow();
+  });
+  ipcMain.on("vua:window:shell-listening", (event, listening: unknown, locale: unknown) => {
+    if (typeof listening !== "boolean" || mainWindow === null || mainWindow.isDestroyed()
+      || event.sender !== mainWindow.webContents || event.senderFrame !== event.sender.mainFrame
+      || !isAllowedLocalSender(event.senderFrame?.url ?? "", rendererUrl)) return;
+    shellListening = listening;
+    if (!listening) return;
+    if (typeof locale === "string" && locale.length <= 32) shellLocale = locale;
+    systemTray?.setLocale(shellLocale);
+    if (pendingShellCommand !== null) {
+      const command = pendingShellCommand;
+      pendingShellCommand = null;
+      sendShellCommand(command);
+    }
   });
 
   // 远程内容窄面(F4-2 隔离基座):Renderer 只发语义动作;来源允许清单在
   // Main 侧裁决,视图内违规以事件透明上报。种子允许清单只含目录浏览域,
   // 真实值随 catalog 契约冻结(F4-1②)调整
+  // Registration uses the official browser handoff until temporary embedded account
+  // sessions have their own acceptance. BOOTH acquisition keeps its existing profile.
+  ipcMain.handle("vua:remote-content:open-account-guide-in-browser", async (event, guide: unknown) => {
+    assertLocalSender(senderFrameUrl(event));
+    const url = accountGuideDestination(guide);
+    if (url === null) throw new Error("invalid account guide");
+    await shell.openExternal(url);
+  });
   ipcMain.handle("vua:remote-content:open", (event, request: unknown) => {
     assertLocalSender(senderFrameUrl(event));
     const url = (request as { url?: unknown } | null)?.url;
@@ -1057,6 +1099,7 @@ function createGameGuideWindow(): void {
     show: false,
     frame: false,
     transparent: true,
+    backgroundColor: "#00000000",
     resizable: true,
     skipTaskbar: true,
     hasShadow: false,
@@ -1065,6 +1108,16 @@ function createGameGuideWindow(): void {
   tagDevelopmentWindow(win, desktopProfile);
   win.setAlwaysOnTop(true, GAME_GUIDE_WINDOW_LEVEL);
   gameGuideWindow = win;
+  let savedPlacementKey = JSON.stringify(gameGuideFollow.relativePlacement);
+  // will-move is emitted for a player drag, not an automatic setBounds.
+  win.on("will-move", (_event, bounds) => {
+    if (win.isVisible()) gameGuideFollow = recordGuideDrag(gameGuideFollow, bounds);
+  });
+  win.on("moved", () => {
+    const placement = gameGuideFollow.relativePlacement;
+    const key = JSON.stringify(placement);
+    if (placement && key !== savedPlacementKey && writeGuidePlacement(gameGuidePlacementFile, placement)) savedPlacementKey = key;
+  });
   // 跟随定时器随窗口创建惰性启动(跟随开启时);窗口销毁即停,绝不并跑
   ensureGameGuideFollowTimer();
   win.once("ready-to-show", () => {
@@ -1184,12 +1237,12 @@ async function gameGuideFollowTick(): Promise<void> {
     gameGuideFollow = recordUnknownTick(gameGuideFollow);
     return;
   }
-  if (win.isDestroyed()) return;
+  if (win.isDestroyed() || gameGuideWindow !== win || !gameGuideFollow.followEnabled) return;
   const { action, next } = decideFollowTick(
     gameGuideFollow,
     response.value.gameWindow,
     { visible: win.isVisible(), focused: win.isFocused() },
-    { width: GAME_GUIDE_WINDOW_WIDTH, height: GAME_GUIDE_WINDOW_HEIGHT },
+    win.getBounds(),
     gameWindowRectToDip,
   );
   gameGuideFollow = next;
@@ -1226,6 +1279,7 @@ async function createWindow(): Promise<void> {
   });
 
   tagDevelopmentWindow(mainWindow, desktopProfile);
+  mainWindow.webContents.on("did-start-loading", () => { shellListening = false; });
 
   // U9 四分法(本地壳窗口):http/https 弹窗不再交系统浏览器——清单内直行/
   // 清单外确认后转当前内嵌视图(RemoteContentManager);外部协议手势+确认后
@@ -1342,6 +1396,8 @@ async function createWindow(): Promise<void> {
   });
   mainWindow.on("closed", () => {
     mainWindow = null;
+    shellListening = false;
+    pendingShellCommand = null;
     // 主窗口关闭＝应用退出语义:悬浮窗、阅读器与游戏引导窗都不拖住
     // window-all-closed(窗口随主窗口生命周期销毁,closed 处理器自行清引用)
     overlayWindow?.destroy();
@@ -1393,6 +1449,7 @@ app.whenReady().then(async () => {
     await packagedSmoke.verify(mainWindow, provider);
     return;
   }
+  systemTray = createVuaTray({ locale: shellLocale ?? app.getLocale(), showMain: focusMainWindow, command: sendShellCommand, quit: () => app.quit() });
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) void createWindow();
   });
@@ -1408,6 +1465,8 @@ app.whenReady().then(async () => {
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
+
+app.on("will-quit", () => { systemTray?.dispose(); systemTray = null; });
 
 /**
  * 进程关闭协议(M2 交付):退出前先 prepareShutdown——关闭新调用入口并等待

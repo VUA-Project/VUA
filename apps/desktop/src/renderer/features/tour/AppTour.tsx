@@ -108,11 +108,13 @@ export function AppTour({
   page,
   navigate,
   startRequest,
+  autoStart = true,
 }: {
   page: PageId;
   navigate: (target: PageId) => void;
   /** 壳侧重播信号:值递增 = 从第一步重开(命令面板入口) */
   startRequest: number;
+  autoStart?: boolean;
 }) {
   const copy = strings.tour;
   const [progress, setProgress] = useState<TourProgressV1 | null>(() => readStoredProgress());
@@ -129,6 +131,7 @@ export function AppTour({
 
   // 从未运行 = 自动开始(每次档案一次;跳过/完成后不再自动出现)
   useEffect(() => {
+    if (!autoStart) return;
     setProgress((current) => {
       if (current !== null) return current;
       const started: TourProgressV1 = { v: 1, status: "active", step: 0 };

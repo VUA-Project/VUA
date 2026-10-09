@@ -1,7 +1,7 @@
 # VUA product boundary
 
 
-> Document version: 2.17.0
+> Document version: 2.18.0
 > Status: Accepted
 > Scope: Entire VUA product
 > Updated: 2026-10-09
@@ -274,13 +274,30 @@ gate derives risk from declared capabilities and behavior.
 
 ### First play release (user ruling, 2026-10-03)
 
+#### Ibis release criterion (user ruling, 2026-10-08)
+
+Before Ibis publication, ask one question: can a VRChat player who has never used VUA get
+from its download page through the advertised core play workflow without getting stuck?
+Fix blockers found on that journey; publish once it works. A clear official-client handoff,
+with a useful next action and a way to return, can satisfy the journey without extra automation.
+Do not add another feature or require zero bugs as an independent release condition.
+
+Desktop and PICO USB/Wi-Fi remain the core play routes. Optional eye tracking, a curated
+tutorial-world list and further automation do not independently delay this release. Keep
+unfinished optional work visibly skippable and describe its actual availability. This ruling
+supersedes the earlier requirement to finish optional eye tracking before Ibis publication;
+it retains that accepted N2 work and its evidence requirements. Publication does not close
+untested N-stage outcomes. The [version policy](release/versioning.md) continues to govern
+numbering, Beta status and disclosure of non-blocking defects.
+
+#### Bounded play scope
+
 The first play release takes a Windows user from missing play software to desktop VRChat play
 or PICO Connect streaming. It delivers the following bounded scope:
 
 - Inspect the relevant Internet services and download sources; distinguish these failures from
   local PC/headset connectivity. Explain useful remedies and recheck after the user's action.
-  The first mainland-China accelerator recommendation is only NetEase UU, with the existing
-  no-financial-relationship disclosure. Region is a correctable hint, not a connectivity verdict.
+  The 2026-10-09 network ruling below supersedes usage-region detection and accelerator advice.
 - Guide Steam registration, verification and client login. Existing accounts skip registration.
   Explain VRChat's first login with Steam; a full VRChat account and account linking remain
   optional guidance. Hand off PICO account/device confirmations when its official flow needs them.
@@ -302,7 +319,7 @@ or PICO Connect streaming. It delivers the following bounded scope:
   Guide Steam installation, the PICO hardware module, headset calibration and VRChat OSC;
   verify gaze and blinking over USB and Wi-Fi, including reconnect and simultaneous microphone
   use. Use an existing suitable Avatar; Avatar modification is not a prerequisite. This N2
-  slice is required release acceptance even though players can skip enabling eye tracking.
+  slice retains its own acceptance; the Ibis release criterion above permits it to remain pending.
 
 PICO 4 Pro with both USB and Wi-Fi is the first hardware acceptance target. Record actual
 PICO OS, PICO Connect, SteamVR and game versions at test time. PICO precedes Quest so this
@@ -319,6 +336,20 @@ Acceptance belongs to [the first play release rows](development-outline.md#first
 The [delivery plan](development/first-play-delivery-plan.md) records completed slices and the
 remaining work. N5 is reviewed separately when complete and can accompany this release after
 that review; its work is not part of the current first-play checklist or a play prerequisite.
+
+### Play network presentation (user ruling, 2026-10-09)
+
+Play shows Europe, the United States (East and West together), and Japan as the intended VRChat
+instance-latency destinations. Only a verified game-region target can produce a regional Ping;
+website response time is not a substitute. Until targets are established, report that regional
+latency is unavailable and keep the play journey accessible. Editable website tests, including
+Steam and GitHub, belong in expanded details.
+
+Remove Connection help, usage-region identification and third-party accelerator recommendations
+from the player flow. This supersedes the 2026-10-03 UU recommendation and the earlier N1
+region-based advice. It does not change the explicit mainland/global PICO installer choice or
+the independently owned Unity download policy. The [network architecture](architecture/network-onboarding.md)
+owns observation limits and current implementation status.
 
 ### Subsequent device expansion
 
@@ -337,10 +368,9 @@ manufacturer's software, ALVR, Virtual Desktop and Steam Link as model-specific 
 Prefer supported silent installation with a visible task: actual phase, elapsed time, available
 progress/activity, interaction requests and next actions during prolonged inactivity. Verify
 installed results and keep user actions attached to that task. Route-specific account guidance,
-headset activation and regional connectivity are N1 prerequisites. For mainland-China users,
-evaluate dedicated activation/acceleration services; the first accelerator recommendation is NetEase UU with
-an explicit no-financial-relationship disclosure. Region informs suggestions; target-service
-reachability and user correction refine the plan. Existing privacy boundaries apply.
+headset activation and service connectivity are N1 prerequisites. Use official device/account
+handoffs and concrete service observations under the network ruling above, without usage-region
+identification or accelerator recommendations. Existing privacy boundaries apply.
 See the [N1 delivery plan](development/n1-delivery-plan.md).
 
 ## Unity deployment
@@ -371,7 +401,7 @@ The first play release uses the subset defined above; creator account guidance f
 creator delivery. N1 account guidance uses official pages in the built-in browser, with
 client, phone-app or headset handoffs where required. The base scope is Steam and VRChat for play,
 with optional Unity and BOOTH/pixiv registration guidance for the creator route. Add manufacturer,
-headset-store, streaming and accelerator account guidance when the selected device route requires
+headset-store and streaming account guidance when the selected device route requires
 it (user ruling 2026-10-02). Existing users
 can skip registration. VUA explains each step; users enter account information, solve challenges,
 accept terms, add VRChat to their Steam library, and perform account upgrade/linking themselves.
@@ -555,8 +585,8 @@ plugin execution and a marketplace still require their separately accepted secur
 
 ## Document changelog
 
+- 2.18.0 (2026-10-09): integrate the author's Ibis newcomer core-journey criterion and current regional-Ping/website presentation with the N5 scope, retaining pending optional outcomes and retiring usage-region identification and accelerator recommendations.
 - 2.17.0 (2026-10-09): require managed ZIP extraction for local imports and BOOTH downloads while preserving original archives and separate production qualification.
-
 - 2.16.0 (2026-10-09): bound N5 closure to intact local-file retention, UnityPackage production intake, official lookup/minimal manual metadata and optional dependency clues; defer third-party search.
 - 2.15.0 (2026-10-08): add content-based migration reconciliation and narrow N5 to local record removal and persisted link clues; defer final Recipe/VPM and production-loop work.
 - 2.14.0 (2026-10-08): replace the missing-file relink requirement with explicit BOOTH re-download and record official-ID, third-party and manual source-supplementation routes.
@@ -565,4 +595,4 @@ plugin execution and a marketplace still require their separately accepted secur
 - 2.11.0 (2026-10-07): record the user ruling that managed library re-downloads replace the existing selected file while preserving entry identity; link the owning replacement decision.
 - 2.10.0 (2026-10-05): separate app, preparation and game guidance in the first play scope and retain N5 as an independently reviewed co-release.
 - 2.9.0 (2026-10-03): add PICO eye tracking to the first play release and expand N2 to seven external tools with shared Steam inventory/install/launch acceptance.
-- 2.8.1 (2026-10-03): limit the initial accelerator recommendation to NetEase UU per the author's ruling.
+Earlier entries remain in Git history.

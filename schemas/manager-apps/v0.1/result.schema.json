@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.vua.local/manager-apps/v0.1/result.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "managerApps"
+  ],
+  "properties": {
+    "managerApps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "capturedAt",
+        "apps"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "vua.manager-apps/v0.1"
+        },
+        "capturedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "apps": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "component",
+              "presence",
+              "path"
+            ],
+            "properties": {
+              "component": {
+                "enum": [
+                  "unity_hub",
+                  "vcc",
+                  "alcom"
+                ]
+              },
+              "presence": {
+                "enum": [
+                  "found",
+                  "not_found",
+                  "unknown"
+                ]
+              },
+              "path": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "minLength": 1
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "presence": {
+                      "const": "found"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "allOf": [
+            {
+              "contains": {
+                "properties": {
+                  "component": {
+                    "const": "unity_hub"
+                  }
+                },
+                "required": [
+                  "component"
+                ]
+              },
+              "minContains": 1,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "component": {
+                    "const": "vcc"
+                  }
+                },
+                "required": [
+                  "component"
+                ]
+              },
+              "minContains": 1,
+              "maxContains": 1
+            },
+            {
+              "contains": {
+                "properties": {
+                  "component": {
+                    "const": "alcom"
+                  }
+                },
+                "required": [
+                  "component"
+                ]
+              },
+              "minContains": 1,
+              "maxContains": 1
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,9 +1,9 @@
 # VUA development sequence
 
-> Document version: 3.14.0
+> Document version: 3.15.0
 > Status: Accepted
 > Updated: 2026-10-09
-> Authority: User rulings of 2026-09-28 through 2026-10-09, including independent release numbering, three first-play guidance contexts and the reduced N5 closure scope
+> Authority: User rulings of 2026-09-28 through 2026-10-09, including independent release numbering, three guidance contexts, the Ibis core-journey criterion, current network presentation and reduced N5 closure scope
 > Scope: N1-N7, real-machine deployment and real-material workflows, continuing Beta
 > Normative effect: Schedules accepted product work; product scope belongs to product-boundary.md
 
@@ -111,7 +111,11 @@ harness is in vua-unity-bridge and can use synthetic inputs or a
 The first release prioritizes the [bounded play scope](product-boundary.md#first-play-release-user-ruling-2026-10-03).
 Keep N1-N7 identifiers and select a product version at publication. Release the play subset
 with the necessary N6 recovery and N7 distribution work; broader N1 and N7 remain open.
-The following rows, rather than the creator rows below, define this release's acceptance.
+The following rows describe the accepted play work and the evidence needed to claim each
+outcome complete. The [2026-10-08 Ibis criterion](product-boundary.md#ibis-release-criterion-user-ruling-2026-10-08)
+owns publication: exercise the advertised core journey and fix where a newcomer gets stuck.
+Clear manual handoffs may complete that journey; optional work and non-blocking defects may
+remain explicit. Unexercised rows remain pending, and publication does not pass N1 or N2.
 The [first play delivery plan](development/first-play-delivery-plan.md) tracks completed slices
 and remaining work. N5 retains its separate review/acceptance and may join the same release
 afterward; it does not add material-management prerequisites to these play cases.
@@ -120,17 +124,17 @@ afterward; it does not add material-management prerequisites to these play cases
 | --- | --- |
 | Standalone ZIP | On the recorded Windows x64 test environment, extract the complete ZIP to a path containing spaces and non-ASCII characters and launch VUA without a source checkout, Node, pnpm or Rust. Its real packaged Provider responds, local assets load, and settings/task data remain outside the program directory. Moving/replacing the program directory preserves that data |
 | Relevant checks | Desktop play needs Steam and VRChat only; missing SteamVR, PICO or Unity does not block it. PICO streaming adds SteamVR and PICO Connect. Windows, graphics/driver, storage and software findings explain the next action instead of a generic failure |
-| Network | Report the affected official service/download source separately from local headset discovery. Show a relevant remedy and recheck after it. Existing network software can be retained; regional accelerator advice includes no-affiliation wording and a skip option |
+| Network | Keep website observations in expanded details, separate from local headset discovery and game latency. Regional Ping covers Europe, United States East/West and Japan only when reliable targets exist; otherwise show unavailable without blocking preparation. No usage-region identification, Connection help or accelerator recommendations |
 | Account guide | A new player reaches official Steam registration and client login; an existing player skips registration. Continue through VRChat first login with Steam and explain optional full-account/linking steps. PICO account/headset actions use official UI. Closing a page or encountering unsupported embedding leaves a resume or system-browser route |
 | Missing software | Starting with the selected software absent, obtain/install it through official sources and return to VUA for inspection. Prefer supported unattended steps; show installation phase/activity and required interaction. Steam-owned downloads are clearly handed to Steam and checked afterward |
 | Desktop play | Launch VRChat in desktop mode, enter the game, and follow the guide for movement, menus, sound, microphone and basic safety settings. Installed files alone do not pass this row |
 | PICO USB | With PICO 4 Pro, follow cable setup and the official connection flow, enter VRChat in the headset, and verify image, head/hand tracking, controller interaction, sound and microphone |
 | PICO Wi-Fi | Repeat the headset play checks over Wi-Fi; explain the local-network prerequisites, and exercise a disconnect/reconnect without repeating the whole installation |
-| PICO eye tracking | On PICO 4 Pro, guide VRCFT Steam installation, its PICO module, headset eye-tracking calibration and VRChat OSC. Verify actual gaze and blinking on an existing suitable Avatar over both USB and Wi-Fi, including microphone use, reconnect and a later play session. Players may skip this option without blocking ordinary play; the release must exercise it |
+| PICO eye tracking | On PICO 4 Pro, guide VRCFT Steam installation, its PICO module, headset eye-tracking calibration and VRChat OSC. Verify actual gaze and blinking on an existing suitable Avatar over both USB and Wi-Fi, including microphone use, reconnect and a later play session. Players may skip this option; unfinished delivery remains pending under N2 and does not independently block Ibis publication |
 | Return/recovery | Repeat deployment without reinstalling satisfied components. Interrupt one download/install or user handoff, restart VUA, inspect the result and explicitly continue/retry. A later play session has a direct start path |
 | VUA app tour | Inside VUA, follow ordered highlights on actual controls through route selection, checks, plan/progress and play/guide entries. Page changes, back/next, skip/exit and restart work; absent controls have an understandable next action. The transparent tour stays within VUA, keeps text readable and does not cancel a task when exited |
 | Preparation reader | Open a normal opaque, resizable window for room setup, equipment connection and reference instructions without requiring VRChat or AMF. It is not globally pinned. A help entry opens its section once; ordinary reopen restores reading. Manual scrolling wins over positioning, keyboard reading and illustrations work, and closing leaves tasks/game running |
-| VRChat game guide | With following enabled by default and transparency initially 50%, use a readable guide over the Windows VRChat game window. It follows movement/resize, hides on minimize or switching apps, restores without taking focus, stays usable when clicked and respects manual hide. Persist changed preferences. Follow controls/microphone and suggested Personal Space/Allow Untrusted URLs steps by confirmation or skip; use checked tutorial-world entries by learning language when available and local guidance otherwise |
+| VRChat game guide | With following enabled by default and background opacity initially 50%, use a readable guide over the Windows VRChat game window. Adjust the matrix/background without fading text. It follows movement/resize, remembers a dragged relative position, hides on minimize or switching apps, restores without taking focus, stays usable when clicked and respects manual hide. Persist changed preferences. Follow controls/microphone and suggested Personal Space/Allow Untrusted URLs steps by confirmation or skip; use checked tutorial-world entries by learning language when available and local guidance otherwise |
 | Guidance separation | App-tour completion, preparation reading and game-guide progress do not overwrite one another. Shared four-language text/media remain consistent. Exercise absent-game, exit/relaunch, keyboard access and monitor/DPI changes; task-status access remains available during the migration |
 | Headset guide access | On the PICO test path, open SteamVR's desktop view, read/operate the preparation reader and return to play. Record this as desktop-view guidance, not a native VUA VR overlay |
 | Distribution | Include exact-build license notices, version/source identification, ZIP update/removal instructions, actual screenshots and known issues. Record signature status. Human UI review covers the guide and handoffs; remote build/smoke checks and physical headset tests retain their separate evidence |
@@ -157,7 +161,7 @@ a general environment version manager are not prerequisites.
 | Validate | Reinspect after install; actually launch Unity and open a disposable project with real SDK/MA dependencies; test play launch separately from device behavior |
 | Repeat | A second run reuses satisfied prerequisites and installs only missing components; failed operations have a usable retry or manual path |
 | Device route | For each supported model, complete one official-first installation/connection route, including required PC and headset software, pairing and game launch. Record the exact model and connection used; expand alternative streaming choices afterwards |
-| Network and activation | Guide regional service access and headset activation. Mainland-China suggestions include dedicated accelerators with a no-financial-relationship disclosure and an existing-service/skip choice. Check target-service reachability separately from LAN streaming; exercise headset update, phone login and pairing for the selected Quest activation route |
+| Network and activation | Guide official service access and headset activation without usage-region identification or accelerator recommendations. Check target-service reachability separately from LAN streaming; exercise headset update, phone login and pairing for the selected Quest activation route |
 
 Subsequent creator path: keep existing SteamVR/PICO/VRChat, choose PC Avatar editing, install global
 Unity 2022.3.22f1 (China 2022.3.22f1c1 fallback) following the
@@ -182,7 +186,7 @@ a generic account/token manager before this path works.
 | New player | Offer Steam and VRChat registration guidance; users submit official forms themselves. Guide adding VRChat to the Steam library and installing/launching through Steam. An opened page is recorded as opened, not as an account or successful installation |
 | Existing player | Allow skipping existing accounts; guide the official Steam-platform-account upgrade/link path when needed, without storing credentials or inventing a VUA binding |
 | Optional creator | Offer Unity and BOOTH/pixiv registration only for the creator route. Explain purchase, official Unity authorization/licensing and SDK handoffs; Hub is optional. Skipping them leaves the play route usable |
-| Device/service accounts | Add only accounts or store authorizations needed by the selected manufacturer, streaming or accelerator route. Save guide progress; support existing accounts, phone/headset/client handoff and return after interruption |
+| Device/service accounts | Add only accounts or store authorizations needed by the selected manufacturer or streaming route. Save guide progress; support existing accounts, phone/headset/client handoff and return after interruption |
 | Upload eligibility | Explain full VRChat account plus New User or higher; show user-reported or unknown eligibility honestly. Normal-play guidance promises no promotion date. A Visitor can continue local preparation/testing; only upload remains gated |
 | Interrupt/decline | Closing a page, refusing consent, failed registration or blocked embedding leaves a resume/manual route. CAPTCHA, terms, account linking and payment stay with the user |
 | Privacy | First-slice registration sessions are nonpersistent and isolated; no cookie/password/token values in app state, IPC, Agent context or logs. Ending the guide session clears its temporary state. Saved progress does not imply authenticated verification |
@@ -235,7 +239,7 @@ LIV is classified under capture/streaming; this connection does not install a LI
 ### Tracking-specific acceptance
 
 - **VRCFT:** guide its hardware-module installation in the upstream UI, headset switches/calibration,
-  VRChat OSC (Open Sound Control) and a suitable Avatar. The first play release exercises the PICO
+  VRChat OSC (Open Sound Control) and a suitable Avatar. Completing the PICO slice exercises the
   eye-tracking row above. Native gaze/blinking can use a suitable existing Avatar; full facial
   expressions require a face-tracking-compatible Avatar. Verify actual tracking/OSC output,
   reconnect and microphone coexistence, not just successful module initialization. Follow the
@@ -430,8 +434,8 @@ do not turn documentation completeness, speculative coverage, or idle agent acti
 
 ## Document changelog
 
+- 3.15.0 (2026-10-09): integrate Ibis publication and current network/guide acceptance with the reduced N5 scope, retaining real-run evidence and pending optional outcomes, background-only guide opacity and remembered relative placement.
 - 3.14.0 (2026-10-09): include managed ZIP extraction in first N5 intake acceptance, preserving original bytes and truthful extraction outcomes.
-
 - 3.13.0 (2026-10-09): narrow N5 closure to intact local-file retention, official/minimal manual provenance and optional bounded dependency presentation; defer third-party search.
 - 3.12.0 (2026-10-08): accept migration reconciliation, limit record removal to local imports and dependency discovery to persisted link clues, and move Recipe/VPM and production-loop acceptance after N5.
 - 3.11.0 (2026-10-08): apply the user's N5 missing-file/source refinements, clarify dependency evidence limits and retain production integration as linked pending acceptance.
@@ -441,7 +445,4 @@ do not turn documentation completeness, speculative coverage, or idle agent acti
 - 3.7.0 (2026-10-02): admit the development f1/c1 pair for the first creator deployment path, with global preference and Hub fallback after both editions fail.
 - 3.6.0 (2026-10-02): expand N1 acceptance to model-first official routes, installation activity,
   device/service accounts and regional activation/connectivity; record the WMR investigation exception.
-- 3.5.1 (2026-10-02): describe the N1 first local path as following the standalone deployment
-  route owned by the architecture document instead of restating its install mechanism (the
-  original installer installs the Editor; the official CLI registers it), absorbing the 3.4.1
-  wording hygiene; no acceptance change.
+Earlier entries remain in Git history.

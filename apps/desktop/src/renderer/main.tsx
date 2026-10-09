@@ -22,6 +22,7 @@ import "./app-shell.css";
  * 来自任意来源的跳转(Electron Main 对 will-navigate 白名单校验)。
  */
 const surface = new URLSearchParams(window.location.search).get("surface");
+document.documentElement.dataset.vuaSurface = surface ?? "main";
 
 /**
  * DEV 视图分流(G2-A):?dev=showcase 只渲染组件状态展台,不初始化应用壳;
