@@ -11,6 +11,7 @@
  *   失败+重试)。
  */
 import type {
+  AmfModuleApiV01,
   OverlayDownloadCardV01,
 } from "@vua/contracts";
 import type {
@@ -44,6 +45,24 @@ function unavailableSnapshot(): OverlaySnapshot {
   return { schemaVersion: 2, availability: "unavailable", presentation: localPresentation() };
 }
 
+/** New host task window: task.list is the authority even without AMF.
+ * AMF's original overlay face is queried only for its optional cards. */
+export function createHostOverlayPort(client: GatewayClient, modules: AmfModuleApiV01): OverlaySurfacePort {
+  return createLiveOverlayPort(client, async () => {
+    const result = await client.invoke({ schemaVersion: 1, requestId: crypto.randomUUID(), method: "task.list", params: {} });
+    if (!result.ok || !("revision" in result.value) || !("tasks" in result.value)) throw new Error("host_tasks_unavailable");
+    const amf = await modules.snapshot();
+    const optional = amf.state === "ready" ? await client.invoke({ schemaVersion: 1, requestId: crypto.randomUUID(), method: "overlay.getSnapshot", params: {} }).catch(() => undefined) : undefined;
+    const cards = optional?.ok && "productionCard" in optional.value ? optional.value : undefined;
+    return { schemaVersion: 3, availability: "available", presentation: localPresentation(),
+      tasks: [...result.value.tasks].sort((a, b) => a.updatedAt.localeCompare(b.updatedAt) || a.taskId.localeCompare(b.taskId)).map(task => ({ taskId: task.taskId, state: task.state, correlationId: task.correlationId })),
+      amfUnavailable: amf.installed && (!cards || amf.state !== "ready"),
+      ...(cards ? { productionCard: cards.productionCard } : {}),
+      ...(cards?.downloadCard ? { downloadCard: cards.downloadCard } : {}),
+    };
+  });
+}
+
 function isOverlayResult(value: object): value is {
   readonly tasks: readonly unknown[];
   readonly productionCard: unknown;
@@ -52,8 +71,8 @@ function isOverlayResult(value: object): value is {
   return "tasks" in value && "productionCard" in value;
 }
 
-export function createLiveOverlayPort(client: GatewayClient): OverlaySurfacePort {
-  const fetchSnapshot = async (): Promise<OverlaySnapshot> => {
+export function createLiveOverlayPort(client: GatewayClient, source?: () => Promise<OverlaySnapshot>): OverlaySurfacePort {
+  const fetchSnapshot = source ?? (async (): Promise<OverlaySnapshot> => {
     const result = await client.invoke({
       schemaVersion: 1,
       requestId: crypto.randomUUID(),
@@ -84,7 +103,7 @@ export function createLiveOverlayPort(client: GatewayClient): OverlaySurfacePort
         ? {}
         : { downloadCard: result.value.downloadCard }),
     };
-  };
+  });
 
   const listeners = new Set<(snapshot: OverlaySnapshot) => void>();
   let unsubscribeEvents: Unsubscribe | null = null;

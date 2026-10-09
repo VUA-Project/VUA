@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vua.dev/schemas/amf-module/v0.1/change-result.schema.json",
+  "title": "Optional AMF module change result v0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["outcome", "snapshot"],
+  "properties": {
+    "outcome": { "enum": ["updated", "busy", "failed"] },
+    "snapshot": { "$ref": "snapshot.schema.json" }
+  }
+}

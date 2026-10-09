@@ -52,7 +52,7 @@ import { Card } from "../../components/primitives/Card.tsx";
 import { DelayedButton } from "../../components/primitives/DelayedButton.tsx";
 import { EmptyState } from "../../components/primitives/EmptyState.tsx";
 import { Skeleton } from "../../components/primitives/Skeleton.tsx";
-import { format, strings } from "../../i18n/index.ts";
+import { format, strings, TERMS } from "../../i18n/index.ts";
 import "./overlay.css";
 
 const copy = strings.overlay;
@@ -320,7 +320,8 @@ export function DesktopOverlaySurface() {
               <section aria-label={copy.taskSectionLabel}>
                 <p className="vua-overlay__section-label">{copy.taskSectionLabel}</p>
                 <ul className="vua-overlay__task-list">
-                  {model.taskCards.map((card) => (
+                  {snapshot?.schemaVersion === 3 && snapshot.amfUnavailable ? <p role="status">{format(strings.amfModule.failed, { amf: TERMS.amf })}</p> : null}
+              {model.taskCards.map((card) => (
                     <li key={card.taskId}>
                       <Card className="vua-overlay__task">
                         <h2 className="vua-overlay__task-title">{card.taskId}</h2>

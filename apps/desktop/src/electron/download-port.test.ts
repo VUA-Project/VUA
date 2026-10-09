@@ -108,6 +108,24 @@ describe("download port (F4-3)", () => {
     downloadURLs = [];
   });
 
+  it("blocks module stop from transport start through resumable interruption and pending retry", () => {
+    const port = createPort();
+    const item = new FakeDownloadItem("https://booth.pm/downloadables/901");
+    expect(port.hasActiveTransfers()).toBe(false);
+    port.handleWillDownload({ preventDefault() {} } as never, item as never, item.getWebContents() as never);
+    expect(port.hasActiveTransfers()).toBe(true);
+    item.resumable = true;
+    item.finish("interrupted");
+    expect(port.hasActiveTransfers()).toBe(true);
+    const id = events[0]!.downloadId;
+    port.applyIntent(id, "retry");
+    expect(port.hasActiveTransfers()).toBe(true);
+    const replacement = new FakeDownloadItem(item.url);
+    port.handleWillDownload({ preventDefault() {} } as never, replacement as never, replacement.getWebContents() as never);
+    replacement.finish("completed");
+    expect(port.hasActiveTransfers()).toBe(false);
+  });
+
   afterEach(() => {
     rmSync(stagingRoot, { recursive: true, force: true });
   });

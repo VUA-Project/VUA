@@ -15,6 +15,8 @@ files:
   - package.json
   - '!node_modules/**/*'
 extraResources:
+  - from: ../../target/x86_64-pc-windows-msvc/release/vua-amf-provider.exe
+    to: modules/amf/vua-amf-provider.exe
   # Native processes cannot execute inside app.asar.
   - from: ../../target/x86_64-pc-windows-msvc/release/vua-orchestrator-provider.exe
     to: provider/vua-orchestrator-provider.exe

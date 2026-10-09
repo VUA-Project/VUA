@@ -13,9 +13,13 @@ import path from "node:path";
  */
 const ALLOWED_PREFIX = "https://booth.pximg.net/";
 const MAX_CACHE_BYTES = 20 * 1024 * 1024; // 单图上限 20MB(防御;缩略图 ~50KB)
+let moduleDataRoot: string | undefined;
+let active = false;
+let registered = false;
+export function deactivateImageCache(): void { active = false; }
 
 function cacheDir(): string {
-  return path.join(app.getPath("userData"), "img-cache");
+  return path.join(moduleDataRoot ?? app.getPath("userData"), "img-cache");
 }
 
 function cachePathFor(url: string): string {
@@ -67,9 +71,14 @@ export function registerImageCacheScheme(): void {
 }
 
 /** ready 之后调用:建缓存目录并挂协议 handler */
-export async function registerImageCacheProtocol(): Promise<void> {
+export async function registerImageCacheProtocol(dataRoot?: string): Promise<void> {
+  moduleDataRoot = dataRoot;
   await mkdir(cacheDir(), { recursive: true });
+  active = true;
+  if (registered) return;
+  registered = true;
   protocol.handle("vua-img", async (request) => {
+    if (!active) return new Response("AMF unavailable", { status: 503 });
     const target = new URL(request.url);
     if (target.hostname === "local" && /^\/[a-f0-9]{64}$/.test(target.pathname) && target.search === "" && target.hash === "") {
       const file = path.join(cacheDir(), `local-${target.pathname.slice(1)}`);

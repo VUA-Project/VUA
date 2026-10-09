@@ -22,6 +22,7 @@ import type { DataSource } from "./types.ts";
  * (fixture / not-run / 未来 Tauri live),页面零重写。
  */
 export interface VuaGateway {
+  readonly amfModule: import("@vua/contracts").AmfModuleApiV01;
   readonly environment: EnvironmentPort;
   readonly tutorial: TutorialPort;
   readonly modelProduction: ModelProductionPort;

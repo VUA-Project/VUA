@@ -1,9 +1,9 @@
 # VUA development sequence
 
-> Document version: 3.15.0
+> Document version: 3.17.0
 > Status: Accepted
-> Updated: 2026-10-09
-> Authority: User rulings of 2026-09-28 through 2026-10-09, including independent release numbering, three guidance contexts, the Ibis core-journey criterion, current network presentation and reduced N5 closure scope
+> Updated: 2026-10-10
+> Authority: User rulings of 2026-09-28 through 2026-10-10, including independent release numbering, three guidance contexts, the Ibis core-journey criterion, current network presentation, reduced N5 closure scope and bundled AMF activation
 > Scope: N1-N7, real-machine deployment and real-material workflows, continuing Beta
 > Normative effect: Schedules accepted product work; product scope belongs to product-boundary.md
 
@@ -42,6 +42,17 @@ close a stage. Beta is lifecycle metadata; historical package versions and tags 
 See [versioning](release/versioning.md).
 
 ## New sequence
+
+The host/AMF module boundary precedes new scenario integrations under the 2026-10-09 user ruling.
+VUA's host path must work with AMF absent or failed. N1/N2 prepare and connect scenario prerequisites;
+N3/N4/N5 retain their real-material, Recipe and acquisition acceptance inside optional AMF. N6 covers
+each installed scenario's interruption/removal boundary, and N7 verifies the actual selected release
+paths. This changes ownership and implementation order without marking a gate passed or requiring
+AMF production acceptance for the independent play release. See [module architecture](architecture/modules.md).
+
+Ibis installs the first-party AMF payload with VUA, while activation is a separate user action.
+Saved activation choices and legacy data are retained. External Avatar-editing module integration
+and placeholder entries are deferred beyond this release under the 2026-10-10 user ruling.
 
 | Gate | User task | Status |
 | --- | --- | --- |
@@ -434,6 +445,10 @@ do not turn documentation completeness, speculative coverage, or idle agent acti
 
 ## Document changelog
 
+- 3.17.0 (2026-10-10): retain bundled AMF with explicit activation and defer external Avatar-editing modules beyond Ibis without changing existing gate outcomes.
+
+- 3.16.0 (2026-10-09): place host/AMF separation before scenario integrations, preserving N3–N5 as AMF acceptance and all existing gate outcomes.
+
 - 3.15.0 (2026-10-09): integrate Ibis publication and current network/guide acceptance with the reduced N5 scope, retaining real-run evidence and pending optional outcomes, background-only guide opacity and remembered relative placement.
 - 3.14.0 (2026-10-09): include managed ZIP extraction in first N5 intake acceptance, preserving original bytes and truthful extraction outcomes.
 - 3.13.0 (2026-10-09): narrow N5 closure to intact local-file retention, official/minimal manual provenance and optional bounded dependency presentation; defer third-party search.
@@ -442,7 +457,5 @@ do not turn documentation completeness, speculative coverage, or idle agent acti
 - 3.10.0 (2026-10-05): define observable acceptance for three guidance contexts, their independent state and the separate N5 co-release review.
 - 3.9.0 (2026-10-03): advance PICO eye tracking into first-play acceptance and define seven N2 Steam connections with shared inventory/install/launch acceptance and focused tracking guides.
 - 3.8.0 (2026-10-03): define first-play-release acceptance for desktop/PICO USB/Wi-Fi, guidance, recovery and standalone ZIP; move creator completion behind that release.
-- 3.7.0 (2026-10-02): admit the development f1/c1 pair for the first creator deployment path, with global preference and Hub fallback after both editions fail.
-- 3.6.0 (2026-10-02): expand N1 acceptance to model-first official routes, installation activity,
-  device/service accounts and regional activation/connectivity; record the WMR investigation exception.
+
 Earlier entries remain in Git history.

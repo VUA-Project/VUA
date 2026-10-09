@@ -1,10 +1,10 @@
 # Electron desktop and presentation architecture
 
 
-> Document version: 1.12.1
+> Document version: 1.14.0
 > Status: Accepted
 > Scope: `apps/desktop`, `packages/design-system`, frontend Gateway
-> Updated: 2026-10-09
+> Updated: 2026-10-10
 > Last conformance review: 2026-10-09 (two-half environment cards, creator inventory and preserved shell preferences; physical app/device review pending)
 > Normative effect: Yes
 
@@ -240,9 +240,17 @@ and its badge. `preview-overlay.mjs` opts into that isolated demonstration.
 
 ## Standalone Windows packaging
 
+Without a saved AMF enable choice, both fresh and legacy profiles start host environment/play
+services alone. AMF is installed with VUA; Settings → Modules explicitly enables the local
+payload. Selection/readiness facts control its navigation, wizard entry and BOOTH
+controls. AMF pages load in a local error boundary, and host bootstrap/task windows do not depend
+on its production queries. [Module architecture](modules.md) owns selection, process lifecycle,
+task ownership and legacy data retention.
+
 `apps/desktop/electron-builder.yml` owns the Windows x64 ZIP layout. Compiled Main/preload/renderer
 and their bundled JavaScript dependencies live in `resources/app.asar`; the native Provider lives
-at `resources/provider/vua-orchestrator-provider.exe`. Electron and its Chromium assets travel
+at `resources/provider/vua-orchestrator-provider.exe`; the optional AMF executable lives at
+`resources/modules/amf/vua-amf-provider.exe`. Electron and its Chromium assets travel
 with the app. Third-party game/streaming/Unity installers are not included in this ZIP.
 The packaging build statically links the Provider's C runtime; it does not require a separate
 Visual C++ runtime installation just to start VUA. Normal development builds remain unchanged.
@@ -283,6 +291,9 @@ redistribution review authorizes each bundled binary before a public release.
 
 ## Document changelog
 
+- 1.14.0 (2026-10-10): clarify AMF's bundled installation and separate activation for fresh/legacy profiles; retain saved choices and omit external editing placeholders from Ibis.
+
+- 1.13.0 (2026-10-09): scope optional AMF frontend/BOOTH services to module readiness and document the two-provider payload; retain host task-window independence and legacy data paths.
 - 1.12.1 (2026-10-09): align guide transparency/drag memory, normal game-exit cards and the regional-placeholder/expanded-website split with their owning documents.
 
 
@@ -295,8 +306,5 @@ redistribution review authorizes each bundled binary before a public release.
   getGameGuideFollowStatus desktop API faces).
 - 1.7.1 (2026-10-07): record separate guidance presentations and retain automatic following as unfinished work.
 - 1.7.0 (2026-10-05): route three guidance contexts to their owning design and distinguish the current combined overlay from its planned replacements.
-- 1.6.0 (2026-10-03): define standalone ZIP resources/data, the real packaged bootstrap check and the first-play overlay/release subset.
-- 1.5.0 (2026-10-02): describe model-first deployment, silent-install activity and device/service
-  account handoffs using existing isolated browser and task surfaces.
 
 Earlier entries remain in Git history.

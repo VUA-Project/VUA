@@ -1667,6 +1667,7 @@ export interface SystemResourceUsageV1 {
 }
 
 export interface VuaDesktopApiV1 {
+  readonly amfModule?: import("./amf-module.js").AmfModuleApiV01;
   readonly gateway: DesktopGatewayApiV1;
   readonly events: DesktopGatewayEventsApiV1;
   readonly dialog: DesktopDialogApiV1;

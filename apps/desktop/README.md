@@ -58,8 +58,13 @@ identity; the current terminal directory, Git branch and commit do not. Moving a
 a different default profile. Native window titles (including taskbar/Alt+Tab) show its development
 label; the `desktop-profile` startup diagnostic prints the selected directories.
 
-The profile contains both BDL/task databases, settings, material associations, managed warehouse
-and production directories, download staging, guide reading state and browser storage/cache.
+The host profile contains its task database and module selection. AMF owns its separate task
+database, BDL, material associations, managed warehouse/production directories and download staging.
+AMF is installed with VUA; Settings → Modules enables the bundled payload. Without a saved enable
+choice, fresh and existing BDL profiles keep AMF disabled. Explicit choices survive restart, and
+disabling retains its data. Existing BDL profiles retain their original data locations.
+See [module ownership and migration](../../docs/architecture/modules.md) for paths and recovery.
+Shared settings, guide reading state and browser storage/cache remain in the selected profile.
 Electron userData and sessionData are configured together before initialization. Account
 persistence policy is unchanged. Steam/PICO installations, external client accounts and physical
 devices remain shared machine resources; coordinate installation and headset tests.
@@ -97,14 +102,22 @@ pnpm --filter @vua/desktop package:win
 pnpm --filter @vua/desktop smoke:packaged
 ```
 
-The first command compiles the existing application and real Rust Provider, then creates
+The first command compiles the application and both real Rust providers, then creates
 `apps/desktop/out/VUA-<package version>-windows-x64-preview.zip`. Version comes from the desktop
 package manifest; creating a preview does not select a new public release number. The ZIP is
-unsigned. It contains the current application, including creator code retained for later work;
+unsigned. It contains the host and optional AMF payload, including creator code retained for later work;
 it is not a declaration that the first desktop/PICO play guide is complete.
 The packaging-only Main/preload bundles are emitted to `dist/packaged-electron/`; normal
 `dist/electron/` modules remain available to the existing development and security-smoke scripts.
 The package excludes workspace sources, tests and development mocks.
+
+After building, `pnpm --filter @vua/desktop test:module-isolation` checks both native processes in an
+isolated profile, including damaged test BDL and data-preserving disable. It starts no vendor software
+or Unity operation. Ordinary unit tests skip this native test to avoid using stale build outputs.
+`pnpm --filter @vua/desktop smoke:amf-module` checks activation, library navigation, disable and
+Settings return through the real Main/preload and production renderer. First build those bundles
+with `node scripts/build-electron.mjs` and `pnpm exec vite build` from this directory. Its hidden
+window and data profile are isolated; screenshots/reports remain in the named temporary directory.
 
 Extract the entire archive and launch `VUA.exe`. The end-user machine needs neither Node nor
 Rust nor this checkout. Keep all runtime files together. Packaged app data lives in

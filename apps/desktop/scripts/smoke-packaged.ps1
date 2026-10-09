@@ -47,7 +47,7 @@ function Invoke-PackagedApp([string]$ProgramDirectory, [string]$DataDirectory, [
 
 try {
     Expand-Archive -LiteralPath $zip -DestinationPath $first
-    foreach ($required in @('VUA.exe', 'resources/app.asar', 'resources/provider/vua-orchestrator-provider.exe', 'resources/notices/LICENSE-VUA.txt', 'resources/README.txt')) {
+    foreach ($required in @('VUA.exe', 'resources/app.asar', 'resources/provider/vua-orchestrator-provider.exe', 'resources/modules/amf/vua-amf-provider.exe', 'resources/notices/LICENSE-VUA.txt', 'resources/README.txt')) {
         if (-not (Test-Path -LiteralPath (Join-Path $first $required) -PathType Leaf)) { throw "Missing package file: $required" }
     }
     $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
@@ -74,7 +74,7 @@ try {
 
     Rename-Item -LiteralPath (Join-Path $moved 'resources/provider/vua-orchestrator-provider.exe') -NewName 'provider.saved.exe'
     $failure = Invoke-PackagedApp $moved $failureProfile $false
-    if ($failure.error -notlike '*bundled VUA backend is missing*') { throw 'Missing Provider did not produce the expected startup failure' }
+    if ($failure.error -notlike '*Bundled host provider is missing*') { throw 'Missing Provider did not produce the expected startup failure' }
     $checks.Add('Missing bundled Provider: nonzero exit and explicit diagnostic, no checkout fallback')
     $summary = @{ status = 'passed'; testedAt = (Get-Date).ToUniversalTime().ToString('o'); version = $version; checks = $checks.ToArray(); zipSha256 = $zipHash; fixtureRoot = $fixtureRoot }
     $summary | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $summaryPath -Encoding UTF8

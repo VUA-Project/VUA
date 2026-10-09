@@ -2,10 +2,10 @@
 
 English | [简体中文](README_ZH.md) | [日本語](README_JA.md) | [한국어](README_KO.md)
 
-**VUA (VRC Ultra Assistant)** is a Windows-first, local-first desktop production environment for VRChat
-players — especially players who have never touched Unity, or don't yet know what they
-need. Start from a goal and your own assets; VUA guides you through environment setup,
-project preparation, Avatar assembly, inspection, and recovery.
+**VUA (VRC Ultra Assistant)** is a Windows-first, local-first scenario installer, manager and
+launcher for VRChat players. A scenario brings together a goal, the required software and the
+steps to prepare, launch and recover it: play on a PC screen, stream to a PICO, or edit an Avatar
+with a selected module. Start with what you want to do; VUA helps you work out what comes next.
 
 ## What you can do with VUA
 
@@ -22,6 +22,10 @@ Planned optional connections cover tracking, VR overlays, sleep utilities and ca
 ### 2. Avatar production
 
 > **Sugar, spice, and everything nice.**
+
+AMF is the first-party editing module installed with VUA. Its editing menus appear after you enable
+it under Settings → Modules. Your enable choice is remembered. Its asset library and private BDL
+stay together, and disabling it preserves your data.
 
 Combine your own materials, capture the choices in a Recipe, and share the Recipe so others can reproduce the setup with assets they obtain themselves. The goal is automated Avatar production with checks and controlled changes before handing the result to the official SDK; a Recipe contains references and settings, not paid assets.
 

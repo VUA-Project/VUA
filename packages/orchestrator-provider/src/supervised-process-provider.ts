@@ -49,6 +49,7 @@ export class SupervisedProcessProviderV01 implements OrchestratorProviderV01 {
   readonly #options: SupervisedProcessProviderOptionsV01;
   readonly #processFactory: ProviderProcessFactoryV01;
   readonly #listeners = new Set<ProviderEventListenerV01>();
+  readonly #statusListeners = new Set<(status: ProviderStatusV01) => void>();
   readonly #pending = new Map<string, PendingFrame>();
   #state: ProviderStatusV01["state"] = "stopped";
   #acceptingCalls = false;
@@ -82,11 +83,14 @@ export class SupervisedProcessProviderV01 implements OrchestratorProviderV01 {
       throw new Error(`Provider cannot start while ${this.#state}`);
     }
     this.#state = "starting";
+    this.#publishStatus();
     this.#acceptingCalls = false;
     this.#expectedExit = false;
     this.#stdoutBuffer = Buffer.alloc(0);
     this.#stderr = "";
-    const child = this.#processFactory(this.#options.executablePath, this.#options.databasePath);
+    let child: ReturnType<ProviderProcessFactoryV01>;
+    try { child = this.#processFactory(this.#options.executablePath, this.#options.databasePath); }
+    catch (error) { this.#fail(asError(error)); throw error; }
     this.#child = child;
     child.stdout.on("data", (chunk: Buffer) => this.#receiveStdout(chunk));
     child.stderr.on("data", (chunk: Buffer) => this.#receiveStderr(chunk));
@@ -101,6 +105,7 @@ export class SupervisedProcessProviderV01 implements OrchestratorProviderV01 {
       if (!isHandshake(handshake)) throw new Error("Provider returned an invalid handshake");
       this.#state = "ready";
       this.#acceptingCalls = true;
+      this.#publishStatus();
       return handshake;
     } catch (error) {
       child.kill();
@@ -138,11 +143,21 @@ export class SupervisedProcessProviderV01 implements OrchestratorProviderV01 {
     return () => this.#listeners.delete(listener);
   }
 
+  subscribeStatus(listener: (status: ProviderStatusV01) => void): ProviderUnsubscribe {
+    this.#statusListeners.add(listener);
+    return () => this.#statusListeners.delete(listener);
+  }
+
+  #publishStatus(): void {
+    for (const listener of this.#statusListeners) listener(this.status());
+  }
+
   async prepareShutdown(request: { readonly timeoutMs: number }): Promise<ProviderShutdownResultV01> {
     requirePositiveInteger(request.timeoutMs, "shutdown timeout");
     if (this.#state !== "ready") throw new Error("Provider is not ready");
     this.#acceptingCalls = false;
     this.#state = "stopping";
+    this.#publishStatus();
     const response = await this.#send("prepare_shutdown", request);
     if (!isShutdownResult(response)) throw new Error("Provider returned an invalid shutdown result");
     if (response.outcome === "safe_to_stop") this.#expectedExit = true;
@@ -249,6 +264,7 @@ export class SupervisedProcessProviderV01 implements OrchestratorProviderV01 {
     this.#child = undefined;
     this.#acceptingCalls = false;
     this.#state = expected ? "stopped" : "failed";
+    this.#publishStatus();
     const detail = `Provider exited (${code ?? "no-code"}/${signal ?? "no-signal"})`;
     this.#rejectPending(new Error(detail));
   }
@@ -256,6 +272,7 @@ export class SupervisedProcessProviderV01 implements OrchestratorProviderV01 {
   #fail(error: Error): void {
     this.#acceptingCalls = false;
     this.#state = "failed";
+    this.#publishStatus();
     this.#rejectPending(error);
   }
 

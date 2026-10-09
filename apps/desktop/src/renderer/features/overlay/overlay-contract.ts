@@ -82,5 +82,18 @@ export type OverlayDispatchResultV2 =
     };
 
 /** 端口侧惯用短名(v2 当前代;同 tutorial-contract 惯例) */
-export type OverlaySnapshot = OverlaySnapshotV2;
-export type OverlayDispatchResult = OverlayDispatchResultV2;
+/** Host tasks exist independently of AMF. An absent production card carries
+ * no production readiness claim; the old wire mirror stays unchanged. */
+export interface HostOverlaySnapshotV3 {
+  readonly schemaVersion: 3;
+  readonly availability: "available";
+  readonly presentation: OverlayPresentationV1;
+  readonly tasks: readonly OverlayTaskCardV01[];
+  readonly productionCard?: OverlayProductionCardV01;
+  readonly downloadCard?: OverlayDownloadCardV01;
+  readonly amfUnavailable: boolean;
+}
+export type OverlaySnapshot = OverlaySnapshotV2 | HostOverlaySnapshotV3;
+export type OverlayDispatchResult =
+  | { readonly kind: "ok"; readonly snapshot: OverlaySnapshot }
+  | { readonly kind: "rejected"; readonly reason: "unknown_action" | "action_not_allowed"; readonly snapshot: OverlaySnapshot };

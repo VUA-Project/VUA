@@ -1,6 +1,6 @@
 # VUA system architecture
 
-> Document version: 2.1.4
+> Document version: 2.2.0
 > Status: Accepted
 > Scope: Current implementation and incremental code placement
 > Last conformance review: 2026-10-01 (source/layout review, not real-machine acceptance)
@@ -9,35 +9,31 @@
 ## Current shape
 
 VUA is a local desktop application. Electron/React presents user tasks and isolates remote pages.
-Electron Main supervises a separate Rust Provider. The Provider composes application use cases,
-durable task state, and adapters for local files, package managers, acquisition, and Unity Bridge.
-Unity executes supported operations through the versioned Bridge.
+Electron Main supervises a host Rust Provider for environment/play work and a separately selected
+AMF Provider for material/production work. Each process owns its tasks and failure boundary.
+Deterministic Unity work remains behind the versioned Bridge.
 
 ```text
 Local React UI -> typed Gateway/preload -> Electron Main
-                                             |
-                                  supervised Rust Provider
-                                             |
-                             application use cases + tasks
-                                             |
-                         ports -> concrete local/tool adapters
-                                             |
-                         SQLite / files / installers / Unity
+                                             |              |
+                                       host Provider    optional AMF Provider
+                                             |              |
+                                    environment/tasks   AMF tasks + private BDL
+                                             |              |
+                                    software adapters   acquisition / projects / Unity Bridge
 
-Remote BOOTH content -> isolated Electron session and download transport
-                     -> normalized acquisition events (no privileged remote access)
+Remote BOOTH content -> AMF-scoped Electron session/download transport
+                     -> normalized acquisition events -> AMF
 ```
 
-This diagram describes ownership, not a promise that every N-sequence capability is implemented.
-There is no general runtime business-module registry or implemented community plugin host in this
-baseline. The current Provider is a supervised process; in-process replacement is a future option
-constrained by the same application contract, not a second implementation to maintain now.
+[Module architecture](modules.md) owns activation, routing and migration. This is explicit first-party
+composition; it is not an implemented community plugin host. Shared native dispatch/domain libraries
+remain shared; the executable and runtime boundaries do not claim independent crate dependency graphs.
 
 ## Current code layout
 
-Verified against Cargo.toml, crate manifests, provider exports, and relevant sources on 2026-09-28.
-There are **six** Cargo workspace members. The old single-crate paragraph was stale and conflicted
-with the same document's later layout table; it is preserved only in the archive.
+Verified against Cargo manifests and the separate composition roots on 2026-10-09.
+There are **seven** Cargo workspace members.
 
 | Location | Current responsibility | Incremental placement rule |
 | --- | --- | --- |
@@ -49,7 +45,8 @@ with the same document's later layout table; it is preserved only in the archive
 | `crates/acquisition` | Warehouse intake/maintenance and artifact inspection | Own acquisition intent and mapping through existing application boundaries |
 | `crates/bdl-store` | AMF-private catalog, download metadata, SQLite queries/migrations | Do not turn BDL into the environment install database or a cross-product data service |
 | `crates/unity-bridge` | Bridge execution, material intake/execution/staging, production documents and handoff interfaces | Keep deterministic Unity operations behind the Bridge |
-| `crates/provider-host` | Provider executable, service construction/dispatch, handoff adapter and Windows Job containment | Explicitly compose services; delegate business behavior to use cases |
+| `crates/provider-host` | Host executable, shared protocol dispatch, handoff adapter and Windows Job containment | Core startup must not construct AMF/BDL; keep existing wire families unchanged |
+| `crates/amf-provider` | Optional AMF executable composition, private BDL and production/acquisition services | AMF initialization/data failures stay within this module process |
 | `unity/Packages` | Unity-side packages and Bridge implementation | Vendor/Unity types remain inside the Unity boundary |
 
 Adapter crates consume core-owned domain types/ports; provider-host composes them. The current
@@ -135,6 +132,8 @@ and the external-connection mode are owned by
 [integration modes](integrations-and-overlays.md#external-integration-modes).
 
 ## Document changelog
+
+- 2.2.0 (2026-10-09): map separate host/AMF executable composition and the seventh workspace crate; link module ownership and migration.
 
 - 2.1.4 (2026-10-03): route all selected N2 applications to the shared external-connection architecture.
 - 2.1.3 (2026-10-02): record the removal of the collab-era registry checker (script and

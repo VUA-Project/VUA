@@ -28,7 +28,7 @@ describe("standalone desktop resources", () => {
   it("retains explicit development overrides and non-Windows executable names", () => {
     const env = { VUA_PROVIDER_EXECUTABLE: "/custom/provider", VUA_RENDERER_URL: "http://127.0.0.1:5173" };
     expect(resolveDesktopRuntime({ ...location, isPackaged: false, platform: "linux", env }))
-      .toEqual({ providerExecutable: env.VUA_PROVIDER_EXECUTABLE, rendererUrl: env.VUA_RENDERER_URL });
+      .toEqual({ providerExecutable: env.VUA_PROVIDER_EXECUTABLE, rendererUrl: env.VUA_RENDERER_URL, amfExecutable: path.resolve("checkout/target/release/vua-amf-provider") });
     expect(resolveDesktopRuntime({ ...location, isPackaged: false, platform: "linux" }).providerExecutable)
       .toBe(path.resolve("checkout/target/release/vua-orchestrator-provider"));
   });

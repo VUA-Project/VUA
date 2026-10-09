@@ -1,4 +1,5 @@
 import { createInactiveTutorialPort } from "./tutorial-port.ts";
+import { createAmfModulePort } from "./amf-module-port.ts";
 import { createMemorySettingsPort } from "./settings-port.ts";
 import type { AcquireEntryDetailView, AcquirePort, AcquireView } from "./acquire-port.ts";
 import type { WarehouseCommandsPort } from "./warehouse-commands-port.ts";
@@ -231,6 +232,7 @@ export function createEmptyCatalogBrowser(): CatalogBrowserPort {
 export function emptyGateway(initialGoals: StoredGoalsV1 | null = null): VuaGateway {
   const source: DataSource = "none";
   return {
+    amfModule: createAmfModulePort(),
     environment: createEmptyEnvironment(),
     tutorial: createInactiveTutorialPort(),
     modelProduction: createEmptyModelProduction(),

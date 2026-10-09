@@ -15,13 +15,13 @@
  * 通知机制。
  */
 import type { OverlaySurfacePort, Unsubscribe } from "./overlay-port.ts";
-import { createLiveOverlayPort } from "./overlay-port-live.ts";
+import { createHostOverlayPort, createLiveOverlayPort } from "./overlay-port-live.ts";
 import { createGatewayClient } from "../../gateway/index.ts";
 import type { OverlaySnapshot } from "./overlay-contract.ts";
 
-let inner: OverlaySurfacePort = createLiveOverlayPort(
-  createGatewayClient(window.vua),
-);
+let inner: OverlaySurfacePort = window.vua?.amfModule
+  ? createHostOverlayPort(createGatewayClient(window.vua), window.vua.amfModule)
+  : createLiveOverlayPort(createGatewayClient(window.vua));
 let innerUnsubscribe: Unsubscribe | null = null;
 const listeners = new Set<(snapshot: OverlaySnapshot) => void>();
 

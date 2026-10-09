@@ -1,8 +1,10 @@
 import { formatDateTime } from "./i18n/index.ts";
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import type { DesktopShellCommandV1 } from "@vua/contracts";
 import { saveDebugMode, useDebugMode } from "./app/debug-mode.ts";
 import {
+  availablePage,
+  isAmfPage,
   defaultPage,
   isPageId,
   moduleDef,
@@ -55,17 +57,11 @@ import { OnboardingPage, type OnboardingResult } from "./features/onboarding/Onb
 import { NavigationConfirmOverlay } from "./app/NavigationConfirmOverlay.tsx";
 import { AppTour } from "./features/tour/AppTour.tsx";
 import { LoginBrowserOverlay } from "./app/LoginBrowserOverlay.tsx";
-import { PackagesPage } from "./features/packages/PackagesPage.tsx";
-import { RecipePage } from "./features/recipe/RecipePage.tsx";
-import { ReleasePage } from "./features/release/ReleasePage.tsx";
-import { InspectionPage } from "./features/inspection/InspectionPage.tsx";
 import { NotificationPopover } from "./features/task-center/NotificationPopover.tsx";
 import { ResourceMonitor } from "./features/resource-monitor/ResourceMonitor.tsx";
 import { BootSplash } from "./components/splash/BootSplash.tsx";
 import { bootProgress } from "./app/boot-progress.ts";
 import { ToolsPage, type ToolsPageId } from "./features/tools/ToolsPage.tsx";
-import { WarehousePage } from "./features/warehouse/WarehousePage.tsx";
-import { WorkshopPage } from "./features/workshop/WorkshopPage.tsx";
 import {
   buildDiagnostics,
   downloadDiagnostics,
@@ -94,10 +90,14 @@ import {
   type GatewayStateName,
   GatewayProvider,
   useDataSource,
+  useAmfModule,
   useEnvironmentView,
   useSettingsView,
   type VuaGateway,
 } from "./gateway/index.ts";
+import { ModulesPage } from "./features/modules/ModulesPage.tsx";
+import { AmfBoundary } from "./features/modules/AmfBoundary.tsx";
+const AmfPages = lazy(() => import("./features/amf/AmfPages.tsx"));
 import { HomePage, directory } from "./features/home/HomePage.tsx";
 import { RouteEnvironmentPage } from "./features/home/RouteEnvironmentPage.tsx";
 import { directionalTarget, visibleControls, type Direction } from "./app/bigscreen-navigation.ts";
@@ -201,6 +201,11 @@ function PlaceholderPage({ title, description }: { title: string; description: s
  * present = 构建期发现的变体入口按需加载,失败如实呈现。共享容器
  * (GatewayProvider/事件/状态)在任何分支下继续存在——仅 UI 树替换。 */
 
+function AmfExperimentalCommands() {
+  const amf = useAmfModule();
+  return amf.state === "ready" ? <ExperimentalCommands /> : null;
+}
+
 function ExperimentalSettingsPage({
   uiRoot,
   onUiRootChange,
@@ -218,7 +223,7 @@ function ExperimentalSettingsPage({
         <h1 className="vua-title">{strings.nav.pages.settingsExperimental}</h1>
       </section>
       <Card>
-        <ExperimentalCommands />
+        <AmfExperimentalCommands />
       </Card>
       {/* 开发模式区(018 批 1,裁决 13 备稿授权):仅 DEV 构建渲染,
           生产构建零存在(leak 指纹扩展覆盖 per-port 选择键) */}
@@ -632,30 +637,18 @@ function renderPage(
   uiRoot: UiRootId,
   onUiRootChange: (root: UiRootId) => void,
   bigscreen: boolean,
+  amf: import("@vua/contracts").AmfModuleSnapshotV01,
 ) {
+  if (isAmfPage(page) && amf.state !== "ready") return <ModulesPage onOpen={() => actions.navigate("warehouse")} />;
   switch (page) {
     case "home": case "environment-hub": case "avatar-hub": case "help":
-      return <HomePage page={page} bigscreen={bigscreen} navigate={actions.navigate} startWizard={actions.restartOnboarding} startTour={actions.startTour} />;
+      return <HomePage page={page} bigscreen={bigscreen} navigate={actions.navigate} startWizard={actions.restartOnboarding} startTour={actions.startTour} amfInstalled={amf.installed} />;
     case "env-play": case "env-create":
       return <RouteEnvironmentPage zone={page === "env-play" ? "play" : "create"} onAccounts={actions.openAccounts} />;
-    case "warehouse":
-      return <WarehousePage onNavigate={actions.navigate} />;
-    case "recipe":
-      return <RecipePage />;
-    case "inspection":
-      return <InspectionPage />;
-    case "release":
-      return <ReleasePage onNavigate={actions.navigate} />;
-    case "packages":
-      return <PackagesPage />;
-    case "workshop":
-      return (
-        <WorkshopPage
-          envReady={creatorReady}
-          onPrepareEnv={actions.prepareEnv}
-          onNavigate={actions.navigate}
-        />
-      );
+    case "warehouse": case "recipe": case "inspection": case "release": case "packages": case "workshop":
+      return <AmfBoundary key={page} manage={() => actions.navigate("settings-modules")}><Suspense fallback={<p role="status">{format(strings.amfModule.loading, { amf: TERMS.amf })}</p>}><AmfPages page={page} creatorReady={creatorReady} navigate={actions.navigate} prepareEnv={actions.prepareEnv} /></Suspense></AmfBoundary>;
+    case "settings-modules":
+      return <ModulesPage onOpen={() => actions.navigate("warehouse")} />;
     case "tools-discover":
     case "tools-devices":
     case "tools-calibration":
@@ -716,6 +709,7 @@ function AppShell({
   onUiRootChange: (root: UiRootId) => void;
 }) {
   // 008 路径 a 桌面接线(W19):删除偏好开启时,生成完成即逐条目发起独立删除任务
+  const amf = useAmfModule();
   useAutoDeleteOriginals();
   // 启动里程碑 paint:AppShell 首帧提交(Phase A 开屏牵线)
   useEffect(() => {
@@ -751,6 +745,7 @@ function AppShell({
   const returnFocus = useRef<string | null>(null);
   const shellRef = useRef<HTMLDivElement | null>(null);
   const navigate = (target: PageId) => {
+    target = availablePage(target, amf.installed);
     if (target === page) {
       if (showOnboarding && !settingsOpen) onOnboardingComplete({ status: "skipped", goals: [], environments: [] });
       return;
@@ -769,15 +764,20 @@ function AppShell({
     if (showOnboarding) onOnboardingComplete({ status: "skipped", goals: [], environments: [] });
     navigatePage(target);
   };
+  useEffect(() => {
+    if (!amf.installed && isAmfPage(page)) navigatePage("settings-modules");
+    setSettingsReturn(previous => previous && !amf.installed && isAmfPage(previous) ? "home" : previous);
+  }, [amf.installed, page, navigatePage]);
   const returnFromSettings = () => {
-    const target = settingsReturn ?? "home";
+    const candidate = availablePage(settingsReturn ?? "home", amf.installed);
+    const target = candidate.startsWith("settings-") ? "home" : candidate;
     returnFocus.current = focusMemory.current.get(target) ?? null;
     navigatePage(target);
     setSettingsReturn(null);
   };
   const goBack = () => {
     if (settingsOpen) { returnFromSettings(); return; }
-    const target = history.current.pop() ?? "home";
+    const target = availablePage(history.current.pop() ?? "home", amf.installed);
     returnFocus.current = focusMemory.current.get(target) ?? null;
     navigatePage(target);
   };
@@ -858,7 +858,7 @@ function AppShell({
   }, []);
 
   const commands = useMemo<CommandItem[]>(() => {
-    const pages: CommandItem[] = modules.flatMap((module) =>
+    const pages: CommandItem[] = modules.filter(module => module.id !== "production" || amf.installed).flatMap((module) =>
       module.groups.flatMap((group) =>
         group.pages.map((p) => ({
           id: p.id,
@@ -898,7 +898,7 @@ function AppShell({
     ];
     return [...pages, ...actions];
     // navigate 由 App 每次渲染新建;命令表重建成本低,无需缓存
-  }, [navigate, resolvedTheme, themeOverride]);
+  }, [navigate, resolvedTheme, themeOverride, amf.installed]);
 
   // 沉浸式自定义标题栏:仅在 Electron 壳内渲染窗口控制(浏览器预览无 preload,不渲染)
   const inShell = window.vua !== undefined;
@@ -1119,8 +1119,8 @@ function AppShell({
         {!bigscreen || settingsOpen ? <aside className={`vua-shell__sidebar${settingsOpen ? " vua-shell__sidebar--settings" : ""}`} aria-label={settingsOpen ? strings.nav.tabs.settings : strings.app.sidebarAria}>
           {settingsOpen ? <div className="vua-shell__sidebar-group vua-shell__sidebar-group--settings" data-module="settings">
             {moduleDef("settings").groups.flatMap(g => g.pages).map(p => <button type="button" key={p.id} className="vua-shell__sidebar-item" aria-current={page === p.id ? "page" : undefined} onClick={() => navigate(p.id)} data-nav-id={`nav-${p.id}`}>{pageLabel(p)}</button>)}
-          </div> : (["env", "production"] as const).map(group => <div className="vua-shell__sidebar-group" key={group} data-module={group}>
-            <button type="button" className="vua-shell__sidebar-label" onClick={() => navigate(group === "env" ? "environment-hub" : "avatar-hub")}>{group === "env" ? strings.journey.environment : strings.journey.avatar}</button>
+          </div> : (["env", "production"] as const).filter(group => group !== "production" || amf.installed).map(group => <div className="vua-shell__sidebar-group" key={group} data-module={group}>
+            <button type="button" className="vua-shell__sidebar-label" onClick={() => navigate(group === "env" ? "environment-hub" : "avatar-hub")}>{group === "env" ? strings.journey.environment : TERMS.amf}</button>
             {directory[group].map(item => <button type="button" key={item.id} className="vua-shell__sidebar-item" aria-current={page === item.id ? "page" : undefined} onClick={() => navigate(item.id)} data-nav-id={`nav-${item.id}`}>{item.title}</button>)}
           </div>)}
           {settingsOpen ? <div className="vua-shell__sidebar-footer">
@@ -1138,10 +1138,10 @@ function AppShell({
         </aside> : null}
         <main className="vua-shell__main">
           {contentPage !== null ? <div hidden={showOnboarding || settingsOpen} key={contentPage} className="vua-page-enter">
-            {renderPage(contentPage, creatorReady, pageActions, pagePrefs, uiRoot, onUiRootChange, bigscreen)}
+            {renderPage(contentPage, creatorReady, pageActions, pagePrefs, uiRoot, onUiRootChange, bigscreen, amf)}
           </div> : null}
           {showOnboarding ? <div key="first-run" hidden={settingsOpen}><OnboardingPage onComplete={onOnboardingComplete} onAccounts={pageActions.openAccounts} /></div> : null}
-          {settingsOpen ? <div key={page} className="vua-page-enter">{renderPage(page, creatorReady, pageActions, pagePrefs, uiRoot, onUiRootChange, bigscreen)}</div> : null}
+          {settingsOpen ? <div key={page} className="vua-page-enter">{renderPage(page, creatorReady, pageActions, pagePrefs, uiRoot, onUiRootChange, bigscreen, amf)}</div> : null}
         </main>
       </div>
       {/* 导航确认卡(015 §12,批 B-3):U9(1)/(3) 确认层的渲染层载体,全局一次挂载 */}

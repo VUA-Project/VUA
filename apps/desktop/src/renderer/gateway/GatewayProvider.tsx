@@ -1,3 +1,5 @@
+import type { AmfModuleSnapshotV01 } from "@vua/contracts";
+import { emptyGateway } from "./empty-gateway.ts";
 import {
   createContext,
   useContext,
@@ -29,6 +31,7 @@ import type { WorkshopView } from "../features/workshop/track-model.ts";
  */
 
 interface GatewayViews {
+  amfModule: AmfModuleSnapshotV01;
   environment: EnvironmentView;
   modelProduction: ModelProductionView;
   toolCatalog: ToolCatalogView;
@@ -60,49 +63,45 @@ export function GatewayProvider({
 
   useEffect(() => {
     let active = true;
+    let latestAmf: AmfModuleSnapshotV01 | undefined;
     setBootFailed(false);
+    const notRun = emptyGateway();
     void Promise.all([
-      gateway.environment.snapshot(),
-      gateway.modelProduction.snapshot(),
-      gateway.toolCatalog.snapshot(),
-      gateway.task.snapshot(),
-      gateway.settings.snapshot(),
-      gateway.acquire.snapshot(),
-      gateway.packages.snapshot(),
-    ])
-      .then(([environment, modelProduction, toolCatalog, task, settings, acquire, packages]) => {
-        if (active)
-          setViews({ environment, modelProduction, toolCatalog, task, settings, acquire, packages });
-      })
-      .catch(() => {
-        if (active) setBootFailed(true);
-      });
+      gateway.amfModule.snapshot(), gateway.environment.snapshot(), gateway.toolCatalog.snapshot(),
+      gateway.task.snapshot(), gateway.settings.snapshot(),
+      notRun.modelProduction.snapshot(), notRun.acquire.snapshot(), notRun.packages.snapshot(),
+    ]).then(([amfModule, environment, toolCatalog, task, settings, modelProduction, acquire, packages]) => {
+      if (active) setViews({ amfModule: latestAmf ?? amfModule, environment, toolCatalog, task, settings, modelProduction, acquire, packages });
+    }).catch(() => { if (active) setBootFailed(true); });
     const unsubscribes = [
-      gateway.environment.subscribe((environment) =>
-        setViews((prev) => (prev ? { ...prev, environment } : prev)),
-      ),
-      gateway.modelProduction.subscribe((modelProduction) =>
-        setViews((prev) => (prev ? { ...prev, modelProduction } : prev)),
-      ),
-      gateway.toolCatalog.subscribe((toolCatalog) =>
-        setViews((prev) => (prev ? { ...prev, toolCatalog } : prev)),
-      ),
-      gateway.task.subscribe((task) => setViews((prev) => (prev ? { ...prev, task } : prev))),
-      gateway.settings.subscribe((settings) =>
-        setViews((prev) => (prev ? { ...prev, settings } : prev)),
-      ),
-      gateway.acquire.subscribe((acquire) =>
-        setViews((prev) => (prev ? { ...prev, acquire } : prev)),
-      ),
-      gateway.packages.subscribe((packages) =>
-        setViews((prev) => (prev ? { ...prev, packages } : prev)),
-      ),
+      gateway.amfModule.subscribe(amfModule => {
+        latestAmf = amfModule;
+        setViews(prev => prev ? { ...prev, amfModule } : prev);
+      }),
+      gateway.environment.subscribe(environment => setViews(prev => prev ? { ...prev, environment } : prev)),
+      gateway.toolCatalog.subscribe(toolCatalog => setViews(prev => prev ? { ...prev, toolCatalog } : prev)),
+      gateway.task.subscribe(task => setViews(prev => prev ? { ...prev, task } : prev)),
+      gateway.settings.subscribe(settings => setViews(prev => prev ? { ...prev, settings } : prev)),
     ];
-    return () => {
-      active = false;
-      for (const unsubscribe of unsubscribes) unsubscribe();
-    };
+    return () => { active = false; for (const unsubscribe of unsubscribes) unsubscribe(); };
   }, [gateway, bootNonce]);
+
+  const amfReady = views?.amfModule.state === "ready";
+  useEffect(() => {
+    if (!amfReady) return;
+    let active = true;
+    // Optional-domain loading cannot prevent the host from mounting.
+    void Promise.all([gateway.modelProduction.snapshot(), gateway.acquire.snapshot(), gateway.packages.snapshot()])
+      .then(([modelProduction, acquire, packages]) => {
+        if (active) setViews(prev => prev ? { ...prev, modelProduction, acquire, packages } : prev);
+      }).catch(() => { /* Each AMF page presents its own unavailable state. */ });
+    const unsubscribes = [
+      gateway.modelProduction.subscribe(modelProduction => { if (active) setViews(prev => prev ? { ...prev, modelProduction } : prev); }),
+      gateway.acquire.subscribe(acquire => { if (active) setViews(prev => prev ? { ...prev, acquire } : prev); }),
+      gateway.packages.subscribe(packages => { if (active) setViews(prev => prev ? { ...prev, packages } : prev); }),
+    ];
+    return () => { active = false; for (const unsubscribe of unsubscribes) unsubscribe(); };
+  }, [gateway, amfReady]);
 
   // 首帧失败:全局诚实失败态(此时应用壳尚未就绪,渲染最小独立页面)
   if (bootFailed) {
@@ -133,6 +132,8 @@ function useGatewayContext(): GatewayContextValue {
   if (!context) throw new Error("useGateway* hooks must be used inside GatewayProvider");
   return context;
 }
+
+export function useAmfModule(): AmfModuleSnapshotV01 { return useGatewayContext().views.amfModule; }
 
 /** 完整 Gateway:提交意图(cancel / setGoals 等)与 capability 查询 */
 export function useGateway(): VuaGateway {

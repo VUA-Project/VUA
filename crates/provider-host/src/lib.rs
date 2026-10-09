@@ -8,12 +8,13 @@
 
 pub mod handoff_adapter;
 pub mod provider_host;
+pub mod runtime;
 #[cfg(windows)]
 pub mod provider_job;
 
 pub use handoff_adapter::EditorHandoffAdapter;
 pub use provider_host::{
-    production_config_from_env, run_provider_host, run_provider_host_full,
+    production_config_from_env, run_provider_host, run_provider_host_full, run_provider_host_with_legacy,
     run_provider_host_with, run_provider_host_with_downloads, run_provider_host_with_services,
     DownloadConfig, EditorPathVerifier, EnvironmentConfig, EDITOR_VERIFY_SCHEMA_VERSION,
     ENVIRONMENT_VERIFY_UNAVAILABLE, ProductionConfig, ProductionUseCaseConfig, ProjectOpsConfig,

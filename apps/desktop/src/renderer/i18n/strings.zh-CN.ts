@@ -1,3 +1,4 @@
+import { moduleCopy } from "./module-copy.ts";
 import { environmentCopy } from "./environment-copy.ts";
 import { journeyCopy } from "./journey-copy.ts";
 import type { Strings } from "./strings.en.ts";
@@ -14,6 +15,7 @@ import type { Strings } from "./strings.en.ts";
  *   仅 gateway fixture 可达,生产构建被 Tree-shaking 剔除)。
  */
 export const strings: Strings = {
+  amfModule: moduleCopy["zh-CN"],
   environmentCards: environmentCopy["zh-CN"],
   journey: journeyCopy["zh-CN"],
   websiteTests: {
@@ -202,6 +204,7 @@ demoTaskTitle: "演示任务",
       toolsDevices: "设备与追踪",
       toolsCalibration: "校准",
       toolsInstalled: "已安装工具",
+      settingsModules: "功能模块",
       settingsGoals: "目标重选",
       settingsEnvironment: "环境与路径",
       settingsAccounts: "账号管理",

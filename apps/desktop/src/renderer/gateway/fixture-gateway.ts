@@ -612,6 +612,8 @@ export function fixtureGateway(
     ...(name === "demo-tasks" ? { taskLink: taskHandle.link } : {}),
   });
   return {
+    amfModule: { snapshot: async () => ({ schemaVersion: "0.1", moduleId: "amf", installed: true, state: "ready" }),
+      subscribe: () => () => {}, setEnabled: async () => ({ outcome: "failed", snapshot: { schemaVersion: "0.1", moduleId: "amf", installed: true, state: "ready" } }) },
     environment: createFixtureEnvironment(green ? allGreenChecks : mixedChecks, {
       startFresh: envFresh,
       failZones: envFailZones,

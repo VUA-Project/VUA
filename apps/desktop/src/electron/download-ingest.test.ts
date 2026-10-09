@@ -25,14 +25,18 @@ describe("download event persistence receipts", () => {
     const invoke = vi.fn<DownloadIngestInvoke>(() => new Promise((resolve) => { reply = resolve; }));
     const persisted = vi.fn();
     const sink = createDownloadEventSink({ invoke, onPersisted: persisted });
+    expect(sink.pending()).toBe(false);
     sink.emit(event("dl-1")); sink.emit(event("dl-2"));
+    expect(sink.pending()).toBe(true);
     expect(invoke).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(1_000);
     expect(invoke.mock.calls[0]![0]).toEqual({ schemaVersion: "0.1", events: [event("dl-1"), event("dl-2")] });
     expect(persisted).not.toHaveBeenCalled();
+    expect(sink.pending()).toBe(true);
     reply({ ok: true, value: { folded: 2, duplicates: 0, rejected: [] } });
     await vi.advanceTimersByTimeAsync(0);
     expect(persisted.mock.calls.map((call) => call[0].downloadId)).toEqual(["dl-1", "dl-2"]);
+    expect(sink.pending()).toBe(false);
     sink.dispose();
   });
 

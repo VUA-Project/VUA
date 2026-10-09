@@ -2,8 +2,8 @@
 #
 # Scope: the root `pnpm check` chain exactly as run locally per merge:
 # typecheck, vitest, production build, boundary/i18n/contrast/leak checks.
-# The desktop build compiles the provider-host binary (cargo build
-# --release -p vua-provider-host), so the Rust toolchain is installed here
+# The desktop build compiles the host and optional AMF binaries, so the
+# Rust toolchain is installed here
 # too. Fixture payloads must never leak into the production bundle — the
 # check:leak fingerprint scan is part of this chain and its failure fails
 # the badge.
@@ -19,6 +19,9 @@ on:
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "crates/provider-host/**"
+      - "crates/amf-provider/**"
+      - "Cargo.toml"
+      - "Cargo.lock"
       - ".github/workflows/ts.yml"
   pull_request: {}
 
@@ -47,3 +50,7 @@ jobs:
         run: pnpm check
       - name: Library maintenance interaction (isolated profile, synthetic Gateway)
         run: pnpm --filter @vua/desktop smoke:library-maintenance
+      - name: Bundle Main and preload for module interaction
+        run: node apps/desktop/scripts/build-electron.mjs
+      - name: AMF activation and isolation (isolated profile, native providers)
+        run: pnpm --filter @vua/desktop smoke:amf-module

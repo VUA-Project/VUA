@@ -1,14 +1,18 @@
 # AMF and Unity Bridge architecture
 
 
-> Document version: 1.2.3
+> Document version: 1.3.0
 > Status: Accepted
 > Scope: AMF application services, Recipe, Build Record, `unity/`
-> Updated: 2026-10-01
+> Updated: 2026-10-09
 > Last conformance review: 2026-09-06
 > Normative effect: Yes
 
 ## AMF production model
+
+AMF is an optional VUA module, including its private BDL. Its production, acquisition and Bridge
+services run in the AMF process; host environment/play services remain available without it.
+[Module architecture](modules.md) owns activation, retained data and legacy-profile compatibility.
 
 AMF treats Recipe as the source of a stackable set of modifications: a Recipe expresses an asset
 combination and explicit, supported options (overlay semantics and conflict handling live in the
@@ -154,6 +158,7 @@ vocabulary took zero new operations — the current frozen face is
 
 ## Document changelog
 
+- 1.3.0 (2026-10-09): scope production and private BDL to the optional AMF process; link host lifecycle and migration ownership.
 - 1.2.3 (2026-10-01): mark the handoff section's proposal-023 stance as an archived 2026-09-16
   historical reference and note that the current frozen Bridge command face is v4 (v3 was current
   when the section landed); refresh the stale header date; no behavior change.

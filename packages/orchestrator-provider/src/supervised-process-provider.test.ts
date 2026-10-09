@@ -143,6 +143,16 @@ function getRequest(): ApplicationRequestV01 {
 }
 
 describe("supervised process Provider v0.1", () => {
+  it("publishes failed rather than staying starting when process creation throws", async () => {
+    const provider = new SupervisedProcessProviderV01({ executablePath: path.resolve("absent.exe"), databasePath: path.resolve("absent.db") }, () => { throw new Error("spawn refused"); });
+    const states: string[] = [];
+    const unsubscribe = provider.subscribeStatus(status => states.push(status.state));
+    await expect(provider.start()).rejects.toThrow("spawn refused");
+    expect(provider.status().state).toBe("failed");
+    expect(provider.status().acceptingCalls).toBe(false);
+    expect(states).toEqual(["starting", "failed"]);
+    unsubscribe();
+  });
   it("keeps admission closed through handshake and forwards responses and events", async () => {
     const { provider } = harness();
     expect(provider.status()).toMatchObject({ state: "stopped", acceptingCalls: false });

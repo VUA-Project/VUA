@@ -71,6 +71,8 @@ export interface OrchestratorProviderV01 {
   start(): Promise<ProviderHandshakeV01>;
   invoke(request: ApplicationRequestV01): Promise<ApplicationResponseV01>;
   subscribe(listener: ProviderEventListenerV01): ProviderUnsubscribe;
+  /** Local process lifecycle, separate from the frozen application event wire. */
+  subscribeStatus?(listener: (status: ProviderStatusV01) => void): ProviderUnsubscribe;
   prepareShutdown(request: { readonly timeoutMs: number }): Promise<ProviderShutdownResultV01>;
   continueShutdown(request: ContinueShutdownRequestV01): Promise<ProviderShutdownResultV01>;
 }
