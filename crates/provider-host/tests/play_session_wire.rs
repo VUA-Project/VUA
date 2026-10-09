@@ -1,14 +1,21 @@
 //! No environment service is configured, so even valid commands cannot launch software.
 use serde_json::{json, Value};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::{fs, io::Cursor, path::Path};
+
+// Windows wall-clock reads can repeat across parallel tests. Keep each host's
+// task database independent instead of relying on timestamp resolution alone.
+static ROOT_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
 fn invoke(request: Value) -> Value {
     let root = std::env::temp_dir().join(format!(
-        "vua-play-wire-{}-{}",
+        "vua-play-wire-{}-{}-{}",
         std::process::id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
-            .as_nanos()
+            .as_nanos(),
+        ROOT_SEQUENCE.fetch_add(1, Ordering::Relaxed),
     ));
     fs::create_dir_all(&root).unwrap();
     let frame =
