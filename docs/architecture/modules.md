@@ -1,6 +1,6 @@
 # VUA host and optional AMF module
 
-> Document version: 1.1.0
+> Document version: 1.2.0
 > Status: Accepted
 > Scope: First-party module composition, lifecycle and data ownership
 > Updated: 2026-10-10
@@ -10,6 +10,27 @@ prerequisites, preparation, launch and recovery. A module supplies capabilities 
 VUA hosts these scenarios. AMF supplies the first-party Avatar-editing scenario. Ibis includes
 its local payload but requires explicit first activation; external Avatar-editing modules and
 their placeholder entries are deferred under the 2026-10-10 user ruling.
+
+## Deferred external editing module
+
+The initial MioVRC deferral is a product-fit decision based on the author's evaluation, rather
+than a claim that an integration license alone determines suitability. The author found a required
+material-folder selection and automatic synchronization on entry, with all contained folders treated
+as material folders. That assumes an already organized library, while VUA targets newcomers with
+mixed local files. The evaluation also found no support for the required C1 Unity build and too
+many form-based steps. These are the author's observations of the evaluated version, not a
+compatibility audit of every upstream release.
+
+The author also observed explicit import support for pirated-material platforms. VUA's own
+[local-material and acquisition-source boundary](../product-boundary.md) applies to any future
+integration. No external Avatar-editing placeholder is shipped in Ibis; reconsideration requires
+an actual usable scenario and further product review.
+
+AI assistance remains a useful idea independently of the module deferral. The screenshot supplied
+by the author shows model-service and vision configuration, not evidence of a completed production
+loop. VUA's accepted future direction is to expose reliable tools to an existing external Agent,
+as described in [architecture evolution](evolution.md#existing-agents-as-tool-consumers), without
+adding a model-service configuration page or Agent harness to this Ibis slice.
 
 ## Implemented boundary
 
@@ -77,6 +98,7 @@ owned by the [N sequence](../development-outline.md) and [Ibis plan](../developm
 
 ## Document changelog
 
+- 1.2.0 (2026-10-10): record the author's external-module deferral rationale and route the retained AI idea to future external-Agent tool access.
 - 1.1.0 (2026-10-10): distinguish bundled installation from explicit activation, keep legacy data from implicitly enabling AMF, and remove external editing placeholders from Ibis.
 
 - 1.0.0 (2026-10-09): define the scenario/module distinction and implemented optional AMF＋BDL
