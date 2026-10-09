@@ -1,0 +1,16 @@
+{
+  "contractVersion": "0.1",
+  "requestId": "source-write",
+  "correlationId": "source-write",
+  "kind": "command",
+  "method": "library.updateEntryMetadata",
+  "params": {
+    "schemaVersion": "0.1",
+    "entryId": "whi-local-example",
+    "expectedRevision": 0,
+    "displayName": "Local texture",
+    "productId": null,
+    "thumbnailRef": null
+  },
+  "commandId": "source-write"
+}

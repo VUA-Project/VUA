@@ -1,0 +1,6 @@
+{
+  "schemaVersion": "0.1",
+  "operation": "library.importFolders",
+  "taskId": "task-import-1",
+  "correlationId": "intake-1"
+}

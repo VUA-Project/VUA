@@ -1,9 +1,9 @@
 /** Local shell copy. IPC accepts a locale identifier, never caller-provided dialog text. */
 export const dialogCopy = {
-  en: { unityPackage: "Choose material folder", localVpm: "Select a local VPM package folder", warehouse: "Import asset folders", editorExecutable: "Select the Unity editor executable", editorDirectory: "Select the Unity editor folder" },
-  "zh-CN": { unityPackage: "选择素材文件夹", localVpm: "选择本地 VPM 包文件夹", warehouse: "导入素材文件夹", editorExecutable: "选择 Unity 编辑器程序", editorDirectory: "选择 Unity 编辑器文件夹" },
-  ja: { unityPackage: "素材フォルダを選択", localVpm: "ローカル VPM パッケージのフォルダーを選択", warehouse: "素材フォルダーをインポート", editorExecutable: "Unity エディターの実行ファイルを選択", editorDirectory: "Unity エディターのフォルダーを選択" },
-  ko: { unityPackage: "자재 폴더 선택", localVpm: "로컬 VPM 패키지 폴더 선택", warehouse: "에셋 폴더 가져오기", editorExecutable: "Unity 에디터 실행 파일 선택", editorDirectory: "Unity 에디터 폴더 선택" },
+  en: { libraryThumbnail: "Select a thumbnail", unityPackage: "Choose material folder", localVpm: "Select a local VPM package folder", warehouse: "Import asset folders", editorExecutable: "Select the Unity editor executable", editorDirectory: "Select the Unity editor folder" },
+  "zh-CN": { libraryThumbnail: "选择缩略图", unityPackage: "选择素材文件夹", localVpm: "选择本地 VPM 包文件夹", warehouse: "导入素材文件夹", editorExecutable: "选择 Unity 编辑器程序", editorDirectory: "选择 Unity 编辑器文件夹" },
+  ja: { libraryThumbnail: "サムネイルを選択", unityPackage: "素材フォルダを選択", localVpm: "ローカル VPM パッケージのフォルダーを選択", warehouse: "素材フォルダーをインポート", editorExecutable: "Unity エディターの実行ファイルを選択", editorDirectory: "Unity エディターのフォルダーを選択" },
+  ko: { libraryThumbnail: "썸네일 선택", unityPackage: "자재 폴더 선택", localVpm: "로컬 VPM 패키지 폴더 선택", warehouse: "에셋 폴더 가져오기", editorExecutable: "Unity 에디터 실행 파일 선택", editorDirectory: "Unity 에디터 폴더 선택" },
 } as const;
 
 /** Startup has no renderer-selected locale yet; use the operating-system language. */

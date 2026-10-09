@@ -1105,6 +1105,27 @@
   -webkit-box-orient: vertical;
 }
 
+.vua-compatible-items__actions,
+.vua-dependency-lookup__form {
+  display: flex;
+  align-items: center;
+  gap: var(--vua-space-2);
+  flex-wrap: wrap;
+}
+
+.vua-dependency-lookup__form label {
+  flex-basis: 100%;
+}
+
+.vua-dependency-lookup__form input {
+  min-width: 0;
+  flex: 1;
+}
+
+.vua-compatible-items__row .vua-compatible-items__actions .vua-button {
+  max-width: 100%;
+}
+
 /* 静默下载文件清单(N5,2026-10-05):勾选行 + 动作位 */
 .vua-download-checklist {
   display: flex;

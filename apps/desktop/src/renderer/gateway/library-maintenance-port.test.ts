@@ -6,6 +6,14 @@ import { createLibraryMaintenancePort } from "./library-maintenance-port.ts";
 const vector = (name: string): Record<string, unknown> => JSON.parse(readFileSync(new URL(`../../../../../schemas/library-maintenance/v0.1/examples/${name}.json`, import.meta.url), "utf8")) as Record<string, unknown>;
 const client = (value: unknown, calls: DesktopGatewayRequestV1[] = []): GatewayClient => ({ invoke: async (request) => { calls.push(request); return { ok: true, value: value as DesktopGatewaySuccessValueV1 }; }, subscribe: () => () => {} });
 describe("library maintenance Gateway port", () => {
+  it("validates interrupted discovery and explicit resolution without claiming successful deletion", async () => {
+    const target = { kind: "product", id: "booth:90" } as const;
+    expect((await createLibraryMaintenancePort(client(vector("pending.response"))).pending(target)).length).toBe(1);
+    await expect(createLibraryMaintenancePort(client(vector("pending.response"))).pending({ kind: "product", id: "booth:91" })).rejects.toThrow("read_failed");
+    const resolved = vector("resolved.response");
+    expect((await createLibraryMaintenancePort(client(resolved)).resolve("library-removal-synthetic", 2)).inspectionResolved).toBe(true);
+    await expect(createLibraryMaintenancePort(client(vector("recovered.response"))).resolve("library-removal-synthetic", 2)).rejects.toThrow("read_failed");
+  });
   it("keeps failed preview distinct from no managed files", async () => {
     const unavailable: GatewayClient = { invoke: async () => ({ ok: false, error: { kind: "unavailable" } }), subscribe: () => () => {} };
     await expect(createLibraryMaintenancePort(unavailable).preview({ kind: "product", id: "booth:90" })).rejects.toThrow("read_failed");

@@ -432,8 +432,10 @@ export class MockOrchestratorProviderV01 implements OrchestratorProviderV01 {
       case "library.observeDownload":
       case "library.downloadStatus":
       case "library.list":
+      case "library.importFolders":
+      case "library.entryMetadata": case "library.updateEntryMetadata": case "library.removeLocalEntries":
       case "library.productFiles":
-      case "library.removalPreview": case "library.removeFiles": case "library.removalStatus":
+      case "library.removalPreview": case "library.removeFiles": case "library.removalStatus": case "library.pendingRemovals": case "library.resolveRemoval":
       case "recipeDraft.selectionStatus":
       case "recipeDraft.list": case "recipeDraft.get": case "recipeDraft.save": case "recipeDraft.addSelection":
         // bdl-queries v0.5(030 §5.7 案 A,数据席第 168 批 FROZEN,桌面消费

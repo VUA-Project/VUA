@@ -1,0 +1,11 @@
+{
+  "contractVersion": "0.1",
+  "requestId": "source-read",
+  "correlationId": "source-read",
+  "kind": "query",
+  "method": "library.entryMetadata",
+  "params": {
+    "schemaVersion": "0.1",
+    "entryId": "whi-local-example"
+  }
+}

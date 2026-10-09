@@ -1,9 +1,9 @@
 # Library maintenance v0.1
 
-> Document version: 0.1.0
+> Document version: 0.2.0
 > Status: Implementation baseline (not frozen)
 > Owner: AMF
-> Updated: 2026-10-08
+> Updated: 2026-10-09
 
 The user's 2026-10-08 ruling permits removing selected VUA-managed files while retaining
 catalog entries, copy evidence and Recipe/draft references. Changed originals retain generated
@@ -19,6 +19,8 @@ All requests have `schemaVersion: "0.1"`. A target is `{kind: "product" | "entry
 | `library.removalPreview` | query | target, optional nonempty unique copyIds (at most 200) | target, previewHash, files, references, referenceCoverage, unresolvedRecipeAssets |
 | `library.removeFiles` | command | removalId, target, copyIds, previewHash | removal snapshot |
 | `library.removalStatus` | query | removalId | removal snapshot |
+| `library.pendingRemovals` | query | target | schemaVersion, target, interrupted removal snapshots |
+| `library.resolveRemoval` | command | removalId, observedRevision | inspected removal snapshot |
 
 The [request/response schemas and synthetic vectors](../../schemas/library-maintenance/v0.1/)
 and provider wire tests cover this baseline together with the TypeScript Gateway consumer.
@@ -28,6 +30,9 @@ Each file exposes copyId, entryId, fileName (relative), role, artifactSha256, si
 presence (`present`, `missing`, `changed`, `unreadable`) and superseded. No absolute path
 crosses the Gateway. Hash verification occurs immediately before removal; preview presence
 is a metadata observation, not a production qualification.
+
+Product selection follows the current visible library grouping, including managed ZIP members
+and verified migrated local copies. Explicitly removed imports do not re-enter this selection.
 
 References expose kind (`draft` or `recipe`), id, title, revision, copyIds and
 missingAfterRemoval. Coverage is `drafts_and_recipes` when the production store is wired,
@@ -63,8 +68,18 @@ or `failed`, with nullable errorCode. Overall state is `running`, `succeeded`,
 `succeeded_with_warnings`, `failed`, `cancelled` or `unconfirmed`. Runtime finality is authoritative.
 Interrupted tasks require inspection and never restart deletion implicitly. A pending file
 after a crash is unconfirmed even if bytes are now missing; absence alone does not prove removal.
-An interrupted plan retains its conflict fence. Explicit inspection resolution is still a
-follow-up action; replaying the same request does not clear that fence or restart its worker.
+An interrupted plan retains its conflict fence. Replaying the same request does not clear that
+fence or restart its worker. The dialog first discovers interrupted plans for its target.
+
+Explicit resolution requires the observed task revision, copy-write exclusion and a recovered
+SQLite runtime with no live worker. It rechecks pending copy bindings and metadata presence.
+`kept` means the file remains; this is not hash/production qualification. `missing_after_inspection`
+means absence without proof of deletion. Changed/unreadable/rebound copies carry failure reasons.
+Existing per-file deletion receipts are retained. No unlink occurs during inspection.
+One durable completion stores all inspected outcomes and cancels the old vanished worker, with
+`inspectionResolved: true` and `recoveryDisposition: none`. Runtime cache/events and durable finality
+advance together, releasing the conflict fence. Retrying a resolved operation returns its receipt.
+After inspection, deletion requires a fresh selection/preview and a new removal ID.
 
 Errors use `vua.library.*` and the existing AppError envelope. Invalid parameters, missing target,
 preview drift, busy files, command conflict and storage failures remain distinct. Actual user
@@ -78,11 +93,16 @@ The [Chromium interaction check](../../apps/desktop/scripts/smoke-library-mainte
 against a synthetic Gateway in a hidden window with an isolated temporary profile. It exercises
 selection and confirmation, reference-read failure, stale preview feedback, same-request receipt
 recovery, observed cancellation, interrupted-task inspection and keyboard focus restoration.
+The updated interaction check passed 26 synthetic assertions, including discovery after restart,
+explicit resolution, retained files, missing-versus-removed wording and fresh selection. Provider
+wire tests cover durable inspection, receipt replay and download admission after fence release.
 
 This slice identifies and preserves superseded VPMs. A new regeneration path and package-version
 allocation remain follow-up work: the legacy generator refuses any existing generated copy
 and currently emits version 0.1.0. It must not be reused to overwrite a retained version.
 
 ## Document changelog
+
+- 0.2.0 (2026-10-09): add explicit interrupted-removal discovery/resolution without resumed deletion and align product deletion with ZIP/verified-local card scopes.
 
 - 0.1.0 (2026-10-08): define selected-file removal with retained identities/references and durable finality.

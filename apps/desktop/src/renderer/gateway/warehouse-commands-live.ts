@@ -7,6 +7,7 @@ import type {
 } from "./warehouse-commands-port.ts";
 import { registerTaskIdentity } from "./task-identity.ts";
 import { strings } from "../i18n/index.ts";
+import { isLibraryImportAcceptedV01 } from "@vua/contracts";
 
 /**
  * F4-9 live 写命令端口:warehouse.setArtifactMode / generateVpm /
@@ -186,22 +187,23 @@ export function createWarehouseCommands(client: GatewayClient): WarehouseCommand
       const response = await client.invoke({
         schemaVersion: 1,
         requestId: crypto.randomUUID(),
-        method: "warehouse.import",
+        method: "library.importFolders",
         params: {
+          schemaVersion: "0.1",
           sourceFolders: [...sourceFolders],
           commandId: `whcmd-${crypto.randomUUID()}`,
           // N5 实验选项(设置-实验性门控):导入后自动制成 VPM 包再入库
           ...(options?.autoGenerate === true ? { autoGenerate: true } : {}),
         },
       });
-      return response.ok
+      return response.ok && isLibraryImportAcceptedV01(response.value)
         ? acceptWithIdentity(response.value, {
             title: strings.taskTitles.importBatch,
             // 来源页 = 仓储页:素材导入自 2026-09-20 导航重构起为仓储页内
             // 弹窗,不再持独立页;任务「回到来源页」落回其宿主页面
             originPage: "warehouse",
           })
-        : outcomeFromClientError(response.error);
+        : response.ok ? { ok: false, error: { kind: "unavailable" } } : outcomeFromClientError(response.error);
     },
     // IMP-3 下载采纳(bdl-commands v0.4):仅身份请求,受理即采纳任务身份;
     // 进度与落成条目经任务面/读面
