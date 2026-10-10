@@ -183,6 +183,9 @@ async function run() {
     await waitFor(() => js('!!document.querySelector("[data-nav-id=toggle-amf]")'), "AMF switch");
     await js('document.querySelector("[data-nav-id=toggle-amf]").click()');
     await waitFor(() => js('!!document.querySelector("[data-nav-id=open-amf]") && !!document.querySelector(".vua-shell__sidebar [data-module=production]")'), "Explicit AMF enablement");
+    // Provider readiness precedes the IPC reply while Main initializes the AMF shell.
+    // A real user can toggle again only after this control becomes enabled.
+    await waitFor(() => js('document.querySelector("[data-nav-id=toggle-amf]")?.disabled===false'), "AMF enablement control released");
     assert(await js('document.querySelector("[data-nav-id=toggle-amf]").checked && !document.querySelector("[data-nav-id=nav-enable-amf]")'), "AMF activation exposes its own sidebar without navigating away");
     await js('document.querySelector("[data-nav-id=toggle-amf]").click()');
     await waitFor(() => js('!!document.querySelector("[data-nav-id=nav-enable-amf]") && !document.querySelector("[data-nav-id=toggle-amf]").checked'), "Explicit AMF disablement");
@@ -224,7 +227,9 @@ async function run() {
     console.error(error);
     if (window && !window.isDestroyed()) {
       fs.writeFileSync(path.join(output, "failure.png"), (await window.webContents.capturePage(undefined, { stayHidden: true })).toPNG());
-      fs.writeFileSync(path.join(output, "navigation.json"), JSON.stringify({ index: window.webContents.navigationHistory.getActiveIndex(), entries: window.webContents.navigationHistory.getAllEntries(), dom: await window.webContents.executeJavaScript('({hash:location.hash, heading:document.querySelector("main h1")?.textContent, wizard:document.querySelector(".vua-onboarding")?.dataset.wizardStep})') }, null, 2));
+      const dom = await window.webContents.executeJavaScript('({hash:location.hash, heading:document.querySelector("main h1")?.textContent, wizard:document.querySelector(".vua-onboarding")?.dataset.wizardStep, amfSwitch:document.querySelector("[data-nav-id=toggle-amf]")?{checked:document.querySelector("[data-nav-id=toggle-amf]").checked,disabled:document.querySelector("[data-nav-id=toggle-amf]").disabled}:null, status:[...document.querySelectorAll("[data-amf-setup] [role=status]")].map(e=>e.textContent)})');
+      fs.writeFileSync(path.join(output, "navigation.json"), JSON.stringify({ index: window.webContents.navigationHistory.getActiveIndex(), entries: window.webContents.navigationHistory.getAllEntries(), dom }, null, 2));
+      console.error(JSON.stringify(dom));
       console.error(JSON.stringify({ evidence: output, rendererErrors: errors }));
     }
   } finally { clearTimeout(deadline); app.quit(); }
