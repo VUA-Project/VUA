@@ -7,7 +7,6 @@ import { openLoginBrowser } from "../../app/login-browser-store.ts";
 import { BOOTH_SIGN_IN_URL } from "../import/import-model.ts";
 import { openExternalUrl } from "../../app/open-external.ts";
 import { AccountGuide } from "./AccountGuide.tsx";
-import { useRouteFocus } from "../../app/use-route-focus.ts";
 import { strings } from "../../i18n/index.ts";
 
 const copy = strings.settings.accounts;
@@ -26,7 +25,6 @@ export function AccountSettingsPage() {
     { authOk: boolean; accountName: string | null } | null
   >(null);
   const [guide, setGuide] = useState<"steam" | "vrchat" | "unity" | "booth" | "linking" | null>(null);
-  const focus = useRouteFocus(guide ?? "accounts");
   const [signingOut, setSigningOut] = useState(false);
 
   const refreshAuth = () => {
@@ -57,7 +55,7 @@ export function AccountSettingsPage() {
   const signedIn = auth?.authOk === true;
 
   return (
-    <div className="vua-page" ref={focus.root} onClickCapture={focus.remember}>
+    <div className="vua-page">
       <section className="vua-page__hero">
         <h1 className="vua-title">{strings.nav.pages.settingsAccounts}</h1>
       </section>

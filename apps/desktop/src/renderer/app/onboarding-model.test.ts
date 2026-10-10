@@ -122,6 +122,7 @@ test("entry: unfinished onboarding cannot be bypassed by a stored last page", ()
 test("entry: completed onboarding restores a valid last page, legacy ids migrated", () => {
   for (const retired of ["settings-version", "settings-donate"]) assert.equal(resolveEntry(completedAll, retired).page, "settings-about");
   assert.equal(resolveEntry(completedAll, "settings-language").page, "settings-theme");
+  assert.equal(resolveEntry(completedAll, "settings-goals").page, "help-wizard");
   assert.deepEqual(resolveEntry(completedAll, "workshop"), {
     showOnboarding: false,
     page: "workshop",

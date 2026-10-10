@@ -18,11 +18,12 @@ export function ToolsHub() {
     <header className="vua-page__hero"><h1 className="vua-title">{copy.tools}</h1></header>
     {groups.map(group => <section className="vua-environment-section" key={group.key}>
       <h2>{copy[group.key]}</h2>
-      <div className="vua-environment-grid">{group.tools.map(tool => <EnvironmentCard key={tool.id} title={tool.title} titleContent={tool.id === "vrcft" ? <>VRCFace<wbr />Tracking</> : tool.title} icon={group.icon} id={`tool-${tool.id}`} action="unknown" status="" developing selected={selected === tool.id} onDetails={() => setSelected(current => current === tool.id ? null : tool.id)} />)}</div>
-      {group.tools.map(tool => <section key={tool.id} id={`tool-${tool.id}-details`} className="vua-environment-detail" hidden={selected !== tool.id} aria-label={tool.title}>
+      <div className="vua-environment-grid">{group.tools.map(tool => <div className="vua-card-entry" data-card-entry={`tool-${tool.id}`} key={tool.id}>
+        <EnvironmentCard title={tool.title} titleContent={tool.id === "vrcft" ? <>VRCFace<wbr />Tracking</> : tool.title} icon={group.icon} id={`tool-${tool.id}`} action="unknown" status="" developing selected={selected === tool.id} onDetails={() => setSelected(current => current === tool.id ? null : tool.id)} />
+        <section id={`tool-${tool.id}-details`} className="vua-environment-detail" hidden={selected !== tool.id} aria-label={tool.title}>
       <header className="vua-environment-heading"><h2>{tool.title}</h2><Button variant="subtle" data-back onClick={() => setSelected(null)}>{strings.environmentCards.closeDetails}</Button></header>
       <p>{strings.helpUi[tool.id]}</p><p className="vua-text-secondary">{strings.helpUi.developmentHint}</p>
-      </section>)}
+      </section></div>)}</div>
     </section>)}
   </div>;
 }

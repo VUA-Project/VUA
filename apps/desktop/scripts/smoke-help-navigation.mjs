@@ -48,6 +48,23 @@ async function run() {
     }, "production renderer");
     // Chromium's Back intervention skips script-created entries without user activation.
     const js = source => window.webContents.executeJavaScript(source, true);
+    const inlineDetailFits = button => js(`(()=>{
+      const control=document.querySelector('[data-nav-id="${button}"]');
+      const entry=control.closest('[data-card-entry]'), detail=document.getElementById(control.getAttribute('aria-controls'));
+      const card=entry.firstElementChild, cardRect=card.getBoundingClientRect(), detailRect=detail.getBoundingClientRect();
+      return detail.parentElement===entry && card.nextElementSibling===detail && !detail.hidden
+        && Math.abs(detailRect.left-cardRect.left)<1 && Math.abs(detailRect.width-cardRect.width)<1
+        && detailRect.top>=cardRect.bottom && detailRect.top-cardRect.bottom<=14
+        && detail.scrollWidth<=detail.clientWidth+2;
+    })()`);
+    const languageFooterFits = () => js(`(()=>{
+      const select=document.querySelector('[data-nav-id=settings-language-select]'), language=select.parentElement;
+      const search=document.querySelector('[data-nav-id=settings-search]');
+      const languageRect=language.getBoundingClientRect(), selectRect=select.getBoundingClientRect(), searchRect=search.getBoundingClientRect();
+      return language.querySelector('svg')===select.previousElementSibling && language.nextElementSibling===search
+        && languageRect.bottom+12<=searchRect.top && selectRect.width<searchRect.width
+        && selectRect.height===36 && languageRect.top>=0 && searchRect.bottom<=innerHeight;
+    })()`);
     const toolLabelsFit = () => js('[...document.querySelectorAll(".vua-tools-hub .vua-environment-card strong")].every(label=>{const r=label.getBoundingClientRect(),b=label.parentElement.getBoundingClientRect();return r.left>=b.left && r.right<=b.right+1 && r.top>=b.top && r.bottom<=b.bottom})');
     const chapterContrast = () => js(`(()=>{
       const style=getComputedStyle(document.querySelector('.vua-overlay-guide__topic[data-active]'));
@@ -83,6 +100,7 @@ async function run() {
     for (const button of await js('[...document.querySelectorAll(".vua-tools-hub .vua-environment-card__details")].map(b=>b.dataset.navId)')) {
       await js(`document.querySelector('[data-nav-id="${button}"]').click()`);
       assert(await js(`document.querySelector('[data-nav-id="${button}"]').getAttribute('aria-expanded')==='true' && !document.getElementById('${button}-details').hidden`), `${button} opens inline details`);
+      assert(await inlineDetailFits(button), `${button} details are directly below their own card and fit its width`);
       await js(`document.querySelector('[data-nav-id="${button}"]').click()`);
       assert(await js(`document.querySelector('[data-nav-id="${button}"]').getAttribute('aria-expanded')==='false' && document.getElementById('${button}-details').hidden`), `${button} closes on a second click`);
     }
@@ -101,6 +119,8 @@ async function run() {
     for (const button of ['route-desktop','route-pico','route-quest','route-vive','route-index']) {
       await js(`document.querySelector('[data-nav-id="${button}"]').click()`);
       assert(await js(`!document.getElementById('${button}-details').hidden`), `${button} opens inline details`);
+      assert(await inlineDetailFits(button), `${button} details are directly below their own card and fit its width`);
+      if (button === 'route-desktop') await capture('play-inline-details');
       await js(`document.querySelector('[data-nav-id="${button}"]').click()`);
       assert(await js(`document.getElementById('${button}-details').hidden`), `${button} closes on a second click`);
     }
@@ -116,6 +136,7 @@ async function run() {
     for (const button of ['route-unity2022','route-unity6','manager-unity_hub','manager-vcc','manager-alcom']) {
       await js(`document.querySelector('[data-nav-id="${button}"]').click()`);
       assert(await js(`document.querySelector('[data-nav-id="${button}"]').getAttribute('aria-expanded')==='true'`), `${button} expands inline`);
+      assert(await inlineDetailFits(button), `${button} details stay below their own editor or manager card`);
       if (button === 'route-unity2022') {
         await waitFor(() => js('!!document.querySelector("#route-unity2022-details .vua-deployment ol li")'), "Automatic Unity entry inspection");
         assert(await js('!!document.querySelector("#route-unity2022-details .vua-deployment ol li")'), "Unity preparation inspects on first entry before any install command");
@@ -182,7 +203,15 @@ async function run() {
     assert(true, "Knowledge chapters support mouse Back and Forward");
     await js('document.querySelector("[data-nav-id=shell-settings]").click()');
     await waitFor(() => js('!!document.querySelector("[data-nav-id=nav-settings-theme]")'), "Settings navigation");
-    assert(await js('!["nav-settings-language","nav-settings-version","nav-settings-donate"].some(id=>document.querySelector(`[data-nav-id=${id}]`)) && document.querySelector("[data-nav-id=settings-language-select]").nextElementSibling.dataset.navId==="settings-search"'), "Retired settings pages are removed; language sits directly above feature search");
+    assert(await js('!["nav-settings-goals","nav-settings-language","nav-settings-version","nav-settings-donate"].some(id=>document.querySelector(`[data-nav-id=${id}]`))'), "Retired Settings pages, including goal reselection, are absent");
+    assert(await languageFooterFits(), "A compact language selector with translation glyph sits above Search without overlap");
+    window.setSize(960, 600);
+    await delay(100);
+    assert(await languageFooterFits(), "Language and Search remain separate in a short window");
+    await capture('settings-small');
+    window.setSize(1180, 820);
+    await delay(100);
+    assert(await js('!document.querySelector(".vua-shell").hasAttribute("data-display-mode") && document.querySelectorAll(".vua-theme-choice__button").length===3 && !document.querySelector("main").textContent.includes("大屏幕模式")'), "Theme keeps appearance controls and has no retired layout mode");
     await js('document.querySelector("[data-nav-id=nav-settings-about]").click()');
     await waitFor(() => js('!!document.querySelector("[data-version-details]")'), "About version controls");
     assert(await js('!!document.querySelector("[data-version-details] [data-nav-id=about-check-updates]")'), "About contains the existing version and update controls");
@@ -268,19 +297,18 @@ async function run() {
     assert(await js('!!document.querySelector(".vua-usage-panel") && !document.querySelector(".vua-usage-panel__footer")'), "Resource panel has no sampled-time display");
     await js('document.querySelector(".vua-usage-panel__close").click(); localStorage.setItem("vua-display-mode","bigscreen")');
     await js('location.reload()');
-    await waitFor(() => js('document.querySelector(".vua-shell")?.dataset.displayMode==="bigscreen" && !document.querySelector(".vua-boot-splash")'), "Big screen restart");
-    await js('location.hash="/environment-hub"');
-    await waitFor(() => js('!!document.querySelector("[data-nav-id=home-help]")'), "Big screen environment menu");
-    await js('document.querySelector("[data-nav-id=home-env-play]").click()');
-    await waitFor(() => js('!!document.querySelector("[data-nav-id=play-hardware-help]")'), "Big screen Play");
-    assert(await js('[...document.querySelectorAll(".vua-play-page .vua-environment-card")].every(c=>Math.abs(c.getBoundingClientRect().height-108)<1)'), "Big screen cards retain the halved height and larger controls");
-    await capture("play-bigscreen");
-    await js('document.querySelector("[data-nav-id=shell-back]").click()');
-    await waitFor(() => js('!!document.querySelector("[data-nav-id=home-tools-discover]")'), "Big screen environment return");
-    await js('document.querySelector("[data-nav-id=home-tools-discover]").click()');
-    await waitFor(() => js('!!document.querySelector(".vua-tools-hub")'), "Big screen Tools");
-    assert(await toolLabelsFit() && await js('[...document.querySelectorAll(".vua-tools-hub .vua-environment-card")].every(c=>Math.abs(c.getBoundingClientRect().height-108)<1)'), "Big screen tool cards keep their compact height and complete names");
-    await capture("tools-bigscreen");
+    await waitFor(() => js('!!document.querySelector(".vua-shell") && !document.querySelector(".vua-boot-splash") && localStorage.getItem("vua-display-mode")===null'), "Retired layout preference cleanup");
+    assert(await js('!document.querySelector(".vua-shell").hasAttribute("data-display-mode") && !!document.querySelector(".vua-shell__sidebar")'), "An old big-screen preference starts the ordinary desktop shell with its sidebar");
+    window.webContents.send("vua:window:shell-command", "bigscreen");
+    await delay(100);
+    assert(await js('location.hash==="#settings-about" && !document.querySelector(".vua-shell").hasAttribute("data-display-mode")'), "Legacy big-screen commands cannot change the page or resurrect the retired mode");
+    assert(await js('document.querySelector("[data-nav-id=settings-search]").textContent.trim()==="Search"') && await languageFooterFits(), "English uses the short Search label and a separate compact language row");
+    await js('location.hash="/settings-goals"');
+    await waitFor(() => js('!!document.querySelector(".vua-help-child .vua-onboarding") && !document.querySelector(".vua-shell__sidebar--settings")'), "Retired goal destination migration");
+    assert(true, "Old goal-reselection links open Help's getting-started wizard");
+    await js('document.querySelector("[data-nav-id=nav-env-play]").click()');
+    await waitFor(() => js('!!document.querySelector("[data-nav-id=play-hardware-help]")'), "Ordinary Play after migration");
+    assert(await js('[...document.querySelectorAll(".vua-play-page .vua-environment-card")].every(c=>Math.abs(c.getBoundingClientRect().height-88)<1)'), "Retired preferences never enlarge Play cards");
     assert(errors.length === 0, `Renderer errors: ${errors.join("; ")}`);
     fs.writeFileSync(path.join(output, "checks.json"), JSON.stringify({ checks, scope: "Controlled application navigation/layout only; no hardware, vendor or human-language acceptance" }, null, 2));
     console.log(JSON.stringify({ passed: checks.length, evidence: output }));

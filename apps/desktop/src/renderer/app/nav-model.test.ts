@@ -67,7 +67,7 @@ test("no forced redirects: tab landing is unconditional, workshop stays workshop
   // v0.3.3 §2.1:不自动切页;车间阻断由页面内阻断态表达,导航层不再门控
   assert.equal(resolveTabLanding("production"), "warehouse");
   assert.equal(resolveTabLanding("env"), "env-play");
-  assert.equal(resolveTabLanding("settings"), "settings-goals");
+  assert.equal(resolveTabLanding("settings"), "settings-theme");
   assert.ok(isPageId("workshop"));
   assert.ok(clicksToReach("workshop") <= 2);
 });
@@ -90,7 +90,7 @@ test("every page belongs to exactly its own module", () => {
   for (const page of ["help-wizard", "help-tour", "help-game-assistant", "help-encyclopedia"] as const) assert.equal(moduleOf(page), "env");
   for (const retired of ["settings-version", "settings-language", "settings-donate"]) assert.equal(isPageId(retired), false);
   assert.equal(moduleOf("settings-experimental"), "settings");
-  assert.equal(moduleOf("settings-goals"), "settings");
+  assert.equal(isPageId("settings-goals"), false);
 });
 
 test("environment module carries the merged tools group with labels, page ids unchanged", () => {

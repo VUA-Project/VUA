@@ -5,7 +5,6 @@ import type { DeploymentPurpose } from "@vua/contracts";
 import type { EnvGoalId, GoalId } from "../../app/onboarding-model.ts";
 import type { PageId } from "../../app/nav-model.ts";
 import { storageKeys } from "../../app/storage-keys.ts";
-import { useRouteFocus } from "../../app/use-route-focus.ts";
 import { Button } from "../../components/primitives/Button.tsx";
 import { RouteTile } from "../../components/RouteTile.tsx";
 import { strings } from "../../i18n/index.ts";
@@ -26,7 +25,6 @@ export function OnboardingPage({ onComplete, onAccounts, embedded = false }: {
   const amf = useAmfModule();
   const [state, setState] = useState(() => { if (embedded) { const target = readJourneyHash(window.location.hash); if (target) return target; } try { return parseJourney(localStorage.getItem(storageKeys.firstRunJourney)); } catch { return initialJourney; } });
   const [ready, setReady] = useState(false);
-  const focus = useRouteFocus(state.step);
   useEffect(() => { try { localStorage.setItem(storageKeys.firstRunJourney, JSON.stringify(state)); } catch { /* Session progress remains usable. */ } }, [state]);
   const onHistory = useEffectEvent(() => {
     if (window.location.hash === journeyHash(state)) return;
@@ -66,7 +64,7 @@ export function OnboardingPage({ onComplete, onAccounts, embedded = false }: {
       {!embedded ? <div className="vua-journey-top"><span>{copy.wizard}</span><Button variant="subtle" onClick={() => onComplete({ status: "skipped", goals: [], environments: [] })}>{copy.exit}</Button></div> : null}
       <nav aria-label={copy.wizard}><ol className="vua-journey-phases">{steps.map((label, index) => <li key={label} aria-current={phase === index ? "step" : undefined}><span>{index + 1}</span>{label}</li>)}</ol></nav>
       <header className="vua-onboarding__header"><QuestionHeading className="vua-display">{title}</QuestionHeading>{hints[state.step] ? <p className="vua-text-secondary">{hints[state.step]}</p> : null}</header>
-      <div key={state.step} ref={focus.root} onClickCapture={focus.remember} className="vua-journey-content vua-page-enter" data-focus-scope>
+      <div key={state.step} className="vua-journey-content vua-page-enter" data-focus-scope>
         {state.step === "goal" ? <div className="vua-route-grid">
           {choose(copy.playGoal, copy.playHint, "play-mode", undefined, "screen")}
           {choose(copy.createGoal, copy.createHint, "creator-start", undefined, "unity")}

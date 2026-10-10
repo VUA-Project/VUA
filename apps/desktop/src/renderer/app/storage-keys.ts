@@ -5,7 +5,8 @@
  * - scenario 用 sessionStorage(仅本次会话,见 DevScenarioBar)。
  */
 export const storageKeys = {
-  displayMode: "vua-display-mode",
+  /** Retired big-screen preference; only removed on startup, never interpreted. */
+  retiredDisplayMode: "vua-display-mode",
   firstRunJourney: "vua-first-run-journey-v1",
   /** Explicit PICO official distribution choice, independent of UI language. */
   picoRegion: "vua-pico-region",

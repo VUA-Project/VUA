@@ -1,6 +1,6 @@
 # Desktop-window v0.2: main Help navigation
 
-> Document version: 1.0.0
+> Document version: 1.0.1
 > Status: Candidate
 > Updated: 2026-10-10
 > Scope: Local Electron preload/Main navigation; no Provider or task-frame change
@@ -55,7 +55,7 @@ Types live in [desktop-gateway.ts](../../packages/contracts/src/desktop-gateway.
 in [Main](../../apps/desktop/src/electron/main.ts) and [preload](../../apps/desktop/src/electron/preload.ts).
 The [controlled consumer smoke](../../apps/desktop/scripts/smoke-help-navigation.mjs) exercises
 Play → hardware, contextual requests across page changes, multiple subscriptions, reading return,
-same-window behavior, appearance and big-screen layout. Existing target-validation and reading
+same-window behavior, appearance, compact sidebar controls and retired-mode preference fallback. Existing target-validation and reading
 tests retain malformed-input and positioning cases. Physical-headset and four-language human
 review remain release evidence, not results established by these checks.
 
@@ -64,4 +64,5 @@ machine-readable schema/vector family or freeze exemption has been accepted.
 
 ## Document changelog
 
+- 1.0.1 (2026-10-10): update consumer evidence after big-screen layout retirement; no operation, event or retained V1 shape changes.
 - 1.0.0 (2026-10-10): define the additive v0.2 main Help navigation face with queued local targets, explicit compatibility and controlled consumer evidence.

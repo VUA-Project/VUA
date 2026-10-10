@@ -1,7 +1,7 @@
 # Electron desktop and presentation architecture
 
 
-> Document version: 1.17.0
+> Document version: 1.18.0
 > Status: Accepted
 > Scope: `apps/desktop`, `packages/design-system`, frontend Gateway
 > Updated: 2026-10-10
@@ -56,9 +56,10 @@ correlation, post-download inspection, and Warehouse/BDL decisions.
 
 ## Fixed directory and first-run journey
 
-The main shell has one fixed Home, opened by its left logo. Desktop mode shows the fixed
-Environment/Avatar directory in the sidebar; big-screen mode groups those domains into larger
-focusable tiles. `nav-model.ts` retains internal page ownership for tasks and deep links without
+The main shell has one fixed Home, opened by its left logo, and a fixed
+Environment/Avatar directory in the sidebar. The 2026-10-10 user ruling retires big-screen mode:
+Theme and tray entries, alternate layouts and directional shell navigation are removed.
+Startup removes the old local layout preference without interpreting it. `nav-model.ts` retains internal page ownership for tasks and deep links without
 restoring the old two-tab presentation. Wizard choices never hide features or change Home actions.
 The [design standard](../design/design-standard.md#3-platform-and-information-architecture)
 owns the accepted layout, logo colors, unavailable peers and preserved visual preferences.
@@ -84,7 +85,7 @@ Opening Steam or a guide does not prove installation, login or successful play.
 
 Play and Tools have equally sized two-half cards: collapsible details on the left and status/action on the
 right. Normal game exit retains **Close** only while owned software survives, with no failure
-warning. Desktop cards are 88 px high and big-screen cards 108 px, half their previous heights;
+warning. Play/Tools cards are 88 px high, half their previous heights;
 the two action/detail halves remain intact. Network's equally tall tile is above the grid; its regional Ping is explicitly unavailable
 until targets are verified and website tests remain in expanded details. The expandable runtime inventory stays
 on Play. The retired Software & connections page is absent from Home, sidebar and tour;
@@ -93,7 +94,9 @@ The typed play port consumes the Candidate [play-session family](play-sessions.m
 unavailable observations distinct from missing software, and disables launch while installation
 is active. Scoped deployment bookmarks retain Desktop and PICO work independently while
 reading a matching legacy bookmark. Hidden details keep accepted installation receipts alive.
-Play, Tools and Avatar-editing cards expand below their grid and collapse on a second click.
+Play, Tools and Avatar-editing cards expand directly beneath their own card, within that grid
+column, and collapse on a second click. Hidden preparation panels stay mounted so accepted
+work and inspection state survive switching or closing details.
 Development entries expose descriptions while installation/launch remain unavailable; tool
 grids keep the same column widths even in a group with only one item.
 
@@ -111,14 +114,14 @@ original frozen semantics and do not imply that an executable is installed. Vers
 remain local; unsupported versions only offer the accepted preparation route.
 
 Settings navigation keeps the underlying route or wizard mounted and returns to its source
-step and focus. The sidebar contains only settings categories while Settings is open, also in
-big screen mode; the upper-left Back action and the active Settings button return to the same
+step. The sidebar contains only settings categories while Settings is open;
+the upper-left Back action and the active Settings button return to the same
 source page. Category changes do not replace the return destination. Inspection belongs to the
 Avatar directory; Help and Settings have no duplicate bottom-left entry, and the topbar does
 not repeat the page name beside the Home logo.
 AMF Home cards are Warehouse, Recipe, Workshop, Finished Avatars (成品) and Package Manager.
 Remove the Inspection Home card; its existing sidebar/report capability remains available.
-The same card set serves desktop Home and the big-screen AMF directory.
+The same card set serves Home and the AMF directory.
 
 The compact shell follows the [design standard](../design/design-standard.md#3-platform-and-information-architecture):
 the bottom taskbar is no longer mounted, and feature search is a Settings-sidebar footer action
@@ -126,8 +129,10 @@ with the existing global shortcut. Appearance changes use joined native buttons 
 same three-value preference. A missing/invalid preference resolves to Dark; saved preferences
 and cross-window/system subscriptions stay compatible. The app tour's task step navigates to
 the fixed Home Tasks tile rather than a retired taskbar anchor. Language selection sits directly
-above feature search. Separate Language, Version and Donation pages are removed; About retains
-version, update, debug and diagnostics controls. Historical page IDs migrate to About or Theme.
+above **Search**, with a translation glyph, a shorter selector and explicit spacing in short windows.
+Separate Goal reselection, Language, Version and Donation pages are removed; About retains
+version, update, debug and diagnostics controls. Old goal links open Help's getting-started wizard;
+other historical Settings page IDs migrate to About or Theme.
 Language reloads retain the Settings return page through the current history entry.
 The resource panel keeps its observed RAM/VRAM facts without a sampled-time label; the
 underlying snapshot is unchanged.
@@ -147,13 +152,13 @@ or expired session opens login directly. Main skips anonymous probes when accoun
 absent and bounds authenticated probes to eight seconds; no credentials or raw page bodies reach Renderer.
 
 Main owns a VUA system tray icon throughout normal application execution. Double-click restores
-and focuses the existing main window. The localized menu exposes update checking, big screen
-mode and application exit. `DesktopWindowApiV1.shellCommandEvents` is an additive, closed native
+and focuses the existing main window. The localized menu exposes update checking
+and application exit. `DesktopWindowApiV1.shellCommandEvents` is an additive, closed native
 desktop event face (`check-updates` / `bigscreen`), not a Provider method. Preload subscription
 signals readiness; Main accepts that signal only from the local main frame and retains the latest
 gesture until it is listening. Update checking opens About and runs a manual
-read-only check independent of the automatic-check preference; big screen changes the existing
-shell mode. Exit uses normal application shutdown. Closing Main still exits, and the tray is
+read-only check independent of the automatic-check preference. The retained legacy `bigscreen`
+event is inert in the renderer and is no longer emitted by Main's tray. Exit uses normal application shutdown. Closing Main still exits, and the tray is
 destroyed at process shutdown. Theme/DPI variants rasterize the accepted VUA mark and design tokens
 through `scripts/generate-tray-icons.ps1`; no new runtime image dependency is introduced.
 
@@ -333,6 +338,7 @@ redistribution review authorizes each bundled binary before a public release.
 
 ## Document changelog
 
+- 1.18.0 (2026-10-10): place each scenario/editor/manager's collapsible details directly beneath its own card, separate compact language and Search controls, migrate retired goal links to Help and retire big-screen layout/navigation/tray actions while retaining the legacy event shape.
 - 1.17.0 (2026-10-10): verify BOOTH account access before offering library sync with direct login/retry handoffs, discover Editors through the host and inspect fresh Unity 2022 entry before CLI acquisition, and replace the AMF Home Inspection card with Finished Avatars and Package Manager.
 - 1.16.0 (2026-10-10): unify collapsible scenario/tool/editor details, add native Help/chapter/wizard history and Avatar-editing AMF activation, and consolidate Settings language/version controls without changing vendor/device evidence.
 - 1.15.0 (2026-10-10): add environment Tools/Help, embed the knowledge encyclopedia through desktop-window v0.2, halve Play card heights and remove the resource-panel sampling-time label.
@@ -342,6 +348,5 @@ redistribution review authorizes each bundled binary before a public release.
 - 1.12.0 (2026-10-09): implement observed two-half play sessions and scoped close, move network/runtime discovery into Play, and add complete-editor and manager-app inventory to Avatar editing.
 - 1.11.0 (2026-10-09): apply the compact-shell ruling, move command search into Settings, replace the appearance select with joined buttons and a Dark default, and retarget the task-tour step to Home.
 - 1.10.0 (2026-10-09): implement settings-only sidebar/return, separate real task status and appearance from guides/demo previews, and add the localized VUA tray with typed main-renderer gestures and normal shutdown.
-- 1.9.0 (2026-10-08): record fixed navigation, desktop/big-screen focus, independent wizard/task facts and the closed official account-page browser handoff; temporary embedding and device acceptance remain pending.
 
 Earlier entries remain in Git history.

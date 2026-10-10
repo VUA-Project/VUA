@@ -1,11 +1,11 @@
-# VUA design standard v0.15.0
+# VUA design standard v0.16.0
 
 
-> Document version: 0.15.0
+> Document version: 0.16.0
 > Status: Accepted
 > Scope: Electron desktop, desktop overlay, and VR overlay presentation  
 > Updated: 2026-10-10
-> Last conformance review: 2026-10-09 (two-half environment cards, observed session actions, creator inventory and preserved shell preferences; author app/device review pending)
+> Last conformance review: 2026-10-10 (controlled individual-card layout, short-window language/Search, retired-mode fallback and retained receipt/theme/resource behavior; author app/device and human-language review pending)
 > Normative effect: Governs interaction, visual, and accessibility implementation;
 > does not expand product scope or replace versioned application contracts
 
@@ -16,7 +16,7 @@ v0.6.1 (the historical merge version); the combined scope continues here.
 
 | Treatment | Content |
 | --- | --- |
-| Retain | goal before terminology, Recipe-first, explicit state, recovery first, honest progress, user-content priority, dark-first, VUA purple/AMF orange jurisdictions, 4 px grid, semantic tokens, workshop-track metaphor, the fixed Home and desktop/big-screen modes (§3; user ruling 2026-10-08), slanted control language, sidebar growth impression, three motion levels, WebGL scene direction (the nebula backdrop scene retired by the 2026-09-25 user ruling; see §7), Recipe graph/list/exploded views, Release coverflow and 3D pedestal, community-skin direction, WCAG 2.2 AA and APG gates |
+| Retain | goal before terminology, Recipe-first, explicit state, recovery first, honest progress, user-content priority, dark-first, VUA purple/AMF orange jurisdictions, 4 px grid, semantic tokens, workshop-track metaphor, the fixed Home and desktop directory (§3; big-screen mode retired by the 2026-10-10 user ruling), slanted control language, sidebar growth impression, three motion levels, WebGL scene direction (the nebula backdrop scene retired by the 2026-09-25 user ruling; see §7), Recipe graph/list/exploded views, Release coverflow and 3D pedestal, community-skin direction, WCAG 2.2 AA and APG gates |
 | Standardize | Windows and Fluent 2 desktop behavior; macOS native-tool texture as a visual reference; Carbon as information-structure reference only; global success/warning/error colors while reserving large traffic-light treatments for environment deployment; tokenized motion; transform-only sidebar growth; Electron mechanism + AMF use case for browsing/download; the five AMF stages kept as the full capability coverage (since 0.7.19 a wizard selects the path by goal/device/state — see Recipe-first) |
 | Replace | framework-private Tauri window/IPC semantics, BDB contracts, a separate Production stage, globally disabled context menus, font-size or padding reflow on hover (superseded for the sidebar shell only by the 2026-09-25 user ruling: the idle sidebar rests as small type and hover/focus-within activates it — see §3), deceptive progress floors, paid font or icon assumptions |
 | Schedule separately | Visual direction remains part of this standard (merged at v0.6.1). Delivery sequencing, performance gates, and fallback acceptance are reviewed independently from the design decision. |
@@ -90,18 +90,22 @@ Valve, and the author-supplied PICO wordmark. Keep unavailable peers visually eq
 
 The 2026-10-09 user ruling places Inspection inside the Avatar group and removes duplicate
 Help/Settings entries from the sidebar bottom. Opening Settings replaces the business sidebar
-with settings items in both display modes. A prominent upper-left Back action and clicking
-Settings again return to the original page with its workflow and focus preserved; changing
+with settings items. A prominent upper-left Back action and clicking
+Settings again return to the original page with its workflow preserved; changing
 settings categories does not change that return destination. Do not repeat the page name beside
 the logo. Guides may have their own one-level Back inside the content.
 
-The follow-up 2026-10-09 user ruling narrows the sidebar to 176 px in desktop mode and 208 px
-in big-screen Settings. Retain its glass and scroll access in short windows. Remove the bottom
+The follow-up 2026-10-09 user ruling narrows the sidebar to 176 px.
+Retain its glass and scroll access in short windows. Remove the bottom
 notification/task bar and the topbar Tasks, display-mode, theme and feature-search buttons.
 Feature search appears only at the bottom of the Settings sidebar; Ctrl+P remains available
-throughout the application. Big screen is selected in Theme settings or the system tray.
-Language selection sits directly above feature search. Remove the separate Language, Version
-and Donation pages; About includes the existing version/update and diagnostic controls.
+throughout the application. The 2026-10-10 user ruling retires big-screen mode, including its
+Theme/tray entries, alternate layouts and directional shell navigation. Ignore and remove saved
+mode preferences; a legacy native command cannot reactivate it. Language selection sits above
+**Search**, with a translation glyph at its left, a shorter selector and a visible gap between
+the two rows. Remove the separate Goal reselection, Language, Version and Donation pages;
+old goal links open Help's getting-started wizard. About includes the existing version/update
+and diagnostic controls.
 
 Settings → Theme → Appearance uses three connected native buttons in the order Dark, Light,
 Follow system, with one selected frame sliding across them. A new or invalid preference defaults
@@ -112,7 +116,7 @@ the frame movement without changing selection, keyboard access or theme propagat
 The 2026-10-10 ruling adds **Tools** and **Help** under Environment and removes the topbar Help
 button. Help's destinations are Getting started (入门引导), the existing app tour, Knowledge
 encyclopedia (知识百科) and In-game assistant (游戏内助手). The encyclopedia is a page inside
-Help with an explicit return to Help, sharing Main's appearance and display mode. Hardware
+Help with an explicit return to Help, sharing Main's appearance. Hardware
 introductions are a peer chapter; Play's "What device do I have?" link opens it directly.
 All four Help cards open main-window child pages. Each child supports mouse-side-button
 Back/Forward; encyclopedia chapter choices and replay-wizard choices also participate in
@@ -121,21 +125,22 @@ highlight overlay and floating window, respectively.
 Tools groups tracking, translation, VR utilities and capture entries. Unwired integrations stay
 unavailable on the action side, with the same development badge as other unavailable peers.
 Place Tools above Avatar editing in the directory. Play, Tools and Avatar-editing card details
-expand below their grid and collapse when the same card is clicked again. Tool cards reuse
+expand directly beneath their own card, within the same grid column, and collapse when that
+card is clicked again. Closing or switching details preserves accepted preparation state. Tool cards reuse
 Play's size and two-half controls, including equal column widths for single-item groups.
 When AMF is disabled, a sidebar enable entry opens its explanatory setup section in Avatar
 editing; the actual switch lives there and does not enable AMF merely by navigating. These navigation changes
 do not activate AMF or expand release acceptance. The system-resource panel omits its sampling
 time label while keeping the observed resource values and unavailable states.
 AMF's Home cards are Warehouse, Recipe, Workshop, Finished Avatars (成品) and Package Manager,
-in both display modes. Replace the Inspection Home card without removing its report/sidebar
+in Home and the AMF directory. Replace the Inspection Home card without removing its report/sidebar
 capability. Finished Avatars uses the same title in its card, sidebar and page heading.
 
 The environment directory contains **Play** and **Avatar editing** (游玩 / 改模), plus Tools
 and Help. Remove
 Software & connections as a separate feature. Play owns network diagnostics and runtime facts.
 Its network tile sits above the environment grid and has the same height as an environment card.
-Play cards are half their former height: 88 px in desktop mode and 108 px in big screen.
+Play cards are half their former height: 88 px.
 Arrange the icon/title and state/action compactly without clipping content or merging the halves.
 Each environment card has two equal halves separated by one thin line: the left toggles
 details, and the right combines current status with the current action. Show + for missing
@@ -751,8 +756,8 @@ A page is deliverable only when:
 8. fixtures do not enter production;
 9. 960×600, maximized, 125%/150% DPI, and long Chinese/Japanese/Korean/English strings retain key actions;
 10. the fixed Home, logo Home action and feature directory are independent of wizard choices;
-    desktop mode retains mouse-oriented navigation and big-screen mode provides visible keyboard
-    focus, directional navigation and one-level return (user ruling 2026-10-08). Scaling and
+    the desktop retains mouse-oriented navigation and native control semantics; big-screen layout
+    and directional shell navigation are retired (user ruling 2026-10-10). Scaling and
     reduced-motion checks pass; sidebar growth moves no
     neighbor (transform-only; the 2026-09-25 idle-small-type/activation ruling governs the sidebar's
     idle and hover/focus-within type sizes);
@@ -764,7 +769,7 @@ A page is deliverable only when:
 ## 11. Accepted scope
 
 The accepted scope covers the base character, two jurisdictions, tokens, component states, fixed
-Home and logo navigation, desktop/big-screen hierarchy, independent branching wizard, Help entries
+Home and logo navigation, desktop directory, independent branching wizard, Help entries
 for the guidance contexts (user ruling 2026-10-08), slanted controls, sidebar growth impression,
 task feedback, and the five AMF stages as full capability coverage. Wizard choices never hide these
 feature entries; inspection remains available from production records and the directory. The scope
@@ -780,6 +785,7 @@ direction.
 
 ## 12. Document changelog
 
+- 0.16.0 (2026-10-10): anchor collapsible details beneath each individual card, separate translation/compact-language and Search rows, route retired goal links to Help and retire big-screen mode while preserving native control semantics and visual/resource preferences.
 - 0.15.0 (2026-10-10): replace the AMF Home Inspection card with Finished Avatars and Package Manager in both modes, retaining inspection reports and aligning the finished-output title across navigation.
 - 0.14.0 (2026-10-10): standardize collapsible Play/Tools/editor details and compact tool widths, distinguish navigable Help child pages with Back/Forward, and place AMF activation and consolidated Settings controls in their accepted locations.
 - **0.13.0 (2026-10-10)**: move Tools/Help into Environment, embed knowledge and hardware reading, halve Play card heights and remove the resource sampling-time label while preserving themes, glass and resource saving.
@@ -789,6 +795,5 @@ direction.
 - **0.10.0 (2026-10-09)**: separate tasks from onboarding, define settings-only navigation and return, restore Inspection to Avatar, add tray gestures and recognizable headset glyphs, and remove the header page-name duplicate.
 - **0.9.0 (2026-10-08)**: implement the accepted fixed Home/logo entry, independent branching wizard, concise navigation and desktop/big-screen hierarchy while retaining grid, glass and resource saving.
 - **0.8.0 (2026-10-05)**: define three guidance presentations and their topbar/contextual entries while retaining the two-business-tab shell.
-- **0.7.23 (2026-10-01)**: status-quo alignment and reference repair — §0/§3/§10/§11 the retired five-tab shell becomes the current two-business-tab shell (Environment, Avatar creation) with Settings pinned right and Guide as a topbar overlay entry (user rulings 2026-09-25/2026-09-26); the §8 module bullets receive the §8.1–§8.9 numbering this changelog already used, so every internal §8.x citation resolves; phantom pointers repaired (§6.4/§8.1 → §4/§5 danger-confirmation rules, §2.6 → §2 "Explicit facts and recovery", §2.2 → §2 "Recipe-first and path selection", §6.2 → §6.1 notification semantics, §10.10 → §10 item 10); the `packages/design-system` token mirror is stated as existing (manual mirror; contrast machine-checked); Korean joins the long-string acceptance item; collab bookkeeping identifiers converted to dated rulings and dated archived-proposal citations per governance §4. No rule change.
 
 Earlier entries remain in Git history.

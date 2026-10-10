@@ -1,6 +1,6 @@
 # First play release: implementation checkpoint and remaining work
 
-> Document version: 1.13.0
+> Document version: 1.14.0
 > Status: Accepted
 > Updated: 2026-10-10
 > Scope: Desktop play, PICO 4 Pro USB/Wi-Fi, optional eye tracking and three guidance contexts
@@ -116,14 +116,16 @@ PRs #64 (dependency patch), #65 (game guide following) and #66 (N5 material mana
 merged and integrated with the Steam/PICO acquisition slice on `slice/first-run-main-ui`.
 The accepted wizard and fixed Home now use the existing plans, tasks and guide windows. Logo
 Home access, domain/theme colors, concise main tiles, equal disabled Quest/Unity 6 peers,
-mouse-oriented desktop mode and keyboard big-screen mode are implemented. Matrix/grid, sidebar
+mouse-oriented desktop mode were implemented; the temporary keyboard big-screen mode was
+retired by the 2026-10-10 ruling below. Matrix/grid, sidebar
 and small-window glass and resource saving remain. Account help opens Accounts, dedicated guides
 and a fixed official system-browser handoff, then returns to the selected preparation step.
 The author's 2026-10-09 development-mode corrections are implemented: Settings replaces the
 business sidebar and returns to the same workflow, Inspection belongs to Avatar, duplicate
 sidebar Help/Settings and the topbar page name are removed, and headset choices use recognizable
 brand glyphs. Tasks shows actual Gateway facts without a guide switch and follows saved/system
-appearance. A localized VUA tray restores Main and exposes update checking, big screen and exit.
+appearance. A localized VUA tray restores Main and exposes update checking and exit;
+its temporary big-screen entry is retired.
 The follow-up compact-shell corrections narrow the sidebar, retire the bottom taskbar and
 header Tasks/display/theme/search controls, place search at the Settings-sidebar bottom, and
 use connected Dark/Light/System appearance buttons with a Dark default. Saved theme choices,
@@ -131,14 +133,14 @@ matrix/glass, motion fallbacks and the global search shortcut remain. The task-t
 points to Home's Tasks tile with matching four-language instructions.
 
 Controlled Chromium checks cover route choices, disabled peers, unknown/missing software,
-manual handoff/reinspection, account return, focus/back, mode changes and four-language minimum
+manual handoff/reinspection, account return/back and four-language minimum
 window layout. These checks use synthetic Gateway facts and establish UI behavior only.
 `pnpm --filter @vua/desktop smoke:first-run-ui` reproduces the branching, readiness, account-return
-and Chromium keyboard cases in an isolated Electron session without installing software or signing in.
-Its checks also cover settings-only navigation, source/focus preservation, tray-renderer
+and native Chromium button activation in an isolated Electron session without installing software or signing in.
+Its checks also cover settings-only navigation, source preservation, tray-renderer
 gestures, live task-port selection in DEV, compact navigation/search, the Home task-tour anchor,
 a Dark default on a Light system, connected appearance choices, reduced-motion/resource-saving
-fallbacks, visible search with scrolling settings categories in a small big-screen window,
+fallbacks, separate language/search rows in a small desktop window,
 and cross-window/system appearance changes.
 `pnpm --filter @vua/desktop smoke:system-tray` adds eight native Electron API checks with
 programmatically invoked tray events. Physical Windows tray clicks still require author review.
@@ -209,7 +211,7 @@ Help exposes Getting started, the existing app tour, Knowledge encyclopedia and 
 The encyclopedia reuses the preparation content, reading bookmark, targeted sections and media
 inside Main. Hardware introductions explain model identification and play/connection choices;
 Play links directly to this chapter. All Play cards, including network, are half-height at
-88 px desktop / 108 px big screen, retaining the two halves. Resource details omit sampling time.
+88 px, retaining the two halves. Resource details omit sampling time.
 
 Tools reserves grouped entries for the seven N2 Steam integrations and the separately requested
 VRCS translation tool. These are honest disabled development entries: this navigation slice
@@ -217,10 +219,19 @@ adds no installer, tool adapter or plugin-host authority and does not make all o
 The existing VRCFT detection/install/launch gap remains. AMF activation stays independent.
 
 Controlled Main/preload/renderer checks cover navigation, same-window hardware reading,
-contextual section requests, reading return, settings/light appearance, compact layout and big
-screen. Source checks and unit tests remain separate from physical controller input, vendor
+contextual section requests, reading return, settings/light appearance and compact layout.
+Source checks and unit tests remain separate from physical controller input, vendor
 installation, actual desktop/PICO play and four-language human review. No new ZIP is produced
 during the author's development-UI review.
+
+The subsequent 2026-10-10 correction places each Play/Tools/editor/manager detail directly under
+its own card, with second-click collapse and retained preparation state. Settings uses a compact
+language selector with a translation glyph above Search, with spacing verified at 960×600.
+Goal reselection is removed and old links open Help's getting-started wizard. Big-screen mode
+is retired, including Theme/tray controls, alternate layouts and directional shell navigation;
+old preferences are cleared and legacy commands are inert. The controlled production consumer
+checks these behaviors and the native tray check retains update/exit and double-click restore.
+This does not replace pending physical installation, PICO or material acceptance.
 
 ## 2. Next focus: deliver the three guidance contexts
 
@@ -365,6 +376,7 @@ installation, PICO connection, real-material production and four-language human 
 
 ## Document changelog
 
+- 1.14.0 (2026-10-10): record per-card detail placement, separated compact language/Search controls, goal-link migration and full big-screen retirement while retaining pending device/install/material acceptance and no local ZIP.
 - 1.13.0 (2026-10-10): record unified card toggles, Help history, Avatar-editing AMF setup and consolidated Settings; align scenario-stage ownership while retaining pending physical acceptance and no new ZIP.
 - 1.12.0 (2026-10-10): record environment Tools/Help, embedded hardware/knowledge reading and compact Play checks without claiming new tool integrations, hardware acceptance or another ZIP.
 - 1.11.0 (2026-10-10): keep AMF installed with VUA but require explicit first activation, retain saved choices/data and defer external Avatar-editing module integration from Ibis.
@@ -374,6 +386,5 @@ installation, PICO connection, real-material production and four-language human 
 - 1.7.0 (2026-10-09): record the compact shell and Settings search/appearance corrections, update the task-tour destination and expand the controlled UI checks to 56; no new ZIP or physical-acceptance claim.
 - 1.6.0 (2026-10-09): record the author's development-mode UI corrections, task/theme separation, settings return, headset glyphs and native tray checks; defer another ZIP while the UI is under review.
 - 1.5.0 (2026-10-08): record the integrated wizard/Home implementation and controlled UI checks, with official account handoff and real-device/installer/human review still separate.
-- 1.4.0 (2026-10-08): integrate the independently delivered acquisition and game-guide-follow slices without changing their pending real-machine acceptance.
 
 Earlier entries remain in Git history.

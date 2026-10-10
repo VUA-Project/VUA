@@ -1,6 +1,6 @@
 # Guidance architecture: app tour, knowledge encyclopedia and game guide
 
-> Document version: 1.7.0
+> Document version: 1.7.1
 > Status: Accepted
 > Updated: 2026-10-10
 > Last conformance review: 2026-10-09 (background-alpha and relative-placement repairs with controlled Chromium/decision checks; author recheck pending)
@@ -25,7 +25,7 @@ implementation order/status to the [first play delivery plan](../development/fir
 | Context | What the player is trying to do | Presentation | Progress means |
 | --- | --- | --- | --- |
 | VUA app tour | Learn where to choose a play route, inspect the environment, review installation and return to play | A transparent highlight layer inside the main VUA window, with readable instruction cards and ordered navigation | The tour step was completed or explicitly skipped |
-| Knowledge encyclopedia | Read hardware introductions, room preparation, equipment connection, installation and troubleshooting instructions | A page inside Help in the main window, using its appearance and display mode | The last chapter/section the player was reading |
+| Knowledge encyclopedia | Read hardware introductions, room preparation, equipment connection, installation and troubleshooting instructions | A page inside Help in the main desktop window, using its appearance | The last chapter/section the player was reading |
 | VRChat game guide | Follow game controls/settings and find a suitable tutorial world while playing | A small adjustable-transparency guide associated with the Windows VRChat game window | The player confirmed or skipped a game instruction |
 
 The encyclopedia is useful before VRChat exists or starts. The game guide targets the
@@ -76,7 +76,7 @@ available. Application facts still come from the normal Gateway/task state.
 
 Render the existing long-form guide as a page inside Environment → Help. The Help landing page
 and encyclopedia have a one-level return action; Help remains selected in the desktop sidebar.
-Use the main window's light/dark appearance and desktop/big-screen mode rather than creating a
+Use the main desktop window's light/dark appearance rather than creating a
 separate reader window. Explicit contextual requests can restore/focus Main, but background
 task updates do not raise it. [Desktop-window v0.2](../protocols/desktop-window-v0.2.md) owns this
 new navigation face; the retained V1 reader call keeps its original window semantics.
@@ -201,6 +201,7 @@ code and real-machine checks.
 
 ## Document changelog
 
+- 1.7.1 (2026-10-10): align encyclopedia presentation with the retired big-screen mode; desktop architecture and the design standard own layout retirement, and guidance progress/window semantics remain intact.
 - 1.7.0 (2026-10-10): make all four Help entries child pages, retain explicit tour/game-window start and add native page/chapter/wizard history while preserving separate progress and fresh preparation checks.
 - 1.6.0 (2026-10-10): move Help into the environment directory, embed the knowledge encyclopedia with hardware introductions, and add a versioned Main-navigation face while retaining V1 reader compatibility.
 - 1.5.0 (2026-10-09): fix background-only guide opacity and define persisted relative drag placement across focus, window and session changes without retaining machine identifiers.

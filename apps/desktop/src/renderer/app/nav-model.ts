@@ -33,7 +33,6 @@ export type PageId =
   | "tools-calibration"
   | "tools-installed"
   | "settings-modules"
-  | "settings-goals"
   | "settings-environment"
   | "settings-accounts"
   | "settings-theme"
@@ -131,12 +130,11 @@ export const businessModules: readonly ModuleDef[] = [
 export const settingsModule: ModuleDef = {
   id: "settings",
   labelKey: "settings",
-  defaultPage: "settings-goals",
+  defaultPage: "settings-theme",
   groups: [
     {
       pages: [
         { id: "settings-modules", labelKey: "settingsModules" },
-        { id: "settings-goals", labelKey: "settingsGoals" },
         { id: "settings-environment", labelKey: "settingsEnvironment" },
         { id: "settings-accounts", labelKey: "settingsAccounts" },
         { id: "settings-theme", labelKey: "settingsTheme" },

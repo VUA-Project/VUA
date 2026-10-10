@@ -31,12 +31,12 @@ try {
   handle = createVuaTray({ locale: "zh-CN", showMain: () => { opened += 1; }, command: command => commands.push(command), quit: () => { exited += 1; } });
   const checks = [];
   assert.equal(tray.isDestroyed(), false); checks.push("native VUA tray is created");
-  assert.deepEqual(menu.items.map(item => item.label), ["检查更新", "大屏幕模式", "退出"]); checks.push("right-click menu has exactly the three requested actions");
+  assert.deepEqual(menu.items.map(item => item.label), ["检查更新", "退出"]); checks.push("right-click menu has only updates and Exit; retired big screen entry is absent");
   tray.emit("double-click"); assert.equal(opened, 1); checks.push("double-click routes to the main-window restore action");
-  menu.items[0].click(); menu.items[1].click();
-  assert.deepEqual(commands, ["check-updates", "bigscreen"]); checks.push("menu emits only closed update and big screen gestures");
-  menu.items[2].click(); assert.equal(exited, 1); checks.push("Exit uses the application quit path");
-  for (const locale of ["en", "ja", "ko"]) { handle.setLocale(locale); assert.equal(menu.items.length, 3); }
+  menu.items[0].click();
+  assert.deepEqual(commands, ["check-updates"]); checks.push("menu emits only the closed update gesture");
+  menu.items[1].click(); assert.equal(exited, 1); checks.push("Exit uses the application quit path");
+  for (const locale of ["en", "ja", "ko"]) { handle.setLocale(locale); assert.equal(menu.items.length, 2); }
   handle.setLocale("en"); assert.equal(menu.items[0].label, "Check for updates"); checks.push("menu follows all four UI languages");
   for (const dark of [false, true]) {
     const decoded = vuaTrayImage(dark);
