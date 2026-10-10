@@ -3,6 +3,7 @@ import type { DesktopShellCommandV1, VuaDesktopApiV2 } from "@vua/contracts";
 import { App } from "../../src/renderer/App.tsx";
 import { strings } from "../../src/renderer/i18n/index.ts";
 import { storageKeys } from "../../src/renderer/app/storage-keys.ts";
+import { TOUR_STEPS } from "../../src/renderer/features/tour/tour-model.ts";
 import "@vua/design-system/tokens.css";
 import "@vua/design-system/base.css";
 
@@ -198,12 +199,12 @@ const review = {
     await click(copy.help); document.querySelector<HTMLButtonElement>('[data-nav-id="help-tour"]')!.click();
     await wait(() => document.querySelector('[data-nav-id="help-start-tour"]'));
     document.querySelector<HTMLButtonElement>('[data-nav-id="help-start-tour"]')!.click();
-    for (let index = 0; index < 4; index += 1) {
+    for (let index = 0; index < TOUR_STEPS.findIndex(step => step.id === "tasks"); index += 1) {
       await wait(() => document.querySelector('.vua-tour .vua-button--primary'));
       document.querySelector<HTMLButtonElement>('.vua-tour .vua-button--primary')!.click();
       await wait(() => JSON.parse(localStorage.getItem(storageKeys.tourProgress)!).step === index + 1);
     }
-    await wait(() => document.querySelector(".vua-tour__highlight"));
+    await wait(() => document.querySelector('[data-nav-id="home-tasks"]') && document.querySelector(".vua-tour__highlight") && document.querySelector(".vua-tour")?.textContent?.includes(strings.tour.steps.tasks.body), "task tour page and highlight");
     const taskTile = document.querySelector('[data-nav-id="home-tasks"]')!.getBoundingClientRect();
     const taskHighlight = document.querySelector(".vua-tour__highlight")!.getBoundingClientRect();
     check("explicit task-tour step highlights the Home Tasks entry", document.querySelector(".vua-tour")?.textContent?.includes(strings.tour.steps.tasks.body) && Math.abs((taskTile.x + taskTile.width / 2) - (taskHighlight.x + taskHighlight.width / 2)) < 1 && Math.abs((taskTile.y + taskTile.height / 2) - (taskHighlight.y + taskHighlight.height / 2)) < 1);

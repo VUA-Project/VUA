@@ -20,6 +20,9 @@ describe.skipIf(process.env.VUA_MODULE_ISOLATION_TEST !== "1" || !binariesExist)
   it("starts without AMF, survives corrupt BDL, activates/retries and disables without deleting data", async () => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), "vua-amf-isolation-"));
     const profileRoots = { home: directory, localAppData: path.join(directory, "Local"), appData: path.join(directory, "Roaming") };
+    // Fresh users now start with AMF enabled. This case explicitly exercises a
+    // saved disabled module, independently of the first-use default.
+    new AmfRegistry(directory).save(false);
     const registry = new AmfRegistry(directory);
     const data = registry.dataRoot();
     const bdlFile = path.join(data, "bdl", "bdl.db");
@@ -65,7 +68,8 @@ describe.skipIf(process.env.VUA_MODULE_ISOLATION_TEST !== "1" || !binariesExist)
       expect(new AmfRegistry(directory).registration.enabled).toBe(false);
       expect((await provider.invoke(query("task.list"))).ok).toBe(true);
     } finally {
-      if (provider.status().state === "ready") await provider.prepareShutdown({ timeoutMs: 3_000 });
+      // Even if startup fails, the host may already own an open database.
+      await provider.prepareShutdown({ timeoutMs: 3_000 });
       for (let attempt = 0; attempt < 60 && native.some(port => port.status().state === "stopping"); attempt += 1) await delay(50);
       fs.rmSync(directory, { recursive: true, force: true });
     }
