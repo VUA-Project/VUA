@@ -55,26 +55,29 @@ export function hasActiveFilter(state: WarehouseQueryState): boolean {
   );
 }
 
-/**
- * 目录空态卡推导(N5 S1):目录为空且未加筛选时,按登录线索决定空卡形态——
- * "none" = 登录引导卡;"stored"/"unknown"/未探测 = 同步引导卡(探测失败不
- * 冒充事实,同步按钮照常可用);其余情形(hidden)保持原通用空态。
- */
+/** An empty unfiltered library offers sync only after its account probe succeeds. */
 export type CatalogEmptyCard =
   | { kind: "hidden" }
+  | { kind: "checking" }
+  | { kind: "unknown" }
   | { kind: "sign-in" }
   | { kind: "sync-available" };
 
 export function catalogEmptyCard(input: {
   readonly remoteBrowser: boolean;
-  readonly signInHint: "stored" | "none" | "unknown" | null;
+  readonly accountState: import("./catalog-sync-model.ts").CatalogAccountState;
   readonly filtered: boolean;
   readonly catalogEmpty: boolean;
 }): CatalogEmptyCard {
   if (!input.remoteBrowser || !input.catalogEmpty || input.filtered) {
     return { kind: "hidden" };
   }
-  return input.signInHint === "none" ? { kind: "sign-in" } : { kind: "sync-available" };
+  switch (input.accountState) {
+    case "checking": return { kind: "checking" };
+    case "unknown": return { kind: "unknown" };
+    case "sign-in": return { kind: "sign-in" };
+    case "signed-in": return { kind: "sync-available" };
+  }
 }
 
 

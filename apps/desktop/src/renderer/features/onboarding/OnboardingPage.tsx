@@ -89,7 +89,7 @@ export function OnboardingPage({ onComplete, onAccounts, embedded = false }: {
         </div> : null}
         {state.step === "network" ? <><NetworkPanel /><Button variant="primary" onClick={() => move("prepare")}>{copy.networkContinue}</Button></> : null}
         {state.step === "prepare" && state.purpose ? <>
-          <DeploymentPanel key={state.purpose} zone={state.purpose.includes("avatar") ? "create" : "play"} purpose={state.purpose} onReadyChange={setReady} />
+          <DeploymentPanel key={state.purpose} zone={state.purpose.includes("avatar") ? "create" : "play"} purpose={state.purpose} onReadyChange={setReady} autoPlan={state.purpose.includes("avatar")} />
           {ready ? <Button variant="primary" onClick={() => move(state.purpose === "pico_pcvr" ? "connection" : state.purpose === "desktop_play" ? "launch" : "creator-done")}>{copy.preparedNext}</Button> : null}
         </> : null}
         {state.step === "connection" ? <><div className="vua-route-grid">

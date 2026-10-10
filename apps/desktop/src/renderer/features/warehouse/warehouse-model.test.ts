@@ -70,31 +70,29 @@ test("albumIndexFromOffset: 媒体区均分映射,边界 clamp", () => {
 
 test("catalogEmptyCard: 无账户线索的空目录 → 登录引导卡", () => {
   assert.deepEqual(
-    catalogEmptyCard({ remoteBrowser: true, signInHint: "none", filtered: false, catalogEmpty: true }),
+    catalogEmptyCard({ remoteBrowser: true, accountState: "sign-in", filtered: false, catalogEmpty: true }),
     { kind: "sign-in" },
   );
 });
 
-test("catalogEmptyCard: stored/unknown/未探测 → 同步引导卡(探测失败不挡同步)", () => {
-  for (const signInHint of ["stored", "unknown", null] as const) {
-    assert.deepEqual(
-      catalogEmptyCard({ remoteBrowser: true, signInHint, filtered: false, catalogEmpty: true }),
-      { kind: "sync-available" },
-    );
+test("catalogEmptyCard: only a confirmed account session offers sync", () => {
+  assert.deepEqual(catalogEmptyCard({ remoteBrowser: true, accountState: "signed-in", filtered: false, catalogEmpty: true }), { kind: "sync-available" });
+  for (const accountState of ["checking", "unknown"] as const) {
+    assert.deepEqual(catalogEmptyCard({ remoteBrowser: true, accountState, filtered: false, catalogEmpty: true }), { kind: accountState });
   }
 });
 
 test("catalogEmptyCard: 无远程浏览基座/筛选中/目录非空 → 保持通用空态", () => {
   assert.deepEqual(
-    catalogEmptyCard({ remoteBrowser: false, signInHint: "none", filtered: false, catalogEmpty: true }),
+    catalogEmptyCard({ remoteBrowser: false, accountState: "sign-in", filtered: false, catalogEmpty: true }),
     { kind: "hidden" },
   );
   assert.deepEqual(
-    catalogEmptyCard({ remoteBrowser: true, signInHint: "none", filtered: true, catalogEmpty: true }),
+    catalogEmptyCard({ remoteBrowser: true, accountState: "sign-in", filtered: true, catalogEmpty: true }),
     { kind: "hidden" },
   );
   assert.deepEqual(
-    catalogEmptyCard({ remoteBrowser: true, signInHint: "none", filtered: false, catalogEmpty: false }),
+    catalogEmptyCard({ remoteBrowser: true, accountState: "sign-in", filtered: false, catalogEmpty: false }),
     { kind: "hidden" },
   );
 });

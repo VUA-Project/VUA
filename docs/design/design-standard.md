@@ -1,7 +1,7 @@
-# VUA design standard v0.13.0
+# VUA design standard v0.15.0
 
 
-> Document version: 0.14.0
+> Document version: 0.15.0
 > Status: Accepted
 > Scope: Electron desktop, desktop overlay, and VR overlay presentation  
 > Updated: 2026-10-10
@@ -127,6 +127,9 @@ When AMF is disabled, a sidebar enable entry opens its explanatory setup section
 editing; the actual switch lives there and does not enable AMF merely by navigating. These navigation changes
 do not activate AMF or expand release acceptance. The system-resource panel omits its sampling
 time label while keeping the observed resource values and unavailable states.
+AMF's Home cards are Warehouse, Recipe, Workshop, Finished Avatars (成品) and Package Manager,
+in both display modes. Replace the Inspection Home card without removing its report/sidebar
+capability. Finished Avatars uses the same title in its card, sidebar and page heading.
 
 The environment directory contains **Play** and **Avatar editing** (游玩 / 改模), plus Tools
 and Help. Remove
@@ -777,6 +780,7 @@ direction.
 
 ## 12. Document changelog
 
+- 0.15.0 (2026-10-10): replace the AMF Home Inspection card with Finished Avatars and Package Manager in both modes, retaining inspection reports and aligning the finished-output title across navigation.
 - 0.14.0 (2026-10-10): standardize collapsible Play/Tools/editor details and compact tool widths, distinguish navigable Help child pages with Back/Forward, and place AMF activation and consolidated Settings controls in their accepted locations.
 - **0.13.0 (2026-10-10)**: move Tools/Help into Environment, embed knowledge and hardware reading, halve Play card heights and remove the resource sampling-time label while preserving themes, glass and resource saving.
 - **0.12.1 (2026-10-09)**: align normal-exit Close semantics, background-only guide transparency/drag memory and the regional-placeholder/expanded-website split with the author's corrections.
@@ -786,6 +790,5 @@ direction.
 - **0.9.0 (2026-10-08)**: implement the accepted fixed Home/logo entry, independent branching wizard, concise navigation and desktop/big-screen hierarchy while retaining grid, glass and resource saving.
 - **0.8.0 (2026-10-05)**: define three guidance presentations and their topbar/contextual entries while retaining the two-business-tab shell.
 - **0.7.23 (2026-10-01)**: status-quo alignment and reference repair — §0/§3/§10/§11 the retired five-tab shell becomes the current two-business-tab shell (Environment, Avatar creation) with Settings pinned right and Guide as a topbar overlay entry (user rulings 2026-09-25/2026-09-26); the §8 module bullets receive the §8.1–§8.9 numbering this changelog already used, so every internal §8.x citation resolves; phantom pointers repaired (§6.4/§8.1 → §4/§5 danger-confirmation rules, §2.6 → §2 "Explicit facts and recovery", §2.2 → §2 "Recipe-first and path selection", §6.2 → §6.1 notification semantics, §10.10 → §10 item 10); the `packages/design-system` token mirror is stated as existing (manual mirror; contrast machine-checked); Korean joins the long-string acceptance item; collab bookkeeping identifiers converted to dated rulings and dated archived-proposal citations per governance §4. No rule change.
-- **0.7.22 (2026-09-28)**: erratum — §11 "Real M1–M7 slices may refine page layout after validation" becomes "Real N-gate slices may refine page layout after validation" following the 2026-09-28 sequence change; dated W15/W25 provenance citations elsewhere are retained as history; no rule change.
 
 Earlier entries remain in Git history.

@@ -4,7 +4,7 @@ import { RouteTile } from "../../components/RouteTile.tsx";
 const copy = strings.journey;
 export const directory = {
   env: [{ id: "env-play", title: copy.play, icon: "anim" }, { id: "tools-discover", title: copy.tools, icon: "outfit" }, { id: "env-create", title: copy.create, icon: "flask" }, { id: "help", title: copy.help, icon: "question" }],
-  production: [{ id: "warehouse", title: copy.library, icon: "folder" }, { id: "recipe", title: copy.recipes, icon: "outfit" }, { id: "workshop", title: copy.production, icon: "avatar" }, { id: "inspection", title: strings.terms.inspection, icon: "check" }],
+  production: [{ id: "warehouse", title: copy.library, icon: "folder" }, { id: "recipe", title: copy.recipes, icon: "outfit" }, { id: "workshop", title: copy.production, icon: "avatar" }, { id: "release", title: strings.nav.pages.release, icon: "anim" }, { id: "packages", title: strings.nav.pages.packages, icon: "folder" }],
 } as const;
 export function HomePage({ page, bigscreen, navigate, amfInstalled = false }: {
   page: "home" | "environment-hub" | "avatar-hub"; bigscreen: boolean;
@@ -26,10 +26,6 @@ export function HomePage({ page, bigscreen, navigate, amfInstalled = false }: {
           {directory[group].map(item => <RouteTile key={item.id} title={item.title} icon={item.icon} onClick={() => navigate(item.id)} id={`home-${item.id}`} />)}
         </div>
       </section>)}
-      {page === "avatar-hub" ? <div className="vua-route-grid">
-        <RouteTile title={strings.nav.pages.packages} icon="folder" onClick={() => navigate("packages")} />
-        <RouteTile title={strings.terms.release} icon="anim" onClick={() => navigate("release")} />
-      </div> : null}
       {page === "home" ? global : null}
     </>
   </div>;

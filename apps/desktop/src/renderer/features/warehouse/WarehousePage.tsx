@@ -7,7 +7,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { isCatalogSyncSnapshotV03, isLibraryDownloadSnapshotV01, type CatalogSyncSnapshotV03 } from "@vua/contracts";
-import { catalogSyncNotice, type CatalogSyncNotice } from "./catalog-sync-model.ts";
+import { catalogSyncNotice, startSignedInCatalogSync, type CatalogAccountState, type CatalogSyncNotice } from "./catalog-sync-model.ts";
 import { catalogBrowser } from "../../app/catalog-browser-instance.ts";
 import { libraryBrowser } from "../../app/library-browser-instance.ts";
 import { browseWindowSupported, openBrowseWindow } from "../../app/browse-window.ts";
@@ -631,54 +631,40 @@ export function WarehousePage({
   // 定向首开地址(右键「下载到本地」):null = 常规入口(本地/云端选择步)
   const [importInitialUrl, setImportInitialUrl] = useState<string | null>(null);
 
-  /** 账号库同步(N5 S1):登录线索只读探测 + 触发反馈;进度与终态走九态
-   * 任务面(通知中心),本页只回触发结果,不伪造运行过程 */
+  /** Account-library authentication precedes the sync affordance. Session data
+   * stays in Main; the renderer receives only the existing authentication result. */
   const remoteBrowser = window.vua?.capabilities?.remoteBrowser === true;
-  const [signInHint, setSignInHint] = useState<"stored" | "none" | "unknown" | null>(null);
+  const [accountState, setAccountState] = useState<CatalogAccountState>("checking");
+  const [accountProbeKey, setAccountProbeKey] = useState(0);
+  const [syncStarting, setSyncStarting] = useState(false);
+  const syncRequest = useRef(false);
   const [syncNotice, setSyncNotice] = useState<CatalogSyncNotice | null>(null);
   const [syncProgress, setSyncProgress] = useState<CatalogSyncSnapshotV03 | null>(null);
   const [syncReadFailed, setSyncReadFailed] = useState(false);
   const [syncRunId, setSyncRunId] = useState<string | null>(null);
   /** 统一卡片墙:选中的本地条目(云端商品用 selectedId,两者互斥呈现) */
   const [selectedLocalId, setSelectedLocalId] = useState<string | null>(null);
-  useEffect(() => {
-    if (!remoteBrowser) return;
-    let active = true;
-    void window.vua?.remoteContent?.signInHint().then((hint) => {
-      if (active) setSignInHint(hint);
-    });
-    return () => {
-      active = false;
-    };
-  }, [remoteBrowser]);
-  // 登录在导入弹窗内嵌面板完成(修 2026-10-05):弹窗关闭即重探登录线索,
-  // 空态卡从登录引导翻为同步引导,无需切页重进
-  useEffect(() => {
-    if (importDialogOpen || !remoteBrowser) return;
-    let active = true;
-    void window.vua?.remoteContent?.signInHint().then((hint) => {
-      if (active) setSignInHint(hint);
-    });
-    return () => {
-      active = false;
-    };
-  }, [importDialogOpen, remoteBrowser]);
-  // 登录浏览器(2026-10-05)关闭回执:同上重探——登录成功自动关闭(或用户
-  // ×)后空态卡立即翻为同步引导
   const loginBrowserOpen = useLoginBrowserRequest() !== null;
+  // One probe per entry/closed browser, with stale replies ignored. Visiting a
+  // login page can leave cookies without completing login, so do not use hints.
   useEffect(() => {
-    if (loginBrowserOpen || !remoteBrowser) return;
+    if (loginBrowserOpen || importDialogOpen || !remoteBrowser) return;
     let active = true;
-    void window.vua?.remoteContent?.signInHint().then((hint) => {
-      if (active) setSignInHint(hint);
-    });
-    return () => {
-      active = false;
-    };
-  }, [loginBrowserOpen, remoteBrowser]);
+    setAccountState("checking");
+    const remote = window.vua?.remoteContent;
+    if (remote === undefined) setAccountState("unknown");
+    else void remote.authProbe().then(
+      probe => { if (active) setAccountState(probe.authOk ? "signed-in" : "sign-in"); },
+      () => { if (active) setAccountState("unknown"); },
+    );
+    return () => { active = false; };
+  }, [loginBrowserOpen, importDialogOpen, remoteBrowser, accountProbeKey]);
   const startCatalogSync = async (): Promise<void> => {
     const catalogSync = window.vua?.catalogSync;
-    if (catalogSync === undefined) return;
+    const remote = window.vua?.remoteContent;
+    if (catalogSync === undefined || remote === undefined || syncRequest.current || loginBrowserOpen) return;
+    if (accountState === "sign-in") { openLoginBrowser(BOOTH_SIGN_IN_URL); return; }
+    if (accountState !== "signed-in") { setAccountProbeKey(key => key + 1); return; }
     const libraryType =
       source === "gifts"
         ? "gifts"
@@ -692,13 +678,13 @@ export function WarehousePage({
     setSyncProgress(null);
     setSyncReadFailed(false);
     let outcome;
-    try { outcome = await catalogSync.start({ libraryType }); }
-    catch { setSyncNotice("failed"); return; }
+    syncRequest.current = true;
+    setSyncStarting(true);
+    try { outcome = await startSignedInCatalogSync(remote, catalogSync, { libraryType }, () => openLoginBrowser(BOOTH_SIGN_IN_URL)); }
+    catch { setAccountState("unknown"); setSyncNotice("failed"); return; }
+    finally { syncRequest.current = false; setSyncStarting(false); }
     if (outcome.status === "blocked") {
-      // 登录引导:门已升级为真实预检(2026-10-05)——「访问过登录页」的
-      // 半登录会话(cookie 在、登录未完成)也会被拦截;空态卡翻为登录
-      // 形态,同时给可见反馈(动作无可见响应等同于坏)
-      setSignInHint("none");
+      setAccountState("sign-in");
       setSyncNotice("blocked");
       return;
     }
@@ -754,7 +740,10 @@ export function WarehousePage({
         if (notice !== "started") {
           setSyncNotice(notice);
           setSyncRunId(null);
-          if (notice === "blocked") setSignInHint("none");
+          if (notice === "blocked") {
+            setAccountState("sign-in");
+            openLoginBrowser(BOOTH_SIGN_IN_URL);
+          }
           setReloadKey((key) => key + 1);
         } else {
           // An undelivered final receipt cannot turn the durable task into success/failure.
@@ -1011,11 +1000,10 @@ export function WarehousePage({
   const resultsView =
     listState.kind === "loaded" && listState.view.kind === "results" ? listState.view : null;
 
-  /** 目录空态卡(N5 S1):未登录→登录引导;已登录/未知→同步引导;筛选中
-   *  或非空保持原通用空态(搜索无结果 ≠ 目录未接入) */
+  /** Search/filter emptiness remains distinct from an empty account library. */
   const emptyCard = catalogEmptyCard({
     remoteBrowser,
-    signInHint,
+    accountState,
     filtered: hasActiveFilter(query) || source !== "all" || downloadState !== "all",
     catalogEmpty: resultsView !== null && resultsView.items.length === 0 && localCards.length === 0,
   });
@@ -1238,8 +1226,8 @@ export function WarehousePage({
             {strings.importPage.title}
           </Button>
           {source !== "local" && remoteBrowser ? (
-            <Button variant="default" onClick={() => void startCatalogSync()}>
-              {copy.catalogSync.action}
+            <Button variant="default" data-nav-id="warehouse-sync" disabled={accountState === "checking" || syncStarting || loginBrowserOpen || importDialogOpen} onClick={() => void startCatalogSync()}>
+              {accountState === "checking" || syncStarting ? copy.catalogSync.checking : accountState === "sign-in" ? copy.catalogSync.signInAction : accountState === "unknown" ? copy.catalogSync.retryCheck : copy.catalogSync.action}
             </Button>
           ) : null}
           {syncNotice !== null ? (
@@ -1433,8 +1421,13 @@ export function WarehousePage({
                   ))}
                 </div>
               ) : resultsView !== null && resultsView.items.length === 0 && localCards.length === 0 ? (
-                /* 目录空态(N5 S1):登录引导卡/同步引导卡/通用空态三态 */
-                emptyCard.kind === "sign-in" ? (
+                emptyCard.kind === "checking" || emptyCard.kind === "unknown" ? (
+                  <EmptyState
+                    title={emptyCard.kind === "checking" ? copy.catalogSync.checking : copy.catalogSync.checkFailed}
+                    description={copy.catalogSync.checkDescription}
+                    {...(emptyCard.kind === "unknown" ? { action: <Button onClick={() => setAccountProbeKey(key => key + 1)}>{copy.catalogSync.retryCheck}</Button> } : {})}
+                  />
+                ) : emptyCard.kind === "sign-in" ? (
                   <EmptyState
                     title={copy.catalogSync.signInTitle}
                     description={copy.catalogSync.signInDescription}
@@ -1457,8 +1450,8 @@ export function WarehousePage({
                     title={copy.catalogSync.syncTitle}
                     description={copy.catalogSync.syncDescription}
                     action={
-                      <Button variant="primary" onClick={() => void startCatalogSync()}>
-                        {copy.catalogSync.action}
+                      <Button variant="primary" disabled={syncStarting || loginBrowserOpen || importDialogOpen} onClick={() => void startCatalogSync()}>
+                        {syncStarting ? copy.catalogSync.checking : copy.catalogSync.action}
                       </Button>
                     }
                   />

@@ -1,5 +1,5 @@
 // Real Main/preload/production renderer in a disposable profile. No vendor actions.
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, ipcMain } from "electron";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import fs from "node:fs";
@@ -108,9 +108,23 @@ async function run() {
     await waitFor(() => js('!!document.querySelector(".vua-creator-page [data-nav-id=toggle-amf]")'), "AMF setup in Avatar editing");
     assert(await js('!document.querySelector("[data-nav-id=toggle-amf]").checked && document.querySelector("[data-amf-setup]").textContent.includes("导入和整理素材") && !document.querySelector(".vua-shell__sidebar [data-module=production]")'), "AMF is explained in Avatar editing and waits for explicit enablement");
     await capture("amf-off");
+    if (process.env.VUA_TEST_EXPECT_EDITOR_VERSION) {
+      const expected = process.env.VUA_TEST_EXPECT_EDITOR_VERSION;
+      await waitFor(() => js(`document.querySelector('[data-editor-status]')?.textContent.includes(${JSON.stringify(expected)})`), "Host Editor inventory before AMF activation");
+      assert(await js('!document.querySelector("[data-nav-id=toggle-amf]").checked'), "The existing C1 Editor is detected before AMF activation or CLI installation");
+    }
     for (const button of ['route-unity2022','route-unity6','manager-unity_hub','manager-vcc','manager-alcom']) {
       await js(`document.querySelector('[data-nav-id="${button}"]').click()`);
       assert(await js(`document.querySelector('[data-nav-id="${button}"]').getAttribute('aria-expanded')==='true'`), `${button} expands inline`);
+      if (button === 'route-unity2022') {
+        await waitFor(() => js('!!document.querySelector("#route-unity2022-details .vua-deployment ol li")'), "Automatic Unity entry inspection");
+        assert(await js('!!document.querySelector("#route-unity2022-details .vua-deployment ol li")'), "Unity preparation inspects on first entry before any install command");
+        if (process.env.VUA_TEST_EXPECT_EDITOR_VERSION) {
+          const expected = process.env.VUA_TEST_EXPECT_EDITOR_VERSION;
+          assert(await js(`[...document.querySelectorAll('#route-unity2022-details .vua-deployment ol li')].some(item=>item.textContent.includes(${JSON.stringify(expected)}) && item.textContent.includes('保留'))`), "The existing Editor's full version is reused on first entry without installation");
+          await capture('unity-first-entry');
+        }
+      }
       await js(`document.querySelector('[data-nav-id="${button}"]').click()`);
       assert(await js(`document.querySelector('[data-nav-id="${button}"]').getAttribute('aria-expanded')==='false'`), `${button} collapses inline`);
     }
@@ -187,6 +201,54 @@ async function run() {
     // A real user can toggle again only after this control becomes enabled.
     await waitFor(() => js('document.querySelector("[data-nav-id=toggle-amf]")?.disabled===false'), "AMF enablement control released");
     assert(await js('document.querySelector("[data-nav-id=toggle-amf]").checked && !document.querySelector("[data-nav-id=nav-enable-amf]")'), "AMF activation exposes its own sidebar without navigating away");
+    await js('document.querySelector("[data-nav-id=logo-home]").click()');
+    await waitFor(() => js('!!document.querySelector("[data-nav-id=home-release]")'), "AMF Home directory");
+    assert(await js('!document.querySelector("[data-nav-id=home-inspection]") && document.querySelector("[data-nav-id=home-release]").textContent.includes("成品") && document.querySelector("[data-nav-id=home-packages]").textContent.includes("包管理器")'), "Finished Avatars and Package Manager replace the Inspection Home card");
+    await js('document.querySelector("[data-nav-id=home-release]").click()');
+    await waitFor(() => js('location.hash==="#release" && !!document.querySelector("main h1")'), "Finished Avatars destination");
+    await js('document.querySelector("[data-nav-id=logo-home]").click()');
+    await waitFor(() => js('!!document.querySelector("[data-nav-id=home-packages]")'), "AMF Home return");
+    await js('document.querySelector("[data-nav-id=home-packages]").click()');
+    await waitFor(() => js('location.hash==="#packages" && !!document.querySelector("main h1")'), "Package Manager destination");
+    assert(true, "Both new AMF Home cards open their existing functional pages");
+    // Synthetic authentication replies exercise the real renderer/Main IPC
+    // handoff without contacting BOOTH, loading login pages or syncing accounts.
+    let resolveAccountProbe;
+    let authOk = false;
+    let firstProbe = true;
+    const loginRequests = [];
+    let syncRequests = 0;
+    ipcMain.removeHandler('vua:remote-content:auth-probe');
+    ipcMain.handle('vua:remote-content:auth-probe', () => {
+      if (firstProbe) { firstProbe = false; return new Promise(resolve => { resolveAccountProbe = resolve; }); }
+      return { authOk, accountName: null };
+    });
+    ipcMain.removeHandler('vua:remote-content:open');
+    ipcMain.handle('vua:remote-content:open', (_event, request) => {
+      loginRequests.push(request.url);
+      return { viewId: `synthetic-login-${loginRequests.length}`, url: request.url, visible: true, canGoBack: false, canGoForward: false };
+    });
+    ipcMain.removeHandler('vua:remote-content:close');
+    ipcMain.handle('vua:remote-content:close', () => {});
+    ipcMain.removeHandler('vua:catalog-sync:start');
+    ipcMain.handle('vua:catalog-sync:start', () => { syncRequests += 1; return { status: 'blocked', reason: 'sign-in-required' }; });
+    await js('document.querySelector("[data-nav-id=nav-warehouse]").click()');
+    await waitFor(async () => await js('!!document.querySelector("[data-nav-id=warehouse-sync]")') && resolveAccountProbe !== undefined, "Warehouse entry account probe");
+    assert(await js('document.querySelector("[data-nav-id=warehouse-sync]").disabled && document.querySelector("[data-nav-id=warehouse-sync]").textContent.includes("正在检测")'), "Warehouse does not offer sync while authentication is being checked");
+    resolveAccountProbe({ authOk: false, accountName: null });
+    await waitFor(() => js('document.querySelector("[data-nav-id=warehouse-sync]")?.textContent.includes("打开登录页")'), "Login required before sync");
+    await js('document.querySelector("[data-nav-id=warehouse-sync]").click()');
+    await waitFor(async () => loginRequests.length === 1 && await js('!!document.querySelector(".vua-import__browse-button--close")'), "Direct login handoff");
+    assert(syncRequests === 0 && loginRequests[0] === 'https://accounts.booth.pm/users/sign_in', "Unauthenticated sync entry opens BOOTH login directly without a sync request");
+    authOk = true;
+    await js('document.querySelector(".vua-import__browse-button--close").click()');
+    await waitFor(() => js('document.querySelector("[data-nav-id=warehouse-sync]")?.textContent.includes("同步 BOOTH") && !document.querySelector("[data-nav-id=warehouse-sync]").disabled'), "Post-login entry refresh");
+    assert(await js('document.querySelector("[data-nav-id=warehouse-sync]").textContent.includes("同步 BOOTH")'), "Closing login reprobes the actual account result before offering sync");
+    await js('document.querySelector("[data-nav-id=warehouse-sync]").click()');
+    await waitFor(async () => loginRequests.length === 2 && await js('!!document.querySelector(".vua-import__browse-button--close")'), "Expired-session login handoff");
+    assert(syncRequests === 1, "A session rejected after the fresh probe reopens login instead of only showing a message");
+    await js('document.querySelector(".vua-import__browse-button--close").click(); document.querySelector("[data-nav-id=nav-env-create]").click()');
+    await waitFor(() => js('document.querySelector("[data-nav-id=toggle-amf]")?.disabled===false'), "AMF setup return");
     await js('document.querySelector("[data-nav-id=toggle-amf]").click()');
     await waitFor(() => js('!!document.querySelector("[data-nav-id=nav-enable-amf]") && !document.querySelector("[data-nav-id=toggle-amf]").checked'), "Explicit AMF disablement");
     assert(await js('!document.querySelector(".vua-shell__sidebar [data-module=production]")'), "Disabling AMF removes the Avatar sidebar and restores its enablement entry");

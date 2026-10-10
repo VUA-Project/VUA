@@ -166,10 +166,12 @@ export function DeploymentPanel({ zone, purpose, onReadyChange, onStateChange, a
   });
   useEffect(() => { onStateChange?.({ busy: busy || active, error: error !== null || task?.state === "failed" || task?.recoveryDisposition === "inspect_required", ready: routeReady }); }, [busy, active, error, task?.state, task?.recoveryDisposition, routeReady, onStateChange]);
   useEffect(() => {
-    if (autoPlan && available && !autoPlanned.current && !active && (!purposes.includes("pico_pcvr") || picoRegion !== "")) {
+    // A fresh entry may inspect automatically. A saved receipt remains visible
+    // and waits for an explicit recheck, including interrupted/recovered work.
+    if (autoPlan && restored === null && available && !autoPlanned.current && !active && (!purposes.includes("pico_pcvr") || picoRegion !== "")) {
       autoPlanned.current = true; void replan();
     }
-  }, [autoPlan, available, active, picoRegion]);
+  }, [autoPlan, restored, available, active, picoRegion]);
   if (port === undefined || !available) return purpose ? <Card><p role="status">{strings.journey.unavailable}</p>
     <GuideEntryButton target={zone === "play" ? GUIDE_TARGETS.vrchatInstall : { topic: "guide-vua" }} label={strings.journey.guide} /></Card> : null;
   return <Card className="vua-deployment">

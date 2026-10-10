@@ -1,8 +1,8 @@
 # Unity Editor deployment
 
-> Document version: 2.3.0
+> Document version: 2.3.1
 > Status: Accepted
-> Last conformance review: 2026-10-02
+> Last conformance review: 2026-10-10 (read-only C1 identity and initial plan; the native installation trial below remains dated 2026-10-02)
 
 For people: choose Avatar editing, review the version, download order and destination, and let VUA
 download and install Unity Editor. The official Unity CLI looks up the fixed release, and VUA
@@ -22,6 +22,14 @@ adapter. A source review is supporting work; the deliverable is a working instal
 ## First usable path
 
 1. Inspect the selected purposes, existing software, Editor installation root and download region.
+   Fresh Unity 2022 preparation requests this read-only plan on entry. An installed
+   `2022.3.22f1c1` is reusable before any CLI installation/registration attempt; its full
+   executable identity appears in the retained Editor step. A missing CLI is a separate
+   preparation item, not evidence that the Editor is missing. Saved/interrupted task receipts
+   retain their explicit reinspection path.
+   The Editor-card inventory reads the host's existing environment snapshot and then verifies
+   each executable; it remains available before AMF is enabled. Manager configuration discovery
+   is an optional AMF fact and does not gate the host inventory.
 2. Acquire the reviewed official Unity CLI when missing. After acquisition, prepare a fresh plan.
 3. For PC Avatar editing, show the global → China edition order and source order for changeset
    `887be4894c44`. Edition order, region and mirror preference are part of the confirmed plan.
@@ -203,6 +211,7 @@ play, account-guide, update/removal, configuration and UI scenarios in small inc
 
 ## Document changelog
 
+- 2.3.1 (2026-10-10): clarify automatic read-only fresh-entry planning and C1 reuse before CLI acquisition while preserving saved-task reinspection.
 - 2.3.0 (2026-10-02): use CLI-led official-first acquisition, classify the actual f1/c1 payload after redirects and record the native-install/Sentinel trial.
 - 2.2.0 (2026-10-02): accept global/China edition fallback, separate artifact/destination identity,
   and version installation failures and successful task results.

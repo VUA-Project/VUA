@@ -14,7 +14,7 @@ import {
   TurntablePlayer,
   type TurntableStatus,
 } from "../../components/preview/TurntablePlayer.tsx";
-import { format, strings, termLabel } from "../../i18n/index.ts";
+import { format, strings } from "../../i18n/index.ts";
 import type { PageId } from "../../app/nav-model.ts";
 import {
   useDataSource,
@@ -264,7 +264,7 @@ export function ReleasePage({
     <div className="vua-page">
       <section className="vua-page__hero">
         <h1 className="vua-title">
-          {termLabel("release")}
+          {strings.nav.pages.release}
           {isFixture ? (
             <>
               {" "}

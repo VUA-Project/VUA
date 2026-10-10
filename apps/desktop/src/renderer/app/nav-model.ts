@@ -116,7 +116,7 @@ export const businessModules: readonly ModuleDef[] = [
           { id: "warehouse", labelKey: null, labelTerms: ["warehouse"] },
           { id: "recipe", labelKey: null, labelTerms: ["recipe"] },
           { id: "inspection", labelKey: null, labelTerms: ["inspection"] },
-          { id: "release", labelKey: null, labelTerms: ["release"] },
+          { id: "release", labelKey: "release" },
           // 2026-09-25 用户裁决:复合术语序列(装配 → 生产 → 检测)退役为
           // 「车间」——术语行退化成自指缩写,直给词面更诚实
           { id: "workshop", labelKey: "workshop" },

@@ -25,10 +25,10 @@ import { createSilentDownloadQueue } from "./silent-download.js";
 import { createDownloadEventSink } from "./download-ingest.js";
 import {
   CATALOG_SYNC_DEFAULT_START_URL,
-  isSignInPage,
   startCatalogSync,
   type CatalogSyncRun,
 } from "./catalog-sync.js";
+import { probeBoothAuthentication } from "./booth-auth.js";
 import { deactivateImageCache, importLocalThumbnail, registerImageCacheProtocol, registerImageCacheScheme } from "./image-cache.js";
 import { RemoteContentManager } from "./remote-content.js";
 import { createDesktopOrchestratorProvider, type DesktopProviderEndpoint } from "./provider-bootstrap.js";
@@ -710,16 +710,7 @@ function registerIpc(provider: ModuleProvider): void {
     assertLocalSender(senderFrameUrl(event));
     assertAmfReady();
     if (remoteContent === null) return { authOk: false, accountName: null };
-    try {
-      const probe = await remoteContent.fetchWithSession(CATALOG_SYNC_DEFAULT_START_URL);
-      const authOk = probe.status === 200 && !isSignInPage(probe.body);
-      const accountName = authOk
-        ? /data-user-name="([^"]{1,64})"/.exec(probe.body)?.[1] ?? null
-        : null;
-      return { authOk, accountName };
-    } catch {
-      return { authOk: false, accountName: null };
-    }
+    return probeBoothAuthentication(remoteContent);
   });
   // 登出(账号管理,2026-10-05):清空分区存储并关闭打开中的远程视图
   ipcMain.handle("vua:remote-content:sign-out", async (event) => {

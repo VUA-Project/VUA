@@ -216,6 +216,7 @@ demoTaskTitle: "Demo task",
       settingsAbout: "About VUA",
       settingsDonate: "Donate",
       packages: "Package Manager",
+      release: "Finished Avatars",
       /** 车间侧栏标签(2026-09-25 用户裁决):复合术语序列退役为直给词面 */
       workshop: "Workshop",
       /** Composing draft lives in a dialog inside the recipe page since the
@@ -1521,6 +1522,10 @@ demoTaskTitle: "Demo task",
     viewList: "List",
     viewToggleAria: "Toggle card/list view",
     catalogSync: {
+      checking: "Checking BOOTH sign-in…",
+      checkFailed: "BOOTH sign-in could not be checked",
+      checkDescription: "Confirm your BOOTH sign-in before syncing the library.",
+      retryCheck: "Check sign-in again",
       warningHint: "Library sync finished with skipped items. See the task record.",
       cancelledHint: "Library sync cancelled. Saved catalog entries were kept.",
       inspectHint: "The previous sync was interrupted. Inspect the task before syncing again.",

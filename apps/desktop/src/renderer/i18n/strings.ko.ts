@@ -208,6 +208,7 @@ demoTaskTitle: "데모 작업",
       settingsAbout: "VUA 정보",
       settingsDonate: "후원",
       packages: "패키지 관리자",
+      release: "완성된 아바타",
       /** 워크숍 사이드바 레이블(2026-09-25 사용자 결정): 복합 용어 시퀀스는 퇴역, 직접 표기로 */
       workshop: "워크숍",
       /** 코디네이트 초안은 2026-09-20 내비게이션 재편 이후 레시피 페이지 내 대화상자. */
@@ -1477,6 +1478,10 @@ rolled_back: "롤백됨",
     viewList: "목록",
     viewToggleAria: "카드/목록 전환",
     catalogSync: {
+      checking: "BOOTH 로그인 확인 중…",
+      checkFailed: "BOOTH 로그인을 확인할 수 없습니다",
+      checkDescription: "라이브러리를 동기화하기 전에 BOOTH 로그인을 확인하세요.",
+      retryCheck: "로그인 다시 확인",
       warningHint: "동기화가 끝났지만 일부 항목을 처리하지 못했습니다. 작업 기록을 확인하세요.",
       cancelledHint: "동기화를 취소했습니다. 저장된 목록 항목은 유지됩니다.",
       inspectHint: "이전 동기화가 중단되었습니다. 작업을 확인한 후 다시 동기화하세요.",

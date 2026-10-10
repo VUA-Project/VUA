@@ -208,6 +208,7 @@ demoTaskTitle: "デモタスク",
       settingsAbout: "VUA について",
       settingsDonate: "寄付",
       packages: "パッケージマネージャー",
+      release: "完成したアバター",
       /** ワークショップ側バーラベル(2026-09-25 ユーザー裁定):複合用語列は退役し直給の語面に */
       workshop: "ワークショップ",
       /** コーディネート下書きは 2026-09-20 のナビ再編以降、レシピページ内のダイアログ。 */
@@ -1484,6 +1485,10 @@ rolled_back: "ロールバック済み",
     viewList: "リスト",
     viewToggleAria: "カード/リスト切替",
     catalogSync: {
+      checking: "BOOTHのログインを確認中…",
+      checkFailed: "BOOTHのログインを確認できませんでした",
+      checkDescription: "ライブラリを同期する前にBOOTHのログインを確認します。",
+      retryCheck: "ログインを再確認",
       warningHint: "同期が終了しました。一部の項目は処理できませんでした。詳細はタスク記録をご確認ください。",
       cancelledHint: "同期をキャンセルしました。保存済みの項目は保持されています。",
       inspectHint: "前回の同期が中断されました。タスクを確認してから再同期してください。",

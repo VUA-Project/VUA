@@ -1,11 +1,11 @@
 # Electron desktop and presentation architecture
 
 
-> Document version: 1.16.0
+> Document version: 1.17.0
 > Status: Accepted
 > Scope: `apps/desktop`, `packages/design-system`, frontend Gateway
 > Updated: 2026-10-10
-> Last conformance review: 2026-10-10 (controlled card/history/AMF activation/Settings checks; physical app/device and human-language review pending)
+> Last conformance review: 2026-10-10 (controlled card/history/account-entry/AMF activation/Settings checks and read-only C1 inspection; physical app/device and human-language review pending)
 > Normative effect: Yes
 
 ## Technology decision
@@ -97,8 +97,14 @@ Play, Tools and Avatar-editing cards expand below their grid and collapse on a s
 Development entries expose descriptions while installation/launch remain unavailable; tool
 grids keep the same column widths even in a group with only one item.
 
-Avatar editing reuses `project.environmentManagers` and `environment.verifyEditor` to show
-complete discovered editors; Unity 6 remains a development entry even when files are found.
+Avatar editing discovers Editor directories through the host's `environment.getSnapshot`
+and verifies executable identity through `environment.verifyEditor`. AMF's optional
+`project.environmentManagers` supplies manager configuration facts only; its absence does
+not block Editor detection. Unity 6 remains a development entry even when files are found.
+Fresh entry into Unity 2022 preparation, including the wizard, requests a read-only deployment
+plan automatically. The accepted global/China pair is observed before CLI acquisition or any
+installation; the plan retains the full observed version. Saved task receipts remain visible
+and require explicit reinspection rather than being discarded by this entry inspection.
 The read-only `environment.inspectManagerApps` Candidate query reports Hub/VCC/ALCOM
 executable findings from known roots and registry paths. Configuration findings keep their
 original frozen semantics and do not imply that an executable is installed. Version/path data
@@ -110,6 +116,9 @@ big screen mode; the upper-left Back action and the active Settings button retur
 source page. Category changes do not replace the return destination. Inspection belongs to the
 Avatar directory; Help and Settings have no duplicate bottom-left entry, and the topbar does
 not repeat the page name beside the Home logo.
+AMF Home cards are Warehouse, Recipe, Workshop, Finished Avatars (成品) and Package Manager.
+Remove the Inspection Home card; its existing sidebar/report capability remains available.
+The same card set serves desktop Home and the big-screen AMF directory.
 
 The compact shell follows the [design standard](../design/design-standard.md#3-platform-and-information-architecture):
 the bottom taskbar is no longer mounted, and feature search is a Settings-sidebar footer action
@@ -130,6 +139,12 @@ handoff through `RemoteContentApiV1.openAccountGuideInBrowser(AccountGuideIdV1)`
 preload/Main channel. This is an additive native desktop port, not a new Provider method or a
 change to the frozen application envelope. Main checks local sender identity and maps the closed
 ID to a fixed public URL; arbitrary URLs, page data and credentials do not cross this port.
+Warehouse probes account-library access through the existing `authProbe` before offering
+sync; stored cookies alone are insufficient. Pending probes show a disabled checking entry;
+IPC failures offer a retry. A session that cannot be verified offers the BOOTH login flow.
+Closing login/import refreshes this fact, and an explicit sync request reprobes it. A rejected
+or expired session opens login directly. Main skips anonymous probes when account cookies are
+absent and bounds authenticated probes to eight seconds; no credentials or raw page bodies reach Renderer.
 
 Main owns a VUA system tray icon throughout normal application execution. Double-click restores
 and focuses the existing main window. The localized menu exposes update checking, big screen
@@ -318,6 +333,7 @@ redistribution review authorizes each bundled binary before a public release.
 
 ## Document changelog
 
+- 1.17.0 (2026-10-10): verify BOOTH account access before offering library sync with direct login/retry handoffs, discover Editors through the host and inspect fresh Unity 2022 entry before CLI acquisition, and replace the AMF Home Inspection card with Finished Avatars and Package Manager.
 - 1.16.0 (2026-10-10): unify collapsible scenario/tool/editor details, add native Help/chapter/wizard history and Avatar-editing AMF activation, and consolidate Settings language/version controls without changing vendor/device evidence.
 - 1.15.0 (2026-10-10): add environment Tools/Help, embed the knowledge encyclopedia through desktop-window v0.2, halve Play card heights and remove the resource-panel sampling-time label.
 - 1.14.0 (2026-10-10): clarify AMF's bundled installation and separate activation for fresh/legacy profiles; retain saved choices and omit external editing placeholders from Ibis.
@@ -327,6 +343,5 @@ redistribution review authorizes each bundled binary before a public release.
 - 1.11.0 (2026-10-09): apply the compact-shell ruling, move command search into Settings, replace the appearance select with joined buttons and a Dark default, and retarget the task-tour step to Home.
 - 1.10.0 (2026-10-09): implement settings-only sidebar/return, separate real task status and appearance from guides/demo previews, and add the localized VUA tray with typed main-renderer gestures and normal shutdown.
 - 1.9.0 (2026-10-08): record fixed navigation, desktop/big-screen focus, independent wizard/task facts and the closed official account-page browser handoff; temporary embedding and device acceptance remain pending.
-- 1.8.0 (2026-10-08): record the implemented game-window follow loop in Main (game-window-observe v0.1 observation, follow decision module, and the setGameGuideFollowing / getGameGuideFollowStatus desktop API faces).
 
 Earlier entries remain in Git history.

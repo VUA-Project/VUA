@@ -219,6 +219,7 @@ demoTaskTitle: "演示任务",
       settingsAbout: "关于",
       settingsDonate: "捐赠",
       packages: "包管理器",
+      release: "成品",
       /** 车间侧栏标签(2026-09-25 用户裁决):复合术语序列退役为直给词面 */
       workshop: "车间",
       /** 搭配草稿自 2026-09-20 导航重构起为配方页内弹窗;键保留作词面。 */
@@ -1509,6 +1510,10 @@ rolled_back: "已回滚",
     viewList: "列表",
     viewToggleAria: "切换卡片/列表视图",
     catalogSync: {
+      checking: "正在检测 BOOTH 登录…",
+      checkFailed: "暂时无法检测 BOOTH 登录",
+      checkDescription: "先确认 BOOTH 登录，再同步素材库。",
+      retryCheck: "重新检测登录",
       warningHint: "库同步结束，有条目未能处理。详情见任务记录。",
       cancelledHint: "库同步已取消，已保存的目录条目保留。",
       inspectHint: "上次同步中断，请检查任务后重新同步。",
