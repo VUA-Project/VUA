@@ -1,6 +1,7 @@
 import { createLiveDeploymentPort } from "./live-deployment-port.ts";
 import { createAmfModulePort } from "./amf-module-port.ts";
 import { createLivePlayPort } from "./live-play-port.ts";
+import { createLiveToolPort } from "./live-tool-port.ts";
 import { createCreatorInventoryPort } from "./creator-inventory-port.ts";
 import { createLiveNetworkPort } from "./live-network-port.ts";
 import type { ApplicationEventV01, TaskEventV01 } from "@vua/contracts";
@@ -146,6 +147,7 @@ function createLiveEnvironmentPort(client: GatewayClient): EnvironmentPort {
   return {
     deployment: createLiveDeploymentPort(client),
     play: createLivePlayPort(client),
+    tools: createLiveToolPort(client),
     managers: createCreatorInventoryPort(client),
     network: createLiveNetworkPort(client),
     snapshot: fetchView,

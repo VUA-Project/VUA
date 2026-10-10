@@ -1,11 +1,11 @@
 # Core, plugin, external integration, and overlay architecture
 
 
-> Document version: 1.6.0
+> Document version: 1.7.0
 > Status: Accepted
 > Scope: Environment deployment, project management, integrated runtimes, plugin host, desktop/VR overlays
-> Updated: 2026-10-08
-> Last conformance review: 2026-10-08 (guidance overlay boundary; game-window observation implemented)
+> Updated: 2026-10-10
+> Last conformance review: 2026-10-10 (VRCFT connection/source review; physical tracking pending)
 > Normative effect: Yes
 
 ## Trust classes
@@ -72,6 +72,16 @@ VRCFT owns device modules, tracking and its OSC output. Space Calibrator owns de
 sampling, transforms and calibration UI. First adapters do not consume Space Calibrator's internal
 overlay/driver IPC or automatically rewrite either tool's private settings. Documented status/log
 diagnostics can be added later when a concrete need exists; unknown never means configured or working.
+
+The first [VRCFT connection](../protocols/external-tool-v0.1.md) is a closed Candidate face for
+the official Steam application. Its device picker lists supported choices rather than detected
+hardware; the connection/app choice determines the upstream module. Module installation stays
+in VRCFT's own registry/package UI. Normal close requests require a newly observed matching
+instance's PID, creation time and executable path; pre-existing instances and Steam are retained.
+The [host lifecycle exception](../protocols/provider-process-v0.1.md#boundary-and-artifact) explicitly
+separates this external launch from managed workers, so provider exit is not an external-app stop.
+The [connection checkpoint](../development/vrcft-integration-plan.md#source-checkpoint-and-pending-acceptance)
+records tested boundaries and remaining vendor/hardware evidence.
 
 OVR Overlay Translator, OVR Advanced Settings, OVR Toolkit, OyasumiVR and LIV use the shared
 connection only. Upstream owns translation, desktop capture, sleep automation, recording and
@@ -152,6 +162,7 @@ untrusted and cannot authorize local mutation.
 
 ## Document changelog
 
+- 1.7.0 (2026-10-10): connect the fixed Candidate VRCFT adapter, supported-device/module selection and scoped normal close; link the versioned host-only external lifetime exception and pending physical acceptance.
 - 1.6.0 (2026-10-08): record the implemented read-only game-window observation (game-window-observe v0.1) that backs Main's game-guide following.
 - 1.5.0 (2026-10-05): separate local guide progress from task snapshots and route three first-play guidance contexts to their owning architecture.
 - 1.4.0 (2026-10-03): define the shared Steam adapter for the expanded N2 inventory, local installation semantics and limited upstream-app lifecycle responsibilities.

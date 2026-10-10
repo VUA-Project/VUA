@@ -15,6 +15,16 @@ function request(): unknown {
 }
 
 describe("Electron Desktop Gateway routing", () => {
+  it("routes fixed external-tool actions to the host and rejects custom launch targets", async () => {
+    const provider = new MockOrchestratorProviderV01(); await provider.start(); const invoke = vi.spyOn(provider, "invoke");
+    const context = { provider, productVersion: "0.6.0", platform: "win32", rendererUrl };
+    const request = { schemaVersion: 1, requestId: "tool", method: "tools.actConnection", params: { toolId: "vrcft", action: "start", commandId: "tool-once" } };
+    await routeDesktopGatewayInvoke(context, `${rendererUrl}/`, request);
+    expect(invoke).toHaveBeenLastCalledWith(expect.objectContaining({ method: "tools.actConnection", kind: "command", commandId: "tool-once", params: { toolId: "vrcft", action: "start" } }));
+    invoke.mockClear();
+    const rejected = await routeDesktopGatewayInvoke(context, `${rendererUrl}/`, { ...request, params: { ...request.params, executable: "cmd.exe" } });
+    expect(rejected).toMatchObject({ ok: false, error: { code: "invalid_request" } }); expect(invoke).not.toHaveBeenCalled();
+  });
   it("routes scoped play commands without accepting native paths or renderer command text", async () => {
     const provider = new MockOrchestratorProviderV01(); await provider.start(); const invoke = vi.spyOn(provider, "invoke");
     const context = { provider, productVersion: "0.6.0", platform: "win32", rendererUrl };

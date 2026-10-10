@@ -1,3 +1,4 @@
+import { faceTrackingCopy } from "./face-tracking-copy.ts";
 import { helpCopy } from "./help-copy.ts";
 import { moduleCopy } from "./module-copy.ts";
 import { hardwareCopy } from "./hardware-copy.ts";
@@ -19,6 +20,7 @@ import { journeyCopy } from "./journey-copy.ts";
  *   (DEV-only, reachable only from gateway fixtures, tree-shaken in release).
  */
 export const strings = {
+  faceTracking: faceTrackingCopy["en"],
   helpUi: helpCopy["en"],
   amfModule: moduleCopy["en"],
   environmentCards: environmentCopy["en"],
@@ -3314,6 +3316,7 @@ demoTaskTitle: "Demo task",
    *  catalog browser currently degrades failures to not-connected/not-found;
    *  surfacing these keys in that view is a follow-up slice. */
   errors: {
+    externalTool: { unavailable: faceTrackingCopy["en"].unknown },
     playSession: { unavailable: environmentCopy["en"].unknown },
     recipe: { draftFailed: "The Recipe draft operation could not finish." },
     library: { downloadFailed: "The library download could not finish. Previously stored files are kept.", removalFailed: "Local files could not be deleted. Refresh their status and inspect the task.", reconciliationFailed: "Asset content verification could not finish. Inspect the task, then sync again." },

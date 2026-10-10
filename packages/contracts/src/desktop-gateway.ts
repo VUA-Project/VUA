@@ -1,5 +1,6 @@
 import { isDeploymentCommandId, isDeploymentParams, type DeploymentPlanParams, type DeploymentExecuteParams } from "./environment-deployment.js";
 import { isPlayCommandId, isPlayParams, type PlayRoute } from "./play-session.js";
+import { isExternalToolParams, type ExternalToolAction } from "./external-tool.js";
 import { isNetworkParams, type NetworkIntent } from "./environment-network.js";
 import { isWebsiteTestParams, type WebsiteTestParams } from "./website-test.js";
 import type {
@@ -983,6 +984,8 @@ export interface GatewayDeploymentExecuteRequest { readonly schemaVersion: 1; re
 export type DesktopGatewayRequestV1 =
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.inspectManagerApps"; readonly params: Readonly<Record<string, never>> }
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.observePlay"; readonly params: { readonly route: PlayRoute } }
+  | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "tools.observeConnection"; readonly params: { readonly toolId: "vrcft" } }
+  | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "tools.actConnection"; readonly params: { readonly toolId: "vrcft"; readonly action: ExternalToolAction; readonly commandId: string } }
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.startPlay" | "environment.stopPlay"; readonly params: { readonly route: PlayRoute; readonly commandId: string } }
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.checkNetwork"; readonly params: { readonly intent: NetworkIntent } }
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.testWebsites"; readonly params: WebsiteTestParams }
@@ -1077,6 +1080,8 @@ export const DESKTOP_GATEWAY_METHOD_KINDS = {
   "environment.testWebsites": "query",
   "environment.planDeployment": "query",
   "environment.observePlay": "query",
+  "tools.observeConnection": "query",
+  "tools.actConnection": "command",
   "environment.inspectManagerApps": "query",
   "environment.startPlay": "command",
   "environment.stopPlay": "command",
@@ -1849,6 +1854,11 @@ export function isDesktopGatewayRequestV1(value: unknown): value is DesktopGatew
       return hasExactKeys(value, REQUEST_KEYS) && isDeploymentParams(value.params, false);
     case "environment.observePlay":
       return hasExactKeys(value, REQUEST_KEYS) && isPlayParams(value.params);
+    case "tools.observeConnection":
+      return hasExactKeys(value, REQUEST_KEYS) && isExternalToolParams(value.params, false);
+    case "tools.actConnection":
+      return hasExactKeys(value, REQUEST_KEYS) && hasExactKeys(value.params, ["toolId", "action", "commandId"])
+        && isPlayCommandId(value.params.commandId) && isExternalToolParams({ toolId: value.params.toolId, action: value.params.action }, true);
     case "environment.inspectManagerApps":
       return hasExactKeys(value, REQUEST_KEYS) && hasExactKeys(value.params, []);
     case "environment.startPlay": case "environment.stopPlay":

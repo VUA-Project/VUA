@@ -1,0 +1,745 @@
+{
+  "requests": [
+    {
+      "name": "observe",
+      "valid": true,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "query",
+        "correlationId": "query",
+        "kind": "query",
+        "method": "tools.observeConnection",
+        "params": {
+          "toolId": "vrcft"
+        }
+      }
+    },
+    {
+      "name": "install",
+      "valid": true,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "query",
+        "correlationId": "query",
+        "kind": "command",
+        "method": "tools.actConnection",
+        "params": {
+          "toolId": "vrcft",
+          "action": "install"
+        },
+        "commandId": "act-once"
+      }
+    },
+    {
+      "name": "start",
+      "valid": true,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "query",
+        "correlationId": "query",
+        "kind": "command",
+        "method": "tools.actConnection",
+        "params": {
+          "toolId": "vrcft",
+          "action": "start"
+        },
+        "commandId": "act-once"
+      }
+    },
+    {
+      "name": "stop",
+      "valid": true,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "query",
+        "correlationId": "query",
+        "kind": "command",
+        "method": "tools.actConnection",
+        "params": {
+          "toolId": "vrcft",
+          "action": "stop"
+        },
+        "commandId": "act-once"
+      }
+    },
+    {
+      "name": "cancel",
+      "valid": true,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "query",
+        "correlationId": "query",
+        "kind": "command",
+        "method": "tools.actConnection",
+        "params": {
+          "toolId": "vrcft",
+          "action": "cancel"
+        },
+        "commandId": "act-once"
+      }
+    },
+    {
+      "name": "unknown-tool",
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "query",
+        "correlationId": "query",
+        "kind": "query",
+        "method": "tools.observeConnection",
+        "params": {
+          "toolId": "custom"
+        }
+      }
+    },
+    {
+      "name": "coercible-tool",
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "query",
+        "correlationId": "query",
+        "kind": "query",
+        "method": "tools.observeConnection",
+        "params": {
+          "toolId": [
+            "vrcft"
+          ]
+        }
+      }
+    },
+    {
+      "name": "query-path",
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "query",
+        "correlationId": "query",
+        "kind": "query",
+        "method": "tools.observeConnection",
+        "params": {
+          "toolId": "vrcft",
+          "path": "C:/private"
+        }
+      }
+    },
+    {
+      "name": "query-action",
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "query",
+        "correlationId": "query",
+        "kind": "query",
+        "method": "tools.observeConnection",
+        "params": {
+          "toolId": "vrcft",
+          "action": "start"
+        }
+      }
+    },
+    {
+      "name": "query-command",
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "query",
+        "correlationId": "query",
+        "kind": "query",
+        "method": "tools.observeConnection",
+        "params": {
+          "toolId": "vrcft"
+        },
+        "commandId": "extra"
+      }
+    },
+    {
+      "name": "wrong-kind",
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "query",
+        "correlationId": "query",
+        "kind": "command",
+        "method": "tools.observeConnection",
+        "params": {
+          "toolId": "vrcft"
+        }
+      }
+    },
+    {
+      "name": "command-query",
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "query",
+        "correlationId": "query",
+        "kind": "query",
+        "method": "tools.actConnection",
+        "params": {
+          "toolId": "vrcft",
+          "action": "start"
+        },
+        "commandId": "act-once"
+      }
+    },
+    {
+      "name": "missing-id",
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "query",
+        "correlationId": "query",
+        "kind": "command",
+        "method": "tools.actConnection",
+        "params": {
+          "toolId": "vrcft",
+          "action": "start"
+        },
+        "commandId": ""
+      }
+    },
+    {
+      "name": "unsafe-id",
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "query",
+        "correlationId": "query",
+        "kind": "command",
+        "method": "tools.actConnection",
+        "params": {
+          "toolId": "vrcft",
+          "action": "start"
+        },
+        "commandId": "bad command"
+      }
+    },
+    {
+      "name": "long-id",
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "query",
+        "correlationId": "query",
+        "kind": "command",
+        "method": "tools.actConnection",
+        "params": {
+          "toolId": "vrcft",
+          "action": "start"
+        },
+        "commandId": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+    {
+      "name": "unknown-action",
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "query",
+        "correlationId": "query",
+        "kind": "command",
+        "method": "tools.actConnection",
+        "params": {
+          "toolId": "vrcft",
+          "action": "kill"
+        },
+        "commandId": "act-once"
+      }
+    },
+    {
+      "name": "coercible-action",
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "query",
+        "correlationId": "query",
+        "kind": "command",
+        "method": "tools.actConnection",
+        "params": {
+          "toolId": "vrcft",
+          "action": [
+            "start"
+          ]
+        },
+        "commandId": "act-once"
+      }
+    },
+    {
+      "name": "custom-appid",
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "query",
+        "correlationId": "query",
+        "kind": "command",
+        "method": "tools.actConnection",
+        "params": {
+          "toolId": "vrcft",
+          "action": "start",
+          "appId": "1"
+        },
+        "commandId": "act-once"
+      }
+    },
+    {
+      "name": "extra",
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "query",
+        "correlationId": "query",
+        "kind": "command",
+        "method": "tools.actConnection",
+        "params": {
+          "toolId": "vrcft",
+          "action": "start"
+        },
+        "commandId": "act-once",
+        "executable": "cmd.exe"
+      }
+    }
+  ],
+  "results": [
+    {
+      "name": "installed-idle",
+      "valid": true,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "installed",
+          "steamReady": true,
+          "buildId": "123",
+          "running": false,
+          "canStop": false,
+          "activity": "idle",
+          "issue": null
+        }
+      }
+    },
+    {
+      "name": "missing",
+      "valid": true,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "missing",
+          "steamReady": true,
+          "buildId": null,
+          "running": false,
+          "canStop": false,
+          "activity": "idle",
+          "issue": null
+        }
+      }
+    },
+    {
+      "name": "incomplete",
+      "valid": true,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "incomplete",
+          "steamReady": true,
+          "buildId": null,
+          "running": false,
+          "canStop": false,
+          "activity": "idle",
+          "issue": null
+        }
+      }
+    },
+    {
+      "name": "unknown",
+      "valid": true,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "unknown",
+          "steamReady": true,
+          "buildId": null,
+          "running": false,
+          "canStop": false,
+          "activity": "idle",
+          "issue": null
+        }
+      }
+    },
+    {
+      "name": "no-steam",
+      "valid": true,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "missing",
+          "steamReady": false,
+          "buildId": null,
+          "running": false,
+          "canStop": false,
+          "activity": "idle",
+          "issue": "steam_missing"
+        }
+      }
+    },
+    {
+      "name": "install-wait",
+      "valid": true,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "incomplete",
+          "steamReady": true,
+          "buildId": null,
+          "running": false,
+          "canStop": false,
+          "activity": "install_requested",
+          "issue": null
+        }
+      }
+    },
+    {
+      "name": "start-wait",
+      "valid": true,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "installed",
+          "steamReady": true,
+          "buildId": "123",
+          "running": false,
+          "canStop": false,
+          "activity": "starting",
+          "issue": null
+        }
+      }
+    },
+    {
+      "name": "borrowed",
+      "valid": true,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "installed",
+          "steamReady": true,
+          "buildId": "123",
+          "running": true,
+          "canStop": false,
+          "activity": "idle",
+          "issue": null
+        }
+      }
+    },
+    {
+      "name": "owned",
+      "valid": true,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "installed",
+          "steamReady": true,
+          "buildId": "123",
+          "running": true,
+          "canStop": true,
+          "activity": "idle",
+          "issue": null
+        }
+      }
+    },
+    {
+      "name": "close-wait",
+      "valid": true,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "installed",
+          "steamReady": true,
+          "buildId": "123",
+          "running": true,
+          "canStop": true,
+          "activity": "stopping",
+          "issue": null
+        }
+      }
+    },
+    {
+      "name": "close-timeout",
+      "valid": true,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "installed",
+          "steamReady": true,
+          "buildId": "123",
+          "running": true,
+          "canStop": true,
+          "activity": "idle",
+          "issue": "close_timeout"
+        }
+      }
+    },
+    {
+      "name": "start-timeout",
+      "valid": true,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "installed",
+          "steamReady": true,
+          "buildId": "123",
+          "running": false,
+          "canStop": false,
+          "activity": "idle",
+          "issue": "start_timeout"
+        }
+      }
+    },
+    {
+      "name": "unowned-close",
+      "valid": false,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "installed",
+          "steamReady": true,
+          "buildId": "123",
+          "running": true,
+          "canStop": false,
+          "activity": "stopping",
+          "issue": null
+        }
+      }
+    },
+    {
+      "name": "unobserved-owned",
+      "valid": false,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "installed",
+          "steamReady": true,
+          "buildId": "123",
+          "running": false,
+          "canStop": true,
+          "activity": "idle",
+          "issue": null
+        }
+      }
+    },
+    {
+      "name": "already-started",
+      "valid": false,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "installed",
+          "steamReady": true,
+          "buildId": "123",
+          "running": true,
+          "canStop": false,
+          "activity": "starting",
+          "issue": null
+        }
+      }
+    },
+    {
+      "name": "bad-build",
+      "valid": false,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "installed",
+          "steamReady": true,
+          "buildId": "abc",
+          "running": false,
+          "canStop": false,
+          "activity": "idle",
+          "issue": null
+        }
+      }
+    },
+    {
+      "name": "long-build",
+      "valid": false,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "installed",
+          "steamReady": true,
+          "buildId": "111111111111111111111111111111111",
+          "running": false,
+          "canStop": false,
+          "activity": "idle",
+          "issue": null
+        }
+      }
+    },
+    {
+      "name": "bad-presence",
+      "valid": false,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": [
+            "installed"
+          ],
+          "steamReady": true,
+          "buildId": "123",
+          "running": false,
+          "canStop": false,
+          "activity": "idle",
+          "issue": null
+        }
+      }
+    },
+    {
+      "name": "bad-activity",
+      "valid": false,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "installed",
+          "steamReady": true,
+          "buildId": "123",
+          "running": false,
+          "canStop": false,
+          "activity": [
+            "idle"
+          ],
+          "issue": null
+        }
+      }
+    },
+    {
+      "name": "bad-issue",
+      "valid": false,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "installed",
+          "steamReady": true,
+          "buildId": "123",
+          "running": false,
+          "canStop": false,
+          "activity": "idle",
+          "issue": [
+            "start_timeout"
+          ]
+        }
+      }
+    },
+    {
+      "name": "hardware-fact",
+      "valid": false,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "installed",
+          "steamReady": true,
+          "buildId": "123",
+          "running": false,
+          "canStop": false,
+          "activity": "idle",
+          "issue": null,
+          "connectedHeadset": "quest-pro"
+        }
+      }
+    },
+    {
+      "name": "unknown-tool",
+      "valid": false,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "other",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "installed",
+          "steamReady": true,
+          "buildId": "123",
+          "running": false,
+          "canStop": false,
+          "activity": "idle",
+          "issue": null
+        }
+      }
+    },
+    {
+      "name": "wrong-version",
+      "valid": false,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.2",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "installed",
+          "steamReady": true,
+          "buildId": "123",
+          "running": false,
+          "canStop": false,
+          "activity": "idle",
+          "issue": null
+        }
+      }
+    },
+    {
+      "name": "extra-result",
+      "valid": false,
+      "value": {
+        "toolConnection": {
+          "schemaVersion": "vua.external-tool/v0.1",
+          "toolId": "vrcft",
+          "capturedAt": "2026-10-10T00:00:00Z",
+          "presence": "installed",
+          "steamReady": true,
+          "buildId": "123",
+          "running": false,
+          "canStop": false,
+          "activity": "idle",
+          "issue": null
+        },
+        "success": true
+      }
+    }
+  ]
+}

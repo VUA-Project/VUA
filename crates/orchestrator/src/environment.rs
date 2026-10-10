@@ -598,7 +598,7 @@ impl EnvironmentEngine {
     /// and derives every library's `steamapps/common` from
     /// `libraryfolders.vdf`, so multi-drive installs are observed instead
     /// of assumed.
-    fn discover_steam(&self) -> Option<(PathBuf, Vec<PathBuf>)> {
+    pub fn discover_steam(&self) -> Option<(PathBuf, Vec<PathBuf>)> {
         let mut install: Option<PathBuf> = self
             .roots
             .registry

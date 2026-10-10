@@ -44,7 +44,8 @@
     "smoke:deployment": "pnpm --filter @vua/contracts build && electron scripts/smoke-deployment.mjs",
     "smoke:import-dialog": "electron scripts/smoke-import-dialog.mjs",
     "smoke:resource-monitor": "electron scripts/smoke-resource-monitor.mjs",
-    "smoke:resource-brand": "electron scripts/smoke-resource-brand.mjs"
+    "smoke:resource-brand": "electron scripts/smoke-resource-brand.mjs",
+    "smoke:vrcft": "electron scripts/smoke-vrcft.mjs"
   },
   "dependencies": {
     "@vua/contracts": "workspace:*",

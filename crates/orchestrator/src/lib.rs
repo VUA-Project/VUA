@@ -21,6 +21,7 @@ mod editor_targets;
 mod editor_selection;
 mod environment;
 pub mod network;
+pub mod external_tools;
 mod filesystem;
 mod journal;
 mod material_types;

@@ -1,6 +1,6 @@
 # Protocol reading guide
 
-> Document version: 1.8.0
+> Document version: 1.9.0
 > Status: Accepted
 > Updated: 2026-10-10
 > Scope: Navigation and retention guidance; no wire-format changes
@@ -45,7 +45,7 @@ from the existence of one method. This is a navigation aid, not a second complet
 | First-play network | [Network v0.1](environment-network-v0.1.md), `environment.checkNetwork` | [Use case](../../crates/orchestrator/src/network.rs) → [HTTPS adapter](../../crates/project-manager/src/network_probe.rs) → [consumer](../../apps/desktop/src/renderer/gateway/live-network-port.ts) | Candidate implementation: explicit per-service HTTPS checks and correctable region; separate from game/PICO LAN acceptance |
 | Purpose-driven deployment | [Deployment v0.1](environment-deployment-v0.1.md), `environment.planDeployment` / `environment.executeDeployment` | [Core policy/use case](../../crates/orchestrator/src/deployment.rs) → [Windows adapter](../../crates/project-manager/src/deployment_adapter.rs) → [consumer tests](../../apps/desktop/src/renderer/gateway/electron-gateway.test.ts) | Candidate executable slice with synthetic tests; real installer/project/device and UI acceptance pending |
 | Account guide | [Accepted minimal state](../architecture/evolution.md#account-guidance-alongside-deployment) | Reuse the existing isolated desktop browser; define exact guide methods and consumer tests with its implementation | Contract to design; deployment does not imply account registration/verification |
-| N2 external tools | [External-connection responsibilities](../architecture/integrations-and-overlays.md#external-integration-modes) | [Adapter ownership](../architecture/system.md#current-code-layout), then tool-specific discovery/launch code and tests in the implementation slice | Accepted scope; runtime support and any new contract remain to be established |
+| N2 external tools | [External-tool v0.1](external-tool-v0.1.md), `tools.observeConnection` / `tools.actConnection` | [VRCFT use case](../../crates/orchestrator/src/external_tools.rs) → [Steam adapter](../../crates/project-manager/src/steam_tools.rs) → [frontend port](../../apps/desktop/src/renderer/gateway/live-tool-port.ts) | Candidate fixed VRCFT connection and device/module guidance; real installation/launch/tracking acceptance pending; other N2 tools remain planned |
 | Material/Recipe production | [Intake](material-intake-v0.2.md), [production](production-use-case-v0.2.md), [Recipe export](recipe-export-v0.1.md), [SDK handoff](release-handoff-v0.2.md) | [Provider routes](../../crates/provider-host/src/provider_host.rs) → [frontend production adapter](../../apps/desktop/src/renderer/gateway/live-production-port.ts) and [tests](../../apps/desktop/src/renderer/gateway/live-production-port.test.ts); [Recipe export consumer](../../apps/desktop/src/renderer/gateway/recipe-export-port.test.ts) | Contracts and implementation entry points exist; inspect the exact operation/capability. N3/N4 real-flow acceptance remains separate |
 | BOOTH library/catalog/download | [BDL queries](bdl-queries-v0.5.md), [commands](bdl-commands-v0.4.md), [download events](download-events-v0.1.md) | [Acquisition](../../crates/acquisition/), [BDL store](../../crates/bdl-store/), [desktop session boundary](../architecture/desktop.md#remote-content-isolation) | Existing parts require the N5 capability audit; these contracts alone do not prove complete account-library retrieval |
 
@@ -77,6 +77,7 @@ owns routing and legacy-data migration.
 
 ## Document changelog
 
+- 1.9.0 (2026-10-10): index the Candidate external-tool face and VRCFT producer/consumer routes, separating hardware/module guidance from pending real acceptance.
 - 1.8.0 (2026-10-10): index Candidate desktop-window v0.2 for main Help navigation while retaining the V1 window face.
 - 1.7.0 (2026-10-09): index the Candidate host-owned AMF lifecycle face separately from frozen AMF/Provider contracts.
 
@@ -90,6 +91,3 @@ owns routing and legacy-data migration.
 - 1.2.0 (2026-09-30): add direct family links, scoped delivery-status guidance and contract-to-code reading routes.
 
 - 1.1.0 (2026-09-29): distinguish human lookup from Agent contract-verification workflow.
-
-
-- 1.0.0 (2026-09-28): add task-based protocol navigation and explicit coexistence/retention guidance.

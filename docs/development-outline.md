@@ -1,6 +1,6 @@
 # VUA development sequence
 
-> Document version: 3.19.0
+> Document version: 3.20.0
 > Status: Accepted
 > Updated: 2026-10-10
 > Authority: User rulings of 2026-09-28 through 2026-10-10, including independent release numbering, scenario-host ownership, AMF/BDL isolation and separate host/module acceptance
@@ -57,7 +57,7 @@ and placeholder entries are deferred beyond this release under the 2026-10-10 us
 | Gate | User task | Status |
 | --- | --- | --- |
 | N1 | Isolate the host, then detect, deploy and guide each scenario's prerequisites and SOP | Desktop/PICO play subset first; complete real-machine acceptance pending |
-| N2 | Select optional modules and connect chosen external software from Steam, official installers or GitHub releases | Planned; selected inventory and source-specific acceptance below |
+| N2 | Select optional modules and connect chosen external software from Steam, official installers or GitHub releases | VRCFT Candidate connection and device-guidance slice; real installation/tracking acceptance pending; other selected entries planned |
 | N3 | Accept AMF's complex real-material Avatar production and SDK handoff | Planned; independent of host-only publication |
 | N4 | Accept AMF's Recipe saving, sharing and reproduction | Planned; independent AMF scope |
 | N5 | Accept AMF + BDL material management and acquisition | Existing code, audit and review retained; independent acceptance remains open |
@@ -233,8 +233,9 @@ N2 covers optional modules and external-software connections, extending the orig
 Steam tools with the explicitly selected VRCS entry. Reuse N1's prerequisite capabilities;
 support each application's actual Steam, official-installer or GitHub-release source rather
 than forcing every entry through Steam. A module supplies a chosen scenario/SOP, not a second
-copy of host environment management. The current Tools cards expose descriptions with disabled
-development actions; that presentation does not establish installed or launchable integrations.
+copy of host environment management. VRCFT now has a Candidate Steam connection and device picker;
+the other Tools cards expose descriptions with disabled development actions. Neither the guide
+nor the presence of a card establishes physical tracking or accepted integrations.
 MioVRC and a public Agent/MCP integration remain outside Ibis.
 
 | Application / official distribution | Steam App ID | Purpose | Additional acceptance / timing |
@@ -280,7 +281,8 @@ LIV is classified under capture/streaming; this connection does not install a LI
 The short [VRCFT connection plan](development/vrcft-integration-plan.md) records implementation
 order; it does not replace the following real tracking acceptance or mark N2 complete.
 
-- **VRCFT:** guide its hardware-module installation in the upstream UI, headset switches/calibration,
+- **VRCFT:** show supported device choices, then select the app/streamer where it determines the
+  module. Guide that module's installation in the upstream UI, headset switches/calibration,
   VRChat OSC (Open Sound Control) and a suitable Avatar. Completing the PICO slice exercises the
   eye-tracking row above. Native gaze/blinking can use a suitable existing Avatar; full facial
   expressions require a face-tracking-compatible Avatar. Verify actual tracking/OSC output,
@@ -501,6 +503,7 @@ do not turn documentation completeness, speculative coverage, or idle agent acti
 
 ## Document changelog
 
+- 3.20.0 (2026-10-10): record the Candidate VRCFT Steam/device-guidance connection, add connection-dependent module selection and retain source-specific real-installation/tracking acceptance and other planned tools.
 - 3.19.0 (2026-10-10): enable bundled AMF for new profiles while retaining saved choices and old-profile defaults; link the small VRCFT connection plan without changing stage or tracking acceptance.
 - 3.18.0 (2026-10-10): apply the seven-stage scenario-host/AMF/BDL sequence, expand N2 sources and selected tools, place N6 with each path and split N7 release scope; preserve N1/N5 evidence and pending formal acceptance.
 - 3.17.0 (2026-10-10): retain bundled AMF with explicit activation and defer external Avatar-editing modules beyond Ibis without changing existing gate outcomes.
@@ -510,4 +513,3 @@ do not turn documentation completeness, speculative coverage, or idle agent acti
 - 3.13.0 (2026-10-09): narrow N5 closure to intact local-file retention, official/minimal manual provenance and optional bounded dependency presentation; defer third-party search.
 - 3.12.0 (2026-10-08): accept migration reconciliation, limit record removal to local imports and dependency discovery to persisted link clues, and move Recipe/VPM and production-loop acceptance after N5.
 - 3.11.0 (2026-10-08): apply the user's N5 missing-file/source refinements, clarify dependency evidence limits and retain production integration as linked pending acceptance.
-- 3.10.0 (2026-10-05): define observable acceptance for three guidance contexts, their independent state and the separate N5 co-release review.

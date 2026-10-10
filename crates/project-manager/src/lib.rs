@@ -14,6 +14,7 @@ pub mod editor_verify;
 pub mod environment_managers;
 pub mod game_window;
 pub mod system_resources;
+pub mod steam_tools;
 pub mod play_session;
 pub mod manager_apps;
 pub mod network_probe;

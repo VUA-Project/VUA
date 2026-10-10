@@ -108,6 +108,10 @@ function toApplicationRequest(
       return { ...base, kind: "query", method: request.method, params: request.params };
     case "environment.observePlay":
       return { ...base, kind: "query", method: request.method, params: request.params };
+    case "tools.observeConnection":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "tools.actConnection":
+      return { ...base, kind: "command", method: request.method, commandId: request.params.commandId, params: { toolId: request.params.toolId, action: request.params.action } };
     case "environment.inspectManagerApps":
       return { ...base, kind: "query", method: request.method, params: {} };
     case "environment.startPlay": case "environment.stopPlay":

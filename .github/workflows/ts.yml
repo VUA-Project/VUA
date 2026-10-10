@@ -68,3 +68,5 @@ jobs:
         run: pnpm --filter @vua/desktop smoke:startup --locale-ordered
       - name: Resource summary and jurisdiction logo (isolated profile)
         run: pnpm --filter @vua/desktop smoke:resource-brand
+      - name: VRCFT device selection and recovery (isolated profile, synthetic actions)
+        run: pnpm --filter @vua/desktop smoke:vrcft

@@ -1,3 +1,4 @@
+import { faceTrackingCopy } from "./face-tracking-copy.ts";
 import { helpCopy } from "./help-copy.ts";
 import { moduleCopy } from "./module-copy.ts";
 import { hardwareCopy } from "./hardware-copy.ts";
@@ -17,6 +18,7 @@ import type { Strings } from "./strings.en.ts";
  *   仅 gateway fixture 可达,生产构建被 Tree-shaking 剔除)。
  */
 export const strings: Strings = {
+  faceTracking: faceTrackingCopy["zh-CN"],
   helpUi: helpCopy["zh-CN"],
   amfModule: moduleCopy["zh-CN"],
   environmentCards: environmentCopy["zh-CN"],
@@ -3258,6 +3260,7 @@ rolled_back: "已回滚",
    *  errors.catalog.*);catalog 浏览器当前将失败回落 not-connected/not-found,
    *  该视图中透传呈现这些键为后续切片 */
   errors: {
+    externalTool: { unavailable: faceTrackingCopy["zh-CN"].unknown },
     playSession: { unavailable: environmentCopy["zh-CN"].unknown },
     recipe: { draftFailed: "配方草稿操作未能完成。" },
     library: { downloadFailed: "素材下载未能完成,原有文件会保留。", removalFailed: "本地文件未能删除，请刷新文件状态并检查任务。", reconciliationFailed: "素材内容核验未能完成，请检查任务后重新同步。" },

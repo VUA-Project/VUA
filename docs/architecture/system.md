@@ -1,9 +1,9 @@
 # VUA system architecture
 
-> Document version: 2.2.0
+> Document version: 2.3.0
 > Status: Accepted
 > Scope: Current implementation and incremental code placement
-> Last conformance review: 2026-10-01 (source/layout review, not real-machine acceptance)
+> Last conformance review: 2026-10-10 (host external lifetime source/test review, not vendor/hardware acceptance)
 > Normative effect: Existing ownership and dependency boundaries; incremental design is in evolution.md
 
 ## Current shape
@@ -90,8 +90,10 @@ recorded next action, not a universal promise of rollback for every third-party 
 The accepted [Provider decision](../decisions/orchestrator-supervised-provider.md),
 [process protocol](../protocols/provider-process-v0.1.md), and
 [task-store format](../protocols/task-store-v0.1.md) govern current hosting and durability.
-The desktop supervises the separate executable; Windows Job containment controls descendant
-process lifetime. Crashes/restarts remain observable, and replacing a Provider occurs at an idle
+The desktop supervises the separate executable; Windows Job containment controls managed
+descendant lifetime. The process baseline's host-only explicit external-handoff exception keeps
+Steam/VRCFT outside that shutdown tree; ordinary workers and AMF remain contained.
+Crashes/restarts remain observable, and replacing a Provider occurs at an idle
 shutdown boundary. Source inspection here does not rerun those behavior tests.
 
 Tasks, Recipes, projects and production records remain owned by their application services.
@@ -133,6 +135,7 @@ and the external-connection mode are owned by
 
 ## Document changelog
 
+- 2.3.0 (2026-10-10): link the versioned host external-app lifetime exception without changing managed-worker/AMF containment, ownership or frozen wire faces.
 - 2.2.0 (2026-10-09): map separate host/AMF executable composition and the seventh workspace crate; link module ownership and migration.
 
 - 2.1.4 (2026-10-03): route all selected N2 applications to the shared external-connection architecture.

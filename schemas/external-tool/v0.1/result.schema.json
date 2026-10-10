@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.vua.local/external-tool/v0.1/result.schema.json",
+  "title": "External tool connection v0.1 Candidate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "toolConnection"
+  ],
+  "properties": {
+    "toolConnection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "toolId",
+        "capturedAt",
+        "presence",
+        "steamReady",
+        "buildId",
+        "running",
+        "canStop",
+        "activity",
+        "issue"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "vua.external-tool/v0.1"
+        },
+        "toolId": {
+          "const": "vrcft"
+        },
+        "capturedAt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "presence": {
+          "enum": [
+            "installed",
+            "missing",
+            "incomplete",
+            "unknown"
+          ]
+        },
+        "steamReady": {
+          "type": "boolean"
+        },
+        "buildId": {
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^\\d{1,32}$"
+            }
+          ]
+        },
+        "running": {
+          "type": "boolean"
+        },
+        "canStop": {
+          "type": "boolean"
+        },
+        "activity": {
+          "enum": [
+            "idle",
+            "install_requested",
+            "starting",
+            "stopping"
+          ]
+        },
+        "issue": {
+          "enum": [
+            null,
+            "steam_missing",
+            "not_installed",
+            "handoff_failed",
+            "start_timeout",
+            "close_failed",
+            "close_timeout"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "canStop": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "running": {
+                "const": true
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "activity": {
+                "const": "stopping"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "canStop": {
+                "const": true
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "activity": {
+                "const": "starting"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "running": {
+                "const": false
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

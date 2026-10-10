@@ -3,6 +3,7 @@ import { isNetworkParams, type NetworkIntent, type NetworkResult } from "./envir
 import { isWebsiteTestParams, type WebsiteTestParams, type WebsiteTestResult } from "./website-test.js";
 import { type GameWindowObservationResultV1 } from "./game-window.js";
 import { isPlayCommandId, isPlayParams, type PlayRoute, type PlaySessionResult } from "./play-session.js";
+import { isExternalToolParams, type ExternalToolAction, type ExternalToolResult } from "./external-tool.js";
 import type { ManagerAppsResult } from "./manager-apps.js";
 import { isDownloadEventV01 } from "./download-events.js";
 import { isCatalogSyncPageRequestV01, type CatalogSyncPageRequestV01 } from "./catalog-sync.js";
@@ -2829,6 +2830,8 @@ export interface DeploymentExecuteCommand extends ApplicationRequestBaseV01 { re
 export type ApplicationRequestV01 =
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.inspectManagerApps"; readonly params: Readonly<Record<string, never>> })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.observePlay"; readonly params: { readonly route: PlayRoute } })
+  | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "tools.observeConnection"; readonly params: { readonly toolId: "vrcft" } })
+  | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly method: "tools.actConnection"; readonly commandId: string; readonly params: { readonly toolId: "vrcft"; readonly action: ExternalToolAction } })
   | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly method: "environment.startPlay" | "environment.stopPlay"; readonly commandId: string; readonly params: { readonly route: PlayRoute } })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.checkNetwork"; readonly params: { readonly intent: NetworkIntent } })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.testWebsites"; readonly params: WebsiteTestParams })
@@ -2997,6 +3000,7 @@ export interface DemoTaskStartedV01 {
 export type ApplicationSuccessValueV01 =
   | ManagerAppsResult
   | PlaySessionResult
+  | ExternalToolResult
   | NetworkResult
   | WebsiteTestResult
   | GameWindowObservationResultV1
@@ -3229,6 +3233,11 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
   }
   if (value.method === "environment.inspectManagerApps") return value.kind === "query"
     && hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"]) && hasExactKeys(value.params, []);
+  if (value.method === "tools.observeConnection" || value.method === "tools.actConnection") {
+    const command = value.method === "tools.actConnection";
+    return value.kind === (command ? "command" : "query") && hasExactKeys(value, command ? ["contractVersion", "requestId", "correlationId", "kind", "method", "params", "commandId"] : ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
+      && isExternalToolParams(value.params, command) && (!command || isPlayCommandId(value.commandId));
+  }
   if (value.method === "environment.observePlay" || value.method === "environment.startPlay" || value.method === "environment.stopPlay") {
     const command = value.method !== "environment.observePlay";
     return value.kind === (command ? "command" : "query")
