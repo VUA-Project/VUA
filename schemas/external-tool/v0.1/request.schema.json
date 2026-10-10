@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.vua.local/external-tool/v0.1/request.schema.json",
+  "title": "External tool connection v0.1 Candidate",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "requestId",
+        "correlationId",
+        "kind",
+        "method",
+        "params"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": "0.1"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "correlationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "query"
+        },
+        "method": {
+          "const": "tools.observeConnection"
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "toolId"
+          ],
+          "properties": {
+            "toolId": {
+              "const": "vrcft"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "requestId",
+        "correlationId",
+        "kind",
+        "method",
+        "params",
+        "commandId"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": "0.1"
+        },
+        "requestId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "correlationId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "const": "command"
+        },
+        "method": {
+          "const": "tools.actConnection"
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "toolId",
+            "action"
+          ],
+          "properties": {
+            "toolId": {
+              "const": "vrcft"
+            },
+            "action": {
+              "enum": [
+                "install",
+                "start",
+                "stop",
+                "cancel"
+              ]
+            }
+          }
+        },
+        "commandId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_.:-]+$"
+        }
+      }
+    }
+  ]
+}

@@ -31,6 +31,7 @@ The development launcher does not rebuild the Rust Provider; repeat the build af
 | `pnpm --filter @vua/desktop typecheck` | Strict type check for both renderer and electron tsconfigs |
 | `pnpm --filter @vua/desktop test` | vitest unit tests |
 | `pnpm --filter @vua/desktop smoke:help-navigation` | Controlled Main/preload/renderer navigation: embedded hardware/knowledge, reading return, compact Play cards and light/big-screen appearance; isolated profile, no vendor actions |
+| `pnpm --filter @vua/desktop smoke:vrcft` | Native read-only tool discovery and controlled device/connection selection, module guidance and recovery UI; isolated profile, synthetic actions, no vendor/module installation or hardware acceptance |
 | `pnpm --filter @vua/desktop build` | Builds `@vua/orchestrator-provider` first, then emits to `dist/` |
 | `pnpm --filter @vua/desktop check` | typecheck + test + build + boundary, i18n, contrast and leakage checks |
 | `pnpm --filter @vua/desktop smoke:remote-permissions` | Real remote permission smoke (evidence written to `_local_m1/<version>/`, not committed; the `_local_m*` directory names are historical M-line naming) |

@@ -12,7 +12,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
     let database = vua_provider_host::runtime::database_path()?;
     #[cfg(windows)]
-    let _job = vua_provider_host::ProviderJobGuard::contain_current_process_tree()?;
+    let _job = vua_provider_host::ProviderJobGuard::contain_host_process_tree()?;
     let mut roots = vua_orchestrator::EnvironmentRoots::default();
     if let Some(root) = std::env::var_os("VUA_UNITY_EDITORS_ROOT") {
         roots.unity_editors_root = root.into();

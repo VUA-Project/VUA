@@ -1,3 +1,4 @@
+import { faceTrackingCopy } from "./face-tracking-copy.ts";
 import { helpCopy } from "./help-copy.ts";
 import { moduleCopy } from "./module-copy.ts";
 import { hardwareCopy } from "./hardware-copy.ts";
@@ -13,6 +14,7 @@ import type { Strings } from "./strings.en.ts";
  * - {placeholder} 이름은 소스 테이블과 정확히 일치해야 함.
  */
 export const strings: Strings = {
+  faceTracking: faceTrackingCopy["ko"],
   helpUi: helpCopy["ko"],
   amfModule: moduleCopy["ko"],
   environmentCards: environmentCopy["ko"],
@@ -3229,6 +3231,7 @@ rolled_back: "롤백됨",
    *  실패를 not-connected/not-found로 처리하므로, 이 뷰에서의 투과
    *  표시는 후속 슬라이스. */
   errors: {
+    externalTool: { unavailable: faceTrackingCopy["ko"].unknown },
     playSession: { unavailable: environmentCopy["ko"].unknown },
     recipe: { draftFailed: "레시피 초안 작업을 완료하지 못했습니다." },
     library: { downloadFailed: "다운로드를 완료하지 못했습니다. 기존 파일은 유지됩니다.", removalFailed: "로컬 파일을 삭제하지 못했습니다. 상태를 새로고침하고 작업을 확인하세요.", reconciliationFailed: "에셋 내용 확인을 완료하지 못했습니다. 작업을 확인한 뒤 다시 동기화하세요." },

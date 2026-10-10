@@ -45,6 +45,14 @@ function setup(options: { enabled?: boolean; factory?: () => OrchestratorProvide
 }
 
 describe("host / optional AMF process boundary", () => {
+  it("keeps VRCFT queries and actions on the host while AMF is disabled", async () => {
+    const { provider, host, amf, activations } = setup(); await provider.start();
+    await provider.invoke({ contractVersion: "0.1", requestId: "tool-read", correlationId: "tool-read", kind: "query", method: "tools.observeConnection", params: { toolId: "vrcft" } });
+    await provider.invoke({ contractVersion: "0.1", requestId: "tool-act", correlationId: "tool-act", kind: "command", method: "tools.actConnection", commandId: "tool-once", params: { toolId: "vrcft", action: "start" } });
+    expect(host.calls.map(call => call.method)).toEqual(["tools.observeConnection", "tools.actConnection"]);
+    expect(amf.calls).toHaveLength(0); expect(activations()).toBe(0);
+    await provider.prepareShutdown({ timeoutMs: 100 });
+  });
   it("discovers an AMF task owner before cancellation without leaking command fields into its query", async () => {
     const { provider, host, amf } = setup();
     await provider.start(); await provider.setAmfEnabled(true);

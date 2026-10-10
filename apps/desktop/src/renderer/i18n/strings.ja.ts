@@ -1,3 +1,4 @@
+import { faceTrackingCopy } from "./face-tracking-copy.ts";
 import { helpCopy } from "./help-copy.ts";
 import { moduleCopy } from "./module-copy.ts";
 import { hardwareCopy } from "./hardware-copy.ts";
@@ -13,6 +14,7 @@ import type { Strings } from "./strings.en.ts";
  * - {placeholder} の名前はソース表と完全一致させること。
  */
 export const strings: Strings = {
+  faceTracking: faceTrackingCopy["ja"],
   helpUi: helpCopy["ja"],
   amfModule: moduleCopy["ja"],
   environmentCards: environmentCopy["ja"],
@@ -3242,6 +3244,7 @@ rolled_back: "ロールバック済み",
    *  ブラウザは現在、失敗を not-connected/not-found に落とすため、
    *  このビューでの透過表示は後続スライス。 */
   errors: {
+    externalTool: { unavailable: faceTrackingCopy["ja"].unknown },
     playSession: { unavailable: environmentCopy["ja"].unknown },
     recipe: { draftFailed: "レシピの下書きの操作を完了できませんでした。" },
     library: { downloadFailed: "ダウンロードを完了できませんでした。既存のファイルは保持されます。", removalFailed: "ローカルファイルを削除できませんでした。状態を更新してタスクを確認してください。", reconciliationFailed: "素材の内容を確認できませんでした。タスクを確認してから再同期してください。" },

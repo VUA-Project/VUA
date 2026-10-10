@@ -573,7 +573,7 @@ fn relevant_process_name(route: PlayRoute, name: &str) -> bool {
         || (route == PlayRoute::PicoPcvr && matches!(name, "vrmonitor.exe" | "pico connect.exe"))
 }
 
-mod os {
+pub(crate) mod os {
     #[cfg(windows)]
     use super::relevant_process_name;
     use super::{PlayRoute, ProcessIdentity};
@@ -615,6 +615,10 @@ mod os {
     }
     #[cfg(windows)]
     pub(super) fn processes(route: PlayRoute) -> std::io::Result<Vec<ProcessIdentity>> {
+        processes_matching(|name| relevant_process_name(route, name))
+    }
+    #[cfg(windows)]
+    pub(crate) fn processes_matching(matches: impl Fn(&str) -> bool) -> std::io::Result<Vec<ProcessIdentity>> {
         use windows_sys::Win32::{
             Foundation::{CloseHandle, ERROR_NO_MORE_FILES, INVALID_HANDLE_VALUE},
             System::Diagnostics::ToolHelp::{
@@ -638,7 +642,7 @@ mod os {
                 .position(|c| *c == 0)
                 .unwrap_or(entry.szExeFile.len());
             let name = String::from_utf16_lossy(&entry.szExeFile[..end]).to_lowercase();
-            if relevant_process_name(route, &name) {
+            if matches(&name) {
                 match identity(entry.th32ProcessID) {
                     Ok(p) => out.push(p),
                     Err(e) => {
@@ -665,7 +669,7 @@ mod os {
         Ok(out)
     }
     #[cfg(windows)]
-    pub(super) fn close(expected: &ProcessIdentity) -> std::io::Result<()> {
+    pub(crate) fn close(expected: &ProcessIdentity) -> std::io::Result<()> {
         use windows_sys::Win32::{
             Foundation::{HWND, LPARAM},
             UI::WindowsAndMessaging::{
@@ -715,7 +719,11 @@ mod os {
         Err(std::io::Error::other("Windows required"))
     }
     #[cfg(not(windows))]
-    pub(super) fn close(_: &ProcessIdentity) -> std::io::Result<()> {
+    pub(crate) fn close(_: &ProcessIdentity) -> std::io::Result<()> {
+        Err(std::io::Error::other("Windows required"))
+    }
+    #[cfg(not(windows))]
+    pub(crate) fn processes_matching(_: impl Fn(&str) -> bool) -> std::io::Result<Vec<ProcessIdentity>> {
         Err(std::io::Error::other("Windows required"))
     }
 }

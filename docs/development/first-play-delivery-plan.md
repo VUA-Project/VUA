@@ -1,6 +1,6 @@
 # First play release: implementation checkpoint and remaining work
 
-> Document version: 1.16.0
+> Document version: 1.17.0
 > Status: Accepted
 > Updated: 2026-10-10
 > Scope: Desktop play, PICO 4 Pro USB/Wi-Fi, optional eye tracking and three guidance contexts
@@ -103,7 +103,7 @@ no installer ran. Separate mainland/global Windows Sandbox inputs were prepared 
 deferred that method; the missing-software baseline remains unexecuted.
 VRChat/SteamVR installation remains a manual Steam handoff. The Play cards now provide the
 closed launch/close route described in the checkpoint below; actual play acceptance remains pending.
-VRCFT has guide content but still needs the first-play detection/install/launch connection.
+VRCFT now has the Candidate connection described below; real vendor and tracking acceptance remains.
 
 Dated raw evidence remains local: `_local_real_machine/n1-play-zip-2026-10-03.md`,
 `_local_real_machine/n1-network-2026-10-03.md`, and `_local_preview_ibis_a/` review logs/screenshots.
@@ -216,7 +216,23 @@ Play links directly to this chapter. All Play cards, including network, are half
 Tools reserves grouped entries for the seven N2 Steam integrations and the separately requested
 VRCS translation tool. These are honest disabled development entries: this navigation slice
 adds no installer, tool adapter or plugin-host authority and does not make all of N2 an Ibis gate.
-The existing VRCFT detection/install/launch gap remains. AMF activation stays independent.
+The later VRCFT connection checkpoint below supersedes that card's development placeholder.
+AMF activation stays independent.
+
+## VRCFT connection checkpoint (2026-10-10)
+
+Tools now offers a supported-device picker and asks for the app/streamer where it changes the
+hardware module. PICO, Quest Pro, other supported headsets, add-on trackers and phone/camera
+choices link to their corresponding upstream instructions. VUA connects the official Steam
+install/start handoff, observes installation/process facts, and requests normal close only for
+this run's VRCFT instance. Modules stay in VRCFT's registry/package installer; OSC and actual
+tracking are verified by the player. Switching choices clears obsolete SOP progress.
+
+The [connection plan](vrcft-integration-plan.md#source-checkpoint-and-pending-acceptance) records
+controlled recovery/UI checks and real read-only installed-file reuse. Actual missing-app
+installation, vendor launch/exit, module installation and PICO USB/Wi-Fi tracking remain pending.
+Other N2 tool cards retain development status. No additional tool, physical-acceptance claim
+or test ZIP is introduced by this source checkpoint.
 
 Controlled Main/preload/renderer checks cover navigation, same-window hardware reading,
 contextual section requests, reading return, settings/light appearance and compact layout.
@@ -314,7 +330,7 @@ require a native headset overlay.
 | Account handoffs | Connect official registration pages and client/headset handoffs to resumable guide steps; retain external-browser fallback and separate opened/user-confirmed/detected states | Interrupt and return from a page/client without losing the selected route; the player performs login, verification and agreements |
 | PICO USB | Finish official PICO Connect/SteamVR setup guidance and launch path, using the test machine's actual software/firmware wording | PICO 4 Pro: image, head/hand tracking, controllers, audio/microphone, then read the preparation window through SteamVR desktop view and return to play |
 | PICO Wi-Fi | Add the route-specific local-network checks, connection instructions and reconnect recovery | Repeat headset play over Wi-Fi, disconnect/reconnect, and start a later session without repeating installation |
-| Optional eye tracking | Connect VRCFT detection, Steam installation and launch; guide the PICO module, headset calibration and in-game OSC using the appropriate guidance context | Existing compatible Avatar: actual gaze/blinking over USB and Wi-Fi, microphone coexistence, disconnect/reconnect and later-session reuse |
+| Optional eye tracking | Exercise the Candidate VRCFT install/start connection and device-specific upstream module guidance; complete physical calibration/OSC setup | Missing-app Steam installation and vendor launch/exit, then existing compatible Avatar: actual gaze/blinking over USB and Wi-Fi, microphone coexistence, disconnect/reconnect and later-session reuse |
 
 Use the existing planner, task model and typed Gateway rather than creating a second installer
 framework. Keep `pico_pcvr` wire compatibility until an explicit contract migration changes it.
@@ -385,6 +401,7 @@ installation, PICO connection, real-material production and four-language human 
 
 ## Document changelog
 
+- 1.17.0 (2026-10-10): record the Candidate VRCFT connection and device/module guidance, supersede its earlier placeholder and retain vendor-installation and physical-tracking acceptance without another ZIP.
 - 1.16.0 (2026-10-10): align fresh AMF activation with the latest user ruling while retaining old-profile choices and independent real-software, device and production acceptance.
 - 1.15.0 (2026-10-10): record the approved small native opening, Windows language handoff and first-use welcome/tour continuity, with controlled UI evidence and unchanged physical/human release acceptance.
 - 1.14.0 (2026-10-10): record per-card detail placement, separated compact language/Search controls, goal-link migration and full big-screen retirement while retaining pending device/install/material acceptance and no local ZIP.
@@ -394,4 +411,3 @@ installation, PICO connection, real-material production and four-language human 
 - 1.10.0 (2026-10-09): record optional AMF startup and core task/guidance independence without replacing pending physical release acceptance.
 - 1.9.0 (2026-10-09): record author-reported guide/normal-exit defects and source repairs, background-alpha evidence, removed network advice and unavailable regional Ping without another ZIP or physical-acceptance claim.
 - 1.8.0 (2026-10-09): record two-half play cards, scoped observed launch/close and creator inventory while retaining real vendor/device checks and the author’s no-package UI review.
-- 1.7.0 (2026-10-09): record the compact shell and Settings search/appearance corrections, update the task-tour destination and expand the controlled UI checks to 56; no new ZIP or physical-acceptance claim.
