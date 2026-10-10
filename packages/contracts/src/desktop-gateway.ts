@@ -1706,6 +1706,7 @@ export interface VuaDesktopApiV2 extends Omit<VuaDesktopApiV1, "window" | "syste
 }
 
 export interface VuaDesktopApiV1 {
+  readonly desktopBrowser?: import("./desktop-browser.js").DesktopBrowserApiV1;
   readonly amfModule?: import("./amf-module.js").AmfModuleApiV01;
   readonly gateway: DesktopGatewayApiV1;
   readonly events: DesktopGatewayEventsApiV1;

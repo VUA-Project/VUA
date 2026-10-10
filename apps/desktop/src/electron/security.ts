@@ -232,7 +232,7 @@ export function installRemoteContentNavigationPolicy(
     const target = classifyNavigationTarget(url, options.allowedOrigins);
     if (target.kind === "web" && target.allowed) {
       // 清单内直行:弹窗不创建,目标转当前内嵌视图(U9(1))
-      void webContents.loadURL(url);
+      void loadRemoteUrl(webContents, url);
       return { action: "deny" };
     }
     if (target.kind === "web") {
@@ -252,7 +252,8 @@ export function installRemoteContentNavigationPolicy(
     options.onViolation?.(url, "popup_denied");
     return { action: "deny" };
   });
-  webContents.on("will-navigate", (event, url) => {
+  const guardNavigation = (event: { preventDefault(): void; isMainFrame?: boolean }, url: string) => {
+    if (event.isMainFrame === false) return;
     const target = classifyNavigationTarget(url, options.allowedOrigins);
     if (target.kind === "web" && target.allowed) return;
     event.preventDefault();
@@ -272,7 +273,9 @@ export function installRemoteContentNavigationPolicy(
     }
     // 伪协议/未知协议导航:拒,不提供确认(保守)
     options.onViolation?.(url, "origin_not_allowed");
-  });
+  };
+  webContents.on("will-navigate", guardNavigation);
+  webContents.on("will-redirect", guardNavigation);
 }
 
 /** 清单外 http(s) 目标的确认放行:确认后在本视图导航(转当前内嵌视图);
@@ -284,8 +287,13 @@ function offerConfirmedNavigationToView(
 ): void {
   if (!options.confirmNavigation) return;
   void options.confirmNavigation(url, "origin_not_allowed").then((ok) => {
-    if (ok) void webContents.loadURL(url);
+    if (ok) void loadRemoteUrl(webContents, url);
   });
+}
+
+async function loadRemoteUrl(webContents: WebContents, url: string): Promise<void> {
+  if (webContents.isDestroyed?.()) return;
+  try { await webContents.loadURL(url); } catch { /* The owning browser reports load failure or teardown. */ }
 }
 
 /** 远程分区 Session 面:权限请求全拒绝;下载默认拒绝——`willDownload`

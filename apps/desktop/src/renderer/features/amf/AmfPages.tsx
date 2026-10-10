@@ -6,10 +6,12 @@ import { WorkshopPage } from "../workshop/WorkshopPage.tsx";
 import { InspectionPage } from "../inspection/InspectionPage.tsx";
 import { ReleasePage } from "../release/ReleasePage.tsx";
 import { PackagesPage } from "../packages/PackagesPage.tsx";
+import { AssetBrowserPage } from "./AssetBrowserPage.tsx";
 export default function AmfPages({ page, creatorReady, navigate, prepareEnv }: {
   page: PageId; creatorReady: boolean; navigate: (page: PageId) => void; prepareEnv: () => void;
 }) {
   switch (page) {
+    case "asset-browser": return <AssetBrowserPage />;
     case "warehouse": return <WarehousePage onNavigate={navigate} />;
     case "recipe": return <RecipePage />;
     case "workshop": return <WorkshopPage envReady={creatorReady} onPrepareEnv={prepareEnv} onNavigate={navigate} />;

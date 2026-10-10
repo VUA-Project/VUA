@@ -1,11 +1,11 @@
-# VUA design standard v0.19.0
+# VUA design standard v0.20.0
 
 
-> Document version: 0.19.0
+> Document version: 0.20.0
 > Status: Accepted
 > Scope: Electron desktop, desktop overlay, and VR overlay presentation  
 > Updated: 2026-10-11
-> Last conformance review: 2026-10-11 (regional reference and topbar Help layout, retaining compact cards, history and appearance; author game/device and human-language review pending)
+> Last conformance review: 2026-10-11 (regional reference, topbar Help and inset browser layouts in four-language zoom fixtures, retaining compact cards, history and appearance; author game/device and human-language review pending)
 > Normative effect: Governs interaction, visual, and accessibility implementation;
 > does not expand product scope or replace versioned application contracts
 
@@ -120,6 +120,18 @@ Help's destinations are Getting started (入门引导), the existing app tour, K
 encyclopedia (知识百科) and In-game assistant (游戏内助手). The encyclopedia is a page inside
 Help with an explicit return to Help, sharing Main's appearance. Hardware
 introductions are a peer chapter; Play's "What device do I have?" link opens it directly.
+An **Official VRChat Wiki** action in the encyclopedia opens `wiki.vrchat.com` in the host
+browser. It works with AMF disabled and returns to the same reading content when closed.
+AMF adds a peer **Browse assets** entry beside its material library: open BOOTH by default and
+offer all requested discovery websites as ordinary browsing shortcuts. Avoid another import
+form or a scrape/search integration. Existing BOOTH acquisition and account behavior remain.
+
+Every embedded browser, including login/import, occupies the main content region below its
+local controls. Keep the topbar and sidebar visible and usable. Shortcuts wrap in narrow windows;
+native bounds follow the measured region and page zoom. Settings temporarily hides page browsers
+and restores them on return; leaving an import browser dismisses its modal. Close controls,
+website history and retry remain reachable. Local confirmation cards take precedence over native
+content. Respect the current domain colour, appearance, glass, matrix and resource-saving settings.
 All four Help cards open main-window child pages. Each child supports mouse-side-button
 Back/Forward; encyclopedia chapter choices and replay-wizard choices also participate in
 history. Tour and game-assistant child pages retain explicit buttons for their existing
@@ -801,6 +813,7 @@ direction.
 
 ## 12. Document changelog
 
+- 0.20.0 (2026-10-11): add official Wiki and AMF material browsing with peer navigation/website shortcuts; constrain all embedded browser presentations to shell content with visible navigation, history and failure recovery.
 - **0.19.0 (2026-10-11)**: restore Help's topbar parallelogram and define explicit approximate regional reference states without changing card height, history or independent website tests.
 - 0.18.0 (2026-10-10): define the fresh enabled AMF entry, resource-headroom/saturation presentation and 120° jurisdiction-logo replacement with flattened-motion fallbacks.
 - 0.17.0 (2026-10-10): accept the small monochrome ray/white-logo startup and first-use welcome/tour, preserving normal shell themes, matrix/glass and resource-saving preferences.
@@ -810,6 +823,6 @@ direction.
 - **0.13.0 (2026-10-10)**: move Tools/Help into Environment, embed knowledge and hardware reading, halve Play card heights and remove the resource sampling-time label while preserving themes, glass and resource saving.
 - **0.12.1 (2026-10-09)**: align normal-exit Close semantics, background-only guide transparency/drag memory and the regional-placeholder/expanded-website split with the author's corrections.
 - **0.12.0 (2026-10-09)**: replace route-only preparation tiles with two-half play cards, merge network/runtime facts into Play, and add verified editor and separate manager-software/config detection to Avatar editing.
-- **0.11.0 (2026-10-09)**: narrow the sidebar, retire the bottom bar and four redundant header controls, move search into Settings, and adopt connected appearance choices with a Dark default and preserved motion fallbacks.
+
 
 Earlier entries remain in Git history.

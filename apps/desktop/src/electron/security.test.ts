@@ -96,6 +96,7 @@ describe("remote content navigation policy (F4-2 + U9 four-way)", () => {
       | ((details: { url: string; userGesture: boolean }) => { action: "deny" | "allow" })
       | null = null;
     let navigateHandler: ((event: { preventDefault: () => void }, url: string) => void) | null = null;
+    let redirectHandler: ((event: { preventDefault: () => void; isMainFrame: boolean }, url: string) => void) | null = null;
     const loadURL = vi.fn();
     return {
       webContents: {
@@ -104,6 +105,7 @@ describe("remote content navigation policy (F4-2 + U9 four-way)", () => {
         }),
         on: vi.fn((eventName: string, handler: never) => {
           if (eventName === "will-navigate") navigateHandler = handler;
+          if (eventName === "will-redirect") redirectHandler = handler;
         }),
         loadURL,
       },
@@ -112,6 +114,11 @@ describe("remote content navigation policy (F4-2 + U9 four-way)", () => {
       navigate: (url: string) => {
         const preventDefault = vi.fn();
         navigateHandler!({ preventDefault }, url);
+        return preventDefault.mock.calls.length > 0;
+      },
+      redirect: (url: string, isMainFrame = true) => {
+        const preventDefault = vi.fn();
+        redirectHandler!({ preventDefault, isMainFrame }, url);
         return preventDefault.mock.calls.length > 0;
       },
     };
@@ -130,6 +137,17 @@ describe("remote content navigation policy (F4-2 + U9 four-way)", () => {
     // U9(1) 清单内直行:目标转当前内嵌视图,不再交系统浏览器
     expect(harness.loadURL).toHaveBeenCalledWith("https://shop.booth.pm/items/9");
     expect(openExternal).not.toHaveBeenCalled();
+  });
+  it("requires confirmation for off-list main-frame redirects, without intercepting subframe resources", async () => {
+    const harness = fakeWebContents();
+    const confirm = vi.fn().mockResolvedValue(true);
+    installRemoteContentNavigationPolicy(harness.webContents as never, { allowedOrigins: ["https://booth.pm"], openExternal: vi.fn(), confirmNavigation: confirm });
+    expect(harness.redirect("https://shop.booth.pm/")).toBe(false);
+    expect(harness.redirect("https://cdn.example.test/frame", false)).toBe(false);
+    expect(confirm).not.toHaveBeenCalled();
+    expect(harness.redirect("https://example.test/search")).toBe(true);
+    await vi.waitFor(() => expect(harness.loadURL).toHaveBeenCalledWith("https://example.test/search"));
+    expect(confirm).toHaveBeenCalledWith("https://example.test/search", "origin_not_allowed");
   });
 
   it("keeps pseudo-protocol and unknown-scheme popup targets unconditionally denied", () => {

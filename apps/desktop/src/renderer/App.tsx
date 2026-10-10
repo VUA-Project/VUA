@@ -58,6 +58,8 @@ import { NavigationConfirmOverlay } from "./app/NavigationConfirmOverlay.tsx";
 import { AppTour } from "./features/tour/AppTour.tsx";
 import { firstTourRequired } from "./features/tour/tour-model.ts";
 import { LoginBrowserOverlay } from "./app/LoginBrowserOverlay.tsx";
+import { closeLoginBrowser } from "./app/login-browser-store.ts";
+import { closeBrowserModal } from "./components/primitives/modal-layer.tsx";
 import { NotificationPopover } from "./features/task-center/NotificationPopover.tsx";
 import { ResourceMonitor } from "./features/resource-monitor/ResourceMonitor.tsx";
 import { BootGate, BootSplash } from "./components/splash/BootSplash.tsx";
@@ -594,7 +596,7 @@ function renderPage(
       return <HelpPage page={page} navigate={actions.navigate} onAccounts={actions.openAccounts} startTour={actions.startTour} guideRequest={encyclopedia.request} acknowledgeGuide={encyclopedia.acknowledge} />;
     case "env-play": case "env-create":
       return <RouteEnvironmentPage zone={page === "env-play" ? "play" : "create"} onAccounts={actions.openAccounts} onOpenAmf={() => actions.navigate("warehouse")} />;
-    case "warehouse": case "recipe": case "inspection": case "release": case "packages": case "workshop":
+    case "warehouse": case "asset-browser": case "recipe": case "inspection": case "release": case "packages": case "workshop":
       return <AmfBoundary key={page} manage={() => actions.navigate("settings-modules")}><Suspense fallback={<p role="status">{format(strings.amfModule.loading, { amf: TERMS.amf })}</p>}><AmfPages page={page} creatorReady={creatorReady} navigate={actions.navigate} prepareEnv={actions.prepareEnv} /></Suspense></AmfBoundary>;
     case "settings-modules":
       return <ModulesPage onOpen={() => actions.navigate("warehouse")} />;
@@ -1137,6 +1139,7 @@ export function App() {
   }, [page]);
 
   function navigate(target: PageId, updateHash = true) {
+    if (target !== pageRef.current) { closeLoginBrowser(); closeBrowserModal(); }
     // 不做强制重定向(v0.3.3 §2.1):所有页面直达,阻断由页面内诚实状态表达
     setPage(target);
     if (!showOnboarding && updateHash) {

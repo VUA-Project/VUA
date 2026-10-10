@@ -1,4 +1,5 @@
 import { faceTrackingCopy } from "./face-tracking-copy.ts";
+import { browserCopy } from "./browser-copy.ts";
 import { helpCopy } from "./help-copy.ts";
 import { moduleCopy } from "./module-copy.ts";
 import { hardwareCopy } from "./hardware-copy.ts";
@@ -21,6 +22,7 @@ import { journeyCopy } from "./journey-copy.ts";
  */
 export const strings = {
   faceTracking: faceTrackingCopy["en"],
+  browser: browserCopy["en"],
   helpUi: helpCopy["en"],
   amfModule: moduleCopy["en"],
   environmentCards: environmentCopy["en"],
@@ -206,6 +208,7 @@ demoTaskTitle: "Demo task",
       tools: "Tools",
     },
     pages: {
+      assetBrowser: browserCopy["en"].assets,
       envPlay: "Play",
       envCreate: "Avatar editing",
       help: "Help",

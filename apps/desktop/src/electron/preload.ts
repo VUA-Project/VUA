@@ -4,6 +4,9 @@ import type {
   AmfModuleSnapshotV01,
   DesktopGatewayRequestV1,
   DesktopShellCommandV1,
+  DesktopBrowserEventV1,
+  DesktopBrowserSiteIdV1,
+  DesktopBrowserViewportV1,
   EditorSettingsV1,
   GuideTargetV1,
   NavigationConfirmRequestV1,
@@ -26,6 +29,11 @@ const eventListeners = new WeakMap<
 const remoteContentListeners = new WeakMap<
   (event: RemoteContentEventV1) => void,
   (event: IpcRendererEvent, payload: RemoteContentEventV1) => void
+>();
+
+const desktopBrowserListeners = new WeakMap<
+  (event: DesktopBrowserEventV1) => void,
+  (event: IpcRendererEvent, payload: DesktopBrowserEventV1) => void
 >();
 
 const navConfirmListeners = new WeakMap<
@@ -215,6 +223,27 @@ const api: VuaDesktopApiV2 = Object.freeze({
     }),
   }),
   // 远程内容窄面(F4-2):只发语义动作;远程页面本身无 preload、无本面
+  desktopBrowser: Object.freeze({
+    open: (site: DesktopBrowserSiteIdV1) => ipcRenderer.invoke("vua:desktop-browser:open", site),
+    navigate: (viewId: string, site: DesktopBrowserSiteIdV1) => ipcRenderer.invoke("vua:desktop-browser:navigate", viewId, site),
+    goBack: (viewId: string) => ipcRenderer.invoke("vua:desktop-browser:go-back", viewId),
+    goForward: (viewId: string) => ipcRenderer.invoke("vua:desktop-browser:go-forward", viewId),
+    reload: (viewId: string) => ipcRenderer.invoke("vua:desktop-browser:reload", viewId),
+    close: (viewId: string) => ipcRenderer.invoke("vua:desktop-browser:close", viewId),
+    setViewport: (viewId: string, viewport: DesktopBrowserViewportV1 | null) => ipcRenderer.invoke("vua:desktop-browser:viewport", viewId, viewport),
+    events: Object.freeze({
+      subscribe: (listener: (event: DesktopBrowserEventV1) => void) => {
+        const wrapped = (_event: IpcRendererEvent, payload: DesktopBrowserEventV1) => listener(payload);
+        desktopBrowserListeners.set(listener, wrapped);
+        ipcRenderer.on("vua:desktop-browser:event", wrapped);
+        return () => {
+          const current = desktopBrowserListeners.get(listener);
+          if (current) ipcRenderer.removeListener("vua:desktop-browser:event", current);
+          desktopBrowserListeners.delete(listener);
+        };
+      },
+    }),
+  }),
   remoteContent: Object.freeze({
     openAccountGuideInBrowser: (guide: import("@vua/contracts").AccountGuideIdV1) =>
       ipcRenderer.invoke("vua:remote-content:open-account-guide-in-browser", guide),

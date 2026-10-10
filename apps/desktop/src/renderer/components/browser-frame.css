@@ -1,0 +1,12 @@
+.vua-browser-owner { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.vua-browser-frame { position: fixed; display: flex; flex-direction: column; z-index: 1000; overflow: hidden; background: var(--vua-bg-panel); border-left: 1px solid var(--vua-border); }
+.vua-browser-frame[hidden] { display: none; }
+.vua-browser-frame__viewport { flex: 1; min-height: 0; display: grid; place-content: center; text-align: center; padding: 0; }
+.vua-browser-frame__bar { min-height: 44px; display: flex; align-items: center; gap: var(--vua-space-1); padding: 4px 8px; border-bottom: 1px solid var(--vua-border); }
+.vua-browser-frame__shortcuts { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; border-bottom: 1px solid var(--vua-border); }
+.vua-browser-frame__shortcuts button { padding: 5px 10px; border: 1px solid var(--vua-border); border-radius: 6px; color: var(--vua-text-strong); background: transparent; cursor: pointer; font: var(--vua-font-caption); }
+.vua-browser-frame__shortcuts button:hover, .vua-browser-frame__shortcuts button[aria-current="true"] { background: var(--vua-accent-tint); border-color: var(--vua-accent); }
+.vua-browser-frame__status { margin: 8px; color: var(--vua-text-secondary); font: var(--vua-font-caption); }
+.vua-browser-frame__error { max-width: 460px; padding: 24px; }
+/* Import stays in its dialog, but browsing leaves the shell navigation usable. */
+body[data-vua-browser-view] .vua-content-dialog__overlay { top: var(--vua-browser-top); left: var(--vua-browser-left); }

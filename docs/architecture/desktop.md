@@ -1,11 +1,11 @@
 # Electron desktop and presentation architecture
 
 
-> Document version: 1.21.0
+> Document version: 1.22.0
 > Status: Accepted
 > Scope: `apps/desktop`, `packages/design-system`, frontend Gateway
 > Updated: 2026-10-11
-> Last conformance review: 2026-10-11 (regional reference UI and restored topbar Help, retaining child/history and Settings behavior; physical game/device and human-language review pending)
+> Last conformance review: 2026-10-11 (regional reference UI, topbar Help and inset Wiki/material/login/import browsers, retaining child/history and Settings behavior; physical game/device and human-language review pending)
 > Normative effect: Yes
 
 ## Technology decision
@@ -94,7 +94,9 @@ offer collapsible descriptions with disabled development actions, not installed/
 parallelogram beside Settings, with no sidebar duplicate; its active state covers all Help children.
 Home exposes it among global actions, and Search retains its entry. Help contains Getting started, the app tour, Knowledge encyclopedia and
 In-game assistant. The encyclopedia is a main-window page with hardware introductions and
-the existing shared preparation chapters/bookmark. Play links directly to hardware reading.
+the existing shared preparation chapters/bookmark. Its official Wiki entry opens
+`wiki.vrchat.com` in an isolated host browser, including when AMF is disabled.
+Play links directly to hardware reading.
 All four Help cards open main-window child pages; tour and game-assistant pages then offer
 their existing explicit start actions. The replay wizard stays inside its Help child page.
 Native mouse Back/Forward uses Chromium history, including encyclopedia chapters and wizard
@@ -254,6 +256,21 @@ belong to the AMF material-acquisition boundary). The capability surface contain
 APIs. AMF validates observed page data for type, size, and source before persistence.
 Main-managed `WebContentsView` is the remote-content surface.
 
+The 2026-10-11 ruling adds AMF **Browse assets**, initially at `booth.pm`, with VRCFinder,
+BOOTHPLORER, Yorimichi, PolySeek, VRC STYLE, Avatar Network, Avatar Catalog and VRC DB
+shortcuts. This is ordinary discovery; catalog synchronization, acquisition and local intake
+keep their existing owners. Wiki has a nonpersistent host session and no AMF/download authority.
+AMF browsing reuses its BOOTH profile; broader browsing origins do not broaden authenticated
+reads, cookie persistence or strict download admission.
+
+The Candidate [desktop-browser face](../protocols/desktop-browser-v0.1.md) leaves the header and
+sidebar exposed for all presentations, including retained login/import. Trusted HTML measures
+the main content below controls and wrapping shortcuts; Main converts page zoom to DIP and
+clamps bounds. Settings hides retained page browsers until return; leaving a page or reloading
+Main closes native views. Global login closes on shell navigation; leaving import also dismisses
+its modal. Native views yield to local navigation confirmation cards. Failed sites offer retry
+or another shortcut without claiming installation or material import.
+
 ## Overlay always-on-top window
 
 The accepted [guidance architecture](guidance.md) separates an in-app tour, the knowledge
@@ -370,6 +387,7 @@ redistribution review authorizes each bundled binary before a public release.
 
 ## Document changelog
 
+- 1.22.0 (2026-10-11): add host Wiki and AMF material shortcuts through the Candidate desktop-browser face; keep remote views inside shell content and preserve account/download/module isolation.
 - 1.21.0 (2026-10-11): restore Help beside Settings in the topbar and align compact network UI with explicitly approximate regional references, preserving child history and independent website tests.
 - 1.20.0 (2026-10-10): enable AMF for fresh profiles, add qualified CPU/GPU/RAM/VRAM headroom through desktop resource v0.2, and apply a reduced-motion-aware 120° Home-logo colour wipe.
 - 1.19.0 (2026-10-10): implement the approved small monochrome native splash, independent desktop-startup v0.1 face, Windows language selection and first-use welcome/tour handoff while preserving saved profiles.
@@ -379,4 +397,5 @@ redistribution review authorizes each bundled binary before a public release.
 - 1.15.0 (2026-10-10): add environment Tools/Help, embed the knowledge encyclopedia through desktop-window v0.2, halve Play card heights and remove the resource-panel sampling-time label.
 - 1.14.0 (2026-10-10): clarify AMF's bundled installation and separate activation for fresh/legacy profiles; retain saved choices and omit external editing placeholders from Ibis.
 - 1.13.0 (2026-10-09): scope optional AMF frontend/BOOTH services to module readiness and document the two-provider payload; retain host task-window independence and legacy data paths.
-- 1.12.1 (2026-10-09): align guide transparency/drag memory, normal game-exit cards and the regional-placeholder/expanded-website split with their owning documents.
+
+Earlier entries remain in Git history.

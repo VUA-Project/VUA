@@ -1,6 +1,6 @@
 # First play release: implementation checkpoint and remaining work
 
-> Document version: 1.18.0
+> Document version: 1.19.0
 > Status: Accepted
 > Updated: 2026-10-11
 > Scope: Desktop play, PICO 4 Pro USB/Wi-Fi, optional eye tracking and three guidance contexts
@@ -265,6 +265,19 @@ old preferences are cleared and legacy commands are inert. The controlled produc
 checks these behaviors and the native tray check retains update/exit and double-click restore.
 This does not replace pending physical installation, PICO or material acceptance.
 
+## Wiki and material-browsing checkpoint (2026-10-11)
+
+Knowledge encyclopedia now offers `wiki.vrchat.com` independently of AMF. AMF adds Browse assets,
+opening `booth.pm` with the eight requested discovery-site shortcuts. The Candidate
+[desktop-browser face](../protocols/desktop-browser-v0.1.md) keeps the header/sidebar visible
+for these and retained login/import views, with website history, Settings return and honest load
+failure/retry. Wider browsing origins do not widen BOOTH session reads, downloads or local intake.
+
+Controlled checks use real Main/preload/Renderer/providers, isolated synthetic websites and
+four-language/zoom layouts. Public-site observations do not establish third-party availability
+for other networks, account/material acceptance, physical play or language human review.
+This is an implementation checkpoint, not N1/N5 completion, and produces no new ZIP.
+
 ## 2. Next focus: deliver the three guidance contexts
 
 ### A. Knowledge encyclopedia (formerly the preparation reader)
@@ -417,6 +430,7 @@ installation, PICO connection, real-material production and four-language human 
 
 ## Document changelog
 
+- 1.19.0 (2026-10-11): record host Wiki and AMF website shortcuts with shell-sized browser controls, preserved BOOTH boundaries and controlled UI evidence, without declaring N1/N5 or packaging complete.
 - 1.18.0 (2026-10-11): record approximate geographic references and restored topbar Help while deferring exact room measurement and retaining physical/human acceptance.
 - 1.17.0 (2026-10-10): record the Candidate VRCFT connection and device/module guidance, supersede its earlier placeholder and retain vendor-installation and physical-tracking acceptance without another ZIP.
 - 1.16.0 (2026-10-10): align fresh AMF activation with the latest user ruling while retaining old-profile choices and independent real-software, device and production acceptance.
@@ -426,4 +440,5 @@ installation, PICO connection, real-material production and four-language human 
 - 1.12.0 (2026-10-10): record environment Tools/Help, embedded hardware/knowledge reading and compact Play checks without claiming new tool integrations, hardware acceptance or another ZIP.
 - 1.11.0 (2026-10-10): keep AMF installed with VUA but require explicit first activation, retain saved choices/data and defer external Avatar-editing module integration from Ibis.
 - 1.10.0 (2026-10-09): record optional AMF startup and core task/guidance independence without replacing pending physical release acceptance.
-- 1.9.0 (2026-10-09): record author-reported guide/normal-exit defects and source repairs, background-alpha evidence, removed network advice and unavailable regional Ping without another ZIP or physical-acceptance claim.
+
+Earlier entries remain in Git history.

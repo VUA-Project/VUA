@@ -3,16 +3,14 @@
  * 差异(满宽、更高层级)与登录成功提示。 */
 
 .vua-login-browser__bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  position: relative;
+  flex-shrink: 0;
   height: 44px; /* 与 Main 侧 REMOTE_VIEW_NAV_STRIP_PX 对齐(同批改动纪律) */
   display: flex;
   align-items: center;
   gap: var(--vua-space-1, 4px);
   padding: 0 var(--vua-space-2, 8px);
-  z-index: 1000; /* 同 import-page 浏览条层级:浮于一切应用内容之上 */
+  z-index: 1;
   background: var(--vua-bg-panel, #1c1c22);
   border-bottom: 1px solid var(--vua-border, rgba(255, 255, 255, 0.1));
 }

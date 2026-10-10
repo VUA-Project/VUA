@@ -83,6 +83,7 @@ export function AccountSettingsPage() {
               {signedIn ? null : (
                 <Button
                   variant="default"
+                  data-nav-id="accounts-booth-login"
                   disabled={amf.state !== "ready"}
                   onClick={() => openLoginBrowser(BOOTH_SIGN_IN_URL)}
                 >

@@ -128,7 +128,7 @@ test("production sidebar is one flat group without a group label, pages in flow 
   assert.equal(production?.groups[0]?.labelKey, undefined);
   assert.deepEqual(
     production?.groups[0]?.pages.map((p) => p.id),
-    ["warehouse", "recipe", "inspection", "release", "workshop", "packages"],
+    ["warehouse", "asset-browser", "recipe", "inspection", "release", "workshop", "packages"],
   );
 });
 

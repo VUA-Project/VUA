@@ -9,6 +9,7 @@ import type {
   CatalogSyncPageV03,
   DownloadEventV01,
   DesktopShellCommandV1,
+  DesktopBrowserEventV1,
   EditorSettingsV1,
   GameGuideFollowStatusV1,
   GameWindowRectPhysicalV1,
@@ -16,8 +17,9 @@ import type {
   NavigationConfirmRequestV1,
   OverlayViewV1,
   RemoteContentEventV1,
+  RemoteContentViewStateV1,
 } from "@vua/contracts";
-import { APPLICATION_CONTRACT_VERSION, accountGuideDestination, isGameWindowObservationResult, isLibraryDownloadParamsV01, isLibraryDownloadSnapshotV01 } from "@vua/contracts";
+import { APPLICATION_CONTRACT_VERSION, DESKTOP_BROWSER_SITES_V1, desktopBrowserSite, desktopBrowserDisplayUrl, isDesktopBrowserViewportV1, accountGuideDestination, isGameWindowObservationResult, isLibraryDownloadParamsV01, isLibraryDownloadSnapshotV01 } from "@vua/contracts";
 import type { OrchestratorProviderV01 } from "@vua/orchestrator-provider";
 import { routeDesktopGatewayInvoke } from "./gateway-router.js";
 import { DownloadPort } from "./download-port.js";
@@ -161,6 +163,7 @@ let disposeAmfShell: (() => void) | null = null;
 let mountingAmfShell: Promise<void> | null = null;
 let amfIngestSink: ReturnType<typeof createDownloadEventSink> | null = null;
 let remoteContent: RemoteContentManager | null = null;
+let knowledgeBrowser: RemoteContentManager | null = null;
 let downloadPort: DownloadPort | null = null;
 let silentDownloadQueue: ReturnType<typeof createSilentDownloadQueue> | null = null;
 // 账号库同步当前运行(N5 S1):单并发守卫的持有位;结果落 provider 任务面
@@ -223,6 +226,26 @@ function amfDataRoot(): string {
 
 function assertAmfReady(): void {
   if (!provider?.amfReady()) throw new Error("vua.amf.unavailable");
+}
+
+function browserManager(viewId: unknown, requireAmf = true): RemoteContentManager {
+  if (typeof viewId !== "string" || viewId.length > 128) throw new Error("invalid browser view");
+  if (knowledgeBrowser?.hasView(viewId)) return knowledgeBrowser;
+  if (remoteContent?.hasView(viewId)) { if (requireAmf) assertAmfReady(); return remoteContent; }
+  throw new Error("unknown_remote_view");
+}
+
+function ensureKnowledgeBrowser(): RemoteContentManager {
+  if (knowledgeBrowser === null) {
+    knowledgeBrowser = new RemoteContentManager({
+      partition: "vua-knowledge", allowedOrigins: ["https://wiki.vrchat.com"], persistSessionCookies: false,
+      openExternal: url => void shell.openExternal(url), broadcast: broadcastDesktopBrowserEvent,
+      onLoad: broadcastDesktopBrowserEvent, confirmNavigation,
+    });
+    knowledgeBrowser.setHostWindow(mainWindow);
+    knowledgeBrowser.setSuspended(pendingNavConfirms.size > 0);
+  }
+  return knowledgeBrowser;
 }
 
 function materialSourcesPath(): string {
@@ -296,11 +319,22 @@ function broadcastGatewayEvent(rendererUrl: string | undefined, event: Applicati
 
 /** 远程内容事件 → 全部本地来源窗口(隔离基座 F4-2;违规透明上报) */
 function broadcastRemoteContentEvent(rendererUrl: string | undefined, event: RemoteContentEventV1): void {
+  broadcastDesktopBrowserEvent(event);
   for (const window of BrowserWindow.getAllWindows()) {
     if (isAllowedLocalSender(window.webContents.getURL(), rendererUrl)) {
       window.webContents.send("vua:remote-content:event", event);
     }
   }
+}
+
+function broadcastDesktopBrowserEvent(event: DesktopBrowserEventV1): void {
+  if (mainWindow !== null && !mainWindow.isDestroyed() && isAllowedLocalSender(mainWindow.webContents.getURL(), rendererUrl)) {
+    mainWindow.webContents.send("vua:desktop-browser:event", "url" in event ? { ...event, url: desktopBrowserDisplayUrl(event.url) } : event);
+  }
+}
+
+function browserDisplayState(state: RemoteContentViewStateV1): RemoteContentViewStateV1 {
+  return { ...state, url: desktopBrowserDisplayUrl(state.url) };
 }
 
 /** 壳编辑器设置落盘路径(U10 门③留痕,机器级 settings) */
@@ -686,6 +720,49 @@ function registerIpc(provider: ModuleProvider): void {
     if (typeof url !== "string") throw new Error("invalid remote content request");
     return remoteContent!.open(url);
   });
+  const assertBrowserSender = (event: import("electron").IpcMainInvokeEvent) => {
+    assertLocalSender(senderFrameUrl(event));
+    if (mainWindow === null || event.sender !== mainWindow.webContents || event.senderFrame !== mainWindow.webContents.mainFrame) throw new Error("browser requires main frame");
+  };
+  ipcMain.handle("vua:desktop-browser:open", async (event, siteId: unknown) => {
+    assertBrowserSender(event);
+    const site = desktopBrowserSite(siteId);
+    if (site === null) throw new Error("invalid browser site");
+    if (site.purpose === "knowledge") return browserDisplayState(ensureKnowledgeBrowser().openSite(site.url));
+    assertAmfReady();
+    await ensureAmfShell();
+    assertAmfReady();
+    if (remoteContent === null) throw new Error("browser unavailable");
+    return browserDisplayState(remoteContent.openSite(site.url));
+  });
+  ipcMain.handle("vua:desktop-browser:navigate", (event, viewId: unknown, siteId: unknown) => {
+    assertBrowserSender(event);
+    const site = desktopBrowserSite(siteId);
+    const manager = browserManager(viewId);
+    if (site === null || (site.purpose === "knowledge") !== (manager === knowledgeBrowser)) throw new Error("invalid browser site");
+    return browserDisplayState(manager.navigate(viewId as string, site.url));
+  });
+  for (const [channel, method] of [["go-back", "goBack"], ["go-forward", "goForward"], ["reload", "reload"]] as const) {
+    ipcMain.handle(`vua:desktop-browser:${channel}`, (event, viewId: unknown) => {
+      assertBrowserSender(event);
+      return browserDisplayState(browserManager(viewId)[method](viewId as string));
+    });
+  }
+  ipcMain.handle("vua:desktop-browser:close", (event, viewId: unknown) => {
+    assertBrowserSender(event);
+    if (typeof viewId !== "string" || viewId.length > 128) throw new Error("invalid browser view");
+    // Closing an already-disposed view is safe during AMF shutdown and navigation races.
+    if (knowledgeBrowser?.hasView(viewId)) knowledgeBrowser.close(viewId);
+    else if (remoteContent?.hasView(viewId)) remoteContent.close(viewId);
+  });
+  ipcMain.handle("vua:desktop-browser:viewport", (event, viewId: unknown, viewport: unknown) => {
+    assertBrowserSender(event);
+    if (viewport !== null && !isDesktopBrowserViewportV1(viewport)) throw new Error("invalid browser viewport");
+    if (typeof viewId !== "string" || viewId.length > 128) throw new Error("invalid browser view");
+    // A measured receipt can arrive after page/module teardown. It cannot revive a view.
+    if (!knowledgeBrowser?.hasView(viewId) && !remoteContent?.hasView(viewId)) return;
+    browserManager(viewId, false).setViewport(viewId, viewport);
+  });
   ipcMain.handle("vua:remote-content:navigate", (event, viewId: unknown, url: unknown) => {
     assertLocalSender(senderFrameUrl(event));
     assertAmfReady();
@@ -969,11 +1046,18 @@ function confirmNavigation(
   const confirmId = crypto.randomUUID();
   return new Promise<boolean>((resolve) => {
     pendingNavConfirms.set(confirmId, resolve);
+    remoteContent?.setSuspended(true);
+    knowledgeBrowser?.setSuspended(true);
     const request: NavigationConfirmRequestV1 = { confirmId, url, reason };
     for (const window of BrowserWindow.getAllWindows()) {
       if (isAllowedLocalSender(window.webContents.getURL(), rendererUrl)) {
         window.webContents.send("vua:nav-confirm:request", request);
       }
+    }
+  }).finally(() => {
+    if (pendingNavConfirms.size === 0) {
+      remoteContent?.setSuspended(false);
+      knowledgeBrowser?.setSuspended(false);
     }
   });
 }
@@ -1361,6 +1445,7 @@ async function createWindow(): Promise<void> {
   mainWindow.webContents.on("did-navigate", () => { shellListening = false; });
   // Hash navigation can emit did-start-loading without remounting the shell listener.
   mainWindow.webContents.on("did-navigate", () => { encyclopediaListening = false; });
+  mainWindow.webContents.on("did-navigate", () => { remoteContent?.closeAll(); knowledgeBrowser?.closeAll(); });
 
   // U9 四分法(本地壳窗口):http/https 弹窗不再交系统浏览器——清单内直行/
   // 清单外确认后转当前内嵌视图(RemoteContentManager);外部协议手势+确认后
@@ -1381,7 +1466,7 @@ async function createWindow(): Promise<void> {
   if (startupWindow !== null) startupFallback = setTimeout(completeStartup, 8_000);
 
   if (provider?.amfReady()) await ensureAmfShell();
-  mainWindow.on("resize", () => remoteContent?.refreshBounds());
+  mainWindow.on("resize", () => { remoteContent?.refreshBounds(); knowledgeBrowser?.refreshBounds(); });
   // #26 用户实测退出崩溃修复:内嵌视图清理前移到 close(窗口仍存活,
   // contentView 可安全操作);closed 在窗口销毁之后触发,原在此处 dispose
   // 会经 #destroyView 访问已销毁 hostWindow 抛「Object has been destroyed」。
@@ -1389,6 +1474,9 @@ async function createWindow(): Promise<void> {
   // close 无取消路径(壳内关闭不经 beforeinput 拦截),dispose 幂等,重复
   // 触发安全
   mainWindow.on("close", () => {
+    for (const resolve of pendingNavConfirms.values()) resolve(false);
+    pendingNavConfirms.clear();
+    knowledgeBrowser?.dispose(); knowledgeBrowser = null;
     disposeAmfShell?.();
     disposeAmfShell = null;
   });
@@ -1501,6 +1589,9 @@ async function ensureAmfShell(): Promise<void> {
         "https://oauth.secure.pixiv.net",
         "https://accounts.pixiv.net",
       ],
+      browsingOrigins: [...DESKTOP_BROWSER_SITES_V1.filter(site => site.purpose === "assets").map(site => new URL(site.url).origin),
+        "https://accounts.booth.pm", "https://oauth.secure.pixiv.net", "https://accounts.pixiv.net"],
+      onLoad: broadcastDesktopBrowserEvent,
       openExternal: (url) => void shell.openExternal(url),
       broadcast: (event) => broadcastRemoteContentEvent(rendererUrl, event),
       confirmNavigation,
@@ -1510,6 +1601,7 @@ async function ensureAmfShell(): Promise<void> {
       },
     });
     remoteContent.setHostWindow(mainWindow);
+    remoteContent.setSuspended(pendingNavConfirms.size > 0);
     disposeAmfShell = () => {
       catalogSyncRun?.stop(); catalogSyncRun = null;
       remoteContent?.dispose(); remoteContent = null;
