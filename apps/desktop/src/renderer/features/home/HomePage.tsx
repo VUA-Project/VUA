@@ -3,7 +3,7 @@ import { strings, TERMS } from "../../i18n/index.ts";
 import { RouteTile } from "../../components/RouteTile.tsx";
 const copy = strings.journey;
 export const directory = {
-  env: [{ id: "env-play", title: copy.play, icon: "anim" }, { id: "env-create", title: copy.create, icon: "flask" }, { id: "tools-discover", title: copy.tools, icon: "outfit" }, { id: "help", title: copy.help, icon: "question" }],
+  env: [{ id: "env-play", title: copy.play, icon: "anim" }, { id: "tools-discover", title: copy.tools, icon: "outfit" }, { id: "env-create", title: copy.create, icon: "flask" }, { id: "help", title: copy.help, icon: "question" }],
   production: [{ id: "warehouse", title: copy.library, icon: "folder" }, { id: "recipe", title: copy.recipes, icon: "outfit" }, { id: "workshop", title: copy.production, icon: "avatar" }, { id: "inspection", title: strings.terms.inspection, icon: "check" }],
 } as const;
 export function HomePage({ page, bigscreen, navigate, amfInstalled = false }: {

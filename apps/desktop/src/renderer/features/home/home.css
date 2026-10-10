@@ -59,10 +59,10 @@
 
 .vua-account-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 24px; }
 .vua-account-grid .vua-settings-account { gap: 16px; }
-.vua-environment-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(310px, 100%), 1fr)); gap: 18px; }
-.vua-play-page { --vua-environment-height: 88px; }
+.vua-environment-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(310px, 100%), 1fr)); gap: 18px; }
+.vua-compact-environments { --vua-environment-height: 88px; }
 .vua-play-page > *, .vua-creator-page > * { flex-shrink: 0; }
-.vua-play-page, .vua-creator-page { padding: 8px; }
+.vua-play-page, .vua-creator-page, .vua-tools-hub { padding: 8px; }
 .vua-environment-card { position: relative; display: grid; grid-template-columns: 1fr 1fr; height: var(--vua-environment-height, 176px); border: 1px solid var(--vua-border); border-radius: 12px; overflow: hidden; background: color-mix(in srgb, var(--vua-bg-panel) 75%, transparent); }
 .vua-environment-card[data-selected='true'] { border-color: var(--vua-accent); }
 .vua-environment-card > button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 22px 16px; border: 0; color: var(--vua-text-strong); background: transparent; cursor: pointer; font: var(--vua-font-body); transition: background 140ms ease; min-width: 0; }
@@ -99,20 +99,28 @@
 .vua-manager-card { position: relative; }
 .vua-manager-card .vua-route-tile { width: 100%; padding-bottom: 54px; }
 .vua-manager-card__status { position: absolute; bottom: 22px; left: 28px; right: 28px; pointer-events: none; color: var(--vua-text-secondary); font: var(--vua-font-caption); }
-.vua-shell[data-display-mode='bigscreen'] .vua-play-page { --vua-environment-height: 108px; }
-.vua-play-page .vua-environment-card > button { padding: 10px 16px; gap: 8px; }
-.vua-play-page .vua-environment-card__details { flex-direction: row; }
-.vua-play-page .vua-environment-card__details .vua-route-tile__icon { width: 30px; height: 30px; flex-shrink: 0; }
-.vua-play-page .vua-environment-card strong { font-size: 18px; }
-.vua-play-page .vua-environment-card__action > svg { width: 24px; height: 24px; }
+.vua-shell[data-display-mode='bigscreen'] .vua-compact-environments { --vua-environment-height: 108px; }
+.vua-compact-environments .vua-environment-card > button { padding: 10px 16px; gap: 8px; }
+.vua-compact-environments .vua-environment-card__details { flex-direction: row; }
+.vua-compact-environments .vua-environment-card__details .vua-route-tile__icon { width: 30px; height: 30px; flex-shrink: 0; }
+.vua-compact-environments .vua-environment-card strong { min-width: 0; overflow-wrap: anywhere; font-size: 18px; line-height: 1.2; }
+.vua-tools-hub .vua-environment-card strong { font-size: 16px; }
+.vua-compact-environments .vua-environment-card__action > svg { width: 24px; height: 24px; }
 .vua-play-page .vua-network-tile > .vua-environment-card__details { gap: 6px 12px; }
 .vua-play-page .vua-network-tile > .vua-environment-card__action { flex-direction: row; }
 .vua-play-page .vua-network-tile__results { gap: 4px 16px; }
 .vua-play-hardware { align-self: flex-start; }
 .vua-shell[data-display-mode='bigscreen'] .vua-environment-card button { min-height: 64px; font-size: 18px; }
 .vua-shell[data-display-mode='bigscreen'] .vua-environment-card strong { font-size: 24px; }
+.vua-shell[data-display-mode='bigscreen'] .vua-environment-grid { grid-template-columns: repeat(auto-fill, minmax(min(360px, 100%), 1fr)); }
+.vua-shell[data-display-mode='bigscreen'] .vua-tools-hub .vua-environment-card strong { font-size: 20px; }
 .vua-shell[data-display-mode='bigscreen'] .vua-environment-card__action > span[role='status'] { font-size: 18px; }
 .vua-shell[data-display-mode='bigscreen'] .vua-network-tile__results, .vua-shell[data-display-mode='bigscreen'] .vua-manager-card__status { font-size: 18px; }
 html[data-effects='off'] .vua-environment-card__spin { animation: none; }
 @media (prefers-reduced-motion: reduce) { .vua-environment-card__spin { animation: none; } .vua-environment-card > button { transition: none; } }
 .vua-shell__sidebar-label { border: 0; background: none; text-align: start; cursor: pointer; }
+
+.vua-compact-environments > * { flex-shrink: 0; }
+.vua-route-tile[data-selected='true'] { border-color: var(--vua-accent); background: var(--vua-accent-tint); }
+.vua-shell__sidebar-footer .vua-settings-select { width: 100%; min-width: 0; padding: 10px 8px; }
+.vua-shell__amf-entry { display: flex; align-items: center; gap: 8px; }

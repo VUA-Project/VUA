@@ -1,21 +1,28 @@
-import { RouteTile } from "../../components/RouteTile.tsx";
+import { useState } from "react";
+import { EnvironmentCard } from "../home/EnvironmentCard.tsx";
+import { Button } from "../../components/primitives/Button.tsx";
 import { strings } from "../../i18n/index.ts";
 
 /** Accepted inventory is a roadmap, not detected software or executable plugins. */
 const groups = [
-  { key: "toolTracking", icon: "avatar", tools: ["VRCFaceTracking", "OpenVR Space Calibrator"] },
-  { key: "toolTranslation", icon: "question", tools: ["VRCS", "OVR Overlay Translator"] },
-  { key: "toolUtilities", icon: "flask", tools: ["OVR Advanced Settings", "OVR Toolkit", "OyasumiVR"] },
-  { key: "toolCapture", icon: "anim", tools: ["LIV"] },
+  { key: "toolTracking", icon: "avatar", tools: [{ id: "vrcft", title: "VRCFaceTracking" }, { id: "space", title: "OpenVR Space Calibrator" }] },
+  { key: "toolTranslation", icon: "question", tools: [{ id: "vrcs", title: "VRCS" }, { id: "translator", title: "OVR Overlay Translator" }] },
+  { key: "toolUtilities", icon: "flask", tools: [{ id: "advanced", title: "OVR Advanced Settings" }, { id: "toolkit", title: "OVR Toolkit" }, { id: "oyasumi", title: "OyasumiVR" }] },
+  { key: "toolCapture", icon: "anim", tools: [{ id: "liv", title: "LIV" }] },
 ] as const;
 
 export function ToolsHub() {
+  const [selected, setSelected] = useState<string | null>(null);
   const copy = strings.journey;
-  return <div className="vua-page vua-tools-hub" data-focus-scope>
-    <header className="vua-page__hero"><h1 className="vua-title">{copy.tools}</h1><p className="vua-text-secondary">{copy.toolsComingSoon}</p></header>
+  return <div className="vua-page vua-route-page vua-tools-hub vua-compact-environments" data-focus-scope>
+    <header className="vua-page__hero"><h1 className="vua-title">{copy.tools}</h1></header>
     {groups.map(group => <section className="vua-environment-section" key={group.key}>
       <h2>{copy[group.key]}</h2>
-      <div className="vua-route-grid">{group.tools.map(tool => <RouteTile key={tool} title={tool} icon={group.icon} disabled />)}</div>
+      <div className="vua-environment-grid">{group.tools.map(tool => <EnvironmentCard key={tool.id} title={tool.title} titleContent={tool.id === "vrcft" ? <>VRCFace<wbr />Tracking</> : tool.title} icon={group.icon} id={`tool-${tool.id}`} action="unknown" status="" developing selected={selected === tool.id} onDetails={() => setSelected(current => current === tool.id ? null : tool.id)} />)}</div>
+      {group.tools.map(tool => <section key={tool.id} id={`tool-${tool.id}-details`} className="vua-environment-detail" hidden={selected !== tool.id} aria-label={tool.title}>
+      <header className="vua-environment-heading"><h2>{tool.title}</h2><Button variant="subtle" data-back onClick={() => setSelected(null)}>{strings.environmentCards.closeDetails}</Button></header>
+      <p>{strings.helpUi[tool.id]}</p><p className="vua-text-secondary">{strings.helpUi.developmentHint}</p>
+      </section>)}
     </section>)}
   </div>;
 }

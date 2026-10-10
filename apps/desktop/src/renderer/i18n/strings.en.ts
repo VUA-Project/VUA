@@ -1,3 +1,4 @@
+import { helpCopy } from "./help-copy.ts";
 import { moduleCopy } from "./module-copy.ts";
 import { hardwareCopy } from "./hardware-copy.ts";
 import { environmentCopy } from "./environment-copy.ts";
@@ -18,6 +19,7 @@ import { journeyCopy } from "./journey-copy.ts";
  *   (DEV-only, reachable only from gateway fixtures, tree-shaken in release).
  */
 export const strings = {
+  helpUi: helpCopy["en"],
   amfModule: moduleCopy["en"],
   environmentCards: environmentCopy["en"],
   journey: journeyCopy["en"],

@@ -44,6 +44,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { GuideTargetV1 } from "@vua/contracts";
 import { MediaSlot } from "../../components/primitives/MediaSlot.tsx";
 import { strings } from "../../i18n/index.ts";
+import { readEncyclopediaHash, recordEncyclopediaTarget } from "../help/encyclopedia-navigation.ts";
 import {
   GUIDE_TOPIC_COPY_KEY,
   GUIDE_TOPIC_IDS,
@@ -101,7 +102,9 @@ export function GuideOverlayView({
 }) {
   const copy = strings.guide;
   const [initialTarget] = useState(() =>
-    initialGuideTarget(window.location.search, loadGuideReading()),
+    guideRequest != null
+      ? guideRequest.target === null ? loadGuideReading() ?? { topic: "guide-start" } as GuideTarget : normalizeGuideTarget(guideRequest.target)
+      : (embedded ? readEncyclopediaHash(window.location.hash) : null) ?? initialGuideTarget(window.location.search, loadGuideReading()),
   );
   const [topic, setTopic] = useState<GuideTopicId>(initialTarget.topic);
   // 滚动触发序号:同主题内换分节时 setTopic 不产生渲染,滚动副作用
@@ -178,6 +181,7 @@ export function GuideOverlayView({
   const selectTopic = (next: GuideTopicId, moveFocus: boolean) => {
     // 手动切主题 = 从该主题开头阅读(首玩 B 切片导航纪律)
     applyGuideTarget({ topic: next });
+    if (embedded) recordEncyclopediaTarget({ topic: next });
     if (moveFocus) tabRefs.current[next]?.focus();
   };
 
@@ -200,9 +204,20 @@ export function GuideOverlayView({
   // 落位后从地址栏剥离,之后的状态页往返/重挂载按最新阅读位置恢复
   useEffect(() => {
     saveGuideReading(initialTarget);
-    stripGuideTargetFromLocation();
+    if (embedded) recordEncyclopediaTarget(initialTarget, true);
+    else stripGuideTargetFromLocation();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅首帧一次
   }, []);
+
+  useEffect(() => {
+    if (!embedded) return;
+    const onHistory = () => {
+      const target = readEncyclopediaHash(window.location.hash);
+      if (target) applyGuideTarget(target);
+    };
+    window.addEventListener("hashchange", onHistory);
+    return () => window.removeEventListener("hashchange", onHistory);
+  }, [embedded]);
 
   // 渲染提交后执行待滚动(初始分节 / 定位 / 手动切主题开头);
   // 依赖 scrollNonce:同主题内换分节(setTopic 同值不重渲染)也必然触发;
@@ -240,11 +255,11 @@ export function GuideOverlayView({
   useEffect(() => {
     if (guideRequest == null || guideRequest.nonce === appliedNonce.current) return;
     appliedNonce.current = guideRequest.nonce;
-    applyGuideTarget(
-      guideRequest.target === null
+    const target = guideRequest.target === null
         ? (loadGuideReading() ?? { topic: "guide-start" })
-        : normalizeGuideTarget(guideRequest.target),
-    );
+        : normalizeGuideTarget(guideRequest.target);
+    applyGuideTarget(target);
+    if (embedded) recordEncyclopediaTarget(target);
     onGuideRequestApplied?.(guideRequest.nonce);
   }, [guideRequest, onGuideRequestApplied]);
 

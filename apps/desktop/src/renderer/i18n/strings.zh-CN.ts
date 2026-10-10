@@ -1,3 +1,4 @@
+import { helpCopy } from "./help-copy.ts";
 import { moduleCopy } from "./module-copy.ts";
 import { hardwareCopy } from "./hardware-copy.ts";
 import { environmentCopy } from "./environment-copy.ts";
@@ -16,6 +17,7 @@ import type { Strings } from "./strings.en.ts";
  *   仅 gateway fixture 可达,生产构建被 Tree-shaking 剔除)。
  */
 export const strings: Strings = {
+  helpUi: helpCopy["zh-CN"],
   amfModule: moduleCopy["zh-CN"],
   environmentCards: environmentCopy["zh-CN"],
   journey: journeyCopy["zh-CN"],

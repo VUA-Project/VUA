@@ -16,6 +16,7 @@ import {
 } from "./app/nav-model.ts";
 import {
   goalsStorageKey,
+  migratePageId,
   parseStoredGoals,
   resolveEntry,
   serializeGoals,
@@ -48,7 +49,6 @@ import {
 import { Button } from "./components/primitives/Button.tsx";
 import { BrandMark } from "./components/BrandMark.tsx";
 import { Card } from "./components/primitives/Card.tsx";
-import { EmptyState } from "./components/primitives/EmptyState.tsx";
 import { Icon } from "@vua/design-system";
 import { format, strings, termLabel, termSequence, TERMS } from "./i18n/index.ts";
 import { currentLocale, localeRegistry } from "./i18n/index.ts";
@@ -120,7 +120,7 @@ const lastPageStorageKey = storageKeys.lastPage;
 /** 深链接读取(C-EFFICIENCY):#/page-id 形态;非法 id 回退 null */
 function readHashPage(): PageId | null {
   try {
-    const raw = window.location.hash.replace(/^#\/?/, "");
+    const raw = migratePageId(window.location.hash.replace(/^#\/?/, "").split("?")[0] ?? "");
     return isPageId(raw) ? raw : null;
   } catch {
     return null;
@@ -178,20 +178,6 @@ function pageLabel(page: SidebarPage): string {
   if (page.labelTerms) return termSequence(page.labelTerms);
   if (page.labelKey) return strings.nav.pages[page.labelKey];
   throw new Error(`page without label: ${page.id}`);
-}
-
-/* ---- 占位页:功能未接入时的诚实空态(原则①) ---- */
-
-function PlaceholderPage({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="vua-page">
-      <section className="vua-page__hero">
-        <h1 className="vua-title">{title}</h1>
-      </section>
-      {/* 空态面板不再套大灰框(§氛围基线 #11):吉祥物静态帧 + 文案直放页面 */}
-      <EmptyState title={strings.placeholders.notOpenTitle} description={description} />
-    </div>
-  );
 }
 
 /**
@@ -381,20 +367,12 @@ function ThemeSettingsPage({
   );
 }
 
-function LanguageSettingsPage() {
+function LanguageSelector() {
   const copy = strings.settings.language;
   return (
-    <div className="vua-page">
-      <section className="vua-page__hero">
-        <h1 className="vua-title">{strings.nav.pages.settingsLanguage}</h1>
-      </section>
-      <Card>
-        <div className="vua-page__stack">
-          <h2 className="vua-title">{copy.heading}</h2>
-          <p className="vua-text-secondary">{copy.description}</p>
-          <div>
             <select
               className="vua-settings-select"
+              data-nav-id="settings-language-select"
               aria-label={copy.aria}
               value={currentLocale}
               onChange={(event) => {
@@ -413,10 +391,6 @@ function LanguageSettingsPage() {
                 </option>
               ))}
             </select>
-          </div>
-        </div>
-      </Card>
-    </div>
   );
 }
 
@@ -443,7 +417,7 @@ function GoalsSettingsPage({ onRestart }: { onRestart: () => void }) {
   );
 }
 
-function VersionPage() {
+function VersionDetails() {
   const copy = strings.settings.version;
   const debugMode = useDebugMode();
   const environment = useEnvironmentView();
@@ -471,10 +445,7 @@ function VersionPage() {
   };
 
   return (
-    <div className="vua-page">
-      <section className="vua-page__hero">
-        <h1 className="vua-title">{strings.nav.pages.settingsVersion}</h1>
-      </section>
+    <div className="vua-page__stack" data-version-details>
       <Card>
         <div className="vua-page__stack">
           <h2 className="vua-title">{copy.heading}</h2>
@@ -511,7 +482,7 @@ function VersionPage() {
             </p>
           ) : null}
           <div style={{ display: "flex", gap: "0.5rem" }}>
-            <Button variant="default" disabled={updateChecking} onClick={checkNow}>
+            <Button variant="default" data-nav-id="about-check-updates" disabled={updateChecking} onClick={checkNow}>
               {updateChecking ? copy.updateChecking : copy.updateNow}
             </Button>
             {updateCache?.state === "newer-available" && updateCache.releaseUrl ? (
@@ -562,6 +533,7 @@ function AboutPage() {
       <section className="vua-page__hero">
         <h1 className="vua-title">{strings.nav.pages.settingsAbout}</h1>
       </section>
+      <VersionDetails />
       {/* Banner 槽位(美术需求文档 §3):定稿前诚实占位,不放伪造图 */}
       <div className="vua-about-banner">
         <span className="vua-caption vua-text-secondary">{copy.bannerSlot}</span>
@@ -648,10 +620,10 @@ function renderPage(
   switch (page) {
     case "home": case "environment-hub": case "avatar-hub":
       return <HomePage page={page} bigscreen={bigscreen} navigate={actions.navigate} amfInstalled={amf.installed} />;
-    case "help": case "help-encyclopedia":
-      return <HelpPage page={page} navigate={actions.navigate} startWizard={actions.restartOnboarding} startTour={actions.startTour} guideRequest={encyclopedia.request} acknowledgeGuide={encyclopedia.acknowledge} />;
+    case "help": case "help-wizard": case "help-tour": case "help-game-assistant": case "help-encyclopedia":
+      return <HelpPage page={page} navigate={actions.navigate} onAccounts={actions.openAccounts} startTour={actions.startTour} guideRequest={encyclopedia.request} acknowledgeGuide={encyclopedia.acknowledge} />;
     case "env-play": case "env-create":
-      return <RouteEnvironmentPage zone={page === "env-play" ? "play" : "create"} onAccounts={actions.openAccounts} />;
+      return <RouteEnvironmentPage zone={page === "env-play" ? "play" : "create"} onAccounts={actions.openAccounts} onOpenAmf={() => actions.navigate("warehouse")} />;
     case "warehouse": case "recipe": case "inspection": case "release": case "packages": case "workshop":
       return <AmfBoundary key={page} manage={() => actions.navigate("settings-modules")}><Suspense fallback={<p role="status">{format(strings.amfModule.loading, { amf: TERMS.amf })}</p>}><AmfPages page={page} creatorReady={creatorReady} navigate={actions.navigate} prepareEnv={actions.prepareEnv} /></Suspense></AmfBoundary>;
     case "settings-modules":
@@ -668,12 +640,8 @@ function renderPage(
       return <EnvironmentSettingsPage />;
     case "settings-accounts":
       return <AccountSettingsPage />;
-    case "settings-language":
-      return <LanguageSettingsPage />;
     case "settings-theme":
       return <ThemeSettingsPage {...prefs} />;
-    case "settings-version":
-      return <VersionPage />;
     case "settings-experimental":
       return (
         <ExperimentalSettingsPage
@@ -683,13 +651,6 @@ function renderPage(
       );
     case "settings-about":
       return <AboutPage />;
-    case "settings-donate":
-      return (
-        <PlaceholderPage
-          title={strings.nav.pages.settingsDonate}
-          description={strings.placeholders.donateDescription}
-        />
-      );
   }
 }
 
@@ -750,7 +711,16 @@ function AppShell({
   const bigscreen = displayMode === "bigscreen";
   const settingsOpen = page.startsWith("settings-");
   // Settings temporarily covers the source page; its local workflow stays mounted.
-  const [settingsReturn, setSettingsReturn] = useState<PageId | null>(null);
+  const [settingsReturn, setSettingsReturn] = useState<PageId | null>(() => {
+    const saved = window.history.state?.vuaSettingsReturn;
+    return settingsOpen && typeof saved === "string" && isPageId(saved) && !saved.startsWith("settings-") ? saved : null;
+  });
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const saved = window.history.state?.vuaSettingsReturn;
+    if (settingsReturn === null && typeof saved === "string" && isPageId(saved) && !saved.startsWith("settings-")) { setSettingsReturn(saved); return; }
+    if (settingsReturn) window.history.replaceState({ ...window.history.state, vuaSettingsReturn: settingsReturn }, "");
+  }, [page, settingsOpen, settingsReturn]);
   const history = useRef<PageId[]>([]);
   const focusMemory = useRef(new Map<PageId, string>());
   const returnFocus = useRef<string | null>(null);
@@ -769,7 +739,7 @@ function AppShell({
       return;
     }
     const source = settingsOpen ? settingsReturn : page;
-    if (source === "help-encyclopedia" && target === "help") {
+    if (source?.startsWith("help-") && target === "help") {
       if (history.current.at(-1) === "help") history.current.pop();
       returnFocus.current = focusMemory.current.get("help") ?? null;
       setSettingsReturn(null);
@@ -810,7 +780,7 @@ function AppShell({
   const onShellCommand = useEffectEvent((command: DesktopShellCommandV1) => {
     if (command === "bigscreen") setDisplayMode("bigscreen");
     else {
-      navigate("settings-version");
+      navigate("settings-about");
       void runUpdateCheck({ manual: true });
     }
   });
@@ -1148,9 +1118,17 @@ function AppShell({
             {moduleDef("settings").groups.flatMap(g => g.pages).map(p => <button type="button" key={p.id} className="vua-shell__sidebar-item" aria-current={page === p.id ? "page" : undefined} onClick={() => navigate(p.id)} data-nav-id={`nav-${p.id}`}>{pageLabel(p)}</button>)}
           </div> : (["env", "production"] as const).filter(group => group !== "production" || amf.installed).map(group => <div className="vua-shell__sidebar-group" key={group} data-module={group}>
             <button type="button" className="vua-shell__sidebar-label" onClick={() => navigate(group === "env" ? "environment-hub" : "avatar-hub")}>{group === "env" ? strings.journey.environment : TERMS.amf}</button>
-            {directory[group].map(item => <button type="button" key={item.id} className="vua-shell__sidebar-item" aria-current={page === item.id || (item.id === "help" && page === "help-encyclopedia") ? "page" : undefined} onClick={() => navigate(item.id)} data-nav-id={`nav-${item.id}`}>{item.title}</button>)}
+            {directory[group].map(item => <button type="button" key={item.id} className="vua-shell__sidebar-item" aria-current={page === item.id || (item.id === "help" && page.startsWith("help-")) ? "page" : undefined} onClick={() => navigate(item.id)} data-nav-id={`nav-${item.id}`}>{item.title}</button>)}
           </div>)}
+          {!settingsOpen && !amf.installed ? <div className="vua-shell__sidebar-group" data-module="amf-enablement">
+            <span className="vua-shell__sidebar-label">{TERMS.amf}</span>
+            <button type="button" className="vua-shell__sidebar-item vua-shell__amf-entry" data-nav-id="nav-enable-amf" onClick={() => {
+              navigate("env-create");
+              window.requestAnimationFrame(() => document.querySelector(".vua-creator-page [data-amf-setup]")?.scrollIntoView({ block: "start" }));
+            }}><Icon name="arrow-right" size={16} />{format(strings.amfModule.enable, { amf: TERMS.amf })}</button>
+          </div> : null}
           {settingsOpen ? <div className="vua-shell__sidebar-footer">
+            <LanguageSelector />
             <button
               type="button"
               className="vua-shell__sidebar-search"
@@ -1227,7 +1205,8 @@ export function App() {
     const hashPage = readHashPage();
     const params = new URLSearchParams(window.location.search);
     // 允许 ?page=workshop 指定初始页,供人工走查与调试使用(引导未完成时不生效)
-    const pageParam = params.get("page");
+    const rawPageParam = params.get("page");
+    const pageParam = rawPageParam === null ? null : migratePageId(rawPageParam);
     if (!entry.showOnboarding && hashPage) return hashPage;
     return !entry.showOnboarding && isPageId(pageParam) ? pageParam : entry.page;
   });
@@ -1236,10 +1215,10 @@ export function App() {
     pageRef.current = page;
   }, [page]);
 
-  function navigate(target: PageId) {
+  function navigate(target: PageId, updateHash = true) {
     // 不做强制重定向(v0.3.3 §2.1):所有页面直达,阻断由页面内诚实状态表达
     setPage(target);
-    if (!showOnboarding) {
+    if (!showOnboarding && updateHash) {
       // 深链接:当前页同步进 hash,可粘贴直达
       try {
         window.location.hash = target;
@@ -1262,7 +1241,7 @@ export function App() {
     if (showOnboarding) return;
     const onHashChange = () => {
       const target = readHashPage();
-      if (target && target !== pageRef.current) navigate(target);
+      if (target && target !== pageRef.current) navigate(target, false);
     };
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);

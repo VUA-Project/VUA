@@ -1,7 +1,7 @@
 # VUA product boundary
 
 
-> Document version: 2.21.1
+> Document version: 2.22.0
 > Status: Accepted
 > Scope: Entire VUA product
 > Updated: 2026-10-10
@@ -571,14 +571,21 @@ limitations.
 
 Scope rulings attached to the active sequence:
 
-- N2's external-tool scope is the seven applications listed in the
-  [outline](development-outline.md#n2-external-gameplay-tools). A common Steam connection provides
-  local installation inventory, official purchase/install handoff, launch and observed status.
-  VRCFT and Space Calibrator retain their specific setup and hardware acceptance; the five other
-  applications need no individual usage tutorial or automation of their internal features.
+- N1 isolates the scenario host before prerequisite checks, deployment and SOP delivery; Steam,
+  PICO and Unity detection/preparation are reusable host capabilities. N3/N4 belong to AMF and
+  N5 to AMF + BDL, retaining existing code, review and independent acceptance. N6 accompanies
+  each scenario's interruption/return/reinspection/retry; N7 records host/module release and
+  compatibility separately. This ownership change does not declare N1 or N5 complete.
+- N2 covers selected optional modules and external-software connections, including the original
+  seven Steam tools and VRCS in the [outline](development-outline.md#n2-external-gameplay-tools).
+  Use each upstream's supported Steam, official-installer or GitHub-release source for discovery,
+  acquisition/handoff, launch and observed status. VRCFT and Space Calibrator retain their setup
+  and hardware acceptance; other entries need no individual usage tutorial or automation of
+  their internal features.
   PICO eye tracking is advanced into the first play release; the remaining N2 work follows it.
   Official applications retain their upstream features, licenses and lifecycle. A native VUA
-  entry means a built-in connector to the external app, not a bundled copy or a VUA plugin.
+  connector does not imply a bundled upstream binary. Explicit optional-module selection is
+  separate from upstream application installation; it grants no arbitrary plugin-script authority.
   Internal Space Calibrator driver IPC is not a VUA integration contract. This grants no VRChat
   injection or generic plugin-host authority.
 - [N5](development-outline.md#n5-audit-and-redo-material-management) BOOTH acquisition does not
@@ -599,16 +606,15 @@ plugin execution and a marketplace still require their separately accepted secur
 
 ## Document changelog
 
+- 2.22.0 (2026-10-10): align scenario-host/AMF/BDL stage ownership, selected N2 module/software sources and separate release acceptance with the author's revised N sequence; preserve open N1/N5 outcomes.
 - 2.21.1 (2026-10-10): align preparation-reading wording with the main Help encyclopedia ruling without changing guidance scope or acceptance.
 - 2.21.0 (2026-10-10): distinguish ordinary local-material intake from active support for pirated acquisition sources, without introducing rights classification or new intake gates.
 - 2.20.0 (2026-10-10): bundle AMF with Ibis while requiring explicit first activation, retain saved choices and legacy data, and defer external Avatar-editing modules.
-
 - 2.19.0 (2026-10-09): accept VUA as a scenario host with optional AMF＋BDL, independent fresh startup/navigation and retained module data.
-
 - 2.18.0 (2026-10-09): integrate the author's Ibis newcomer core-journey criterion and current regional-Ping/website presentation with the N5 scope, retaining pending optional outcomes and retiring usage-region identification and accelerator recommendations.
 - 2.17.0 (2026-10-09): require managed ZIP extraction for local imports and BOOTH downloads while preserving original archives and separate production qualification.
 - 2.16.0 (2026-10-09): bound N5 closure to intact local-file retention, UnityPackage production intake, official lookup/minimal manual metadata and optional dependency clues; defer third-party search.
 - 2.15.0 (2026-10-08): add content-based migration reconciliation and narrow N5 to local record removal and persisted link clues; defer final Recipe/VPM and production-loop work.
 - 2.14.0 (2026-10-08): replace the missing-file relink requirement with explicit BOOTH re-download and record official-ID, third-party and manual source-supplementation routes.
-- 2.13.0 (2026-10-08): preserve records/references after local-file removal and retain superseded VPM output after changed managed originals; link the maintenance ruling.
+
 Earlier entries remain in Git history.

@@ -86,7 +86,9 @@ test("every page belongs to exactly its own module", () => {
   assert.equal(moduleOf("tools-devices"), "env");
   assert.equal(moduleOf("tools-calibration"), "env");
   assert.equal(moduleOf("tools-installed"), "env");
-  assert.equal(moduleOf("settings-version"), "settings");
+  assert.equal(moduleOf("settings-about"), "settings");
+  for (const page of ["help-wizard", "help-tour", "help-game-assistant", "help-encyclopedia"] as const) assert.equal(moduleOf(page), "env");
+  for (const retired of ["settings-version", "settings-language", "settings-donate"]) assert.equal(isPageId(retired), false);
   assert.equal(moduleOf("settings-experimental"), "settings");
   assert.equal(moduleOf("settings-goals"), "settings");
 });
@@ -102,7 +104,7 @@ test("environment module carries the merged tools group with labels, page ids un
   );
   assert.deepEqual(
     env?.groups[0]?.pages.map((p) => p.id),
-    ["env-play", "env-create", "tools-discover", "help"],
+    ["env-play", "tools-discover", "env-create", "help"],
   );
   assert.deepEqual(
     env?.groups[1]?.pages.map((p) => p.id),

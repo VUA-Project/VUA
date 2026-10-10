@@ -1,11 +1,11 @@
 # Electron desktop and presentation architecture
 
 
-> Document version: 1.15.0
+> Document version: 1.16.0
 > Status: Accepted
 > Scope: `apps/desktop`, `packages/design-system`, frontend Gateway
 > Updated: 2026-10-10
-> Last conformance review: 2026-10-09 (two-half environment cards, creator inventory and preserved shell preferences; physical app/device review pending)
+> Last conformance review: 2026-10-10 (controlled card/history/AMF activation/Settings checks; physical app/device and human-language review pending)
 > Normative effect: Yes
 
 ## Technology decision
@@ -63,12 +63,17 @@ restoring the old two-tab presentation. Wizard choices never hide features or ch
 The [design standard](../design/design-standard.md#3-platform-and-information-architecture)
 owns the accepted layout, logo colors, unavailable peers and preserved visual preferences.
 
-Environment contains Play, Avatar editing, Tools and Help. Tools groups the planned tracking,
+Environment contains Play, Tools, Avatar editing and Help. Tools groups the planned tracking,
 translation, VR utilities and capture integrations, independently of AMF. Its unwired entries
-are disabled development peers, not installed/launchable plugin claims. Help replaces the
+offer collapsible descriptions with disabled development actions, not installed/launchable plugin claims. Help replaces the
 former topbar entry and contains Getting started, the app tour, Knowledge encyclopedia and
 In-game assistant. The encyclopedia is a main-window page with hardware introductions and
 the existing shared preparation chapters/bookmark. Play links directly to hardware reading.
+All four Help cards open main-window child pages; tour and game-assistant pages then offer
+their existing explicit start actions. The replay wizard stays inside its Help child page.
+Native mouse Back/Forward uses Chromium history, including encyclopedia chapters and wizard
+choices; restored preparation still needs fresh inspection. Same-document navigation does not
+invalidate Main's subscribed native-command listeners.
 
 `journey-model.ts` stores only a versioned reading/selection bookmark. Desktop/PICO and creator
 routes use the existing typed network/deployment ports. A fresh plan or a task completed during
@@ -77,7 +82,7 @@ Reopening a completed preparation step reinspects files, and accepted tasks rema
 through their receipts. A connection confirmation is explicitly user-declared, not headset evidence.
 Opening Steam or a guide does not prove installation, login or successful play.
 
-Play now has fixed two-half cards: details on the left and observed status/action on the
+Play and Tools have equally sized two-half cards: collapsible details on the left and status/action on the
 right. Normal game exit retains **Close** only while owned software survives, with no failure
 warning. Desktop cards are 88 px high and big-screen cards 108 px, half their previous heights;
 the two action/detail halves remain intact. Network's equally tall tile is above the grid; its regional Ping is explicitly unavailable
@@ -88,6 +93,9 @@ The typed play port consumes the Candidate [play-session family](play-sessions.m
 unavailable observations distinct from missing software, and disables launch while installation
 is active. Scoped deployment bookmarks retain Desktop and PICO work independently while
 reading a matching legacy bookmark. Hidden details keep accepted installation receipts alive.
+Play, Tools and Avatar-editing cards expand below their grid and collapse on a second click.
+Development entries expose descriptions while installation/launch remain unavailable; tool
+grids keep the same column widths even in a group with only one item.
 
 Avatar editing reuses `project.environmentManagers` and `environment.verifyEditor` to show
 complete discovered editors; Unity 6 remains a development entry even when files are found.
@@ -108,8 +116,12 @@ the bottom taskbar is no longer mounted, and feature search is a Settings-sideba
 with the existing global shortcut. Appearance changes use joined native buttons backed by the
 same three-value preference. A missing/invalid preference resolves to Dark; saved preferences
 and cross-window/system subscriptions stay compatible. The app tour's task step navigates to
-the fixed Home Tasks tile rather than a retired taskbar anchor. The resource panel keeps its
-observed RAM/VRAM facts without a sampled-time label; the underlying snapshot is unchanged.
+the fixed Home Tasks tile rather than a retired taskbar anchor. Language selection sits directly
+above feature search. Separate Language, Version and Donation pages are removed; About retains
+version, update, debug and diagnostics controls. Historical page IDs migrate to About or Theme.
+Language reloads retain the Settings return page through the current history entry.
+The resource panel keeps its observed RAM/VRAM facts without a sampled-time label; the
+underlying snapshot is unchanged.
 
 Account-help navigation uses that same settings return path.
 Settings → Accounts retains the N5 BOOTH sign-in/probe/logout surface; Steam, VRChat and Unity
@@ -124,7 +136,7 @@ and focuses the existing main window. The localized menu exposes update checking
 mode and application exit. `DesktopWindowApiV1.shellCommandEvents` is an additive, closed native
 desktop event face (`check-updates` / `bigscreen`), not a Provider method. Preload subscription
 signals readiness; Main accepts that signal only from the local main frame and retains the latest
-gesture until it is listening. Update checking opens the Version settings page and runs a manual
+gesture until it is listening. Update checking opens About and runs a manual
 read-only check independent of the automatic-check preference; big screen changes the existing
 shell mode. Exit uses normal application shutdown. Closing Main still exits, and the tray is
 destroyed at process shutdown. Theme/DPI variants rasterize the accepted VUA mark and design tokens
@@ -254,7 +266,9 @@ and its badge. `preview-overlay.mjs` opts into that isolated demonstration.
 ## Standalone Windows packaging
 
 Without a saved AMF enable choice, both fresh and legacy profiles start host environment/play
-services alone. AMF is installed with VUA; Settings → Modules explicitly enables the local
+services alone. AMF is installed with VUA; Avatar editing explains it and exposes the enable
+switch, while the disabled sidebar entry opens that setup section. Settings → Modules retains
+the existing module controls. Explicit enablement starts the local
 payload. Selection/readiness facts control its navigation, wizard entry and BOOTH
 controls. AMF pages load in a local error boundary, and host bootstrap/task windows do not depend
 on its production queries. [Module architecture](modules.md) owns selection, process lifecycle,
@@ -304,19 +318,15 @@ redistribution review authorizes each bundled binary before a public release.
 
 ## Document changelog
 
+- 1.16.0 (2026-10-10): unify collapsible scenario/tool/editor details, add native Help/chapter/wizard history and Avatar-editing AMF activation, and consolidate Settings language/version controls without changing vendor/device evidence.
 - 1.15.0 (2026-10-10): add environment Tools/Help, embed the knowledge encyclopedia through desktop-window v0.2, halve Play card heights and remove the resource-panel sampling-time label.
 - 1.14.0 (2026-10-10): clarify AMF's bundled installation and separate activation for fresh/legacy profiles; retain saved choices and omit external editing placeholders from Ibis.
-
 - 1.13.0 (2026-10-09): scope optional AMF frontend/BOOTH services to module readiness and document the two-provider payload; retain host task-window independence and legacy data paths.
 - 1.12.1 (2026-10-09): align guide transparency/drag memory, normal game-exit cards and the regional-placeholder/expanded-website split with their owning documents.
-
-
 - 1.12.0 (2026-10-09): implement observed two-half play sessions and scoped close, move network/runtime discovery into Play, and add complete-editor and manager-app inventory to Avatar editing.
 - 1.11.0 (2026-10-09): apply the compact-shell ruling, move command search into Settings, replace the appearance select with joined buttons and a Dark default, and retarget the task-tour step to Home.
 - 1.10.0 (2026-10-09): implement settings-only sidebar/return, separate real task status and appearance from guides/demo previews, and add the localized VUA tray with typed main-renderer gestures and normal shutdown.
 - 1.9.0 (2026-10-08): record fixed navigation, desktop/big-screen focus, independent wizard/task facts and the closed official account-page browser handoff; temporary embedding and device acceptance remain pending.
-- 1.8.0 (2026-10-08): record the implemented game-window follow loop in Main (game-window-observe
-  v0.1 observation, follow decision module, and the setGameGuideFollowing /
-  getGameGuideFollowStatus desktop API faces).
-- 1.7.1 (2026-10-07): record separate guidance presentations and retain automatic following as unfinished work.
+- 1.8.0 (2026-10-08): record the implemented game-window follow loop in Main (game-window-observe v0.1 observation, follow decision module, and the setGameGuideFollowing / getGameGuideFollowStatus desktop API faces).
+
 Earlier entries remain in Git history.

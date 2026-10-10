@@ -1,6 +1,6 @@
 # First play release: implementation checkpoint and remaining work
 
-> Document version: 1.12.0
+> Document version: 1.13.0
 > Status: Accepted
 > Updated: 2026-10-10
 > Scope: Desktop play, PICO 4 Pro USB/Wi-Fi, optional eye tracking and three guidance contexts
@@ -56,6 +56,19 @@ Software & connections is removed as a separate page. These changes preserve the
 wizard and compact shell. Controlled UI/process/schema checks cover recovery and scope;
 Steam/PICO vendor behavior and headset play remain physical acceptance work on the candidate.
 No new ZIP is produced during the author's development-UI review.
+
+The 2026-10-10 interaction correction standardizes collapsible Play/Tools/editor details and
+tool card dimensions; four Help cards now enter main-window child pages with native browser
+history, including encyclopedia chapters and replay-wizard choices. AMF setup is explained in
+Avatar editing with an explicit switch and a sidebar shortcut while disabled. Language selection
+moves above Settings search, and About retains the former Version controls; empty Donation is
+removed. Controlled UI checks cover these actions, not real mouse/headset/vendor acceptance.
+
+The revised [N sequence](../development-outline.md) puts host isolation before scenario
+prerequisite/deployment/SOP work, expands selected module/software sources in N2 and keeps
+N3/N4 in AMF and N5 in AMF + BDL. N6 is delivered with each scenario, while N7 records host and
+module release scope separately. Existing N1/N5 code and reviews are retained; neither stage
+is declared formally complete without its required real-machine/material and human evidence.
 
 ## 1. Completed work to build on
 
@@ -352,17 +365,15 @@ installation, PICO connection, real-material production and four-language human 
 
 ## Document changelog
 
+- 1.13.0 (2026-10-10): record unified card toggles, Help history, Avatar-editing AMF setup and consolidated Settings; align scenario-stage ownership while retaining pending physical acceptance and no new ZIP.
 - 1.12.0 (2026-10-10): record environment Tools/Help, embedded hardware/knowledge reading and compact Play checks without claiming new tool integrations, hardware acceptance or another ZIP.
 - 1.11.0 (2026-10-10): keep AMF installed with VUA but require explicit first activation, retain saved choices/data and defer external Avatar-editing module integration from Ibis.
-
 - 1.10.0 (2026-10-09): record optional AMF startup and core task/guidance independence without replacing pending physical release acceptance.
-
 - 1.9.0 (2026-10-09): record author-reported guide/normal-exit defects and source repairs, background-alpha evidence, removed network advice and unavailable regional Ping without another ZIP or physical-acceptance claim.
-
 - 1.8.0 (2026-10-09): record two-half play cards, scoped observed launch/close and creator inventory while retaining real vendor/device checks and the author’s no-package UI review.
 - 1.7.0 (2026-10-09): record the compact shell and Settings search/appearance corrections, update the task-tour destination and expand the controlled UI checks to 56; no new ZIP or physical-acceptance claim.
 - 1.6.0 (2026-10-09): record the author's development-mode UI corrections, task/theme separation, settings return, headset glyphs and native tray checks; defer another ZIP while the UI is under review.
 - 1.5.0 (2026-10-08): record the integrated wizard/Home implementation and controlled UI checks, with official account handoff and real-device/installer/human review still separate.
 - 1.4.0 (2026-10-08): integrate the independently delivered acquisition and game-guide-follow slices without changing their pending real-machine acceptance.
-- 1.3.0 (2026-10-08): prioritize download-to-play blockers under the author's Ibis criterion, record return/next-action repairs and keep optional automation and the deferred Sandbox method outside independent release gates.
+
 Earlier entries remain in Git history.

@@ -1,6 +1,6 @@
 # VUA host and optional AMF module
 
-> Document version: 1.2.0
+> Document version: 1.3.0
 > Status: Accepted
 > Scope: First-party module composition, lifecycle and data ownership
 > Updated: 2026-10-10
@@ -45,6 +45,9 @@ adding a model-service configuration page or Agent harness to this Ibis slice.
 - The first-party payload is installed with VUA at `resources/modules/amf/`. Without a saved enable
   choice, AMF remains disabled, including on legacy profiles. “Enable” registers and starts this
   local payload; it does not claim a network install. Explicit choices survive restart.
+  Avatar editing explains the module and provides its enable/disable switch. When disabled,
+  the sidebar entry opens that setup section without changing selection; Settings → Modules
+  retains the existing controls. Installing/preparing Unity remains a host path.
   No arbitrary module scripts, community plugin SDK or marketplace are introduced.
 - The renderer loads AMF pages on demand, inside a local error boundary. Host bootstrap does not
   await AMF domain snapshots. Navigation, search, deep links, wizard material entry and BOOTH
@@ -98,8 +101,7 @@ owned by the [N sequence](../development-outline.md) and [Ibis plan](../developm
 
 ## Document changelog
 
+- 1.3.0 (2026-10-10): expose the bundled AMF activation switch and explanation in Avatar editing, with a disabled-sidebar setup entry; retain host-owned Unity preparation and the existing lifecycle contract.
 - 1.2.0 (2026-10-10): record the author's external-module deferral rationale and route the retained AI idea to future external-Agent tool access.
 - 1.1.0 (2026-10-10): distinguish bundled installation from explicit activation, keep legacy data from implicitly enabling AMF, and remove external editing placeholders from Ibis.
-
-- 1.0.0 (2026-10-09): define the scenario/module distinction and implemented optional AMF＋BDL
-  process, data, navigation and recovery boundaries; preserve legacy profiles and frozen contracts.
+- 1.0.0 (2026-10-09): define the scenario/module distinction and implemented optional AMF＋BDL process, data, navigation and recovery boundaries; preserve legacy profiles and frozen contracts.

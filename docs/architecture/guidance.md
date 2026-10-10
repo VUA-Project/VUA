@@ -1,6 +1,6 @@
 # Guidance architecture: app tour, knowledge encyclopedia and game guide
 
-> Document version: 1.6.0
+> Document version: 1.7.0
 > Status: Accepted
 > Updated: 2026-10-10
 > Last conformance review: 2026-10-09 (background-alpha and relative-placement repairs with controlled Chromium/decision checks; author recheck pending)
@@ -31,6 +31,14 @@ implementation order/status to the [first play delivery plan](../development/fir
 The encyclopedia is useful before VRChat exists or starts. The game guide targets the
 Windows game window; headset reading uses SteamVR's desktop view of the main Help page.
 A native in-headset VUA overlay remains later work.
+
+Help's four cards open distinct main-window child pages. Getting started replays the branching
+wizard inside its child page; the tour and game-assistant children explain their function and
+offer an explicit start action for the retained highlight overlay or floating game window.
+Encyclopedia chapters and wizard choices are same-document history entries. Native mouse
+Back/Forward traverses those entries and the parent/child pages without creating another reader
+window or implicitly executing scenario work. Reopened completed preparation still reinspects
+instead of trusting an old readiness bookmark. Replay navigation does not reset onboarding goals.
 
 The Tasks window is a queue/status entry, without an onboarding switch. Preparation and game
 guidance stay in their own presentations; retained legacy explicit guide calls do not add a
@@ -193,10 +201,9 @@ code and real-machine checks.
 
 ## Document changelog
 
+- 1.7.0 (2026-10-10): make all four Help entries child pages, retain explicit tour/game-window start and add native page/chapter/wizard history while preserving separate progress and fresh preparation checks.
 - 1.6.0 (2026-10-10): move Help into the environment directory, embed the knowledge encyclopedia with hardware introductions, and add a versioned Main-navigation face while retaining V1 reader compatibility.
 - 1.5.0 (2026-10-09): fix background-only guide opacity and define persisted relative drag placement across focus, window and session changes without retaining machine identifiers.
-
-
 - 1.4.0 (2026-10-09): separate the daily Tasks entry from guidance and route account-help return through the independent settings area; retain legacy guide-call compatibility.
 - 1.3.0 (2026-10-08): keep the independent first-run wizard and manually opened app tour distinct; route Help and tour anchors through the fixed directory.
 - 1.2.0 (2026-10-08): record the delivered game-window observer and automatic guide following (game-window-observe v0.1); real-machine acceptance remains in the delivery plan.

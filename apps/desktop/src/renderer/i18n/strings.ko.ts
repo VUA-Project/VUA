@@ -1,3 +1,4 @@
+import { helpCopy } from "./help-copy.ts";
 import { moduleCopy } from "./module-copy.ts";
 import { hardwareCopy } from "./hardware-copy.ts";
 import { environmentCopy } from "./environment-copy.ts";
@@ -12,6 +13,7 @@ import type { Strings } from "./strings.en.ts";
  * - {placeholder} 이름은 소스 테이블과 정확히 일치해야 함.
  */
 export const strings: Strings = {
+  helpUi: helpCopy["ko"],
   amfModule: moduleCopy["ko"],
   environmentCards: environmentCopy["ko"],
   journey: journeyCopy["ko"],

@@ -1333,7 +1333,13 @@ async function createWindow(): Promise<void> {
   });
 
   tagDevelopmentWindow(mainWindow, desktopProfile);
-  mainWindow.webContents.on("did-start-loading", () => { shellListening = false; });
+  // Native mouse side buttons use Chromium history, including same-document Help routes.
+  mainWindow.on("app-command", (_event, command) => {
+    const navigation = mainWindow?.webContents.navigationHistory;
+    if (command === "browser-backward" && navigation?.canGoBack()) navigation.goBack();
+    else if (command === "browser-forward" && navigation?.canGoForward()) navigation.goForward();
+  });
+  mainWindow.webContents.on("did-navigate", () => { shellListening = false; });
   // Hash navigation can emit did-start-loading without remounting the shell listener.
   mainWindow.webContents.on("did-navigate", () => { encyclopediaListening = false; });
 

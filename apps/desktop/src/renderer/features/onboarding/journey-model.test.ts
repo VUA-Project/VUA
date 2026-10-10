@@ -1,8 +1,11 @@
 import { expect, test } from "vitest";
-import { initialJourney, journeyBack, parseJourney } from "./journey-model.ts";
+import { initialJourney, journeyBack, journeyHash, parseJourney, readJourneyHash } from "./journey-model.ts";
 test("reopening a launch or connection step requires inspection again", () => {
   for (const step of ["launch", "connection"]) expect(parseJourney(JSON.stringify({ v: 1, step, purpose: "pico_pcvr", connection: "wifi" }))).toEqual({ v: 1, step: "prepare", purpose: "pico_pcvr", connection: "wifi" });
   expect(parseJourney(JSON.stringify({ v: 1, step: "creator-done", purpose: "quest_avatar", connection: null })).step).toBe("prepare");
+  expect(readJourneyHash(journeyHash({ v: 1, step: "launch", purpose: "pico_pcvr", connection: "wifi" }))).toEqual({ v: 1, step: "prepare", purpose: "pico_pcvr", connection: "wifi" });
+  expect(readJourneyHash("#help-wizard?step=connection&purpose=pc_avatar")).toEqual(initialJourney);
+  expect(readJourneyHash("#help-wizard?step=foreign")).toBeNull();
 });
 test("foreign versions and incoherent branch bookmarks do not acquire authority", () => {
   for (const value of [null, "{", { v: 2, step: "launch", purpose: "desktop_play" }, { v: 1, step: "connection", purpose: "pc_avatar" }, { v: 1, step: "editor", purpose: "pico_pcvr" }, { v: 1, step: "prepare", purpose: null }])

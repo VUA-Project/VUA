@@ -4,3 +4,7 @@
 .vua-knowledge__body .vua-overlay-guide__topics { position: sticky; top: -24px; z-index: 1; padding-block: 12px; background: var(--vua-bg-panel); }
 .vua-knowledge__body .vua-overlay-guide__topic { border: 1px solid var(--vua-border); }
 .vua-knowledge__body .vua-overlay-guide__topic[data-active] { color: var(--vua-accent-contrast); }
+.vua-help-child > * { flex-shrink: 0; }
+.vua-help-child .vua-onboarding { min-height: 0; padding: 0; width: 100%; }
+.vua-help-child .vua-onboarding__panel { max-width: none; }
+.vua-help-child .vua-onboarding__header h2 { margin: 0; }

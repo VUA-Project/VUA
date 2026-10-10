@@ -1,3 +1,4 @@
+import { helpCopy } from "./help-copy.ts";
 import { moduleCopy } from "./module-copy.ts";
 import { hardwareCopy } from "./hardware-copy.ts";
 import { environmentCopy } from "./environment-copy.ts";
@@ -12,6 +13,7 @@ import type { Strings } from "./strings.en.ts";
  * - {placeholder} の名前はソース表と完全一致させること。
  */
 export const strings: Strings = {
+  helpUi: helpCopy["ja"],
   amfModule: moduleCopy["ja"],
   environmentCards: environmentCopy["ja"],
   journey: journeyCopy["ja"],

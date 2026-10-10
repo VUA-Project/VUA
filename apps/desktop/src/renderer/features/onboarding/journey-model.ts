@@ -3,6 +3,17 @@ export type JourneyStep = "goal" | "play-mode" | "headset" | "creator-start" | "
 export interface JourneyState { v: 1; step: JourneyStep; purpose: DeploymentPurpose | null; connection: "usb" | "wifi" | null }
 export const initialJourney: JourneyState = { v: 1, step: "goal", purpose: null, connection: null };
 const steps: readonly JourneyStep[] = ["goal", "play-mode", "headset", "creator-start", "target", "editor", "network", "prepare", "connection", "launch", "library", "creator-done"];
+/** Help's replay is a page: each explicit choice participates in browser history. */
+export function journeyHash(state: JourneyState): string {
+  return `#help-wizard?${new URLSearchParams({ step: state.step, ...(state.purpose ? { purpose: state.purpose } : {}), ...(state.connection ? { connection: state.connection } : {}) })}`;
+}
+export function readJourneyHash(hash: string): JourneyState | null {
+  const [page, query] = hash.replace(/^#\/?/, "").split("?");
+  if (page !== "help-wizard" || !query) return null;
+  const params = new URLSearchParams(query);
+  if (!steps.includes(params.get("step") as JourneyStep)) return null;
+  return parseJourney(JSON.stringify({ v: 1, step: params.get("step"), purpose: params.get("purpose"), connection: params.get("connection") }));
+}
 /** Reading progress grants no installation, readiness or account authority. */
 export function parseJourney(raw: string | null): JourneyState {
   try {
