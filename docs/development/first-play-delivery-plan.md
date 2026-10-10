@@ -1,13 +1,13 @@
 # First play release: implementation checkpoint and remaining work
 
-> Document version: 1.11.0
+> Document version: 1.16.0
 > Status: Accepted
 > Updated: 2026-10-10
 > Scope: Desktop play, PICO 4 Pro USB/Wi-Fi, optional eye tracking and three guidance contexts
 
 For people: this release takes a player from missing play software to playing VRChat, with
-instructions in the place where each activity happens. VUA's own tour, a preparation reader
-and the manual VRChat game guide now have separate presentations.
+instructions in the place where each activity happens. VUA's own tour, the knowledge encyclopedia
+inside Help and the manual VRChat game guide have distinct presentations and progress.
 
 For Agents: build on the `72a22e15` baseline collected in PR #61 and the subsequent slices
 recorded below. This plan records delivery
@@ -57,6 +57,19 @@ wizard and compact shell. Controlled UI/process/schema checks cover recovery and
 Steam/PICO vendor behavior and headset play remain physical acceptance work on the candidate.
 No new ZIP is produced during the author's development-UI review.
 
+The 2026-10-10 interaction correction standardizes collapsible Play/Tools/editor details and
+tool card dimensions; four Help cards now enter main-window child pages with native browser
+history, including encyclopedia chapters and replay-wizard choices. AMF setup is explained in
+Avatar editing with an explicit switch and a sidebar shortcut while disabled. Language selection
+moves above Settings search, and About retains the former Version controls; empty Donation is
+removed. Controlled UI checks cover these actions, not real mouse/headset/vendor acceptance.
+
+The revised [N sequence](../development-outline.md) puts host isolation before scenario
+prerequisite/deployment/SOP work, expands selected module/software sources in N2 and keeps
+N3/N4 in AMF and N5 in AMF + BDL. N6 is delivered with each scenario, while N7 records host and
+module release scope separately. Existing N1/N5 code and reviews are retained; neither stage
+is declared formally complete without its required real-machine/material and human evidence.
+
 ## 1. Completed work to build on
 
 | Slice | Delivered and checked | What remains outside that result |
@@ -103,14 +116,16 @@ PRs #64 (dependency patch), #65 (game guide following) and #66 (N5 material mana
 merged and integrated with the Steam/PICO acquisition slice on `slice/first-run-main-ui`.
 The accepted wizard and fixed Home now use the existing plans, tasks and guide windows. Logo
 Home access, domain/theme colors, concise main tiles, equal disabled Quest/Unity 6 peers,
-mouse-oriented desktop mode and keyboard big-screen mode are implemented. Matrix/grid, sidebar
+mouse-oriented desktop mode were implemented; the temporary keyboard big-screen mode was
+retired by the 2026-10-10 ruling below. Matrix/grid, sidebar
 and small-window glass and resource saving remain. Account help opens Accounts, dedicated guides
 and a fixed official system-browser handoff, then returns to the selected preparation step.
 The author's 2026-10-09 development-mode corrections are implemented: Settings replaces the
 business sidebar and returns to the same workflow, Inspection belongs to Avatar, duplicate
 sidebar Help/Settings and the topbar page name are removed, and headset choices use recognizable
 brand glyphs. Tasks shows actual Gateway facts without a guide switch and follows saved/system
-appearance. A localized VUA tray restores Main and exposes update checking, big screen and exit.
+appearance. A localized VUA tray restores Main and exposes update checking and exit;
+its temporary big-screen entry is retired.
 The follow-up compact-shell corrections narrow the sidebar, retire the bottom taskbar and
 header Tasks/display/theme/search controls, place search at the Settings-sidebar bottom, and
 use connected Dark/Light/System appearance buttons with a Dark default. Saved theme choices,
@@ -118,14 +133,14 @@ matrix/glass, motion fallbacks and the global search shortcut remain. The task-t
 points to Home's Tasks tile with matching four-language instructions.
 
 Controlled Chromium checks cover route choices, disabled peers, unknown/missing software,
-manual handoff/reinspection, account return, focus/back, mode changes and four-language minimum
+manual handoff/reinspection, account return/back and four-language minimum
 window layout. These checks use synthetic Gateway facts and establish UI behavior only.
 `pnpm --filter @vua/desktop smoke:first-run-ui` reproduces the branching, readiness, account-return
-and Chromium keyboard cases in an isolated Electron session without installing software or signing in.
-Its checks also cover settings-only navigation, source/focus preservation, tray-renderer
+and native Chromium button activation in an isolated Electron session without installing software or signing in.
+Its checks also cover settings-only navigation, source preservation, tray-renderer
 gestures, live task-port selection in DEV, compact navigation/search, the Home task-tour anchor,
 a Dark default on a Light system, connected appearance choices, reduced-motion/resource-saving
-fallbacks, visible search with scrolling settings categories in a small big-screen window,
+fallbacks, separate language/search rows in a small desktop window,
 and cross-window/system appearance changes.
 `pnpm --filter @vua/desktop smoke:system-tray` adds eight native Electron API checks with
 programmatically invoked tray events. Physical Windows tray clicks still require author review.
@@ -189,37 +204,76 @@ human review still need the same candidate at the author's chosen test location.
 was added. Temporary embedded registration sessions remain parked; the official browser handoff
 is available without importing credentials or sessions. N5 merge is not an N5 stage-acceptance claim.
 
+## Help and compact Play checkpoint (2026-10-10)
+
+Environment now contains Play, Avatar editing, Tools and Help. The topbar Help button is removed.
+Help exposes Getting started, the existing app tour, Knowledge encyclopedia and In-game assistant.
+The encyclopedia reuses the preparation content, reading bookmark, targeted sections and media
+inside Main. Hardware introductions explain model identification and play/connection choices;
+Play links directly to this chapter. All Play cards, including network, are half-height at
+88 px, retaining the two halves. Resource details omit sampling time.
+
+Tools reserves grouped entries for the seven N2 Steam integrations and the separately requested
+VRCS translation tool. These are honest disabled development entries: this navigation slice
+adds no installer, tool adapter or plugin-host authority and does not make all of N2 an Ibis gate.
+The existing VRCFT detection/install/launch gap remains. AMF activation stays independent.
+
+Controlled Main/preload/renderer checks cover navigation, same-window hardware reading,
+contextual section requests, reading return, settings/light appearance and compact layout.
+Source checks and unit tests remain separate from physical controller input, vendor
+installation, actual desktop/PICO play and four-language human review. No new ZIP is produced
+during the author's development-UI review.
+
+The subsequent 2026-10-10 correction places each Play/Tools/editor/manager detail directly under
+its own card, with second-click collapse and retained preparation state. Settings uses a compact
+language selector with a translation glyph above Search, with spacing verified at 960×600.
+Goal reselection is removed and old links open Help's getting-started wizard. Big-screen mode
+is retired, including Theme/tray controls, alternate layouts and directional shell navigation;
+old preferences are cleared and legacy commands are inert. The controlled production consumer
+checks these behaviors and the native tray check retains update/exit and double-click restore.
+This does not replace pending physical installation, PICO or material acceptance.
+
 ## 2. Next focus: deliver the three guidance contexts
 
-### A. Ordinary preparation reader
+### A. Knowledge encyclopedia (formerly the preparation reader)
 
-Implemented in `aa5ada4c`; the following describes its delivered behavior and focused acceptance.
+The ordinary reader landed in `aa5ada4c`. The 2026-10-10 ruling supersedes its separate-window
+presentation with a page inside Help; legacy V1 calls retain their original window compatibility.
 
-Create a normal, opaque, resizable guide window. Reuse A/B text, media, section links, reading
-recovery and keyboard controls. Route preparation help there, preserve the current reading
+Reuse A/B text, media, section links, reading recovery and keyboard controls in Main's Help page.
+Route preparation help there through desktop-window v0.2, preserve the current reading
 bookmark, and keep task-status access working separately. Add practical room/play-area
 preparation instructions and retain hardware-specific detail for the real-machine pass.
 
 The pre-first-frame manual-scroll follow-up from B is fixed in the reader commit, with a narrow
 regression case alongside the existing positioning tests.
 
-Check the new window in development and packaged form: explicit section opens once, ordinary
+Check the encyclopedia in development and packaged form: explicit section opens once, ordinary
 reopen restores reading, a page-bottom target settles, user scroll stays in control, illustrations
-load, keyboard reading works, and closing does not stop installation or the game. Review four
-locales at the supported window sizes. Headset readability is checked in the PICO run below.
+load, keyboard reading works, and leaving Help does not stop installation or the game. Review
+four locales at the supported window sizes. Headset readability is checked in the PICO run below.
 
 ### B. VUA app tour
 
-Implemented in `acef54a0`; connect later installation and launch actions as they land.
+The original tour landed in `acef54a0`. The 2026-10-10 ruling now starts a new profile with
+the author's four-language welcome, then introduces real Home, Play, Tools, Avatar-editing
+preparation/AMF enablement, Tasks, Help and Settings controls. Finish/skip enters the independent
+branching wizard. Existing onboarded profiles are not welcomed again; active reading bookmarks
+resume by feature identity across the local v1 → v2 migration. Help/Search can replay it.
 
-Add a short ordered tour inside the main VUA window using real page/control anchors. Cover
-route choice, network results, environment inspection, plan review, task progress and the play/
-guide entries. Provide back/next, skip/exit and restart, with clear handling for missing controls
-or a task waiting on the user. Keep tour state separate from the reader and installation state.
+The same slice replaces the full-window opening with the approved 480 × 320 DIP native logo/ray
+window and loading circle. System-language ordering was already designed; Main now supplies the
+Windows preference list, with supported language-family matching and English fallback, while a
+saved manual choice remains authoritative. The new local desktop-startup face is Candidate.
 
-Build against available controls now and connect later install/launch steps as those actions
-land. Check keyboard focus, page transitions, resume/restart and exit during a live task.
-The tour must not need a general tutorial service or an AMF workflow to operate.
+Controlled production-Main/preload/renderer checks cover native presentation/teardown, all four
+welcome phrases, short-window layout, actual feature anchors, finish/skip/restart, legacy active
+steps, existing profiles and resource-saving startup. Dedicated ordered/unsupported-language
+cases cover fallback without treating browser defaults as Windows preferences. The existing Help
+and AMF smokes now traverse the first-use tour before the wizard. Source checks are not an
+installer/device pass or four-language human review; those remain below. No new local ZIP is
+made during the author's UI review. The tour still requires neither a general tutorial service
+nor AMF activation.
 
 ### C. VRChat game guide
 
@@ -319,9 +373,9 @@ integration, not a substitute for N5's own review and acceptance.
 
 ## Optional AMF boundary
 
-Ibis installs AMF with VUA but requires a separate enable action under Settings → Modules.
-Without a saved enable choice, fresh and legacy profiles start the host alone; enabling AMF supplies
-its navigation and separately supervised services. External Avatar-editing modules and their
+Ibis installs AMF with VUA and enables it for new users under the latest 2026-10-10 ruling.
+Existing choices remain unchanged; older profiles without registration keep the disabled default.
+Enabled AMF supplies its navigation and separately supervised services. External Avatar-editing modules and their
 placeholder entries are deferred beyond Ibis under the 2026-10-10 user ruling.
 AMF failure/disable leaves play, device detection and game guidance available.
 The host task window reads core tasks without requiring production documents. Legacy AMF data stays
@@ -331,20 +385,13 @@ installation, PICO connection, real-material production and four-language human 
 
 ## Document changelog
 
+- 1.16.0 (2026-10-10): align fresh AMF activation with the latest user ruling while retaining old-profile choices and independent real-software, device and production acceptance.
+- 1.15.0 (2026-10-10): record the approved small native opening, Windows language handoff and first-use welcome/tour continuity, with controlled UI evidence and unchanged physical/human release acceptance.
+- 1.14.0 (2026-10-10): record per-card detail placement, separated compact language/Search controls, goal-link migration and full big-screen retirement while retaining pending device/install/material acceptance and no local ZIP.
+- 1.13.0 (2026-10-10): record unified card toggles, Help history, Avatar-editing AMF setup and consolidated Settings; align scenario-stage ownership while retaining pending physical acceptance and no new ZIP.
+- 1.12.0 (2026-10-10): record environment Tools/Help, embedded hardware/knowledge reading and compact Play checks without claiming new tool integrations, hardware acceptance or another ZIP.
 - 1.11.0 (2026-10-10): keep AMF installed with VUA but require explicit first activation, retain saved choices/data and defer external Avatar-editing module integration from Ibis.
-
 - 1.10.0 (2026-10-09): record optional AMF startup and core task/guidance independence without replacing pending physical release acceptance.
-
 - 1.9.0 (2026-10-09): record author-reported guide/normal-exit defects and source repairs, background-alpha evidence, removed network advice and unavailable regional Ping without another ZIP or physical-acceptance claim.
-
 - 1.8.0 (2026-10-09): record two-half play cards, scoped observed launch/close and creator inventory while retaining real vendor/device checks and the author’s no-package UI review.
 - 1.7.0 (2026-10-09): record the compact shell and Settings search/appearance corrections, update the task-tour destination and expand the controlled UI checks to 56; no new ZIP or physical-acceptance claim.
-- 1.6.0 (2026-10-09): record the author's development-mode UI corrections, task/theme separation, settings return, headset glyphs and native tray checks; defer another ZIP while the UI is under review.
-- 1.5.0 (2026-10-08): record the integrated wizard/Home implementation and controlled UI checks, with official account handoff and real-device/installer/human review still separate.
-- 1.4.0 (2026-10-08): integrate the independently delivered acquisition and game-guide-follow slices without changing their pending real-machine acceptance.
-- 1.3.0 (2026-10-08): prioritize download-to-play blockers under the author's Ibis criterion, record return/next-action repairs and keep optional automation and the deferred Sandbox method outside independent release gates.
-- 1.2.0 (2026-10-08): record the Steam/PICO acquisition implementation and region choice;
-  record local reuse/replay verification and prepared isolated inputs; retain missing-software
-  installation and play acceptance as pending.
-
-Earlier entries remain in Git history.

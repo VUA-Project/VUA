@@ -19,8 +19,8 @@ test("注册表:en 为源语言默认且恒可用", () => {
 });
 
 test("fallback 链:存储的显式可用选择优先", () => {
-  // 当前仅 zh-CN available,存储 zh-CN 即命中
   assert.equal(resolveInitialLocale("zh-CN", ["en-US"]), "zh-CN");
+  assert.equal(resolveInitialLocale("ko", ["zh-CN"]), "ko");
 });
 
 test("fallback 链:存储值不可用或未知时落到系统探测", () => {
@@ -31,4 +31,12 @@ test("fallback 链:存储值不可用或未知时落到系统探测", () => {
 test("fallback 链:系统语言全不识别时回退默认源语言 en", () => {
   assert.equal(resolveInitialLocale(null, ["fr-FR", "de-DE"]), "en");
   assert.equal(resolveInitialLocale(null, []), "en");
+});
+
+test("all four delivered languages match a fresh profile's OS preferences", () => {
+  assert.equal(resolveInitialLocale(null, ["zh-Hans-CN"]), "zh-CN");
+  assert.equal(resolveInitialLocale(null, ["en-GB"]), "en");
+  assert.equal(resolveInitialLocale(null, ["ja-JP"]), "ja");
+  assert.equal(resolveInitialLocale(null, ["ko-KR"]), "ko");
+  assert.equal(resolveInitialLocale(null, ["fr-FR", "ja-JP"]), "ja");
 });

@@ -1,0 +1,10 @@
+.vua-knowledge { height: calc(100dvh - 150px); min-height: 320px; }
+.vua-knowledge__body { flex: 1; min-height: 0; padding: 24px; border: 1px solid var(--vua-border); border-radius: 12px; background: color-mix(in srgb, var(--vua-bg-panel) 75%, transparent); }
+.vua-knowledge__body .vua-overlay-guide { max-width: none; flex-shrink: 0; }
+.vua-knowledge__body .vua-overlay-guide__topics { position: sticky; top: -24px; z-index: 1; padding-block: 12px; background: var(--vua-bg-panel); }
+.vua-knowledge__body .vua-overlay-guide__topic { border: 1px solid var(--vua-border); }
+.vua-knowledge__body .vua-overlay-guide__topic[data-active] { color: var(--vua-accent-contrast); }
+.vua-help-child > * { flex-shrink: 0; }
+.vua-help-child .vua-onboarding { min-height: 0; padding: 0; width: 100%; }
+.vua-help-child .vua-onboarding__panel { max-width: none; }
+.vua-help-child .vua-onboarding__header h2 { margin: 0; }

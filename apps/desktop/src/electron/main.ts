@@ -25,10 +25,10 @@ import { createSilentDownloadQueue } from "./silent-download.js";
 import { createDownloadEventSink } from "./download-ingest.js";
 import {
   CATALOG_SYNC_DEFAULT_START_URL,
-  isSignInPage,
   startCatalogSync,
   type CatalogSyncRun,
 } from "./catalog-sync.js";
+import { probeBoothAuthentication } from "./booth-auth.js";
 import { deactivateImageCache, importLocalThumbnail, registerImageCacheProtocol, registerImageCacheScheme } from "./image-cache.js";
 import { RemoteContentManager } from "./remote-content.js";
 import { createDesktopOrchestratorProvider, type DesktopProviderEndpoint } from "./provider-bootstrap.js";
@@ -89,7 +89,7 @@ import {
   installLocalContentNavigationPolicy,
   installPermissionDenyPolicy,
   isAllowedLocalSender,
-  localWindowWebPreferences,
+  localWindowWebPreferences as secureLocalWindowPreferences,
 } from "./security.js";
 import { checkLatestRelease } from "./update-check.js";
 import { SystemUsageCollector } from "./system-usage.js";
@@ -98,6 +98,14 @@ import { resolveDesktopRuntime } from "./runtime-paths.js";
 import { preparePackagedSmoke } from "./packaged-smoke.js";
 import { configureDesktopProfile, resolveDesktopProfile, tagDevelopmentWindow } from "./runtime-profile.js";
 import { createVuaTray } from "./system-tray.js";
+import { createStartupWindow } from "./startup-window.js";
+
+function localWindowWebPreferences(preload: string) {
+  return {
+    ...secureLocalWindowPreferences(preload),
+    additionalArguments: [`--vua-system-languages=${encodeURIComponent(JSON.stringify(app.getPreferredSystemLanguages()))}`],
+  };
+}
 
 registerImageCacheScheme();
 
@@ -127,8 +135,21 @@ if (desktopProfile.kind !== "release") {
 }
 const packagedSmoke = preparePackagedSmoke();
 let mainWindow: BrowserWindow | null = null;
+let startupWindow: BrowserWindow | null = null;
+let startupFallback: ReturnType<typeof setTimeout> | null = null;
+
+function completeStartup(): void {
+  if (startupWindow === null) return;
+  if (startupFallback !== null) clearTimeout(startupFallback);
+  startupFallback = null;
+  if (mainWindow !== null && !mainWindow.isDestroyed()) mainWindow.show();
+  if (!startupWindow.isDestroyed()) startupWindow.destroy();
+  startupWindow = null;
+}
 let systemTray: ReturnType<typeof createVuaTray> | null = null;
 let shellListening = false;
+let encyclopediaListening = false;
+let pendingEncyclopediaTarget: GuideTargetV1 | null | undefined;
 let shellLocale: string | null = null;
 let pendingShellCommand: DesktopShellCommandV1 | null = null;
 let overlayWindow: BrowserWindow | null = null;
@@ -465,6 +486,10 @@ function registerIpc(provider: ModuleProvider): void {
     assertLocalSender(senderFrameUrl(event));
     return systemUsage.snapshot();
   });
+  ipcMain.handle("vua:system:resource-usage-v2", (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    return systemUsage.snapshotV2();
+  });
 
   // 文件系统窄面(2026-09-25 用户裁决:素材导入应用内文件夹选择器):
   // 只读列目录(仅子目录) + 单层新建;失败收信不抛,渲染层按 error
@@ -488,6 +513,11 @@ function registerIpc(provider: ModuleProvider): void {
     return createFsDirectory(parentPath, name);
   });
 
+  ipcMain.handle("vua:startup:complete", event => {
+    assertLocalSender(senderFrameUrl(event));
+    if (mainWindow === null || event.sender !== mainWindow.webContents || event.senderFrame !== event.sender.mainFrame) throw new Error("startup completion requires the main frame");
+    completeStartup();
+  });
   ipcMain.handle("vua:window:minimize", (event) => {
     assertLocalSender(senderFrameUrl(event));
     BrowserWindow.fromWebContents(event.sender)?.minimize();
@@ -536,6 +566,30 @@ function registerIpc(provider: ModuleProvider): void {
   ipcMain.handle("vua:reader:show", (event, target: unknown) => {
     assertLocalSender(senderFrameUrl(event));
     return showReaderWindow(parseGuideTargetPayload(target));
+  });
+
+  // V2 adds main-page knowledge navigation; legacy V1 reader behavior stays intact.
+  ipcMain.handle("vua:knowledge:show", (event, target: unknown) => {
+    assertLocalSender(senderFrameUrl(event));
+    const parsed = parseGuideTargetPayload(target);
+    if (mainWindow === null || mainWindow.isDestroyed()) return { visible: false };
+    pendingEncyclopediaTarget = parsed;
+    focusMainWindow();
+    if (encyclopediaListening) {
+      mainWindow.webContents.send("vua:knowledge:target", parsed);
+      pendingEncyclopediaTarget = undefined;
+    }
+    return { visible: true };
+  });
+  ipcMain.on("vua:knowledge:listening", (event, listening: unknown) => {
+    if (typeof listening !== "boolean" || mainWindow === null || mainWindow.isDestroyed()
+      || event.sender !== mainWindow.webContents || event.senderFrame !== event.sender.mainFrame
+      || !isAllowedLocalSender(event.senderFrame?.url ?? "", rendererUrl)) return;
+    encyclopediaListening = listening;
+    if (listening && pendingEncyclopediaTarget !== undefined) {
+      mainWindow.webContents.send("vua:knowledge:target", pendingEncyclopediaTarget);
+      pendingEncyclopediaTarget = undefined;
+    }
   });
 
   // 打开/聚焦游戏引导小窗(三类引导 §4 additive):只受理本地来源;
@@ -684,16 +738,7 @@ function registerIpc(provider: ModuleProvider): void {
     assertLocalSender(senderFrameUrl(event));
     assertAmfReady();
     if (remoteContent === null) return { authOk: false, accountName: null };
-    try {
-      const probe = await remoteContent.fetchWithSession(CATALOG_SYNC_DEFAULT_START_URL);
-      const authOk = probe.status === 200 && !isSignInPage(probe.body);
-      const accountName = authOk
-        ? /data-user-name="([^"]{1,64})"/.exec(probe.body)?.[1] ?? null
-        : null;
-      return { authOk, accountName };
-    } catch {
-      return { authOk: false, accountName: null };
-    }
+    return probeBoothAuthentication(remoteContent);
   });
   // 登出(账号管理,2026-10-05):清空分区存储并关闭打开中的远程视图
   ipcMain.handle("vua:remote-content:sign-out", async (event) => {
@@ -1307,7 +1352,15 @@ async function createWindow(): Promise<void> {
   });
 
   tagDevelopmentWindow(mainWindow, desktopProfile);
-  mainWindow.webContents.on("did-start-loading", () => { shellListening = false; });
+  // Native mouse side buttons use Chromium history, including same-document Help routes.
+  mainWindow.on("app-command", (_event, command) => {
+    const navigation = mainWindow?.webContents.navigationHistory;
+    if (command === "browser-backward" && navigation?.canGoBack()) navigation.goBack();
+    else if (command === "browser-forward" && navigation?.canGoForward()) navigation.goForward();
+  });
+  mainWindow.webContents.on("did-navigate", () => { shellListening = false; });
+  // Hash navigation can emit did-start-loading without remounting the shell listener.
+  mainWindow.webContents.on("did-navigate", () => { encyclopediaListening = false; });
 
   // U9 四分法(本地壳窗口):http/https 弹窗不再交系统浏览器——清单内直行/
   // 清单外确认后转当前内嵌视图(RemoteContentManager);外部协议手势+确认后
@@ -1322,7 +1375,10 @@ async function createWindow(): Promise<void> {
     openExternal: (url) => void shell.openExternal(url),
     confirmNavigation,
   });
-  mainWindow.once("ready-to-show", () => { if (!packagedSmoke) mainWindow?.show(); });
+  mainWindow.once("ready-to-show", () => {
+    if (!packagedSmoke && startupWindow === null) mainWindow?.show();
+  });
+  if (startupWindow !== null) startupFallback = setTimeout(completeStartup, 8_000);
 
   if (provider?.amfReady()) await ensureAmfShell();
   mainWindow.on("resize", () => remoteContent?.refreshBounds());
@@ -1339,12 +1395,18 @@ async function createWindow(): Promise<void> {
   mainWindow.on("closed", () => {
     mainWindow = null;
     shellListening = false;
+    encyclopediaListening = false;
+    pendingEncyclopediaTarget = undefined;
     pendingShellCommand = null;
     // 主窗口关闭＝应用退出语义:悬浮窗、阅读器与游戏引导窗都不拖住
     // window-all-closed(窗口随主窗口生命周期销毁,closed 处理器自行清引用)
     overlayWindow?.destroy();
     readerWindow?.destroy();
     gameGuideWindow?.destroy();
+    if (startupWindow !== null && !startupWindow.isDestroyed()) startupWindow.destroy();
+    startupWindow = null;
+    if (startupFallback !== null) clearTimeout(startupFallback);
+    startupFallback = null;
   });
 
   if (rendererUrl) await mainWindow.loadURL(rendererUrl);
@@ -1461,7 +1523,22 @@ async function ensureAmfShell(): Promise<void> {
 }
 
 app.whenReady().then(async () => {
+  installPermissionDenyPolicy(session.defaultSession);
+  if (!packagedSmoke) {
+    startupWindow = await createStartupWindow({
+      ...(rendererUrl ? { rendererUrl } : {}),
+      rendererFile: path.join(__dirname, "../renderer/index.html"),
+      preferences: localWindowWebPreferences(path.join(__dirname, "preload.js")),
+    });
+    startupWindow.on("close", () => app.quit());
+  }
   amfRegistry = new AmfRegistry(app.getPath("userData"));
+  if (amfRegistry.needsRegistration) {
+    // Record the fresh-user default before either provider creates its DB.
+    // A later launch must retain this choice, including an explicit disable.
+    try { amfRegistry.save(amfRegistry.registration.enabled); }
+    catch { console.error("[vua] Could not retain the initial AMF preference"); }
+  }
   provider = new ModuleProvider({
     host: createDesktopOrchestratorProvider(resolveProviderEndpoint()),
     enabled: amfRegistry.registration.enabled,
@@ -1505,9 +1582,8 @@ app.whenReady().then(async () => {
     }
     broadcastGatewayEvent(rendererUrl, event);
   });
-  installPermissionDenyPolicy(session.defaultSession);
   registerIpc(provider);
-  systemUsage.start();
+  systemUsage.start(desktopRuntime.providerExecutable);
   await createWindow();
   if (packagedSmoke && mainWindow) {
     await packagedSmoke.verify(mainWindow, provider);

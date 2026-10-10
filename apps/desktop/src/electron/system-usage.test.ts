@@ -1,84 +1,99 @@
-import assert from "node:assert/strict";
-import { describe, it } from "vitest";
-import {
-  isTypeperfHeaderLine,
-  parseRegistryQwMemorySize,
-  parseTypeperfSampleLine,
-  SystemUsageCollector,
-} from "./system-usage.js";
+import { EventEmitter } from "node:events";
+import { PassThrough } from "node:stream";
+import type { spawn } from "node:child_process";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { parseResourceSample, selectResourceGpu, SystemUsageCollector, RESOURCE_STALE_AFTER_MS, RESOURCE_RESPAWN_DELAY_MS, type GpuSample } from "./system-usage.js";
 
-/**
- * 系统资源占用采集的纯逻辑测试:
- * - typeperf CSV 行解析(多适配器取主导值、表头/空行/坏行如实 null);
- * - reg query qwMemorySize 输出解析(多子键取最大、十六进制、无值 null);
- * - 采集器降级路径(非 Windows 平台不启动采集,VRAM 恒 null 不猜值)。
- */
-
-describe("parseTypeperfSampleLine", () => {
-  it("takes the dominant adapter value from a CSV sample line", () => {
-    const line = '"09/25/2026 17:40:00.123","1073741824","3221225472","536870912"';
-    assert.equal(parseTypeperfSampleLine(line), 3221225472);
+const gpu = (id: string, usagePercent: number | null, kind: GpuSample["kind"] = "discrete", used = 4, total = 8): GpuSample =>
+  ({ id, name: id, kind, usagePercent, dedicatedUsedBytes: used, dedicatedTotalBytes: total });
+afterEach(() => vi.useRealTimers());
+describe("physical GPU selection", () => {
+  it("excludes busy integrated graphics when a discrete adapter is available", () => {
+    expect(selectResourceGpu([gpu("iGPU", 99, "integrated"), gpu("dGPU", 40)])?.id).toBe("dGPU");
   });
-
-  it("handles a single adapter", () => {
-    assert.equal(parseTypeperfSampleLine('"t","2048"'), 2048);
+  it("chooses the busy discrete adapter without borrowing an idle card's capacity", () => {
+    expect(selectResourceGpu([gpu("idle-24GB", 0, "discrete", 1, 24), gpu("busy-8GB", 80, "discrete", 6, 8)])).toEqual(gpu("busy-8GB", 80, "discrete", 6, 8));
   });
-
-  it("returns null for empty, header-like and non-numeric lines", () => {
-    assert.equal(parseTypeperfSampleLine(""), null);
-    assert.equal(parseTypeperfSampleLine("   "), null);
-    assert.equal(parseTypeperfSampleLine('"timestamp only"'), null);
-    assert.equal(parseTypeperfSampleLine('"t"," ","-"'), null);
+  it("uses memory pressure for equal utilization and keeps missing readings distinct", () => {
+    expect(selectResourceGpu([gpu("a", 20, "discrete", 1, 24), gpu("b", 20, "discrete", 6, 8)])?.id).toBe("b");
+    expect(selectResourceGpu([gpu("unknown", null), gpu("measured-idle", 0)])?.id).toBe("measured-idle");
   });
-
-  it("ignores malformed fields but keeps valid ones", () => {
-    assert.equal(parseTypeperfSampleLine('"t","abc","4096"'), 4096);
+  it("permits an integrated-only system and handles absent graphics", () => {
+    expect(selectResourceGpu([gpu("iGPU", 20, "integrated")])?.kind).toBe("integrated");
+    expect(selectResourceGpu([])).toBeNull();
   });
 });
-
-describe("isTypeperfHeaderLine", () => {
-  it("recognizes the PDH-CSV header carrying the counter path", () => {
-    assert.equal(
-      isTypeperfHeaderLine(
-        '"(PDH-CSV 4.0) (UTC)(0)","\\HOST\\GPU Adapter Memory(*)\\Dedicated Usage"',
-      ),
-      true,
-    );
-    assert.equal(isTypeperfHeaderLine('"09/25/2026 17:40:00.123","1024"'), false);
+describe("native frames", () => {
+  it("rejects malformed, duplicate or out-of-range readings", () => {
+    for (const value of [null, {}, { cpuUsagePercent: 101, gpus: [] },
+      { cpuUsagePercent: 10, gpus: [gpu("duplicate", 1), gpu("duplicate", 2)] },
+      { cpuUsagePercent: 10, gpus: [gpu("bad", -1)] }]) expect(parseResourceSample(JSON.stringify(value))).toBeNull();
+    expect(parseResourceSample("broken")).toBeNull();
+    expect(parseResourceSample('{"cpuUsagePercent":null,"gpus":[]}')).toEqual({ cpuUsagePercent: null, gpus: [] });
   });
 });
-
-describe("parseRegistryQwMemorySize", () => {
-  it("takes the maximum qwMemorySize across adapter subkeys (hex)", () => {
-    const output = [
-      "HKEY_LOCAL_MACHINE\\...\\{4d36e968-e325-11ce-bfc1-08002be10318}\\0000",
-      "    HardwareInformation.qwMemorySize    REG_QWORD    0x40000000",
-      "",
-      "HKEY_LOCAL_MACHINE\\...\\{4d36e968-e325-11ce-bfc1-08002be10318}\\0001",
-      "    HardwareInformation.qwMemorySize    REG_QWORD    0x1fb000000",
-      "",
-      "End of search: 2 match(es) found.",
-    ].join("\r\n");
-    assert.equal(parseRegistryQwMemorySize(output), 0x1fb000000);
+function nativeChild() {
+  const child = Object.assign(new EventEmitter(), { stdin: new PassThrough(), stdout: new PassThrough(), stderr: new PassThrough(), kill: vi.fn() });
+  return child;
+}
+describe("collector freshness and lifecycle", () => {
+  it("combines split frames, expires readings, invalidates failures and retains the V1 shape", () => {
+    let now = 1_000;
+    const child = nativeChild();
+    const spawnImpl = vi.fn(() => child);
+    const collector = new SystemUsageCollector({ platform: "win32", spawnImpl: spawnImpl as unknown as typeof spawn, now: () => now });
+    collector.start("bundled-provider.exe");
+    collector.start("bundled-provider.exe");
+    expect(spawnImpl).toHaveBeenCalledTimes(1);
+    expect(spawnImpl).toHaveBeenCalledWith("bundled-provider.exe", ["--observe-system-resources"], { windowsHide: true });
+    expect(collector.snapshotV2().gpuUsagePercent).toBeNull();
+    const frame = JSON.stringify({ cpuUsagePercent: 25, gpus: [gpu("iGPU", 90, "integrated"), gpu("game", 80, "discrete", 6, 8)] }) + "\n";
+    child.stdout.write(frame.slice(0, 20));
+    expect(collector.snapshotV2().cpuUsagePercent).toBeNull();
+    child.stdout.write(frame.slice(20));
+    expect(collector.snapshotV2()).toMatchObject({ cpuUsagePercent: 25, gpuUsagePercent: 80, gpuName: "game", vramUsedBytes: 6, vramTotalBytes: 8 });
+    expect(Object.keys(collector.snapshot()).sort()).toEqual(["ramTotalBytes", "ramUsedBytes", "sampledAt", "schemaVersion", "vramTotalBytes", "vramUsedBytes"].sort());
+    now += RESOURCE_STALE_AFTER_MS + 1;
+    expect(collector.snapshotV2()).toMatchObject({ cpuUsagePercent: null, gpuUsagePercent: null, vramUsedBytes: null });
+    child.stdout.write(frame);
+    child.stdout.write("broken\n");
+    expect(collector.snapshotV2().gpuUsagePercent).toBeNull();
+    collector.stop();
+    child.stdout.write(frame);
+    expect(collector.snapshotV2().gpuName).toBeNull();
+    expect(child.kill).toHaveBeenCalledTimes(1);
   });
-
-  it("returns null when no value is present", () => {
-    assert.equal(parseRegistryQwMemorySize("End of search: 0 match(es) found."), null);
-    assert.equal(parseRegistryQwMemorySize(""), null);
+  it("restarts a failed sampler once and stops its delayed retry", () => {
+    vi.useFakeTimers();
+    const spawnImpl = vi.fn(() => nativeChild());
+    const collector = new SystemUsageCollector({ platform: "win32", spawnImpl: spawnImpl as unknown as typeof spawn });
+    collector.start("bundled-provider.exe");
+    const first = spawnImpl.mock.results[0]!.value;
+    first.emit("error", new Error("unavailable"));
+    first.emit("close");
+    vi.advanceTimersByTime(RESOURCE_RESPAWN_DELAY_MS);
+    expect(spawnImpl).toHaveBeenCalledTimes(2);
+    spawnImpl.mock.results[1]!.value.emit("close");
+    collector.stop();
+    vi.advanceTimersByTime(RESOURCE_RESPAWN_DELAY_MS);
+    expect(spawnImpl).toHaveBeenCalledTimes(2);
   });
-});
-
-describe("SystemUsageCollector degradation", () => {
-  it("never starts VRAM collection off Windows; VRAM stays null (no guessing)", () => {
-    const collector = new SystemUsageCollector({ platform: "linux" });
-    collector.start();
-    const snapshot = collector.snapshot();
-    assert.equal(snapshot.schemaVersion, 1);
-    assert.equal(snapshot.vramUsedBytes, null);
-    assert.equal(snapshot.vramTotalBytes, null);
-    assert.ok(snapshot.ramTotalBytes > 0);
-    assert.ok(snapshot.ramUsedBytes >= 0);
-    assert.ok(snapshot.ramUsedBytes <= snapshot.ramTotalBytes);
+  it("never treats shared UMA memory as separate VRAM", () => {
+    const child = nativeChild();
+    const collector = new SystemUsageCollector({ platform: "win32", spawnImpl: (() => child) as unknown as typeof spawn });
+    collector.start("provider.exe");
+    child.stdout.write(JSON.stringify({ cpuUsagePercent: 10, gpus: [gpu("iGPU", 30, "integrated")] }) + "\n");
+    expect(collector.snapshotV2()).toMatchObject({ gpuUsagePercent: 30, gpuKind: "integrated", vramUsedBytes: null, vramTotalBytes: null });
+    collector.stop();
+  });
+  it("keeps unsupported sensors unavailable off Windows", () => {
+    const spawnImpl = vi.fn();
+    const collector = new SystemUsageCollector({ platform: "linux", spawnImpl: spawnImpl as unknown as typeof spawn });
+    collector.start("unused");
+    expect(spawnImpl).not.toHaveBeenCalled();
+    expect(collector.snapshotV2()).toMatchObject({ schemaVersion: 2, cpuUsagePercent: null, gpuUsagePercent: null });
+    expect(collector.snapshot().schemaVersion).toBe(1);
+    expect(collector.snapshotV2().ramTotalBytes).toBeGreaterThan(0);
     collector.stop();
   });
 });

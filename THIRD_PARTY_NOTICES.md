@@ -43,6 +43,7 @@ The current Rust workspace directly declares the following third-party crates:
 | `zip` | MIT | zip archive writing for local VPM artifacts |
 | `md-5` | MIT OR Apache-2.0 | official Unity Editor manifest checksum comparison |
 | `windows-sys` | MIT OR Apache-2.0 | Windows Job Object process-tree supervision, Win32 window enumeration and focus for editor handoff, and native installer elevation |
+| `windows` | MIT OR Apache-2.0 | Read-only desktop resource adapter: language-neutral PDH utilization, DXGI hardware identity/capacity and D3D12 UMA classification |
 | `jsonschema` | MIT | schema validation in tests |
 
 `rusqlite` enables its `bundled` feature and statically builds SQLite, which is in the public domain.

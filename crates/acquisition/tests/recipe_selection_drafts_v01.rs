@@ -1,18 +1,21 @@
 use serde_json::{json, Value};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use vua_acquisition::recipe_selection_drafts::RecipeSelectionDrafts;
 use vua_orchestrator::RecipeDocumentStore;
 
 struct Root(PathBuf);
 impl Root {
     fn new() -> Self {
+        static NEXT_ROOT: AtomicU64 = AtomicU64::new(0);
         let root = std::env::temp_dir().join(format!(
-            "vua-selection-draft-{}-{}",
+            "vua-selection-draft-{}-{}-{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap()
-                .as_nanos()
+                .as_nanos(),
+            NEXT_ROOT.fetch_add(1, Ordering::Relaxed)
         ));
         std::fs::create_dir(&root).unwrap();
         Self(root)

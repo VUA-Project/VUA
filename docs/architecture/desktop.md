@@ -1,11 +1,11 @@
 # Electron desktop and presentation architecture
 
 
-> Document version: 1.14.0
+> Document version: 1.20.0
 > Status: Accepted
 > Scope: `apps/desktop`, `packages/design-system`, frontend Gateway
 > Updated: 2026-10-10
-> Last conformance review: 2026-10-09 (two-half environment cards, creator inventory and preserved shell preferences; physical app/device review pending)
+> Last conformance review: 2026-10-10 (controlled native startup, OS-language/tour continuity and retained card/history/account/AMF/Settings checks; physical app/device and human-language review pending)
 > Normative effect: Yes
 
 ## Technology decision
@@ -49,6 +49,30 @@ application use cases without a generic module registry or runtime composition f
 Core catalog entries represent trusted behavior built directly into VUA and gain no authority through
 runtime registration. The future community plugin host provides a separate capability context.
 
+## Startup and first-use language
+
+The author's 2026-10-10 approval replaces the full-window text/grid opening with a centered,
+frameless 480 × 320 DIP startup surface. It begins white; five thick black rays travel from the
+upper right toward the lower left at 120°, revealing the supplied monochrome white VUA logo.
+A loading circle sits below it. There are no visible labels, buttons or version/update badges.
+Reduced motion or resource saving shows the static black/white result and shortens its dwell.
+
+Main opens this presentation before provider startup and holds the main window hidden while
+the renderer loads. The local `surface=splash` branch never instantiates App or its Gateway.
+The main renderer's existing renderer/Gateway/provider/paint milestones report completion
+through Candidate [desktop-startup v0.1](../protocols/desktop-startup-v0.1.md); Main then shows
+the shell and destroys the small window. A bounded renderer-load fallback prevents a missing
+completion signal from trapping the application. Controlled packaged diagnostics keep windows
+hidden and use their existing watchdog.
+
+Locale selection already had the saved-choice → supported system language → English order.
+Main now supplies Windows' ordered preferred UI languages through local preload arguments,
+instead of letting Electron's browser language decide first use. Native input is bounded in
+preload; browser previews retain their navigator fallback. The saved manual choice always wins,
+and inferred choices do not become a saved override. PICO distribution and network targets
+remain independent. The first-use welcome/tour precedes the route wizard as defined by
+[guidance architecture](guidance.md#2-vua-app-tour), without enabling AMF or changing Home.
+
 Main returns normalized navigation/download events through narrow ports and retains `Session`,
 `WebContents` and `DownloadItem` handles. Browser storage owns cookies/tokens; they are not copied
 into Main application state, Gateway, Orchestrator or Agent inputs. AMF owns acquisition intent, task and source
@@ -56,12 +80,25 @@ correlation, post-download inspection, and Warehouse/BDL decisions.
 
 ## Fixed directory and first-run journey
 
-The main shell has one fixed Home, opened by its left logo. Desktop mode shows the fixed
-Environment/Avatar directory in the sidebar; big-screen mode groups those domains into larger
-focusable tiles. `nav-model.ts` retains internal page ownership for tasks and deep links without
+The main shell has one fixed Home, opened by its left logo, and a fixed
+Environment/Avatar directory in the sidebar. The 2026-10-10 user ruling retires big-screen mode:
+Theme and tray entries, alternate layouts and directional shell navigation are removed.
+Startup removes the old local layout preference without interpreting it. `nav-model.ts` retains internal page ownership for tasks and deep links without
 restoring the old two-tab presentation. Wizard choices never hide features or change Home actions.
 The [design standard](../design/design-standard.md#3-platform-and-information-architecture)
 owns the accepted layout, logo colors, unavailable peers and preserved visual preferences.
+
+Environment contains Play, Tools, Avatar editing and Help. Tools groups the planned tracking,
+translation, VR utilities and capture integrations, independently of AMF. Its unwired entries
+offer collapsible descriptions with disabled development actions, not installed/launchable plugin claims. Help replaces the
+former topbar entry and contains Getting started, the app tour, Knowledge encyclopedia and
+In-game assistant. The encyclopedia is a main-window page with hardware introductions and
+the existing shared preparation chapters/bookmark. Play links directly to hardware reading.
+All four Help cards open main-window child pages; tour and game-assistant pages then offer
+their existing explicit start actions. The replay wizard stays inside its Help child page.
+Native mouse Back/Forward uses Chromium history, including encyclopedia chapters and wizard
+choices; restored preparation still needs fresh inspection. Same-document navigation does not
+invalidate Main's subscribed native-command listeners.
 
 `journey-model.ts` stores only a versioned reading/selection bookmark. Desktop/PICO and creator
 routes use the existing typed network/deployment ports. A fresh plan or a task completed during
@@ -70,9 +107,10 @@ Reopening a completed preparation step reinspects files, and accepted tasks rema
 through their receipts. A connection confirmation is explicitly user-declared, not headset evidence.
 Opening Steam or a guide does not prove installation, login or successful play.
 
-Play now has fixed two-half cards: details on the left and observed status/action on the
+Play and Tools have equally sized two-half cards: collapsible details on the left and status/action on the
 right. Normal game exit retains **Close** only while owned software survives, with no failure
-warning. Network's equally tall tile is above the grid; its regional Ping is explicitly unavailable
+warning. Play/Tools cards are 88 px high, half their previous heights;
+the two action/detail halves remain intact. Network's equally tall tile is above the grid; its regional Ping is explicitly unavailable
 until targets are verified and website tests remain in expanded details. The expandable runtime inventory stays
 on Play. The retired Software & connections page is absent from Home, sidebar and tour;
 old stored page IDs migrate to Play. Wizard choices still do not control these entries.
@@ -80,27 +118,54 @@ The typed play port consumes the Candidate [play-session family](play-sessions.m
 unavailable observations distinct from missing software, and disables launch while installation
 is active. Scoped deployment bookmarks retain Desktop and PICO work independently while
 reading a matching legacy bookmark. Hidden details keep accepted installation receipts alive.
+Play, Tools and Avatar-editing cards expand directly beneath their own card, within that grid
+column, and collapse on a second click. Hidden preparation panels stay mounted so accepted
+work and inspection state survive switching or closing details.
+Development entries expose descriptions while installation/launch remain unavailable; tool
+grids keep the same column widths even in a group with only one item.
 
-Avatar editing reuses `project.environmentManagers` and `environment.verifyEditor` to show
-complete discovered editors; Unity 6 remains a development entry even when files are found.
+Avatar editing discovers Editor directories through the host's `environment.getSnapshot`
+and verifies executable identity through `environment.verifyEditor`. AMF's optional
+`project.environmentManagers` supplies manager configuration facts only; its absence does
+not block Editor detection. Unity 6 remains a development entry even when files are found.
+Fresh entry into Unity 2022 preparation, including the wizard, requests a read-only deployment
+plan automatically. The accepted global/China pair is observed before CLI acquisition or any
+installation; the plan retains the full observed version. Saved task receipts remain visible
+and require explicit reinspection rather than being discarded by this entry inspection.
 The read-only `environment.inspectManagerApps` Candidate query reports Hub/VCC/ALCOM
 executable findings from known roots and registry paths. Configuration findings keep their
 original frozen semantics and do not imply that an executable is installed. Version/path data
 remain local; unsupported versions only offer the accepted preparation route.
 
 Settings navigation keeps the underlying route or wizard mounted and returns to its source
-step and focus. The sidebar contains only settings categories while Settings is open, also in
-big screen mode; the upper-left Back action and the active Settings button return to the same
+step. The sidebar contains only settings categories while Settings is open;
+the upper-left Back action and the active Settings button return to the same
 source page. Category changes do not replace the return destination. Inspection belongs to the
 Avatar directory; Help and Settings have no duplicate bottom-left entry, and the topbar does
 not repeat the page name beside the Home logo.
+AMF Home cards are Warehouse, Recipe, Workshop, Finished Avatars (成品) and Package Manager.
+Remove the Inspection Home card; its existing sidebar/report capability remains available.
+The same card set serves Home and the AMF directory.
 
 The compact shell follows the [design standard](../design/design-standard.md#3-platform-and-information-architecture):
 the bottom taskbar is no longer mounted, and feature search is a Settings-sidebar footer action
 with the existing global shortcut. Appearance changes use joined native buttons backed by the
 same three-value preference. A missing/invalid preference resolves to Dark; saved preferences
 and cross-window/system subscriptions stay compatible. The app tour's task step navigates to
-the fixed Home Tasks tile rather than a retired taskbar anchor.
+the fixed Home Tasks tile rather than a retired taskbar anchor. Language selection sits directly
+above **Search**, with a translation glyph, a shorter selector and explicit spacing in short windows.
+Separate Goal reselection, Language, Version and Donation pages are removed; About retains
+version, update, debug and diagnostics controls. Old goal links open Help's getting-started wizard;
+other historical Settings page IDs migrate to About or Theme.
+Language reloads retain the Settings return page through the current history entry.
+The resource panel shows observed CPU/GPU/RAM/VRAM without a sampled-time label. Its compact
+**resource headroom** is the remaining mean of available readings, with a separate near-full
+dimension indication. It is not a performance forecast. GPU utilization and VRAM refer to the
+same selected card; [desktop resource v0.2](../protocols/desktop-resource-v0.2.md) owns sampling,
+multi-adapter selection, unavailable readings, expiry and the retained V1 port.
+The Home logo replaces jurisdiction colours through a 380 ms 120° upper-right-to-lower-left
+wipe. Previous and incoming marks keep their own colours; resource saving and reduced motion
+switch directly. The logo remains the Home action, with no page-name text beside it.
 
 Account-help navigation uses that same settings return path.
 Settings → Accounts retains the N5 BOOTH sign-in/probe/logout surface; Steam, VRChat and Unity
@@ -109,15 +174,21 @@ handoff through `RemoteContentApiV1.openAccountGuideInBrowser(AccountGuideIdV1)`
 preload/Main channel. This is an additive native desktop port, not a new Provider method or a
 change to the frozen application envelope. Main checks local sender identity and maps the closed
 ID to a fixed public URL; arbitrary URLs, page data and credentials do not cross this port.
+Warehouse probes account-library access through the existing `authProbe` before offering
+sync; stored cookies alone are insufficient. Pending probes show a disabled checking entry;
+IPC failures offer a retry. A session that cannot be verified offers the BOOTH login flow.
+Closing login/import refreshes this fact, and an explicit sync request reprobes it. A rejected
+or expired session opens login directly. Main skips anonymous probes when account cookies are
+absent and bounds authenticated probes to eight seconds; no credentials or raw page bodies reach Renderer.
 
 Main owns a VUA system tray icon throughout normal application execution. Double-click restores
-and focuses the existing main window. The localized menu exposes update checking, big screen
-mode and application exit. `DesktopWindowApiV1.shellCommandEvents` is an additive, closed native
+and focuses the existing main window. The localized menu exposes update checking
+and application exit. `DesktopWindowApiV1.shellCommandEvents` is an additive, closed native
 desktop event face (`check-updates` / `bigscreen`), not a Provider method. Preload subscription
 signals readiness; Main accepts that signal only from the local main frame and retains the latest
-gesture until it is listening. Update checking opens the Version settings page and runs a manual
-read-only check independent of the automatic-check preference; big screen changes the existing
-shell mode. Exit uses normal application shutdown. Closing Main still exits, and the tray is
+gesture until it is listening. Update checking opens About and runs a manual
+read-only check independent of the automatic-check preference. The retained legacy `bigscreen`
+event is inert in the renderer and is no longer emitted by Main's tray. Exit uses normal application shutdown. Closing Main still exits, and the tray is
 destroyed at process shutdown. Theme/DPI variants rasterize the accepted VUA mark and design tokens
 through `scripts/generate-tray-icons.ps1`; no new runtime image dependency is introduced.
 
@@ -184,9 +255,9 @@ Main-managed `WebContentsView` is the remote-content surface.
 
 ## Overlay always-on-top window
 
-The accepted [guidance architecture](guidance.md) separates an in-app tour, an ordinary
-preparation reader and a VRChat-window guide. React owns the in-app tour; Main owns the two
-window lifecycles and the game-window follow loop: a pure decision module driven by a 250 ms
+The accepted [guidance architecture](guidance.md) separates an in-app tour, the knowledge
+encyclopedia in Help and a VRChat-window guide. React owns the tour and encyclopedia;
+Main owns native windows and the game-window follow loop: a pure decision module driven by a 250 ms
 observation of the Provider's read-only `environment.observeGameWindow` query
 (`vua.game-window-observe/v0.1`), showing the guide without stealing focus and hiding it on
 game minimize/exit/app-switch, with a Main-enforced follow toggle. User drags persist normalized
@@ -194,8 +265,12 @@ relative placement; automatic moves do not overwrite it. Background opacity affe
 matrix/backdrop only, with a transparent outer canvas and opaque text. The renderer drives this
 through two `DesktopWindowApiV1` members (`setGameGuideFollowing`,
 `getGameGuideFollowStatus`). Guide progress is local presentation state;
-business tasks remain authoritative in Orchestrator. The reader, tour and game guide reuse
-A/B content, targets and reading recovery.
+business tasks remain authoritative in Orchestrator. The encyclopedia, tour and game guide
+reuse A/B content, targets and reading recovery. [Desktop-window v0.2](../protocols/desktop-window-v0.2.md)
+adds targeted encyclopedia navigation to Main through a local preload subscription. It queues
+the latest target until the main renderer is listening and resets readiness on a full document
+navigation, not an in-page route change. Legacy V1 reader calls retain the ordinary separate
+window for compatibility; current preparation entries use the new face.
 
 The following describes the retained task-status overlay, not the ordinary reader's window flags.
 The desktop Overlay is a separate `BrowserWindow` inside the same Electron process (frameless,
@@ -212,7 +287,7 @@ desktop statement, 2026-09-10).
 
 The Tasks entry requests the status view and has no guide/status switch. Production details
 remain collapsed until requested. Existing explicit `showGuide` and view/target events remain
-compatible; ordinary guidance uses Help, the preparation reader and the game guide. The task
+compatible; ordinary guidance uses Help, its encyclopedia and the game guide. The task
 window applies shared saved appearance before paint, listens for cross-window storage and system
 theme changes, and honors saved contrast/resource-saving preferences. Normal `pnpm dev:desktop`
 uses the real Gateway task projection; only an explicit DEV `overlayPreview=1` enables demo data
@@ -234,14 +309,17 @@ and its badge. `preview-overlay.mjs` opts into that isolated demonstration.
   Overlay boundary section in integrations-and-overlays.md), and Overlay failures never block the
   desktop mainline (standing delivery rule). `overlay.getSnapshot` is wired through Gateway and
   Provider to the production projection. Preserve task-status access while separating guides.
-  First-play guidance works independently of that projection. The preparation reader uses a
-  normal window; the game guide has adjustable transparency and automatic VRChat-window following. Headset
-  access uses SteamVR's desktop view of the reader, with its own real-device acceptance.
+  First-play guidance works independently of that projection. The encyclopedia uses the main
+  Help page; the game guide has adjustable transparency and automatic VRChat-window following.
+  Headset reading uses SteamVR's desktop view of Main, with its own real-device acceptance.
 
 ## Standalone Windows packaging
 
-Without a saved AMF enable choice, both fresh and legacy profiles start host environment/play
-services alone. AMF is installed with VUA; Settings → Modules explicitly enables the local
+New users receive enabled AMF alongside the host; existing saved choices are retained. Old
+profiles without registration keep the former disabled default. AMF is installed with VUA;
+Avatar editing explains it and exposes the enable
+switch, while the disabled sidebar entry opens that setup section. Settings → Modules retains
+the existing module controls. Explicit enablement starts the local
 payload. Selection/readiness facts control its navigation, wizard entry and BOOTH
 controls. AMF pages load in a local error boundary, and host bootstrap/task windows do not depend
 on its production queries. [Module architecture](modules.md) owns selection, process lifecycle,
@@ -291,20 +369,13 @@ redistribution review authorizes each bundled binary before a public release.
 
 ## Document changelog
 
+- 1.20.0 (2026-10-10): enable AMF for fresh profiles, add qualified CPU/GPU/RAM/VRAM headroom through desktop resource v0.2, and apply a reduced-motion-aware 120° Home-logo colour wipe.
+- 1.19.0 (2026-10-10): implement the approved small monochrome native splash, independent desktop-startup v0.1 face, Windows language selection and first-use welcome/tour handoff while preserving saved profiles.
+- 1.18.0 (2026-10-10): place each scenario/editor/manager's collapsible details directly beneath its own card, separate compact language and Search controls, migrate retired goal links to Help and retire big-screen layout/navigation/tray actions while retaining the legacy event shape.
+- 1.17.0 (2026-10-10): verify BOOTH account access before offering library sync with direct login/retry handoffs, discover Editors through the host and inspect fresh Unity 2022 entry before CLI acquisition, and replace the AMF Home Inspection card with Finished Avatars and Package Manager.
+- 1.16.0 (2026-10-10): unify collapsible scenario/tool/editor details, add native Help/chapter/wizard history and Avatar-editing AMF activation, and consolidate Settings language/version controls without changing vendor/device evidence.
+- 1.15.0 (2026-10-10): add environment Tools/Help, embed the knowledge encyclopedia through desktop-window v0.2, halve Play card heights and remove the resource-panel sampling-time label.
 - 1.14.0 (2026-10-10): clarify AMF's bundled installation and separate activation for fresh/legacy profiles; retain saved choices and omit external editing placeholders from Ibis.
-
 - 1.13.0 (2026-10-09): scope optional AMF frontend/BOOTH services to module readiness and document the two-provider payload; retain host task-window independence and legacy data paths.
 - 1.12.1 (2026-10-09): align guide transparency/drag memory, normal game-exit cards and the regional-placeholder/expanded-website split with their owning documents.
-
-
 - 1.12.0 (2026-10-09): implement observed two-half play sessions and scoped close, move network/runtime discovery into Play, and add complete-editor and manager-app inventory to Avatar editing.
-- 1.11.0 (2026-10-09): apply the compact-shell ruling, move command search into Settings, replace the appearance select with joined buttons and a Dark default, and retarget the task-tour step to Home.
-- 1.10.0 (2026-10-09): implement settings-only sidebar/return, separate real task status and appearance from guides/demo previews, and add the localized VUA tray with typed main-renderer gestures and normal shutdown.
-- 1.9.0 (2026-10-08): record fixed navigation, desktop/big-screen focus, independent wizard/task facts and the closed official account-page browser handoff; temporary embedding and device acceptance remain pending.
-- 1.8.0 (2026-10-08): record the implemented game-window follow loop in Main (game-window-observe
-  v0.1 observation, follow decision module, and the setGameGuideFollowing /
-  getGameGuideFollowStatus desktop API faces).
-- 1.7.1 (2026-10-07): record separate guidance presentations and retain automatic following as unfinished work.
-- 1.7.0 (2026-10-05): route three guidance contexts to their owning design and distinguish the current combined overlay from its planned replacements.
-
-Earlier entries remain in Git history.

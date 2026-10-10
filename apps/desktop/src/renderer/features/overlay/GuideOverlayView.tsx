@@ -44,6 +44,7 @@ import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { GuideTargetV1 } from "@vua/contracts";
 import { MediaSlot } from "../../components/primitives/MediaSlot.tsx";
 import { strings } from "../../i18n/index.ts";
+import { readEncyclopediaHash, recordEncyclopediaTarget } from "../help/encyclopedia-navigation.ts";
 import {
   GUIDE_TOPIC_COPY_KEY,
   GUIDE_TOPIC_IDS,
@@ -92,14 +93,18 @@ export function shouldClearGuideRequest(
 export function GuideOverlayView({
   guideRequest,
   onGuideRequestApplied,
+  embedded = false,
 }: {
   guideRequest?: GuideRequest | null;
+  embedded?: boolean;
   /** 定位请求已应用的回执(按 nonce 清除,防重挂载重放) */
   onGuideRequestApplied?: (nonce: number) => void;
 }) {
   const copy = strings.guide;
   const [initialTarget] = useState(() =>
-    initialGuideTarget(window.location.search, loadGuideReading()),
+    guideRequest != null
+      ? guideRequest.target === null ? loadGuideReading() ?? { topic: "guide-start" } as GuideTarget : normalizeGuideTarget(guideRequest.target)
+      : (embedded ? readEncyclopediaHash(window.location.hash) : null) ?? initialGuideTarget(window.location.search, loadGuideReading()),
   );
   const [topic, setTopic] = useState<GuideTopicId>(initialTarget.topic);
   // 滚动触发序号:同主题内换分节时 setTopic 不产生渲染,滚动副作用
@@ -112,6 +117,8 @@ export function GuideOverlayView({
   const pendingScroll = useRef<string | null>(initialTarget.section ?? null);
   const appliedNonce = useRef(0);
   const topicCopy = copy.pages[GUIDE_TOPIC_COPY_KEY[topic]];
+  const TopicHeading = embedded ? "h2" : "h1";
+  const SectionHeading = embedded ? "h3" : "h2";
 
   const scroller = () => panelRef.current?.closest(".vua-overlay__body");
 
@@ -140,13 +147,15 @@ export function GuideOverlayView({
     // 页底钳制:期望偏移不得超过最大滚动;到达判定用「分节进入视口 +
     // 滚动真正落地或钳在页底 + 布局稳定」(guideSectionArrival)
     const maxScroll = Math.max(0, body.scrollHeight - body.clientHeight);
+    // Main's encyclopedia keeps its topic strip sticky; do not put a heading behind it.
+    const stickyHeight = embedded ? (stripRef.current?.offsetHeight ?? 0) : 0;
     const desired = Math.min(
       Math.max(
         0,
         anchor.getBoundingClientRect().top -
           body.getBoundingClientRect().top +
           body.scrollTop -
-          8,
+          (stickyHeight + 8),
       ),
       maxScroll,
     );
@@ -154,7 +163,7 @@ export function GuideOverlayView({
     lastProgrammaticScroll.current = body.scrollTop;
     const anchorTop = anchor.getBoundingClientRect().top;
     return guideSectionArrival(
-      guideAnchorVisible(anchorTop, body.getBoundingClientRect().top, body.clientHeight),
+      guideAnchorVisible(anchorTop, body.getBoundingClientRect().top + stickyHeight, body.clientHeight - stickyHeight),
       layoutSettled,
       Math.abs(body.scrollTop - desired) <= 2 && maxScroll > 0,
       maxScroll === 0 || body.scrollTop >= maxScroll - 2,
@@ -172,6 +181,7 @@ export function GuideOverlayView({
   const selectTopic = (next: GuideTopicId, moveFocus: boolean) => {
     // 手动切主题 = 从该主题开头阅读(首玩 B 切片导航纪律)
     applyGuideTarget({ topic: next });
+    if (embedded) recordEncyclopediaTarget({ topic: next });
     if (moveFocus) tabRefs.current[next]?.focus();
   };
 
@@ -194,9 +204,20 @@ export function GuideOverlayView({
   // 落位后从地址栏剥离,之后的状态页往返/重挂载按最新阅读位置恢复
   useEffect(() => {
     saveGuideReading(initialTarget);
-    stripGuideTargetFromLocation();
+    if (embedded) recordEncyclopediaTarget(initialTarget, true);
+    else stripGuideTargetFromLocation();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 仅首帧一次
   }, []);
+
+  useEffect(() => {
+    if (!embedded) return;
+    const onHistory = () => {
+      const target = readEncyclopediaHash(window.location.hash);
+      if (target) applyGuideTarget(target);
+    };
+    window.addEventListener("hashchange", onHistory);
+    return () => window.removeEventListener("hashchange", onHistory);
+  }, [embedded]);
 
   // 渲染提交后执行待滚动(初始分节 / 定位 / 手动切主题开头);
   // 依赖 scrollNonce:同主题内换分节(setTopic 同值不重渲染)也必然触发;
@@ -234,11 +255,11 @@ export function GuideOverlayView({
   useEffect(() => {
     if (guideRequest == null || guideRequest.nonce === appliedNonce.current) return;
     appliedNonce.current = guideRequest.nonce;
-    applyGuideTarget(
-      guideRequest.target === null
+    const target = guideRequest.target === null
         ? (loadGuideReading() ?? { topic: "guide-start" })
-        : normalizeGuideTarget(guideRequest.target),
-    );
+        : normalizeGuideTarget(guideRequest.target);
+    applyGuideTarget(target);
+    if (embedded) recordEncyclopediaTarget(target);
     onGuideRequestApplied?.(guideRequest.nonce);
   }, [guideRequest, onGuideRequestApplied]);
 
@@ -317,7 +338,7 @@ export function GuideOverlayView({
         tabIndex={0}
         ref={panelRef}
       >
-        <h1 className="vua-overlay-guide__title">{topicCopy.title}</h1>
+        <TopicHeading className="vua-overlay-guide__title">{topicCopy.title}</TopicHeading>
         <p className="vua-overlay-guide__intro">{topicCopy.intro}</p>
         {topicCopy.sections.map((section) => {
           const media =
@@ -335,7 +356,7 @@ export function GuideOverlayView({
               id={guideSectionId(section.id)}
               data-guide-section={section.id}
             >
-              <h2 className="vua-overlay-guide__section-title">{section.title}</h2>
+              <SectionHeading className="vua-overlay-guide__section-title">{section.title}</SectionHeading>
               {section.paragraphs.map((paragraph) => (
                 <p key={paragraph} className="vua-overlay-guide__paragraph">
                   {paragraph}

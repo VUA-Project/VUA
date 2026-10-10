@@ -5,7 +5,7 @@ import { Button } from "../../components/primitives/Button.tsx";
 import { Card } from "../../components/primitives/Card.tsx";
 import { Badge } from "../../components/primitives/Badge.tsx";
 
-export function ModulesPage({ onOpen, embedded = false }: { onOpen: () => void; embedded?: boolean }) {
+export function ModulesPage({ onOpen, embedded = false, activationSwitch = false }: { onOpen: () => void; embedded?: boolean; activationSwitch?: boolean }) {
   const snapshot = useAmfModule();
   const gateway = useGateway();
   const copy = strings.amfModule;
@@ -27,9 +27,10 @@ export function ModulesPage({ onOpen, embedded = false }: { onOpen: () => void; 
       <div className="vua-page__stack" data-module="production">
         <div className="vua-page__actions"><h2 className="vua-title">{text("amf")}</h2><Badge tone={snapshot.state === "ready" ? "success" : snapshot.state === "failed" ? "warning" : "neutral"}>{text(snapshot.state)}</Badge></div>
         <p>{text("description")}</p>
+        {activationSwitch ? <label className="vua-settings-toggle"><input type="checkbox" role="switch" data-nav-id="toggle-amf" checked={snapshot.installed} disabled={changing || snapshot.state === "starting" || snapshot.state === "stopping"} onChange={event => void change(event.target.checked)} />{text("enable")}</label> : null}
         <div className="vua-page__actions">
-          {snapshot.state === "ready" ? <Button variant="primary" data-nav-id="open-amf" onClick={onOpen}>{text("open")}</Button> : <Button variant="primary" data-nav-id="enable-amf" disabled={changing || snapshot.state === "starting" || snapshot.state === "stopping"} onClick={() => void change(true)}>{changing ? text("wait") : snapshot.installed ? text("retry") : text("enable")}</Button>}
-          {snapshot.installed ? <Button variant="subtle" data-nav-id="disable-amf" disabled={changing || snapshot.state === "starting"} onClick={() => void change(false)}>{text("disable")}</Button> : null}
+          {snapshot.state === "ready" ? <Button variant="primary" data-nav-id="open-amf" onClick={onOpen}>{text("open")}</Button> : !activationSwitch || snapshot.state === "failed" ? <Button variant="primary" data-nav-id="enable-amf" disabled={changing || snapshot.state === "starting" || snapshot.state === "stopping"} onClick={() => void change(true)}>{changing ? text("wait") : snapshot.installed ? text("retry") : text("enable")}</Button> : null}
+          {snapshot.installed && !activationSwitch ? <Button variant="subtle" data-nav-id="disable-amf" disabled={changing || snapshot.state === "starting"} onClick={() => void change(false)}>{text("disable")}</Button> : null}
         </div>
         <p className="vua-caption vua-text-secondary">{text("retained")}</p>
         {outcome ? <p role="status">{outcome === "busy" ? text("busy") : text("changeFailed")}</p> : null}

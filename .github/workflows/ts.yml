@@ -52,5 +52,19 @@ jobs:
         run: pnpm --filter @vua/desktop smoke:library-maintenance
       - name: Bundle Main and preload for module interaction
         run: node apps/desktop/scripts/build-electron.mjs
+      - name: Tray updates and exit (isolated process)
+        run: pnpm --filter @vua/desktop smoke:system-tray
+      - name: First-run UI and scenario receipt continuity (synthetic Gateway)
+        run: pnpm --filter @vua/desktop smoke:first-run-ui
       - name: AMF activation and isolation (isolated profile, native providers)
         run: pnpm --filter @vua/desktop smoke:amf-module
+      - name: Help, knowledge and compact Play navigation (isolated profile)
+        run: pnpm --filter @vua/desktop smoke:help-navigation
+      - name: Native splash and first-use tour (isolated profile)
+        run: pnpm --filter @vua/desktop smoke:startup
+      - name: Unsupported system language fallback
+        run: pnpm --filter @vua/desktop smoke:startup --locale-unmatched
+      - name: Ordered Windows language preferences
+        run: pnpm --filter @vua/desktop smoke:startup --locale-ordered
+      - name: Resource summary and jurisdiction logo (isolated profile)
+        run: pnpm --filter @vua/desktop smoke:resource-brand

@@ -36,7 +36,9 @@
   top: 48px;
   right: 12px;
   z-index: 700;
-  width: 300px;
+  width: 340px;
+  max-width: calc(100vw - 24px);
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: var(--vua-space-3);
@@ -115,6 +117,9 @@
   background: var(--vua-accent);
   transition: width 400ms ease;
 }
+.vua-usage-panel__bar-fill[data-constrained] { background: var(--vua-warning); }
+.vua-shell__usage-constrained { display: inline-flex; align-items: center; gap: 4px; color: var(--vua-warning); }
+.vua-usage-panel__note { margin: 0; font: var(--vua-font-caption); color: var(--vua-text-secondary); line-height: 1.5; }
 
 .vua-usage-panel__pct {
   font: var(--vua-font-caption);

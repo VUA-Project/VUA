@@ -5,7 +5,8 @@
  * - scenario 用 sessionStorage(仅本次会话,见 DevScenarioBar)。
  */
 export const storageKeys = {
-  displayMode: "vua-display-mode",
+  /** Retired big-screen preference; only removed on startup, never interpreted. */
+  retiredDisplayMode: "vua-display-mode",
   firstRunJourney: "vua-first-run-journey-v1",
   /** Explicit PICO official distribution choice, independent of UI language. */
   picoRegion: "vua-pico-region",
@@ -35,7 +36,7 @@ export const storageKeys = {
   /** 指南阅读位置(首玩 B 切片):版本化前仅存 {topic, section?};只保存阅读
    *  信息,不保存账号信息或部署任务进度;读写见 features/guide/guide-target.ts */
   guideReading: "vua-guide-reading",
-  /** 应用导览进度(三类引导裁决 2026-10-05):版本化 TourProgressV1
+  /** 应用导览进度:版本化 TourProgressV2(v1 按步骤内容迁移)
    *  {v,status,step};独立于阅读器阅读位置与安装任务状态;读写见
    *  features/tour/tour-model.ts */
   tourProgress: "vua-tour-progress",
@@ -80,7 +81,7 @@ export const storageKeys = {
   /** 版本检测开关(2026-09-19 裁决:默认开启、设置可关):absent/"on" = 开,
    *  "off" = 关;见 app/update-check-store.ts */
   updateCheckEnabled: "vua-update-check-enabled",
-  /** 版本检测最近结果缓存(开屏角标/设置页冷启动呈现):版本化
+  /** 版本检测最近结果缓存(设置页冷启动呈现):版本化
    *  StoredUpdateCheckV1;见 app/update-check-store.ts */
   updateCheckCache: "vua-update-check-cache",
   /** 素材导入应用内文件夹选择器的上次浏览目录(2026-09-25 用户裁决):

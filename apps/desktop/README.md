@@ -3,7 +3,7 @@
 
 > Status: Accepted
 > Scope: Electron Main / Preload / Renderer, package scripts, and quality gates
-> Updated: 2026-10-08
+> Updated: 2026-10-10
 > Authority: development entry point; product boundary and contracts live in `docs/`
 
 ## Development commands
@@ -30,6 +30,7 @@ The development launcher does not rebuild the Rust Provider; repeat the build af
 | `pnpm dev:desktop` | Joint Main + Renderer development launch |
 | `pnpm --filter @vua/desktop typecheck` | Strict type check for both renderer and electron tsconfigs |
 | `pnpm --filter @vua/desktop test` | vitest unit tests |
+| `pnpm --filter @vua/desktop smoke:help-navigation` | Controlled Main/preload/renderer navigation: embedded hardware/knowledge, reading return, compact Play cards and light/big-screen appearance; isolated profile, no vendor actions |
 | `pnpm --filter @vua/desktop build` | Builds `@vua/orchestrator-provider` first, then emits to `dist/` |
 | `pnpm --filter @vua/desktop check` | typecheck + test + build + boundary, i18n, contrast and leakage checks |
 | `pnpm --filter @vua/desktop smoke:remote-permissions` | Real remote permission smoke (evidence written to `_local_m1/<version>/`, not committed; the `_local_m*` directory names are historical M-line naming) |
@@ -60,8 +61,9 @@ label; the `desktop-profile` startup diagnostic prints the selected directories.
 
 The host profile contains its task database and module selection. AMF owns its separate task
 database, BDL, material associations, managed warehouse/production directories and download staging.
-AMF is installed with VUA; Settings → Modules enables the bundled payload. Without a saved enable
-choice, fresh and existing BDL profiles keep AMF disabled. Explicit choices survive restart, and
+AMF is installed with VUA and enabled for new profiles. Existing profiles without a saved choice
+retain the old disabled default; Avatar editing and Settings → Modules control the payload.
+Explicit choices survive restart, and
 disabling retains its data. Existing BDL profiles retain their original data locations.
 See [module ownership and migration](../../docs/architecture/modules.md) for paths and recovery.
 Shared settings, guide reading state and browser storage/cache remain in the selected profile.

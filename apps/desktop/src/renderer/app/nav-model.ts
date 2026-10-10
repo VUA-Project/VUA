@@ -16,6 +16,10 @@ export type PageId =
   | "environment-hub"
   | "avatar-hub"
   | "help"
+  | "help-wizard"
+  | "help-tour"
+  | "help-game-assistant"
+  | "help-encyclopedia"
   | "env-play"
   | "env-create"
   | "warehouse"
@@ -29,15 +33,11 @@ export type PageId =
   | "tools-calibration"
   | "tools-installed"
   | "settings-modules"
-  | "settings-goals"
   | "settings-environment"
   | "settings-accounts"
-  | "settings-language"
   | "settings-theme"
-  | "settings-version"
   | "settings-experimental"
-  | "settings-about"
-  | "settings-donate";
+  | "settings-about";
 
 type NavTabKey = keyof Strings["nav"]["tabs"];
 type NavGroupKey = keyof Strings["nav"]["groups"];
@@ -85,13 +85,14 @@ export const businessModules: readonly ModuleDef[] = [
         labelKey: "env",
         pages: [
           { id: "env-play", labelKey: "envPlay" },
+          { id: "tools-discover", labelKey: "toolsDiscover" },
           { id: "env-create", labelKey: "envCreate" },
+          { id: "help", labelKey: "help" },
         ],
       },
       {
         labelKey: "tools",
         pages: [
-          { id: "tools-discover", labelKey: "toolsDiscover" },
           { id: "tools-devices", labelKey: "toolsDevices" },
           { id: "tools-calibration", labelKey: "toolsCalibration" },
           { id: "tools-installed", labelKey: "toolsInstalled" },
@@ -114,7 +115,7 @@ export const businessModules: readonly ModuleDef[] = [
           { id: "warehouse", labelKey: null, labelTerms: ["warehouse"] },
           { id: "recipe", labelKey: null, labelTerms: ["recipe"] },
           { id: "inspection", labelKey: null, labelTerms: ["inspection"] },
-          { id: "release", labelKey: null, labelTerms: ["release"] },
+          { id: "release", labelKey: "release" },
           // 2026-09-25 用户裁决:复合术语序列(装配 → 生产 → 检测)退役为
           // 「车间」——术语行退化成自指缩写,直给词面更诚实
           { id: "workshop", labelKey: "workshop" },
@@ -125,24 +126,20 @@ export const businessModules: readonly ModuleDef[] = [
   },
 ];
 
-/** 设置区:固定顶部最右侧,承载目标重选、语言、主题、版本、关于与捐赠(§2.1) */
+/** Settings has a compact language selector; version/update details belong to About. */
 export const settingsModule: ModuleDef = {
   id: "settings",
   labelKey: "settings",
-  defaultPage: "settings-goals",
+  defaultPage: "settings-theme",
   groups: [
     {
       pages: [
         { id: "settings-modules", labelKey: "settingsModules" },
-        { id: "settings-goals", labelKey: "settingsGoals" },
         { id: "settings-environment", labelKey: "settingsEnvironment" },
         { id: "settings-accounts", labelKey: "settingsAccounts" },
-        { id: "settings-language", labelKey: "settingsLanguage" },
         { id: "settings-theme", labelKey: "settingsTheme" },
-        { id: "settings-version", labelKey: "settingsVersion" },
         { id: "settings-experimental", labelKey: "settingsExperimental" },
         { id: "settings-about", labelKey: "settingsAbout" },
-        { id: "settings-donate", labelKey: "settingsDonate" },
       ],
     },
   ],
@@ -154,7 +151,7 @@ const pageModule = new Map<PageId, AppSectionId>(
   modules.flatMap((m) => m.groups.flatMap((g) => g.pages.map((p) => [p.id, m.id] as const))),
 );
 
-for (const [page, section] of [["home", "settings"], ["help", "settings"], ["environment-hub", "env"], ["avatar-hub", "production"]] as const) pageModule.set(page, section);
+for (const [page, section] of [["home", "settings"], ["help-wizard", "env"], ["help-tour", "env"], ["help-game-assistant", "env"], ["help-encyclopedia", "env"], ["environment-hub", "env"], ["avatar-hub", "production"]] as const) pageModule.set(page, section);
 
 const pageIds = new Set<string>(pageModule.keys());
 

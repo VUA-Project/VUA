@@ -1,17 +1,9 @@
-// 顶栏占用查看器 DOM 回归夹具(第 182 批反向审查批,对象 cae84388 五项 UX
-// 裁决):合成 system 宿主,零生产/远程服务。钉死六面:
-// ①无宿主诚实缺席(整条不出现,不挂占位);②宿主在场读数/弹层 RAM+VRAM
-// 词面与 aria;③四条关闭路径(Esc/外击/×/失焦);④VRAM 采集不可用诚实
-// 「不可用」词面;⑤单拍失败保留上一帧;⑥首拍即败诚实缺席,不猜造。
-// 另提供 lifecycleCycles() 供跑具做开合循环——弹层 blur 监听的「真实注册
-// 数」在页面内不可观测(add/remove 调用计数两版本对称,数不出引用失配),
-// 该钉由跑具经 CDP DOMDebugger.getEventListeners 取地面真值断言。
-// 真机 Chromium DOM 为准,不宣称端到端。
+// Actual DOM with a synthetic V2 resource host; not native hardware evidence.
 import { StrictMode, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ResourceMonitor } from "../../src/renderer/features/resource-monitor/ResourceMonitor.tsx";
 import { strings } from "../../src/renderer/i18n/index.ts";
-import type { SystemResourceUsageV1 } from "@vua/contracts";
+import type { SystemResourceUsageV2 } from "@vua/contracts";
 
 const root = createRoot(document.getElementById("root")!);
 const wait = (ms = 40) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -26,9 +18,13 @@ const GIB = 1024 ** 3;
 type UsageMode = "full" | "ram-only" | "fail";
 let usageMode: UsageMode = "full";
 let pollFailures = 0;
-function snapshot(): SystemResourceUsageV1 {
+function snapshot(): SystemResourceUsageV2 {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    cpuUsagePercent: usageMode === "ram-only" ? null : 20,
+    gpuUsagePercent: usageMode === "ram-only" ? null : 80,
+    gpuName: "Synthetic GPU",
+    gpuKind: "discrete",
     ramUsedBytes: 24 * GIB,
     ramTotalBytes: 50 * GIB,
     vramUsedBytes: usageMode === "ram-only" ? null : 5.5 * GIB,
@@ -39,7 +35,7 @@ function snapshot(): SystemResourceUsageV1 {
 function installSystemHost(): void {
   (window as any).vua = {
     system: {
-      readResourceUsage: async () => {
+      readResourceUsageV2: async () => {
         if (usageMode === "fail") {
           pollFailures += 1;
           throw new Error("synthetic transport failure");
@@ -79,20 +75,20 @@ async function key(value: string) {
   await wait();
 }
 const copy = strings.resourceMonitor;
-const sampledPrefix = copy.sampledAt.split("{time}")[0].trim();
+
 
 /* ---- ①无宿主诚实缺席:桩未装,轮询不挂,整条不出现 ---- */
 async function hostAbsentHonestAbsence() {
   check(indicatorAbsent(), "无宿主时指示器整条缺席(不渲染占位假陈述)");
 }
 
-/* ---- ②宿主在场:读数=RAM/VRAM 取高,弹层双行词面＋aria ---- */
+/* ---- ②宿主在场:余量按四项读数平均,弹层四项词面＋aria ---- */
 async function indicatorAndPanelFullFace() {
   installSystemHost();
   (window as any).__remount();
   await wait();
   const button = toggle();
-  check(button.textContent?.includes("48%"), "顶栏读数=RAM 48%/VRAM 16% 取高=48%");
+  check(button.textContent?.includes("59%"), "顶栏显示四项平均余量=59%");
   check(button.getAttribute("aria-expanded") === "false", "初始 aria-expanded=false");
   button.click();
   await wait();
@@ -103,11 +99,12 @@ async function indicatorAndPanelFullFace() {
   check(text.includes(copy.title), "弹层标题词面在场");
   check(text.includes(copy.ram), "RAM 行标签在场");
   check(text.includes(copy.vram), "VRAM 行标签在场");
-  check(layer!.querySelectorAll('[role="meter"]').length === 2, "RAM/VRAM 双 meter 语义在场");
+  check(layer!.querySelectorAll('[role="meter"]').length === 4, "CPU/GPU/RAM/VRAM 四个 meter 在场");
   check(text.includes("24.0 / 50.0 GB"), "RAM 字节读数 GiB 口径");
   check(text.includes("5.5 / 34.0 GB"), "VRAM 字节读数 GiB 口径");
   check(text.includes("48%") && text.includes("16%"), "双行百分比读数在场");
-  check(text.includes(sampledPrefix), "采样时刻词面在场(诚实时间戳)");
+  check(!layer!.querySelector("time"), "详情不显示采样时间");
+  check(text.includes(copy.cpu) && text.includes(copy.gpu) && text.includes("80%") && text.includes("20%"), "CPU/GPU 行显示已测百分比");
 }
 
 /* ---- ③四条关闭路径 ---- */
@@ -156,23 +153,23 @@ async function vramUnavailableHonestFace() {
   usageMode = "ram-only";
   (window as any).__remount();
   await wait();
-  check(toggle().textContent?.includes("48%"), "VRAM 缺席时顶栏读数退化为 RAM(不猜值)");
+  check(toggle().textContent?.includes("52%"), "仅 RAM 可用时按 RAM 计算余量，不把缺失读数当作零");
   toggle().click();
   await wait();
   const text = panel()?.textContent ?? "";
-  check(text.includes(copy.vramUnavailable), "VRAM 采集不可用如实呈现「不可用」词面");
+  check(text.includes(copy.unavailable), "VRAM 采集不可用如实呈现「不可用」词面");
   check(!text.includes("16%"), "不可用时不渲染 VRAM 百分比(不编造读数)");
   await key("Escape");
   await wait();
   check(panel() === null, "不可用场景收尾:弹层已关");
 }
 
-/* ---- ⑥a 单拍失败保留上一帧(不重挂:实例已有上一拍成功帧) ---- */
-async function singlePollFailureRetainsFrame() {
+/* ---- ⑥a 单拍失败清除上一帧,不把历史读数作为当前状态 ---- */
+async function singlePollFailureDropsFrame() {
   usageMode = "fail";
   await wait(2_300);
   check(pollFailures >= 1, "至少经历一拍合成失败");
-  check(toggle().textContent?.includes("48%"), "单拍失败保留上一帧(不猜造新读数、不整条消失)");
+  check(indicatorAbsent(), "IPC 失败时停止显示旧读数");
 }
 
 /* ---- ⑥b 首拍即败:重挂后无任何成功帧 → 诚实缺席 ---- */
@@ -204,7 +201,7 @@ window.resourceMonitorSmoke = {
   failureFaces: async () => {
     const start = results.length;
     await vramUnavailableHonestFace();
-    await singlePollFailureRetainsFrame();
+    await singlePollFailureDropsFrame();
     await firstPollFailureHonestAbsence();
     return results.slice(start);
   },

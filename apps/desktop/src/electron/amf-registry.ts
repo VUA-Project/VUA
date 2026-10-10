@@ -13,10 +13,12 @@ export class AmfRegistry {
   readonly file: string;
   readonly registration: AmfRegistration;
   readonly invalid: boolean;
+  readonly needsRegistration: boolean;
 
   constructor(readonly userData: string) {
     this.file = path.join(userData, "modules", "amf.json");
     this.invalid = false;
+    this.needsRegistration = !fs.existsSync(this.file);
     if (fs.existsSync(this.file)) {
       try {
         const value: unknown = JSON.parse(fs.readFileSync(this.file, "utf8"));
@@ -28,7 +30,10 @@ export class AmfRegistry {
       }
     } else {
       const legacy = fs.existsSync(path.join(userData, "bdl", "bdl.db"));
-      this.registration = { schemaVersion: "0.1", enabled: false, dataLayout: legacy ? "legacy" : "isolated" };
+      const existingProfile = legacy || fs.existsSync(path.join(userData, "host", "tasks.db"))
+        || fs.existsSync(path.join(userData, "orchestrator", "provider.db"))
+        || fs.existsSync(path.join(userData, "modules", "amf", "data"));
+      this.registration = { schemaVersion: "0.1", enabled: !existingProfile, dataLayout: legacy ? "legacy" : "isolated" };
     }
   }
 

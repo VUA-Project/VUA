@@ -1,8 +1,8 @@
 # Protocol reading guide
 
-> Document version: 1.7.0
+> Document version: 1.8.0
 > Status: Accepted
-> Updated: 2026-10-09
+> Updated: 2026-10-10
 > Scope: Navigation and retention guidance; no wire-format changes
 
 **For people:** use this index when a contribution affects an API or stored format; read only
@@ -19,6 +19,7 @@ separate concurrently served operations, and some newer documents extend an earl
 | Area | Entry | Retention rule |
 | --- | --- | --- |
 | Gateway/tasks | [Application](application-contract-v0.1.md), [task store](task-store-v0.1.md), [Provider](provider-process-v0.1.md) | Current shared boundaries; document version and wire version may differ |
+| Desktop windows | [Main Help navigation v0.2](desktop-window-v0.2.md) | Additive Candidate preload face; retained V1 reader/game/task window behavior is unchanged |
 | Environment/projects | [Inspection](project-inspection-v0.2.md), [project operations](project-ops-v0.2.md), [editor verification](editor-verify-v0.1.md) | Preserve current guards and external-project read-only policy |
 | Package reads | [listInstalled v0.2](packages-query-v0.2.md), [packageCatalog v0.2](packages-catalog-v0.2.md), [listRepos + packageCatalog v0.1 base spec](packages-repos-catalog-v0.1.md), [repoCatalog per-repository inventory](packages-repo-catalog-v0.1.md), [listRepos v0.2 increment](packages-repos-v0.2.md), [listTemplates](packages-templates-v0.1.md) | Check method consumers before retiring an older face |
 | Package writes | [v0.1](packages-ops-v0.1.md), [v0.2](packages-ops-v0.2.md), [v0.3](packages-ops-v0.3.md), [v0.4](packages-ops-v0.4.md), [v0.5](packages-ops-v0.5.md), [v0.6](packages-ops-v0.6.md) | Concurrent faces: provider constants and TS types use all six; v0.6 is not blanket replacement of v0.1-v0.5 |
@@ -76,6 +77,7 @@ owns routing and legacy-data migration.
 
 ## Document changelog
 
+- 1.8.0 (2026-10-10): index Candidate desktop-window v0.2 for main Help navigation while retaining the V1 window face.
 - 1.7.0 (2026-10-09): index the Candidate host-owned AMF lifecycle face separately from frozen AMF/Provider contracts.
 
 - 1.6.0 (2026-10-08): index selected-file maintenance and reference-presence reads, retaining the merged N1 protocol routes.

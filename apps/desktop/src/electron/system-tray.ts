@@ -3,10 +3,10 @@ import type { DesktopShellCommandV1 } from "@vua/contracts";
 import { trayIcons } from "./tray-icons.js";
 
 const copy = {
-  en: { updates: "Check for updates", bigscreen: "Big screen mode", exit: "Exit" },
-  "zh-CN": { updates: "检查更新", bigscreen: "大屏幕模式", exit: "退出" },
-  ja: { updates: "更新を確認", bigscreen: "ビッグスクリーンモード", exit: "終了" },
-  ko: { updates: "업데이트 확인", bigscreen: "큰 화면 모드", exit: "종료" },
+  en: { updates: "Check for updates", exit: "Exit" },
+  "zh-CN": { updates: "检查更新", exit: "退出" },
+  ja: { updates: "更新を確認", exit: "終了" },
+  ko: { updates: "업데이트 확인", exit: "종료" },
 } as const;
 
 export function vuaTrayImage(dark: boolean) {
@@ -37,7 +37,6 @@ export function createVuaTray(actions: {
     const text = language.startsWith("zh") ? copy["zh-CN"] : language.startsWith("ja") ? copy.ja : language.startsWith("ko") ? copy.ko : copy.en;
     tray.setContextMenu(Menu.buildFromTemplate([
       { label: text.updates, click: () => actions.command("check-updates") },
-      { label: text.bigscreen, click: () => actions.command("bigscreen") },
       { label: text.exit, click: actions.quit },
     ]));
   };

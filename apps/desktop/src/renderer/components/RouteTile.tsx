@@ -2,19 +2,19 @@ import { Icon, type IconName } from "@vua/design-system";
 import { strings } from "../i18n/index.ts";
 import { vrBrandGlyphs, type VrBrand } from "./vr-brand-glyphs.ts";
 /** Native button semantics are shared by mouse and head-mounted desktop pointing. */
-export function RouteTile({ title, icon = "arrow-right", kind, brand, description, disabled, selected, onClick, id }: {
+export function RouteTile({ title, icon = "arrow-right", kind, brand, description, disabled, developing, selected, expanded, controls, onClick, id }: {
   title: string; icon?: IconName; kind?: "screen" | "headset" | "unity" | undefined; brand?: VrBrand | undefined;
-  description?: string | undefined; disabled?: boolean; selected?: boolean; onClick?: () => void; id?: string;
+  description?: string | undefined; disabled?: boolean; developing?: boolean; selected?: boolean; expanded?: boolean; controls?: string; onClick?: () => void; id?: string;
 }) {
-  return <button type="button" className="vua-route-tile" disabled={disabled} aria-pressed={selected} onClick={onClick} data-nav-id={id}>
-    {disabled ? <span className="vua-route-tile__tag">{strings.journey.developing}</span> : null}
+  return <button type="button" className="vua-route-tile" disabled={disabled} aria-pressed={expanded === undefined ? selected : undefined} aria-expanded={expanded} aria-controls={controls} data-selected={selected} onClick={onClick} data-nav-id={id}>
+    {disabled || developing ? <span className="vua-route-tile__tag">{strings.journey.developing}</span> : null}
     <RouteGlyph kind={kind} brand={brand} icon={icon} />
     <strong>{title}</strong>
     {description ? <span className="vua-route-tile__description">{description}</span> : null}
   </button>;
 }
 
-export function RouteGlyph({ kind, brand, icon = "arrow-right" }: { kind?: "screen" | "headset" | "unity" | undefined; brand?: VrBrand | undefined; icon?: IconName }) {
+export function RouteGlyph({ kind, brand, icon = "arrow-right" }: { kind?: "screen" | "headset" | "unity" | undefined; brand?: VrBrand | undefined; icon?: IconName | undefined }) {
   return <span className="vua-route-tile__icon" data-brand={brand} aria-hidden="true">{brand ? <svg viewBox={vrBrandGlyphs[brand].viewBox} fill="currentColor">
       {vrBrandGlyphs[brand].paths.map((path, index) => <path key={index} d={path} />)}
     </svg> : kind ? <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">

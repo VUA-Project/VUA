@@ -1,40 +1,40 @@
-import type { SystemResourceUsageV1 } from "@vua/contracts";
+import type { SystemResourceUsageV2 } from "@vua/contracts";
 
-/**
- * 占用查看器展示模型(纯函数可测;IPC/存储读写封装在 ResourceMonitor.tsx):
- * - 顶栏数字 = RAM/VRAM 占用百分比二者取高(用户裁决 2026-09-25);
- * - VRAM 采集缺席(null)如实退化为仅 RAM,弹层呈现「不可用」不猜值;
- * - 百分比恒取整到 0..100,分母为 0 的异常快照按 0 处理(不除零)。
- */
-
+export type ResourceKey = "cpu" | "gpu" | "ram" | "vram";
 export interface ResourceUsagePercents {
-  /** RAM 占用百分比(0..100 整数) */
+  readonly cpuPct: number | null;
+  readonly gpuPct: number | null;
   readonly ramPct: number;
-  /** VRAM 占用百分比;采集不可用为 null */
   readonly vramPct: number | null;
-  /** 顶栏读数:二者取高;VRAM 缺席 = RAM */
-  readonly dominantPct: number;
+  /** Only known dimensions participate; never count unavailable sensors as 0. */
+  readonly measuredCount: number;
+  readonly headroomPct: number;
+  /** A nearly full dimension remains visible even when the mean looks healthy. */
+  readonly constrained: ResourceKey | null;
+  readonly constrainedPct: number | null;
 }
 
 export function percentOf(used: number, total: number): number {
-  if (total <= 0) return 0;
+  if (!Number.isFinite(used) || !Number.isFinite(total) || total <= 0) return 0;
   return Math.min(100, Math.max(0, Math.round((used / total) * 100)));
 }
+const utilization = (value: number | null) =>
+  value === null || !Number.isFinite(value) || value < 0 ? null : Math.min(100, Math.round(value));
 
-export function usagePercents(snapshot: SystemResourceUsageV1): ResourceUsagePercents {
+export function usagePercents(snapshot: SystemResourceUsageV2): ResourceUsagePercents {
+  const cpuPct = utilization(snapshot.cpuUsagePercent);
+  const gpuPct = utilization(snapshot.gpuUsagePercent);
   const ramPct = percentOf(snapshot.ramUsedBytes, snapshot.ramTotalBytes);
-  const vramPct =
-    snapshot.vramUsedBytes !== null && snapshot.vramTotalBytes !== null
-      ? percentOf(snapshot.vramUsedBytes, snapshot.vramTotalBytes)
-      : null;
-  return {
-    ramPct,
-    vramPct,
-    dominantPct: vramPct === null ? ramPct : Math.max(ramPct, vramPct),
-  };
+  const vramPct = snapshot.vramUsedBytes !== null && snapshot.vramTotalBytes !== null && snapshot.vramTotalBytes > 0
+    ? percentOf(snapshot.vramUsedBytes, snapshot.vramTotalBytes) : null;
+  const known = ([["cpu", cpuPct], ["gpu", gpuPct], ["ram", ramPct], ["vram", vramPct]] as const)
+    .filter((entry): entry is readonly [ResourceKey, number] => entry[1] !== null);
+  const worst = [...known].sort((a, b) => b[1] - a[1])[0];
+  return { cpuPct, gpuPct, ramPct, vramPct, measuredCount: known.length,
+    headroomPct: Math.round(100 - known.reduce((sum, [, value]) => sum + value, 0) / known.length),
+    constrained: worst && worst[1] >= 90 ? worst[0] : null,
+    constrainedPct: worst && worst[1] >= 90 ? worst[1] : null };
 }
-
-/** GiB 一位小数(与任务管理器口径一致:1024^3) */
 export function formatGigabytes(bytes: number): string {
   return (bytes / 1024 ** 3).toFixed(1);
 }

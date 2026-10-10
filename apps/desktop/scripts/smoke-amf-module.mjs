@@ -43,18 +43,24 @@ async function run() {
     require(path.join(desktop, "dist/packaged-electron/main.js"));
     await app.whenReady();
     await waitFor(() => {
-      window = BrowserWindow.getAllWindows().find(candidate => candidate.webContents.getURL().startsWith("file:"));
+      window = BrowserWindow.getAllWindows().find(candidate => candidate.webContents.getURL().startsWith("file:") && !candidate.webContents.getURL().includes("surface=splash"));
       return Boolean(window && !window.webContents.isLoading());
     }, "production renderer");
     const js = source => window.webContents.executeJavaScript(source);
+    await waitFor(() => js('document.querySelector(".vua-tour")?.dataset.tourStep==="welcome"'), "first-use welcome");
+    await js('document.querySelector(".vua-tour__actions button").click()');
     await waitFor(() => js('!!document.querySelector(".vua-onboarding") && !document.querySelector(".vua-boot-splash")'), "fresh wizard");
     const checks = [];
     const assert = (condition, label) => { if (!condition) throw new Error(label); checks.push(label); };
-    assert((await js("window.vua.amfModule.snapshot()")).state === "absent", "fresh host has no AMF");
-    assert(!fs.existsSync(path.join(profile, "modules/amf/data")), "host does not create module data");
+    await waitFor(() => js('window.vua.amfModule.snapshot().then(value=>value.state==="ready")'), "fresh default AMF startup");
+    assert(JSON.parse(fs.readFileSync(path.join(profile, "modules/amf.json"), "utf8")).enabled === true, "fresh AMF default is retained before host data is created");
+    assert(fs.existsSync(path.join(profile, "modules/amf/data/bdl/bdl.db")), "AMF creates its own isolated data");
     await js('document.querySelector(".vua-journey-top button").click()');
     await waitFor(() => js('!!document.querySelector("[data-nav-id=home-modules]")'), "home module entry");
-    assert(await js('!document.querySelector("[data-nav-id=nav-warehouse]") && !document.querySelector("[data-nav-id=home-warehouse]")'), "fresh home and sidebar omit editing");
+    await waitFor(() => js('!!document.querySelector("[data-nav-id=nav-warehouse]") && !!document.querySelector("[data-nav-id=home-warehouse]")'), "fresh editing navigation");
+    assert(await js('!!document.querySelector("[data-nav-id=home-warehouse]")'), "fresh users can reach editing directly");
+    await js('window.vua.amfModule.setEnabled(false)');
+    await waitFor(() => js('!document.querySelector("[data-nav-id=nav-warehouse]")'), "explicit opt-out hides editing");
     // Goal preference must not install a module or expose its deep link.
     await js('localStorage.setItem("vua-goals",JSON.stringify({version:1,onboarding:"completed",goals:["production"],environments:[]})); window.location.hash="/warehouse"');
     await waitFor(() => js('!!document.querySelector("[data-nav-id=enable-amf]")'), "uninstalled deep link routes to modules");

@@ -1666,6 +1666,40 @@ export interface SystemResourceUsageV1 {
   readonly sampledAt: string;
 }
 
+/** Desktop-window v0.2 adds main Help navigation without changing V1 window semantics. */
+export interface DesktopWindowApiV2 extends DesktopWindowApiV1 {
+  showEncyclopedia(target?: GuideTargetV1 | null): Promise<{ readonly visible: boolean }>;
+  encyclopediaTargetEvents: {
+    subscribe(listener: (target: GuideTargetV1 | null) => void): () => void;
+  };
+}
+
+/** Independent desktop-startup v0.1 face; no Provider or retained V1 behavior change. */
+export interface DesktopStartupApiV01 {
+  readonly systemLanguages: readonly string[];
+  complete(): Promise<void>;
+}
+
+/** Desktop resource v0.2 reports utilization, never a performance forecast.
+ * GPU and VRAM refer to one physical adapter; shared UMA memory is not VRAM. */
+export interface SystemResourceUsageV2 extends Omit<SystemResourceUsageV1, "schemaVersion"> {
+  readonly schemaVersion: 2;
+  readonly cpuUsagePercent: number | null;
+  readonly gpuUsagePercent: number | null;
+  readonly gpuName: string | null;
+  readonly gpuKind: "discrete" | "integrated" | "unknown" | null;
+}
+
+export interface DesktopSystemApiV2 extends DesktopSystemApiV1 {
+  readResourceUsageV2(): Promise<SystemResourceUsageV2>;
+}
+
+export interface VuaDesktopApiV2 extends Omit<VuaDesktopApiV1, "window" | "system"> {
+  readonly window: DesktopWindowApiV2;
+  readonly system: DesktopSystemApiV2;
+  readonly startup?: DesktopStartupApiV01;
+}
+
 export interface VuaDesktopApiV1 {
   readonly amfModule?: import("./amf-module.js").AmfModuleApiV01;
   readonly gateway: DesktopGatewayApiV1;

@@ -1,4 +1,6 @@
+import { helpCopy } from "./help-copy.ts";
 import { moduleCopy } from "./module-copy.ts";
+import { hardwareCopy } from "./hardware-copy.ts";
 import { environmentCopy } from "./environment-copy.ts";
 import { journeyCopy } from "./journey-copy.ts";
 import type { Strings } from "./strings.en.ts";
@@ -15,6 +17,7 @@ import type { Strings } from "./strings.en.ts";
  *   仅 gateway fixture 可达,生产构建被 Tree-shaking 剔除)。
  */
 export const strings: Strings = {
+  helpUi: helpCopy["zh-CN"],
   amfModule: moduleCopy["zh-CN"],
   environmentCards: environmentCopy["zh-CN"],
   journey: journeyCopy["zh-CN"],
@@ -170,14 +173,22 @@ demoTaskTitle: "演示任务",
     waitingServices: "正在等待本地服务就绪…",
     updateAvailable: "发现新版本 {version}",
   },
-  /** 顶栏占用查看器(2026-09-25 用户裁决):读数 = RAM/VRAM 取高 */
+  /** 资源余量按可用的 CPU/GPU/RAM/VRAM 读数计算(2026-10-10 用户裁决)。 */
   resourceMonitor: {
-    indicatorAria: "系统资源占用 {percent}%,点击查看详情",
+    indicatorAria: "资源余量 {percent}%，按 {count} 项已测读数平均，点击查看详情",
+    headroom: "余量 {percent}%",
     title: "系统资源",
-    ram: "内存 (RAM)",
-    vram: "显存 (VRAM)",
-    vramUnavailable: "不可用(采集未接入)",
-    sampledAt: "采样于 {time}",
+    cpu: "CPU",
+    gpu: "GPU",
+    ram: "内存（RAM）",
+    vram: "显存（VRAM）",
+    ramShort: "内存",
+    vramShort: "显存",
+    unavailable: "暂时读不到",
+    gpuKinds: {"discrete":"独立显卡","integrated":"集成显卡","unknown":"类型未确认"},
+    sharedMemory: "这张显卡与系统共享内存，不另计独立显存占用。",
+    summaryNote: "余量为 100% 减去 {count}/4 项可用读数的平均值，不代表游戏帧率。多显卡时只统计最忙的独立显卡。",
+    constrained: "{resource} {percent}%",
     closeAria: "关闭资源详情",
   },
   nav: {
@@ -195,17 +206,17 @@ demoTaskTitle: "演示任务",
     pages: {
       envPlay: "游玩",
       envCreate: "改模",
+      help: "帮助",
       guideStart: "开始游玩",
       guideBasics: "基础操作",
       guideSafety: "安全设置",
       guideDevices: "设备提示",
       guideTutorials: "桌面/VR 教程",
-      toolsDiscover: "工具发现",
+      toolsDiscover: "工具",
       toolsDevices: "设备与追踪",
       toolsCalibration: "校准",
       toolsInstalled: "已安装工具",
       settingsModules: "功能模块",
-      settingsGoals: "目标重选",
       settingsEnvironment: "环境与路径",
       settingsAccounts: "账号管理",
       settingsLanguage: "语言",
@@ -215,6 +226,7 @@ demoTaskTitle: "演示任务",
       settingsAbout: "关于",
       settingsDonate: "捐赠",
       packages: "包管理器",
+      release: "成品",
       /** 车间侧栏标签(2026-09-25 用户裁决):复合术语序列退役为直给词面 */
       workshop: "车间",
       /** 搭配草稿自 2026-09-20 导航重构起为配方页内弹窗;键保留作词面。 */
@@ -374,13 +386,29 @@ demoTaskTitle: "演示任务",
     /** 步骤无特定缺席说明时的兜底文案 */
     absentDefault: "这个入口当前没有显示。你可以继续导览,稍后再回来看。",
     steps: {
+      welcome: {
+        title: "欢迎，来自现实的旅人。",
+        body: "我是 VUA，把游玩准备、常用工具入口和改模准备放在一起。先花一分钟，看看这些功能在哪里。",
+      },
+      tools: {
+        title: "想加点额外的工具？",
+        body: "面部追踪、翻译等工具会放在这里。标着「开发中」的入口可以先读说明，接入完成前不会安装或启动。",
+      },
+      creator: {
+        title: "想改模时，来这里",
+        body: "这里查看 Unity 和包管理器。新用户的 {amf} 默认启用，用来整理素材、搭配 Avatar；也能在这里关掉，游玩准备可以独立使用。",
+      },
+      settings: {
+        title: "把 VUA 调成你喜欢的样子",
+        body: "外观、界面语言和账号入口在设置里。左上角返回会回到刚才的页面；设置侧栏底部的搜索也能重播这份导览。",
+      },
       route: {
         title: "从这里选择目标",
-        body: "点左上角 VUA LOGO 回到首页。游玩、改模和 Avatar 功能始终可以找到，不受新手引导选择影响。",
+        body: "点左上角 VUA LOGO 回到首页。游玩、工具和改模一直在左边栏，不受入门引导选择影响。",
       },
       network: {
         title: "网络检查在这里",
-        body: "顶部卡片右边测试全部已保存的网站；点左边可单独测试、修改网站，或查看连接帮助。只有点击后才会测试。",
+        body: "点右边测试网站连通性，点左边查看结果和单独测试。目前区域服务器延迟还未接入；检测只在你点击后运行。",
         absent: "返回「游玩」即可找到网络测试。",
       },
       checks: {
@@ -400,7 +428,7 @@ demoTaskTitle: "演示任务",
       },
       guide: {
         title: "引导随时可达",
-        body: "「帮助」可打开准备说明和游戏指南；环境详情里也有直达相关章节的入口。随时可从功能搜索（Ctrl+P）重播本导览。",
+        body: "「环境 → 帮助」里有入门引导、知识百科和游戏内助手。百科在当前窗口阅读；环境详情也能直达相关章节。功能搜索（Ctrl+P）可重播本导览。",
       },
     },
   },
@@ -964,6 +992,7 @@ rolled_back: "已回滚",
       vrcftFlow: "眼追数据流示意图:从 PICO 头显经 PC 上的追踪软件流向模型眼睛",
     },
     pages: {
+      hardware: hardwareCopy["zh-CN"],
       room: {
         title: "房间与游玩空间",
         intro: "先整理物理空间再装软件——一个安全舒适的空间,让之后的每一步都更省心。",
@@ -1504,6 +1533,10 @@ rolled_back: "已回滚",
     viewList: "列表",
     viewToggleAria: "切换卡片/列表视图",
     catalogSync: {
+      checking: "正在检测 BOOTH 登录…",
+      checkFailed: "暂时无法检测 BOOTH 登录",
+      checkDescription: "先确认 BOOTH 登录，再同步素材库。",
+      retryCheck: "重新检测登录",
       warningHint: "库同步结束，有条目未能处理。详情见任务记录。",
       cancelledHint: "库同步已取消，已保存的目录条目保留。",
       inspectHint: "上次同步中断，请检查任务后重新同步。",
@@ -2749,7 +2782,7 @@ rolled_back: "已回滚",
   },
   /** 命令面板(C-EFFICIENCY,ui-ux §6.1 Ctrl+P) */
   commandPalette: {
-    cta: "功能搜索",
+    cta: "搜索",
     ctaHint: "Ctrl+P",
     aria: "命令面板",
     placeholder: "跳转到页面或执行命令…",

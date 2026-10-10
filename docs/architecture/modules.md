@@ -1,6 +1,6 @@
 # VUA host and optional AMF module
 
-> Document version: 1.2.0
+> Document version: 1.4.0
 > Status: Accepted
 > Scope: First-party module composition, lifecycle and data ownership
 > Updated: 2026-10-10
@@ -8,7 +8,7 @@
 The user-defined unit is a **scenario** (the author's term: “情景”): a goal with a SOP list,
 prerequisites, preparation, launch and recovery. A module supplies capabilities to scenarios.
 VUA hosts these scenarios. AMF supplies the first-party Avatar-editing scenario. Ibis includes
-its local payload but requires explicit first activation; external Avatar-editing modules and
+its local payload and enables it for new users; external Avatar-editing modules and
 their placeholder entries are deferred under the 2026-10-10 user ruling.
 
 ## Deferred external editing module
@@ -42,9 +42,14 @@ adding a model-service configuration page or Agent harness to this Ibis slice.
 - Electron's `ModuleProvider` routes AMF methods to this process and host methods to the host.
   Task queries merge the reachable authorities; task lookup/cancellation is routed by owner.
   Capabilities come from the serving owner. AMF failure cannot revoke host capabilities.
-- The first-party payload is installed with VUA at `resources/modules/amf/`. Without a saved enable
-  choice, AMF remains disabled, including on legacy profiles. “Enable” registers and starts this
-  local payload; it does not claim a network install. Explicit choices survive restart.
+- The first-party payload is installed with VUA at `resources/modules/amf/`. A fresh profile
+  defaults to enabled. Main records this choice before either provider creates its database.
+  Existing saved enable/disable choices win; a pre-existing host/legacy/module-data profile with
+  no registration retains the former disabled default. “Enable” starts this local payload,
+  not a network install. Registration read failure retains the file and fails only AMF.
+  Avatar editing explains the module and provides its enable/disable switch. When disabled,
+  the sidebar entry opens that setup section without changing selection; Settings → Modules
+  retains the existing controls. Installing/preparing Unity remains a host path.
   No arbitrary module scripts, community plugin SDK or marketplace are introduced.
 - The renderer loads AMF pages on demand, inside a local error boundary. Host bootstrap does not
   await AMF domain snapshots. Navigation, search, deep links, wizard material entry and BOOTH
@@ -61,7 +66,7 @@ does not claim mutually independent Rust libraries or independently updatable AM
 
 | Owner | Fresh-profile location below userData | Legacy behavior |
 | --- | --- | --- |
-| Host module selection | `modules/amf.json` | A pre-existing `bdl/bdl.db` selects the retained data layout only; first activation still requires a click |
+| Host module selection | `modules/amf.json` | Fresh defaults are retained; existing explicit choices win. A pre-existing `bdl/bdl.db` selects data layout only, not activation |
 | Host tasks | `host/tasks.db` | Transactionally imports legacy environment/demo tasks once |
 | AMF tasks | `modules/amf/tasks.db` | Transactionally imports remaining legacy tasks, production bindings and project lease generations once |
 | AMF BDL, warehouse, production documents, thumbnails and source references | `modules/amf/data/` | Existing AMF profiles retain the original userData-relative locations |
@@ -98,8 +103,8 @@ owned by the [N sequence](../development-outline.md) and [Ibis plan](../developm
 
 ## Document changelog
 
+- 1.4.0 (2026-10-10): retain the fresh enabled default before provider initialization, preserve existing opt-outs and old-profile defaults, and keep independent module lifecycle/data ownership.
+- 1.3.0 (2026-10-10): expose the bundled AMF activation switch and explanation in Avatar editing, with a disabled-sidebar setup entry; retain host-owned Unity preparation and the existing lifecycle contract.
 - 1.2.0 (2026-10-10): record the author's external-module deferral rationale and route the retained AI idea to future external-Agent tool access.
 - 1.1.0 (2026-10-10): distinguish bundled installation from explicit activation, keep legacy data from implicitly enabling AMF, and remove external editing placeholders from Ibis.
-
-- 1.0.0 (2026-10-09): define the scenario/module distinction and implemented optional AMF＋BDL
-  process, data, navigation and recovery boundaries; preserve legacy profiles and frozen contracts.
+- 1.0.0 (2026-10-09): define the scenario/module distinction and implemented optional AMF＋BDL process, data, navigation and recovery boundaries; preserve legacy profiles and frozen contracts.
