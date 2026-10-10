@@ -87,7 +87,6 @@ export const businessModules: readonly ModuleDef[] = [
           { id: "env-play", labelKey: "envPlay" },
           { id: "tools-discover", labelKey: "toolsDiscover" },
           { id: "env-create", labelKey: "envCreate" },
-          { id: "help", labelKey: "help" },
         ],
       },
       {
@@ -151,7 +150,7 @@ const pageModule = new Map<PageId, AppSectionId>(
   modules.flatMap((m) => m.groups.flatMap((g) => g.pages.map((p) => [p.id, m.id] as const))),
 );
 
-for (const [page, section] of [["home", "settings"], ["help-wizard", "env"], ["help-tour", "env"], ["help-game-assistant", "env"], ["help-encyclopedia", "env"], ["environment-hub", "env"], ["avatar-hub", "production"]] as const) pageModule.set(page, section);
+for (const [page, section] of [["home", "settings"], ["help", "env"], ["help-wizard", "env"], ["help-tour", "env"], ["help-game-assistant", "env"], ["help-encyclopedia", "env"], ["environment-hub", "env"], ["avatar-hub", "production"]] as const) pageModule.set(page, section);
 
 const pageIds = new Set<string>(pageModule.keys());
 
@@ -178,6 +177,7 @@ export function moduleDef(id: AppSectionId): ModuleDef {
  */
 export function clicksToReach(page: PageId, from: PageId = defaultPage): number {
   if (page === from) return 0;
+  if (page === "help") return 1;
   if (moduleOf(page) === moduleOf(from)) return 1;
   return page === moduleDef(moduleOf(page)).defaultPage ? 1 : 2;
 }

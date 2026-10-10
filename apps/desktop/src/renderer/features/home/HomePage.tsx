@@ -3,7 +3,7 @@ import { strings, TERMS } from "../../i18n/index.ts";
 import { RouteTile } from "../../components/RouteTile.tsx";
 const copy = strings.journey;
 export const directory = {
-  env: [{ id: "env-play", title: copy.play, icon: "anim" }, { id: "tools-discover", title: copy.tools, icon: "outfit" }, { id: "env-create", title: copy.create, icon: "flask" }, { id: "help", title: copy.help, icon: "question" }],
+  env: [{ id: "env-play", title: copy.play, icon: "anim" }, { id: "tools-discover", title: copy.tools, icon: "outfit" }, { id: "env-create", title: copy.create, icon: "flask" }],
   production: [{ id: "warehouse", title: copy.library, icon: "folder" }, { id: "recipe", title: copy.recipes, icon: "outfit" }, { id: "workshop", title: copy.production, icon: "avatar" }, { id: "release", title: strings.nav.pages.release, icon: "anim" }, { id: "packages", title: strings.nav.pages.packages, icon: "folder" }],
 } as const;
 export function HomePage({ page, navigate, amfInstalled = false }: {
@@ -13,6 +13,7 @@ export function HomePage({ page, navigate, amfInstalled = false }: {
   const global = <div className="vua-route-grid vua-home__global">
     <RouteTile title={copy.tasks} icon="clock" onClick={() => void window.vua?.window.showOverlay("status")} id="home-tasks" />
     <RouteTile title={strings.amfModule.title} icon="folder" onClick={() => navigate("settings-modules")} id="home-modules" />
+    <RouteTile title={copy.help} icon="question" onClick={() => navigate("help")} id="home-help" />
     <RouteTile title={strings.nav.tabs.settings} icon="edit" onClick={() => navigate("settings-theme")} id="home-settings" />
   </div>;
   return <div className="vua-page vua-home" data-focus-scope>

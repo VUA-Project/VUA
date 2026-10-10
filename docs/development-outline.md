@@ -1,9 +1,9 @@
 # VUA development sequence
 
-> Document version: 3.20.0
+> Document version: 3.21.0
 > Status: Accepted
-> Updated: 2026-10-10
-> Authority: User rulings of 2026-09-28 through 2026-10-10, including independent release numbering, scenario-host ownership, AMF/BDL isolation and separate host/module acceptance
+> Updated: 2026-10-11
+> Authority: User rulings of 2026-09-28 through 2026-10-11, including independent release numbering, scenario-host ownership, AMF/BDL isolation and separate host/module acceptance
 > Scope: N1-N7, real-machine deployment and real-material workflows, continuing Beta
 > Normative effect: Schedules accepted product work; product scope belongs to product-boundary.md
 
@@ -155,7 +155,7 @@ afterward; it does not add material-management prerequisites to these play cases
 | --- | --- |
 | Standalone ZIP | On the recorded Windows x64 test environment, extract the complete ZIP to a path containing spaces and non-ASCII characters and launch VUA without a source checkout, Node, pnpm or Rust. Its real packaged Provider responds, local assets load, and settings/task data remain outside the program directory. Moving/replacing the program directory preserves that data |
 | Relevant checks | Desktop play needs Steam and VRChat only; missing SteamVR, PICO or Unity does not block it. PICO streaming adds SteamVR and PICO Connect. Windows, graphics/driver, storage and software findings explain the next action instead of a generic failure |
-| Network | Keep website observations in expanded details, separate from local headset discovery and game latency. Regional Ping covers Europe, United States East/West and Japan only when reliable targets exist; otherwise show unavailable without blocking preparation. No usage-region identification, Connection help or accelerator recommendations |
+| Network | Provide explicitly approximate geographic reference timing for Europe, United States East/West and Japan, with named destinations and no invented measurements after failure. Exact Photon/VRChat room Ping is deferred for Ibis. Keep website observations independent in expanded details, separate from headset discovery; no usage-region identification, Connection help or accelerator recommendations |
 | Account guide | A new player reaches official Steam registration and client login; an existing player skips registration. Continue through VRChat first login with Steam and explain optional full-account/linking steps. PICO account/headset actions use official UI. Closing a page or encountering unsupported embedding leaves a resume or system-browser route |
 | Missing software | Starting with the selected software absent, obtain/install it through official sources and return to VUA for inspection. Prefer supported unattended steps; show installation phase/activity and required interaction. Steam-owned downloads are clearly handed to Steam and checked afterward |
 | Desktop play | Launch VRChat in desktop mode, enter the game, and follow the guide for movement, menus, sound, microphone and basic safety settings. Installed files alone do not pass this row |
@@ -503,6 +503,7 @@ do not turn documentation completeness, speculative coverage, or idle agent acti
 
 ## Document changelog
 
+- 3.21.0 (2026-10-11): accept approximate regional references for Ibis and defer exact Photon/room measurement, retaining independent website observations and physical play acceptance.
 - 3.20.0 (2026-10-10): record the Candidate VRCFT Steam/device-guidance connection, add connection-dependent module selection and retain source-specific real-installation/tracking acceptance and other planned tools.
 - 3.19.0 (2026-10-10): enable bundled AMF for new profiles while retaining saved choices and old-profile defaults; link the small VRCFT connection plan without changing stage or tracking acceptance.
 - 3.18.0 (2026-10-10): apply the seven-stage scenario-host/AMF/BDL sequence, expand N2 sources and selected tools, place N6 with each path and split N7 release scope; preserve N1/N5 evidence and pending formal acceptance.
@@ -512,4 +513,3 @@ do not turn documentation completeness, speculative coverage, or idle agent acti
 - 3.14.0 (2026-10-09): include managed ZIP extraction in first N5 intake acceptance, preserving original bytes and truthful extraction outcomes.
 - 3.13.0 (2026-10-09): narrow N5 closure to intact local-file retention, official/minimal manual provenance and optional bounded dependency presentation; defer third-party search.
 - 3.12.0 (2026-10-08): accept migration reconciliation, limit record removal to local imports and dependency discovery to persisted link clues, and move Recipe/VPM and production-loop acceptance after N5.
-- 3.11.0 (2026-10-08): apply the user's N5 missing-file/source refinements, clarify dependency evidence limits and retain production integration as linked pending acceptance.

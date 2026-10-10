@@ -1,8 +1,8 @@
 # First play release: implementation checkpoint and remaining work
 
-> Document version: 1.17.0
+> Document version: 1.18.0
 > Status: Accepted
-> Updated: 2026-10-10
+> Updated: 2026-10-11
 > Scope: Desktop play, PICO 4 Pro USB/Wi-Fi, optional eye tracking and three guidance contexts
 
 For people: this release takes a player from missing play software to playing VRChat, with
@@ -204,6 +204,22 @@ human review still need the same candidate at the author's chosen test location.
 was added. Temporary embedded registration sessions remain parked; the official browser handoff
 is available without importing credentials or sessions. N5 merge is not an N5 stage-acceptance claim.
 
+## Regional references and Help placement checkpoint (2026-10-11)
+
+The author accepts geographic reference timing for Ibis and defers the precise Photon/VRChat
+room adapter. Play now exposes an explicit four-origin test: San José, Ashburn near Washington,
+Tokyo and Amsterdam. The tile marks successful observations as approximate; expanded details
+explain HTTPS overhead, name the references and allow individual retries. Website observations,
+including Steam and GitHub, retain separate state. The [network owner](../architecture/network-onboarding.md)
+records origins, HTTP classifications, redirect policy and evidence limits. No country lookup,
+connection help, accelerator recommendation or automatic probe is added.
+
+Help returns to the topbar beside Settings, with the same parallelogram appearance and child-page
+selection. It leaves the Environment sidebar, remains a global Home/Search action, and retains
+its four children and native Back/Forward behavior. The matrix, glass and resource-saving policy
+remain in their existing owners. Real reference-origin responses do not establish game Ping,
+headset play, missing-software acceptance or four-language human review.
+
 ## Help and compact Play checkpoint (2026-10-10)
 
 Environment now contains Play, Avatar editing, Tools and Help. The topbar Help button is removed.
@@ -401,6 +417,7 @@ installation, PICO connection, real-material production and four-language human 
 
 ## Document changelog
 
+- 1.18.0 (2026-10-11): record approximate geographic references and restored topbar Help while deferring exact room measurement and retaining physical/human acceptance.
 - 1.17.0 (2026-10-10): record the Candidate VRCFT connection and device/module guidance, supersede its earlier placeholder and retain vendor-installation and physical-tracking acceptance without another ZIP.
 - 1.16.0 (2026-10-10): align fresh AMF activation with the latest user ruling while retaining old-profile choices and independent real-software, device and production acceptance.
 - 1.15.0 (2026-10-10): record the approved small native opening, Windows language handoff and first-use welcome/tour continuity, with controlled UI evidence and unchanged physical/human release acceptance.
@@ -410,4 +427,3 @@ installation, PICO connection, real-material production and four-language human 
 - 1.11.0 (2026-10-10): keep AMF installed with VUA but require explicit first activation, retain saved choices/data and defer external Avatar-editing module integration from Ibis.
 - 1.10.0 (2026-10-09): record optional AMF startup and core task/guidance independence without replacing pending physical release acceptance.
 - 1.9.0 (2026-10-09): record author-reported guide/normal-exit defects and source repairs, background-alpha evidence, removed network advice and unavailable regional Ping without another ZIP or physical-acceptance claim.
-- 1.8.0 (2026-10-09): record two-half play cards, scoped observed launch/close and creator inventory while retaining real vendor/device checks and the author’s no-package UI review.

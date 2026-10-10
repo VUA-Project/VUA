@@ -40,13 +40,14 @@ fn website_failure(url: &str, status: NetworkStatus, elapsed_ms: u64) -> Website
 /// then drops the response without consuming the page body.
 async fn test_website(value: String) -> WebsiteObservation {
     let started = Instant::now();
+    let source = value.clone();
     let client = Client::builder()
         .https_only(true)
         .timeout(REQUEST_TIMEOUT)
         .connect_timeout(Duration::from_secs(4))
         .user_agent("VUA-Website-Test/0.1")
-        .redirect(Policy::custom(|a| {
-            if a.previous().len() <= 3 && valid_website_url(a.url().as_str()) {
+        .redirect(Policy::custom(move |a| {
+            if follow_website_redirect(&source, a.url().as_str(), a.previous().len()) {
                 a.follow()
             } else {
                 a.stop()
@@ -85,6 +86,19 @@ async fn test_website(value: String) -> WebsiteObservation {
         ),
         Err(_) => website_failure(&value, NetworkStatus::Timeout, elapsed_ms),
     }
+}
+
+/// Approximate regional timing stays at the documented regional service origin.
+/// Ordinary user-selected website tests retain the existing HTTPS redirect limit.
+fn follow_website_redirect(source: &str, destination: &str, hops: usize) -> bool {
+    !matches!(
+        source,
+        "https://objectstorage.us-sanjose-1.oraclecloud.com/"
+            | "https://objectstorage.us-ashburn-1.oraclecloud.com/"
+            | "https://objectstorage.ap-tokyo-1.oraclecloud.com/"
+            | "https://objectstorage.eu-amsterdam-1.oraclecloud.com/"
+    ) && hops <= 3
+        && valid_website_url(destination)
 }
 
 fn endpoint(target: NetworkTarget) -> &'static str {
@@ -428,6 +442,36 @@ mod tests {
         for code in [403, 404, 405, 429, 503] {
             assert_eq!(classify_http(code), NetworkStatus::HttpError);
         }
+    }
+    #[test]
+    fn regional_references_never_follow_a_redirect_out_of_their_region() {
+        for source in [
+            "https://objectstorage.us-sanjose-1.oraclecloud.com/",
+            "https://objectstorage.us-ashburn-1.oraclecloud.com/",
+            "https://objectstorage.ap-tokyo-1.oraclecloud.com/",
+            "https://objectstorage.eu-amsterdam-1.oraclecloud.com/",
+        ] {
+            assert!(!follow_website_redirect(
+                source,
+                "https://www.oracle.com/",
+                1
+            ));
+        }
+        assert!(follow_website_redirect(
+            "https://github.com/",
+            "https://github.com/login",
+            1
+        ));
+        assert!(!follow_website_redirect(
+            "https://github.com/",
+            "https://github.com/login",
+            4
+        ));
+        assert!(!follow_website_redirect(
+            "https://github.com/",
+            "http://github.com/",
+            1
+        ));
     }
     #[test]
     fn vendor_redirects_require_a_domain_boundary() {

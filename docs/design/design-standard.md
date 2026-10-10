@@ -1,11 +1,11 @@
-# VUA design standard v0.17.0
+# VUA design standard v0.19.0
 
 
-> Document version: 0.18.0
+> Document version: 0.19.0
 > Status: Accepted
 > Scope: Electron desktop, desktop overlay, and VR overlay presentation  
-> Updated: 2026-10-10
-> Last conformance review: 2026-10-10 (controlled small native splash, welcome/tour and retained card/language/appearance/resource behavior; author app/device and human-language review pending)
+> Updated: 2026-10-11
+> Last conformance review: 2026-10-11 (regional reference and topbar Help layout, retaining compact cards, history and appearance; author game/device and human-language review pending)
 > Normative effect: Governs interaction, visual, and accessibility implementation;
 > does not expand product scope or replace versioned application contracts
 
@@ -113,8 +113,10 @@ to Dark (superseding the earlier system default); keep existing saved choices. S
 selected while the effective theme follows Windows. Reduced motion and resource saving flatten
 the frame movement without changing selection, keyboard access or theme propagation.
 
-The 2026-10-10 ruling adds **Tools** and **Help** under Environment and removes the topbar Help
-button. Help's destinations are Getting started (入门引导), the existing app tour, Knowledge
+The 2026-10-11 ruling restores **Help** to the topbar beside Settings, using the same parallelogram
+button and pressed styling. Remove its Environment-sidebar entry; keep Tools above Avatar editing.
+Help stays selected throughout its child pages and remains accessible through Home and Search.
+Help's destinations are Getting started (入门引导), the existing app tour, Knowledge
 encyclopedia (知识百科) and In-game assistant (游戏内助手). The encyclopedia is a page inside
 Help with an explicit return to Help, sharing Main's appearance. Hardware
 introductions are a peer chapter; Play's "What device do I have?" link opens it directly.
@@ -161,10 +163,14 @@ A pending start can be stopped; a close in progress cannot be submitted again. E
 an accessible explanation and retry/preparation path. Motion respects resource saving and
 reduced-motion preferences; visible text still reports work when the spinner is static.
 
-The network tile presents Europe, United States (East and West together), and Japan. Until
-reliable game-region targets exist, show unavailable and disable its measurement action.
-Expanded details retain website tests, including Steam and GitHub; their response times cannot
-fill regional Ping. Remove Connection help, usage-region identification and accelerator advice.
+The network tile presents Europe, United States (East and West together), and Japan as
+**regional reference latency**, with an explicit test action. Show `≈ … ms` only after a response
+from a documented geographic reference point; a timeout is an error, not a high latency value.
+Expanded details name the reference cities and explain HTTPS response overhead and the distinction
+from game Ping. The [network owner](../architecture/network-onboarding.md) defines targets and
+measurement semantics. Expanded website tests, including Steam and GitHub, retain independent
+results and cannot fill the regional tile. Keep Connection help, usage-region identification and
+accelerator advice removed. Requests never start merely from entering or expanding Play.
 
 Unity 2022 and the development-only Unity 6 peer remain equal entries in Avatar editing.
 Other complete editor installations appear only after read-only discovery and executable
@@ -209,8 +215,8 @@ with per-resource bars, byte figures, and the sample time. VRAM collection unava
 honestly as "unavailable" and the reading degrades to RAM-only — never a guessed value. When the
 host surface is absent the whole indicator is absent.
 
-The desktop feature directory remains at the left; an available task center remains at the bottom; and
-content scrolls in its own container. Sidebar items retain the original visual impression of growing
+The desktop feature directory remains at the left; the task center is reached from Home, with
+notifications in the header; and content scrolls in its own container. Sidebar items retain the original visual impression of growing
 and shifting toward the user, implemented with transform and a stable layout slot. Since the
 2026-09-25 user ruling the sidebar rests as gradient glass without a hard border. The 2026-10-08
 ruling places grouped features at the top and global entries below. Idle items render as small type,
@@ -795,6 +801,7 @@ direction.
 
 ## 12. Document changelog
 
+- **0.19.0 (2026-10-11)**: restore Help's topbar parallelogram and define explicit approximate regional reference states without changing card height, history or independent website tests.
 - 0.18.0 (2026-10-10): define the fresh enabled AMF entry, resource-headroom/saturation presentation and 120° jurisdiction-logo replacement with flattened-motion fallbacks.
 - 0.17.0 (2026-10-10): accept the small monochrome ray/white-logo startup and first-use welcome/tour, preserving normal shell themes, matrix/glass and resource-saving preferences.
 - 0.16.0 (2026-10-10): anchor collapsible details beneath each individual card, separate translation/compact-language and Search rows, route retired goal links to Help and retire big-screen mode while preserving native control semantics and visual/resource preferences.
@@ -804,6 +811,5 @@ direction.
 - **0.12.1 (2026-10-09)**: align normal-exit Close semantics, background-only guide transparency/drag memory and the regional-placeholder/expanded-website split with the author's corrections.
 - **0.12.0 (2026-10-09)**: replace route-only preparation tiles with two-half play cards, merge network/runtime facts into Play, and add verified editor and separate manager-software/config detection to Avatar editing.
 - **0.11.0 (2026-10-09)**: narrow the sidebar, retire the bottom bar and four redundant header controls, move search into Settings, and adopt connected appearance choices with a Dark default and preserved motion fallbacks.
-- **0.10.0 (2026-10-09)**: separate tasks from onboarding, define settings-only navigation and return, restore Inspection to Avatar, add tray gestures and recognizable headset glyphs, and remove the header page-name duplicate.
 
 Earlier entries remain in Git history.

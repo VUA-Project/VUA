@@ -777,6 +777,7 @@ function AppShell({
       ),
     );
     const actions: CommandItem[] = [
+      { id: "help", group: "pages", label: strings.journey.help, keywords: "help guidance encyclopedia", run: () => navigate("help") },
       {
         id: "start-tour",
         group: "actions",
@@ -971,6 +972,9 @@ function AppShell({
         </div>
         {/* Resource headroom summary; details retain each measured resource. */}
         <ResourceMonitor />
+        <button type="button" className="vua-shell__tab vua-shell__help" aria-current={page.startsWith("help") ? "page" : undefined} data-nav-id="shell-help" onClick={() => navigate("help")}>
+          <span className="vua-shell__tab-label">{strings.journey.help}</span>
+        </button>
         {/* 设置固定最右侧(§2.1):与业务 Tab 同款平行四边形 pressed 卡;
          *  S-X-1 起顶栏选中态由卡片自身承载(深底+内阴影),不再用滑动 pill */}
         <button
@@ -1020,7 +1024,7 @@ function AppShell({
             {moduleDef("settings").groups.flatMap(g => g.pages).map(p => <button type="button" key={p.id} className="vua-shell__sidebar-item" aria-current={page === p.id ? "page" : undefined} onClick={() => navigate(p.id)} data-nav-id={`nav-${p.id}`}>{pageLabel(p)}</button>)}
           </div> : (["env", "production"] as const).filter(group => group !== "production" || amf.installed).map(group => <div className="vua-shell__sidebar-group" key={group} data-module={group}>
             <button type="button" className="vua-shell__sidebar-label" onClick={() => navigate(group === "env" ? "environment-hub" : "avatar-hub")}>{group === "env" ? strings.journey.environment : TERMS.amf}</button>
-            {directory[group].map(item => <button type="button" key={item.id} className="vua-shell__sidebar-item" aria-current={page === item.id || (item.id === "help" && page.startsWith("help-")) ? "page" : undefined} onClick={() => navigate(item.id)} data-nav-id={`nav-${item.id}`}>{item.title}</button>)}
+            {directory[group].map(item => <button type="button" key={item.id} className="vua-shell__sidebar-item" aria-current={page === item.id ? "page" : undefined} onClick={() => navigate(item.id)} data-nav-id={`nav-${item.id}`}>{item.title}</button>)}
           </div>)}
           {!settingsOpen && !amf.installed ? <div className="vua-shell__sidebar-group" data-module="amf-enablement">
             <span className="vua-shell__sidebar-label">{TERMS.amf}</span>

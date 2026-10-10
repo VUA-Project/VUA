@@ -222,7 +222,8 @@ const review = {
     check("play card has two independent halves and a thin separator", halves.length === 2 && !halves[0]!.disabled && separatorWidth > 0 && separatorWidth <= 1);
     check("network is above the environments and has the same height", network.getBoundingClientRect().bottom <= card().getBoundingClientRect().top && Math.abs(network.getBoundingClientRect().height - card().getBoundingClientRect().height) < 1);
     check("entering Play makes no website test requests", websiteCalls === 0);
-    check("unconfirmed regional ping remains unavailable", document.querySelector<HTMLButtonElement>('[data-nav-id="play-network-test"]')!.disabled && network.textContent?.includes(strings.websiteTests.europe) && network.textContent?.includes(strings.websiteTests.west) && network.textContent?.includes(strings.websiteTests.east));
+    await wait(() => !document.querySelector<HTMLButtonElement>('[data-nav-id="play-network-test"]')!.disabled);
+    check("regional reference testing is explicit and keeps both US coasts", network.textContent?.includes(strings.websiteTests.regionTitle) && network.textContent?.includes(strings.websiteTests.europe) && network.textContent?.includes(strings.websiteTests.west) && network.textContent?.includes(strings.websiteTests.east));
     document.querySelector<HTMLButtonElement>('[data-nav-id="play-network-details"]')!.click();
     await wait(() => visible(document.querySelector(".vua-network")!));
     document.querySelector<HTMLButtonElement>(`.vua-network [aria-label="${strings.websiteTests.testAll}"]`)!.click(); await wait(() => websiteCalls === 1 && document.querySelector(".vua-network")!.textContent?.includes("ms"));
