@@ -69,7 +69,6 @@ export const strings: Strings = {
   },
   common: {
     fixtureBadge: "데모 데이터",
-    mascotAria: "VUA 마스코트 로봇",
     /** 콘텐츠 대화상자 닫기 버튼(소재 가져오기/코디네이트 초안) */
     dialogClose: "닫기",
   },
@@ -2948,7 +2947,6 @@ rolled_back: "롤백됨",
     about: {
       heading: "VRC Ultra Assistant",
       description: "VRChat 실행 환경 설정과 {amf}를 통한 아바타 제작을 돕는 도구입니다.",
-      bannerSlot: "헤더 이미지 슬롯: 마스코트가 확정되면 배너가 채워집니다.",
       contributorsHeading: "기여자와 소스 코드",
       contributorsDescription: "VUA는 오픈 소스입니다. 코드, 문서, 커뮤니티 스킨 기여를 환영합니다. 규약은 리포지토리의 CONTRIBUTING과 AGENTS를 참조하세요.",
       repoCta: "프로젝트 리포지토리 열기",
@@ -3160,7 +3158,6 @@ rolled_back: "롤백됨",
       texture: "컨트롤 질감(v0.4.0 §3.6)",
       statusLight: "StatusLight 상태 등",
       emptyState: "EmptyState 빈 상태",
-      mascot: "Mascot 마스코트",
       skeleton: "Skeleton 스켈레톤",
       mediaSlot: "MediaSlot 미디어 슬롯",
       navSelected: "내비게이션 선택 상태",

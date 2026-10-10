@@ -96,7 +96,7 @@ function entityTypeLabel(value: string): string {
  * - 骨架屏只出现在真实加载期间(首次拉取);筛选变更保留旧结果,
  *   不用骨架屏闪烁(ui-ux §2.8);
  * - 色彩纪律(v0.3.3 §6.1):橙仅用于选中描边;徽标一律中性灰,
- *   已购买用 success 芯片;不使用轨道语汇;吉祥物只出现在空态组件内。
+ *   已购买用 success 芯片;不使用轨道语汇。
  */
 
 type ListState =

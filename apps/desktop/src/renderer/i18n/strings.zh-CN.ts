@@ -74,7 +74,6 @@ export const strings: Strings = {
   },
   common: {
     fixtureBadge: "演示数据",
-    mascotAria: "VUA 吉祥物小机器人",
     /** 内容弹窗关闭钮(素材导入/搭配草稿弹窗) */
     dialogClose: "关闭",
   },
@@ -2978,8 +2977,6 @@ rolled_back: "已回滚",
     about: {
       heading: "VRC Ultra Assistant",
       description: "面向 VRChat 玩家与创作者的一体化助手:游玩/生产环境部署器与 {amf} Avatar 生产线。",
-      /** 头图槽位(C-SETTINGS):Banner 依赖吉祥物定稿(美术需求文档 §3),先占位 */
-      bannerSlot: "头图槽位:Banner 将在吉祥物定稿后填入。",
       contributorsHeading: "贡献者与源码",
       contributorsDescription:
         "VUA 是开源项目,欢迎贡献代码、文档与社区皮肤;完整约定见仓库 CONTRIBUTING 与 AGENTS。",
@@ -3192,7 +3189,6 @@ rolled_back: "已回滚",
       texture: "控件质感(v0.4.0 §3.6)",
       statusLight: "StatusLight 状态灯",
       emptyState: "EmptyState 空状态",
-      mascot: "Mascot 吉祥物",
       skeleton: "Skeleton 骨架屏",
       mediaSlot: "MediaSlot 媒体槽",
       navSelected: "导航选中态",

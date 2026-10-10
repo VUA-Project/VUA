@@ -75,7 +75,6 @@ export const strings = {
   },
   common: {
     fixtureBadge: "Demo data",
-    mascotAria: "VUA mascot robot",
     /** Content dialog chrome (material import / composing draft dialogs) */
     dialogClose: "Close",
   },
@@ -3031,7 +3030,6 @@ demoTaskTitle: "Demo task",
       heading: "VRC Ultra Assistant",
       description:
         "Tools for setting up VRChat and creating avatars with {amf}.",
-      bannerSlot: "Banner slot: the banner lands here once the mascot is finalized.",
       contributorsHeading: "Contributors & source",
       contributorsDescription:
         "VUA is open source — contributions of code, docs and community skins are welcome; see CONTRIBUTING and AGENTS in the repository.",
@@ -3244,7 +3242,6 @@ demoTaskTitle: "Demo task",
       texture: "Control texture (v0.4.0 §3.6)",
       statusLight: "StatusLight",
       emptyState: "EmptyState",
-      mascot: "Mascot",
       skeleton: "Skeleton",
       mediaSlot: "MediaSlot",
       navSelected: "Nav selected state",

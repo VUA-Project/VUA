@@ -78,6 +78,11 @@ async function modalTests() {
 }
 
 const gateway = emptyGateway();
+// This fixture hosts AMF pages; declare the optional module ready so the host
+// loads their synthetic read ports rather than correctly retaining unavailable states.
+gateway.amfModule = { ...gateway.amfModule,
+  snapshot: async () => ({ schemaVersion: "0.1", moduleId: "amf", installed: true, state: "ready" }),
+};
 let documents: Record<string, any> = {};
 let pendingSave: { document: any; resolve: (value: any) => void } | null = null;
 let listCalls = 0, getCalls = 0;
@@ -368,7 +373,7 @@ async function importTests() {
   await click(strings.importPage.chooseCloudCta);
   await wait(); await wait();
   const bar = document.querySelector<HTMLElement>(".vua-import__browse-bar");
-  check(bar && bar.parentElement === document.body && !bar.closest("[inert]"), "actual ImportPage body toolbar is not inert");
+  check(bar && bar.closest("[data-vua-browser-frame]")?.parentElement === document.body && !bar.closest("[inert]"), "actual ImportPage body portal toolbar is not inert");
   const close = bar!.querySelector<HTMLButtonElement>(".vua-import__browse-button--close")!;
   close.focus(); check(document.activeElement === close, "actual remote close accepts focus");
   const before = closed; close.click(); await wait(); check(closed > before, "actual remote close remains actionable");

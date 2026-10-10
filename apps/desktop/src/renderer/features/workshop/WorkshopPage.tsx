@@ -39,7 +39,7 @@ const copy = strings.workshop;
  * 落位仓储页(未决项 1 桌面落形,ProductionFlowSectionHost 由仓储页挂载)。
  *
  * 轨道只连接 Assembly → Production → Inspection,首尾为进料口 / 出货口端点。
- * 像素吉祥物与零件上车演出在流程冻结后投入(§13 排期纪律,本切片不做)。
+ * 零件上车演出在流程冻结后投入(§13 排期纪律,本切片不做)。
  *
  * 色彩纪律(§7.3):车间不使用红绿灯语义;进行中/完成为 AMF 橙,
  * 琥珀仅检查点确认,红仅阻断。

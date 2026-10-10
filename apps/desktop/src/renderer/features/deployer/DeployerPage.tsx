@@ -8,7 +8,6 @@ import { Badge } from "../../components/primitives/Badge.tsx";
 import { Button } from "../../components/primitives/Button.tsx";
 import { Card } from "../../components/primitives/Card.tsx";
 import { EmptyState } from "../../components/primitives/EmptyState.tsx";
-import { Mascot } from "../../components/primitives/Mascot.tsx";
 import { StatusLight } from "../../components/primitives/StatusLight.tsx";
 import { format, strings } from "../../i18n/index.ts";
 import { useDataSource, useEnvironmentView, useGateway } from "../../gateway/index.ts";
@@ -76,9 +75,6 @@ type PlanState =
  * 未纳入目标(env-off)时显示中性说明,不显示健康结论、不激活英雄区;
  * "选择环境目标"按钮跳往设置的目标重选页,不自动开始检测。
  *
- * 吉祥物取舍(§9.1 允许出现在引导/空态/检查/问题说明,本切片从紧):
- * not-run 中性英雄区不放吉祥物,避免未检测时产生"正在检查"的感觉;
- * 检查结果(含问题说明与全绿)英雄区保留,空态面板保留静态帧。
  * 取数(G3):视图经 Gateway 环境端口注入(useEnvironmentView),
  * "演示数据"徽标由 dataSource 驱动,页面不感知 fixture / live 实现差异。
  */
@@ -326,7 +322,6 @@ function EnvironmentChecks({
           {checkFailed ? (
             <p className="vua-caption vua-text-secondary">{copy.page.checkFailed}</p>
           ) : null}
-          <Mascot size={96} />
         </Card>
       )}
 
