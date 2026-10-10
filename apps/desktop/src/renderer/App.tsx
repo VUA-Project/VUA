@@ -513,10 +513,6 @@ function AboutPage() {
         <h1 className="vua-title">{strings.nav.pages.settingsAbout}</h1>
       </section>
       <VersionDetails />
-      {/* Banner 槽位(美术需求文档 §3):定稿前诚实占位,不放伪造图 */}
-      <div className="vua-about-banner">
-        <span className="vua-caption vua-text-secondary">{copy.bannerSlot}</span>
-      </div>
       <Card>
         <div className="vua-page__stack">
           <h2 className="vua-title">{copy.heading}</h2>

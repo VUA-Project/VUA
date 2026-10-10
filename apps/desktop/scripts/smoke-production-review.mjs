@@ -8,6 +8,8 @@ import { writeFile } from "node:fs/promises";
 import os from "node:os";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 let server, window;
+// Allow asynchronous cleanup to finish without quitting successfully on failure.
+app.on("window-all-closed", () => {});
 async function main() {
 try {
   await app.whenReady();

@@ -1,7 +1,7 @@
-# VUA design standard v0.20.0
+# VUA design standard v0.21.0
 
 
-> Document version: 0.20.0
+> Document version: 0.21.0
 > Status: Accepted
 > Scope: Electron desktop, desktop overlay, and VR overlay presentation  
 > Updated: 2026-10-11
@@ -66,6 +66,15 @@ and recovery before execution. Renderer reload never loses an accepted task.
 New users receive explanatory guidance; experienced users receive workbenches, shortcuts, batches,
 and dense views. Both invoke the same use cases. Avatars, outfits, previews, Recipes, and Build Records
 are the content; chrome does not obscure them or recolor third-party brands as VUA.
+
+### State presentation without character art
+
+The pixel robot is retired from all application and developer-showcase surfaces under the
+2026-10-11 user ruling. Empty, unavailable and failure presentations use grouped titles,
+explanations and real recovery actions. Environment conclusions use the existing status
+indicator and result text. The About page has no character-art banner placeholder. Remove the
+robot component, its animation styles and unused localized labels rather than retaining hidden
+mounts or introducing replacement character art.
 
 ## 3. Platform and information architecture
 
@@ -368,8 +377,8 @@ title + subtitle + warning strip + toggle rows). Rules:
 Default staged easing is `cubic-bezier(0.2, 0.9, 0.25, 1)`. Motion uses opacity/transform rather than layout.
 Reduced motion removes translation, scale, parallax, and loops, leaving at most 120 ms opacity.
 `data-effects="off"` disables decorative motion, glow, blur, and optional canvas effects without
-changing function. Infinite motion is reserved for real active state/loading, restrained breathing,
-and low-frame mascots and pauses offscreen/unfocused/inactive. Two WebGL scenes remain since the
+changing function. Infinite motion is reserved for real active state/loading and restrained breathing
+and pauses offscreen/unfocused/inactive. Two WebGL scenes remain since the
 2026-09-25 user ruling: a holographic core for the Command Center, and a three-dimensional pedestal
 for Release; the nebula canvas that formed the dark application background is retired from the
 baseline together with the aurora glow tokens (the grid texture is kept), and the resource saver
@@ -796,7 +805,7 @@ A page is deliverable only when:
 
 ## 11. Accepted scope
 
-The accepted scope covers the base character, two jurisdictions, tokens, component states, fixed
+The accepted scope covers the base visual language, two jurisdictions, tokens, component states, fixed
 Home and logo navigation, desktop directory, independent branching wizard, Help entries
 for the guidance contexts (user ruling 2026-10-08), slanted controls, sidebar growth impression,
 task feedback, and the five AMF stages as full capability coverage. Wizard choices never hide these
@@ -813,6 +822,7 @@ direction.
 
 ## 12. Document changelog
 
+- 0.21.0 (2026-10-11): retire the pixel robot from environment conclusions, shared state messages and developer showcases; remove the About character-art placeholder and retain explanatory states and real actions.
 - 0.20.0 (2026-10-11): add official Wiki and AMF material browsing with peer navigation/website shortcuts; constrain all embedded browser presentations to shell content with visible navigation, history and failure recovery.
 - **0.19.0 (2026-10-11)**: restore Help's topbar parallelogram and define explicit approximate regional reference states without changing card height, history or independent website tests.
 - 0.18.0 (2026-10-10): define the fresh enabled AMF entry, resource-headroom/saturation presentation and 120° jurisdiction-logo replacement with flattened-motion fallbacks.
@@ -822,7 +832,6 @@ direction.
 - 0.14.0 (2026-10-10): standardize collapsible Play/Tools/editor details and compact tool widths, distinguish navigable Help child pages with Back/Forward, and place AMF activation and consolidated Settings controls in their accepted locations.
 - **0.13.0 (2026-10-10)**: move Tools/Help into Environment, embed knowledge and hardware reading, halve Play card heights and remove the resource sampling-time label while preserving themes, glass and resource saving.
 - **0.12.1 (2026-10-09)**: align normal-exit Close semantics, background-only guide transparency/drag memory and the regional-placeholder/expanded-website split with the author's corrections.
-- **0.12.0 (2026-10-09)**: replace route-only preparation tiles with two-half play cards, merge network/runtime facts into Play, and add verified editor and separate manager-software/config detection to Avatar editing.
 
 
 Earlier entries remain in Git history.

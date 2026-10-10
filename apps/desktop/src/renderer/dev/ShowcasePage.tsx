@@ -3,7 +3,6 @@ import { Badge, type BadgeProps } from "../components/primitives/Badge.tsx";
 import { Button, type ButtonProps } from "../components/primitives/Button.tsx";
 import { Card } from "../components/primitives/Card.tsx";
 import { EmptyState } from "../components/primitives/EmptyState.tsx";
-import { Mascot } from "../components/primitives/Mascot.tsx";
 import { MediaSlot } from "../components/primitives/MediaSlot.tsx";
 import { Skeleton } from "../components/primitives/Skeleton.tsx";
 import { StatusLight, type StatusLevel } from "../components/primitives/StatusLight.tsx";
@@ -16,7 +15,7 @@ import "./showcase.css";
 /**
  * 组件状态展台(G2-A,dev-only):单页走查全部 primitives 的状态矩阵。
  * - 深/浅主题同页并排(data-theme 作用域到面板,不改动全局主题);
- * - 辖区敏感节(按钮/徽标/卡片/吉祥物/导航)紫橙两栏并排(data-module 作用域);
+ * - 辖区敏感节(按钮/徽标/卡片/导航)紫橙两栏并排(data-module 作用域);
  * - 交互态用 .demo-* 类强制渲染,取值只引用既有 Token 与既有规则(见 showcase.css);
  * - 顶部切换"正常动画 / 模拟减少动态效果"(容器类压掉动效,对照用);
  * - 高对比度列留空位,待 G11 补。
@@ -155,21 +154,6 @@ function TextureRow() {
   );
 }
 
-function MascotRow() {
-  return (
-    <div className="showcase__line">
-      <span className="showcase__cell">
-        <StateLabel text={copy.states.default} />
-        <Mascot animate={false} />
-      </span>
-      <span className="showcase__cell">
-        <StateLabel text="animate" />
-        <Mascot animate />
-      </span>
-    </div>
-  );
-}
-
 function CapabilityRow() {
   // 七态(G3 §2.6 + 自审补强):键与 gateway/types.ts 的 CapabilityState 一一对应;
   // 文案一律查 strings.capability,展台只演示呈现,不持有状态逻辑
@@ -273,11 +257,6 @@ function ThemeSections() {
         <Card>
           <EmptyState title={copy.demo.emptyTitle} description={copy.demo.emptyDescription} />
         </Card>
-      </Section>
-      <Section title={copy.sections.mascot}>
-        <DistrictPair>
-          <MascotRow />
-        </DistrictPair>
       </Section>
       <Section title={copy.sections.skeleton}>
         <div className="showcase__grid">
