@@ -1,6 +1,6 @@
 # VUA development sequence
 
-> Document version: 3.21.0
+> Document version: 3.21.1
 > Status: Accepted
 > Updated: 2026-10-11
 > Authority: User rulings of 2026-09-28 through 2026-10-11, including independent release numbering, scenario-host ownership, AMF/BDL isolation and separate host/module acceptance
@@ -353,6 +353,11 @@ and subsequent review evidence. Do not restart that audit or rewrite working cap
 because ownership moved. N5 keeps its independent real-account/material and human acceptance;
 neither host publication nor this sequence revision declares it complete.
 
+AMF's Browse assets entry opens BOOTH and public discovery websites as ordinary browser
+shortcuts; it does not add a third-party catalog/search adapter or substitute for either BOOTH
+acquisition workflow below. The host Wiki stays independent of AMF. Browser UI implementation
+and public-page observations do not change the N5 acceptance outcome.
+
 ### Mandatory first step: capability audit
 
 Before rework, inspect existing implementation, reachable UI/Gateway paths, tests, and local run
@@ -503,6 +508,7 @@ do not turn documentation completeness, speculative coverage, or idle agent acti
 
 ## Document changelog
 
+- 3.21.1 (2026-10-11): clarify that public material-browser shortcuts and the host Wiki do not expand catalog/search integration or replace independent N5 acquisition acceptance; stage outcomes are unchanged.
 - 3.21.0 (2026-10-11): accept approximate regional references for Ibis and defer exact Photon/room measurement, retaining independent website observations and physical play acceptance.
 - 3.20.0 (2026-10-10): record the Candidate VRCFT Steam/device-guidance connection, add connection-dependent module selection and retain source-specific real-installation/tracking acceptance and other planned tools.
 - 3.19.0 (2026-10-10): enable bundled AMF for new profiles while retaining saved choices and old-profile defaults; link the small VRCFT connection plan without changing stage or tracking acceptance.
@@ -512,4 +518,5 @@ do not turn documentation completeness, speculative coverage, or idle agent acti
 - 3.15.0 (2026-10-09): integrate Ibis publication and current network/guide acceptance with the reduced N5 scope, retaining real-run evidence and pending optional outcomes, background-only guide opacity and remembered relative placement.
 - 3.14.0 (2026-10-09): include managed ZIP extraction in first N5 intake acceptance, preserving original bytes and truthful extraction outcomes.
 - 3.13.0 (2026-10-09): narrow N5 closure to intact local-file retention, official/minimal manual provenance and optional bounded dependency presentation; defer third-party search.
-- 3.12.0 (2026-10-08): accept migration reconciliation, limit record removal to local imports and dependency discovery to persisted link clues, and move Recipe/VPM and production-loop acceptance after N5.
+
+Earlier entries remain in Git history.

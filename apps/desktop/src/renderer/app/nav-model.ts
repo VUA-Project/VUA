@@ -23,6 +23,7 @@ export type PageId =
   | "env-play"
   | "env-create"
   | "warehouse"
+  | "asset-browser"
   | "recipe"
   | "inspection"
   | "release"
@@ -112,6 +113,7 @@ export const businessModules: readonly ModuleDef[] = [
       {
         pages: [
           { id: "warehouse", labelKey: null, labelTerms: ["warehouse"] },
+          { id: "asset-browser", labelKey: "assetBrowser" },
           { id: "recipe", labelKey: null, labelTerms: ["recipe"] },
           { id: "inspection", labelKey: null, labelTerms: ["inspection"] },
           { id: "release", labelKey: "release" },

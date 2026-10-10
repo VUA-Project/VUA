@@ -1218,6 +1218,7 @@ export function WarehousePage({
         <div className="vua-page__actions">
           <Button
             variant="primary"
+            data-nav-id="warehouse-import"
             onClick={() => {
               setImportInitialUrl(null);
               setImportDialogOpen(true);

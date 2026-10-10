@@ -1,8 +1,8 @@
 # Guidance architecture: app tour, knowledge encyclopedia and game guide
 
-> Document version: 1.8.1
+> Document version: 1.9.0
 > Status: Accepted
-> Updated: 2026-10-10
+> Updated: 2026-10-11
 > Last conformance review: 2026-10-10 (controlled first-use greeting, real feature anchors, skip/finish/resume, locale and legacy-bookmark checks; author and four-language human review pending)
 > Scope: First play release guidance in Electron and React
 
@@ -41,6 +41,14 @@ Encyclopedia chapters and wizard choices are same-document history entries. Nati
 Back/Forward traverses those entries and the parent/child pages without creating another reader
 window or implicitly executing scenario work. Reopened completed preparation still reinspects
 instead of trusting an old readiness bookmark. Replay navigation does not reset onboarding goals.
+
+The encyclopedia offers an explicit **Official VRChat Wiki** entry at `wiki.vrchat.com`.
+It uses the host browser without requiring AMF, leaving the main header/sidebar available.
+Closing the website returns to the same local preparation content and bookmark; a new targeted
+chapter request closes the Wiki surface. Website history stays separate from the guide's
+reading progress. The [desktop-browser face](../protocols/desktop-browser-v0.1.md) owns native
+geometry, loading/return behavior and remote isolation. This entry adds no installed-software
+or room/tutorial verification claim.
 
 The Tasks window is a queue/status entry, without an onboarding switch. Preparation and game
 guidance stay in their own presentations; retained legacy explicit guide calls do not add a
@@ -209,6 +217,7 @@ code and real-machine checks.
 
 ## Document changelog
 
+- 1.9.0 (2026-10-11): add an AMF-independent official Wiki entry in the encyclopedia, preserving local reading and targeted-chapter return through the Candidate desktop browser.
 - 1.8.1 (2026-10-10): align the tour's Avatar-editing wording with fresh-default AMF activation without giving guidance any module-lifecycle authority.
 - 1.8.0 (2026-10-10): add the author's four-language first-use welcome and automatic feature tour before the independent wizard, preserving existing profiles, manual replay and legacy active-step identity.
 - 1.7.1 (2026-10-10): align encyclopedia presentation with the retired big-screen mode; desktop architecture and the design standard own layout retirement, and guidance progress/window semantics remain intact.
@@ -218,4 +227,5 @@ code and real-machine checks.
 - 1.4.0 (2026-10-09): separate the daily Tasks entry from guidance and route account-help return through the independent settings area; retain legacy guide-call compatibility.
 - 1.3.0 (2026-10-08): keep the independent first-run wizard and manually opened app tour distinct; route Help and tour anchors through the fixed directory.
 - 1.2.0 (2026-10-08): record the delivered game-window observer and automatic guide following (game-window-observe v0.1); real-machine acceptance remains in the delivery plan.
-- 1.1.0 (2026-10-07): distinguish the delivered three presentations from the remaining game-window observer and automatic lifecycle.
+
+Earlier entries remain in Git history.

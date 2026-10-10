@@ -59,29 +59,19 @@
   flex-wrap: wrap;
 }
 
-/* 内嵌视图固定导航条(用户实测缺口修复 2026-09-12):视图打开时固定于
- * 窗口顶部,Main 侧 WebContentsView 上缘让位同高条带(remote-content
- * REMOTE_VIEW_NAV_STRIP_PX = 44px,两处必须同批改动)。条内空白可拖拽
- * 窗口(沉浸式标题栏等效),按钮与只读地址位不拖拽;色彩全部引用既有
- * token,hover 语言与壳窗口控制钮一致,对比度由 check:contrast 把守。
- * #38 修复(2026-09-18):本元素经 createPortal 挂 document.body(渲染
- * 在 ImportPage 面板树内会被祖先 .vua-card 的毛玻璃 backdrop-filter 构
- * 成的 fixed 包含块钉进卡片、落入视图覆盖区看不见点不着);挂 body 后
- * position:fixed;top:0 相对视口,与 Main 侧 44px 让位条带重新对齐。 */
+/* BrowserFrame owns the fixed shell-content frame; this local strip stays above
+ * the measured native viewport, outside ancestor glass containing blocks. */
 .vua-import__browse-bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
+  position: relative;
+  flex-shrink: 0;
   height: 44px;
-  z-index: 1000;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: var(--vua-space-1);
   padding: 0 var(--vua-space-2);
   background: var(--vua-bg-panel);
   border-bottom: 1px solid var(--vua-border);
-  -webkit-app-region: drag;
 }
 
 .vua-import__browse-bar button {

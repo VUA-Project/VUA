@@ -1,4 +1,5 @@
 import type { PageId } from "../../app/nav-model.ts";
+import { useEffect, useState } from "react";
 import { strings } from "../../i18n/index.ts";
 import { RouteTile } from "../../components/RouteTile.tsx";
 import { Button } from "../../components/primitives/Button.tsx";
@@ -6,6 +7,7 @@ import { GuideOverlayView, type GuideRequest } from "../overlay/GuideOverlayView
 import { OnboardingPage } from "../onboarding/OnboardingPage.tsx";
 import "../overlay/overlay.css";
 import "./help.css";
+import { SiteBrowser } from "../../components/SiteBrowser.tsx";
 
 export function HelpPage({ page, navigate, onAccounts, startTour, guideRequest, acknowledgeGuide }: {
   page: "help" | "help-wizard" | "help-tour" | "help-game-assistant" | "help-encyclopedia";
@@ -17,15 +19,19 @@ export function HelpPage({ page, navigate, onAccounts, startTour, guideRequest, 
 }) {
   const copy = strings.journey;
   const [openFailed, setOpenFailed] = useState(false);
+  const [wikiOpen, setWikiOpen] = useState(false);
+  useEffect(() => { setWikiOpen(false); }, [guideRequest?.nonce]);
   const back = <Button variant="subtle" data-back data-nav-id="help-child-back" onClick={() => navigate("help")}>{copy.backToHelp}</Button>;
   if (page === "help-encyclopedia") return <div className="vua-page vua-knowledge" data-focus-scope>
     <header className="vua-page__hero vua-environment-heading">
       <h1 className="vua-title">{copy.guide}</h1>
+      <Button data-nav-id="knowledge-wiki" onClick={() => setWikiOpen(true)}>{strings.browser.wiki}</Button>
       {back}
     </header>
     <div className="vua-overlay__body vua-knowledge__body">
       <GuideOverlayView embedded guideRequest={guideRequest} onGuideRequestApplied={acknowledgeGuide} />
     </div>
+    {wikiOpen ? <SiteBrowser purpose="knowledge" onClose={() => setWikiOpen(false)} /> : null}
   </div>;
   if (page === "help-wizard") return <div className="vua-page vua-help-child" data-focus-scope>
     <header className="vua-page__hero vua-environment-heading"><h1 className="vua-title">{copy.wizard}</h1>{back}</header>
@@ -57,4 +63,3 @@ export function HelpPage({ page, navigate, onAccounts, startTour, guideRequest, 
     </div>
   </div>;
 }
-import { useState } from "react";

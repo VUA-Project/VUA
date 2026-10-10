@@ -1,4 +1,5 @@
 import { faceTrackingCopy } from "./face-tracking-copy.ts";
+import { browserCopy } from "./browser-copy.ts";
 import { helpCopy } from "./help-copy.ts";
 import { moduleCopy } from "./module-copy.ts";
 import { hardwareCopy } from "./hardware-copy.ts";
@@ -19,6 +20,7 @@ import type { Strings } from "./strings.en.ts";
  */
 export const strings: Strings = {
   faceTracking: faceTrackingCopy["zh-CN"],
+  browser: browserCopy["zh-CN"],
   helpUi: helpCopy["zh-CN"],
   amfModule: moduleCopy["zh-CN"],
   environmentCards: environmentCopy["zh-CN"],
@@ -209,6 +211,7 @@ demoTaskTitle: "演示任务",
       tools: "工具",
     },
     pages: {
+      assetBrowser: browserCopy["zh-CN"].assets,
       envPlay: "游玩",
       envCreate: "改模",
       help: "帮助",

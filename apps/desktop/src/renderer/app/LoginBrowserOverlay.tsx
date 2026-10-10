@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { BrowserFrame } from "../components/BrowserFrame.tsx";
 import { Icon } from "@vua/design-system";
 import { displayUrl } from "../features/import/import-model.ts";
 import "../features/import/import-page.css";
@@ -16,8 +16,8 @@ const AUTO_CLOSE_SECONDS = 6;
 
 /**
  * 窗口级登录浏览器(用户裁决 2026-10-05):登录流程脱离素材导入弹窗的
- * 过渡形态——固定导航条直接挂窗口顶部(Main 侧视图照 REMOTE_VIEW_NAV_STRIP_PX
- * 让位),不依赖任何页面/弹窗宿主。
+ * 过渡形态——BrowserFrame keeps shell navigation visible and measures native bounds;
+ * the login surface does not require an import dialog host.
  *
  * - 登录成功检测:轮询 remoteContent.authProbe(真实判据 = 分区会话此刻
  *   能读到账号库首页;cookie 线索会被「访问过登录页」的半登录会话误报);
@@ -130,7 +130,7 @@ function LoginBrowserSurface({ url }: { url: string }) {
 
   if (viewId === null) return null;
 
-  return createPortal(
+  return <BrowserFrame viewId={viewId}>
     <div className="vua-login-browser__bar" role="toolbar" aria-label={navCopy.navBarAria}>
       <button
         type="button"
@@ -188,7 +188,6 @@ function LoginBrowserSurface({ url }: { url: string }) {
           </button>
         </div>
       ) : null}
-    </div>,
-    document.body,
-  );
+    </div>
+  </BrowserFrame>;
 }

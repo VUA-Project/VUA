@@ -28,7 +28,16 @@ function portals(layer: Layer): HTMLElement[] {
   return [...document.querySelectorAll<HTMLElement>("[data-vua-modal-owner]")]
     .filter((element) => element.dataset.vuaModalOwner === layer.id);
 }
-function roots(layer: Layer): HTMLElement[] { return [layer.panel, ...portals(layer)]; }
+function browserShell(layer: Layer): HTMLElement[] {
+  return portals(layer).some(element => element.matches('[data-vua-browser-active="true"]'))
+    ? [...document.querySelectorAll<HTMLElement>(".vua-shell__header, .vua-shell__sidebar")] : [];
+}
+function roots(layer: Layer): HTMLElement[] { return [layer.panel, ...portals(layer), ...browserShell(layer)]; }
+/** Leaving a browser-backed import must dismiss its modal before entering Settings. */
+export function closeBrowserModal(): void {
+  const layer = top();
+  if (layer && browserShell(layer).length > 0) layer.close();
+}
 function contains(layer: Layer, node: Node | null): boolean {
   return node !== null && roots(layer).some((root) => root.contains(node));
 }
@@ -55,7 +64,7 @@ function refresh(): void {
   restoreIsolation();
   const layer = top();
   if (!layer) return;
-  const allowed = [layer.overlay, ...portals(layer)];
+  const allowed = [layer.overlay, ...portals(layer), ...browserShell(layer)];
   const visit = (element: HTMLElement): void => {
     if (allowed.includes(element)) return;
     if (allowed.some((root) => element.contains(root))) {
@@ -123,7 +132,7 @@ export function useModalLayer(open: boolean, close: () => void) {
       document.addEventListener("focusin", focusin, true);
       observer = new MutationObserver(scheduleRefresh);
       observer.observe(document.body, { childList: true, subtree: true, attributes: true,
-        attributeFilter: ["disabled", "hidden", "tabindex", "data-vua-modal-owner"] });
+        attributeFilter: ["disabled", "hidden", "tabindex", "data-vua-modal-owner", "data-vua-browser-active"] });
     }
     scheduleRefresh();
     return () => {

@@ -67,7 +67,17 @@ async function run() {
     }, "native splash");
     assert(splash.getContentSize().join(",") === "480,320" && !splash.isResizable() && !splash.isMaximizable() && !splash.isMinimizable(), `Startup uses a small fixed-size native window: ${JSON.stringify({ content: splash.getContentSize(), resizable: splash.isResizable(), maximizable: splash.isMaximizable(), minimizable: splash.isMinimizable() })}`);
     assert(await splash.webContents.executeJavaScript('document.querySelectorAll("button,input,select").length===0 && !!document.querySelector(".vua-boot-splash__loader") && document.querySelector(".vua-boot-splash__logo").naturalWidth===992 && !document.querySelector(".vua-shell")'), "Splash shows only the supplied logo and loader, without the main application");
-    assert(await splash.webContents.executeJavaScript('(()=>{const t=getComputedStyle(document.querySelector(".vua-boot-splash__ray-track")).transform;return t.startsWith("matrix(-0.5, 0.866025, -0.866025, -0.5")})()'), "Black rays keep the approved 120-degree direction");
+    // Inspect the actual angle even when a CI runner hides rays for reduced motion.
+    // Chromium's floating-point matrix serialization is not an angle contract.
+    const rayRotation = await splash.webContents.executeJavaScript(`(()=>{
+      const rays=document.querySelector(".vua-boot-splash__rays"), display=rays.style.display;
+      rays.style.display="block";
+      const transform=getComputedStyle(document.querySelector(".vua-boot-splash__ray-track")).transform;
+      const matrix=new DOMMatrixReadOnly(transform), expected=[-0.5,Math.sqrt(3)/2,-Math.sqrt(3)/2,-0.5,0,0];
+      rays.style.display=display;
+      return {transform,valid:matrix.is2D&&[matrix.a,matrix.b,matrix.c,matrix.d,matrix.e,matrix.f].every((value,i)=>Math.abs(value-expected[i])<0.000001)};
+    })()`);
+    assert(rayRotation.valid, `Black rays keep the approved 120-degree direction: ${rayRotation.transform}`);
     await waitFor(() => {
       main = BrowserWindow.getAllWindows().find(window => window.webContents.getURL().startsWith("file:") && !window.webContents.getURL().includes("surface=splash"));
       return main && !main.webContents.isLoading();

@@ -60,6 +60,8 @@ jobs:
         run: pnpm --filter @vua/desktop smoke:amf-module
       - name: Help, knowledge and compact Play navigation (isolated profile)
         run: pnpm --filter @vua/desktop smoke:help-navigation
+      - name: Wiki and AMF browser within shell navigation (isolated profile, synthetic websites)
+        run: pnpm --filter @vua/desktop smoke:asset-browser
       - name: Regional reference and website tests (four languages, synthetic observations)
         run: pnpm --filter @vua/desktop smoke:network
       - name: Native splash and first-use tour (isolated profile)
