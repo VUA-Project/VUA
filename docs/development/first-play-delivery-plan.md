@@ -1,6 +1,6 @@
 # First play release: implementation checkpoint and remaining work
 
-> Document version: 1.15.0
+> Document version: 1.16.0
 > Status: Accepted
 > Updated: 2026-10-10
 > Scope: Desktop play, PICO 4 Pro USB/Wi-Fi, optional eye tracking and three guidance contexts
@@ -373,9 +373,9 @@ integration, not a substitute for N5's own review and acceptance.
 
 ## Optional AMF boundary
 
-Ibis installs AMF with VUA but requires a separate enable action under Settings → Modules.
-Without a saved enable choice, fresh and legacy profiles start the host alone; enabling AMF supplies
-its navigation and separately supervised services. External Avatar-editing modules and their
+Ibis installs AMF with VUA and enables it for new users under the latest 2026-10-10 ruling.
+Existing choices remain unchanged; older profiles without registration keep the disabled default.
+Enabled AMF supplies its navigation and separately supervised services. External Avatar-editing modules and their
 placeholder entries are deferred beyond Ibis under the 2026-10-10 user ruling.
 AMF failure/disable leaves play, device detection and game guidance available.
 The host task window reads core tasks without requiring production documents. Legacy AMF data stays
@@ -385,6 +385,7 @@ installation, PICO connection, real-material production and four-language human 
 
 ## Document changelog
 
+- 1.16.0 (2026-10-10): align fresh AMF activation with the latest user ruling while retaining old-profile choices and independent real-software, device and production acceptance.
 - 1.15.0 (2026-10-10): record the approved small native opening, Windows language handoff and first-use welcome/tour continuity, with controlled UI evidence and unchanged physical/human release acceptance.
 - 1.14.0 (2026-10-10): record per-card detail placement, separated compact language/Search controls, goal-link migration and full big-screen retirement while retaining pending device/install/material acceptance and no local ZIP.
 - 1.13.0 (2026-10-10): record unified card toggles, Help history, Avatar-editing AMF setup and consolidated Settings; align scenario-stage ownership while retaining pending physical acceptance and no new ZIP.
@@ -394,6 +395,3 @@ installation, PICO connection, real-material production and four-language human 
 - 1.9.0 (2026-10-09): record author-reported guide/normal-exit defects and source repairs, background-alpha evidence, removed network advice and unavailable regional Ping without another ZIP or physical-acceptance claim.
 - 1.8.0 (2026-10-09): record two-half play cards, scoped observed launch/close and creator inventory while retaining real vendor/device checks and the author’s no-package UI review.
 - 1.7.0 (2026-10-09): record the compact shell and Settings search/appearance corrections, update the task-tour destination and expand the controlled UI checks to 56; no new ZIP or physical-acceptance claim.
-- 1.6.0 (2026-10-09): record the author's development-mode UI corrections, task/theme separation, settings return, headset glyphs and native tray checks; defer another ZIP while the UI is under review.
-
-Earlier entries remain in Git history.

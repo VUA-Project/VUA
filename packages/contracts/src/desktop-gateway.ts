@@ -1680,8 +1680,23 @@ export interface DesktopStartupApiV01 {
   complete(): Promise<void>;
 }
 
-export interface VuaDesktopApiV2 extends Omit<VuaDesktopApiV1, "window"> {
+/** Desktop resource v0.2 reports utilization, never a performance forecast.
+ * GPU and VRAM refer to one physical adapter; shared UMA memory is not VRAM. */
+export interface SystemResourceUsageV2 extends Omit<SystemResourceUsageV1, "schemaVersion"> {
+  readonly schemaVersion: 2;
+  readonly cpuUsagePercent: number | null;
+  readonly gpuUsagePercent: number | null;
+  readonly gpuName: string | null;
+  readonly gpuKind: "discrete" | "integrated" | "unknown" | null;
+}
+
+export interface DesktopSystemApiV2 extends DesktopSystemApiV1 {
+  readResourceUsageV2(): Promise<SystemResourceUsageV2>;
+}
+
+export interface VuaDesktopApiV2 extends Omit<VuaDesktopApiV1, "window" | "system"> {
   readonly window: DesktopWindowApiV2;
+  readonly system: DesktopSystemApiV2;
   readonly startup?: DesktopStartupApiV01;
 }
 

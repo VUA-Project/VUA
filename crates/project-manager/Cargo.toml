@@ -29,6 +29,13 @@ vrc-get-vpm = { version = "=0.0.16", features = ["rustls", "vrc-get-litedb", "ex
 vua-orchestrator = { path = "../orchestrator" }
 
 [target.'cfg(windows)'.dependencies]
+# Desktop resource sampler: DXGI identity/capacity, D3D12 UMA classification,
+# language-neutral PDH counters. MIT/Apache-2.0; remove with this adapter.
+windows = { version = "=0.62.2", default-features = false, features = [
+    "Win32_Graphics_Direct3D", "Win32_Graphics_Direct3D12",
+    "Win32_Graphics_Dxgi", "Win32_Graphics_Dxgi_Common",
+    "Win32_System_Performance",
+] }
 windows-sys = { version = "=0.61.2", features = [
     "Win32_Foundation",
     "Win32_Storage",

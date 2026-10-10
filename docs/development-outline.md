@@ -1,6 +1,6 @@
 # VUA development sequence
 
-> Document version: 3.18.0
+> Document version: 3.19.0
 > Status: Accepted
 > Updated: 2026-10-10
 > Authority: User rulings of 2026-09-28 through 2026-10-10, including independent release numbering, scenario-host ownership, AMF/BDL isolation and separate host/module acceptance
@@ -50,8 +50,8 @@ each installed scenario's interruption/removal boundary, and N7 verifies the act
 paths. This changes ownership and implementation order without marking a gate passed or requiring
 AMF production acceptance for the independent play release. See [module architecture](architecture/modules.md).
 
-Ibis installs the first-party AMF payload with VUA, while activation is a separate user action.
-Saved activation choices and legacy data are retained. External Avatar-editing module integration
+Ibis installs the first-party AMF payload with VUA and enables it for new users. Saved enable/disable
+choices, existing-profile defaults and legacy data are retained. External Avatar-editing module integration
 and placeholder entries are deferred beyond this release under the 2026-10-10 user ruling.
 
 | Gate | User task | Status |
@@ -131,7 +131,7 @@ does not require AMF or BDL. AMF owns Avatar/material behavior, not the host's e
 | Slice | Required boundary and acceptance |
 | --- | --- |
 | Host without active AMF | Fresh and legacy profiles can use host scenarios with AMF disabled or failed; no AMF/BDL queries are needed to inspect or prepare play/Unity prerequisites |
-| Explicit module activation | The Ibis AMF payload is bundled but starts only after an explicit enable action. Disabled navigation offers its explanation in Avatar editing; host startup, settings and scenario tasks remain usable |
+| Module selection and lifecycle | The bundled Ibis AMF payload defaults to enabled for new profiles. Existing choices and old-profile defaults survive; the user can disable/re-enable it independently. Disabled navigation offers its explanation in Avatar editing; host startup, settings and scenario tasks remain usable |
 | One usable scenario | Connect choice → prerequisite check → plan/deployment → SOP → supported launch/handoff. Exercise return, reinspection and retry with that path under N6 before broadening it |
 
 This is an implementation order and ownership change, not a new generic plugin framework or
@@ -276,6 +276,9 @@ the app is running, not that its translation, recording or automation is configu
 LIV is classified under capture/streaming; this connection does not install a LIV SDK into VRChat.
 
 ### Tracking-specific acceptance
+
+The short [VRCFT connection plan](development/vrcft-integration-plan.md) records implementation
+order; it does not replace the following real tracking acceptance or mark N2 complete.
 
 - **VRCFT:** guide its hardware-module installation in the upstream UI, headset switches/calibration,
   VRChat OSC (Open Sound Control) and a suitable Avatar. Completing the PICO slice exercises the
@@ -450,7 +453,7 @@ coverage remain separate from the first ZIP release.
 | Illustrated user guide | Deliver an end-user guide with screenshots of the actual tested release, using references the user will supply at N7 |
 
 The Ibis guide covers install/first launch and its actual delivered scenario SOPs, including
-explicit module activation, official-app handoffs and common failure/return/retry paths. Add
+the fresh AMF default and module enable/disable controls, official-app handoffs and common failure/return/retry paths. Add
 BOOTH/material, complex production, Recipe and SDK procedures with the corresponding module
 release scope, preserving their independent N3–N5 acceptance. Each procedure gives its starting state,
 numbered actions with readable screenshots, expected result, and what to do when it differs.
@@ -498,6 +501,7 @@ do not turn documentation completeness, speculative coverage, or idle agent acti
 
 ## Document changelog
 
+- 3.19.0 (2026-10-10): enable bundled AMF for new profiles while retaining saved choices and old-profile defaults; link the small VRCFT connection plan without changing stage or tracking acceptance.
 - 3.18.0 (2026-10-10): apply the seven-stage scenario-host/AMF/BDL sequence, expand N2 sources and selected tools, place N6 with each path and split N7 release scope; preserve N1/N5 evidence and pending formal acceptance.
 - 3.17.0 (2026-10-10): retain bundled AMF with explicit activation and defer external Avatar-editing modules beyond Ibis without changing existing gate outcomes.
 - 3.16.0 (2026-10-09): place host/AMF separation before scenario integrations, preserving N3–N5 as AMF acceptance and all existing gate outcomes.
@@ -507,6 +511,3 @@ do not turn documentation completeness, speculative coverage, or idle agent acti
 - 3.12.0 (2026-10-08): accept migration reconciliation, limit record removal to local imports and dependency discovery to persisted link clues, and move Recipe/VPM and production-loop acceptance after N5.
 - 3.11.0 (2026-10-08): apply the user's N5 missing-file/source refinements, clarify dependency evidence limits and retain production integration as linked pending acceptance.
 - 3.10.0 (2026-10-05): define observable acceptance for three guidance contexts, their independent state and the separate N5 co-release review.
-- 3.9.0 (2026-10-03): advance PICO eye tracking into first-play acceptance and define seven N2 Steam connections with shared inventory/install/launch acceptance and focused tracking guides.
-
-Earlier entries remain in Git history.

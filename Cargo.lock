@@ -2937,6 +2937,7 @@ dependencies = [
  "url",
  "vrc-get-vpm",
  "vua-orchestrator",
+ "windows 0.62.2",
  "windows-sys 0.61.2",
 ]
 

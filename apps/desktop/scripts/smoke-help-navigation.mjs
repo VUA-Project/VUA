@@ -16,6 +16,9 @@ app.setPath("home", home);
 app.setPath("appData", path.join(home, "AppData", "Roaming"));
 process.env.LOCALAPPDATA = path.join(home, "AppData", "Local");
 process.env.VUA_DEV_USER_DATA = profile;
+// Deliberately retain an existing user's opt-out while testing reactivation.
+fs.mkdirSync(path.join(profile, "modules"));
+fs.writeFileSync(path.join(profile, "modules", "amf.json"), JSON.stringify({ schemaVersion: "0.1", enabled: false, dataLayout: "isolated" }));
 process.env.VUA_PROVIDER_EXECUTABLE = process.env.VUA_TEST_HOST_EXECUTABLE ?? path.resolve(desktop, "../../target/release/vua-orchestrator-provider.exe");
 process.env.VUA_AMF_EXECUTABLE = process.env.VUA_TEST_AMF_EXECUTABLE ?? path.resolve(desktop, "../../target/release/vua-amf-provider.exe");
 delete process.env.VUA_RENDERER_URL;
@@ -296,7 +299,7 @@ async function run() {
     assert(true, "The native update command opens About after a language reload");
     await waitFor(() => js('!!document.querySelector(".vua-shell__usage")'), "Resource panel");
     await js('document.querySelector(".vua-shell__usage").click()');
-    assert(await js('!!document.querySelector(".vua-usage-panel") && !document.querySelector(".vua-usage-panel__footer")'), "Resource panel has no sampled-time display");
+    assert(await js('!!document.querySelector(".vua-usage-panel") && !document.querySelector(".vua-usage-panel time") && !document.querySelector(".vua-usage-panel").textContent.includes("Sampled at")'), "Resource panel has no sampled-time display");
     await js('document.querySelector(".vua-usage-panel__close").click(); localStorage.setItem("vua-display-mode","bigscreen")');
     await js('location.reload()');
     await waitFor(() => js('!!document.querySelector(".vua-shell") && !document.querySelector(".vua-boot-splash") && localStorage.getItem("vua-display-mode")===null'), "Retired layout preference cleanup");

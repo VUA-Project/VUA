@@ -1,6 +1,6 @@
 # Guidance architecture: app tour, knowledge encyclopedia and game guide
 
-> Document version: 1.8.0
+> Document version: 1.8.1
 > Status: Accepted
 > Updated: 2026-10-10
 > Last conformance review: 2026-10-10 (controlled first-use greeting, real feature anchors, skip/finish/resume, locale and legacy-bookmark checks; author and four-language human review pending)
@@ -58,7 +58,7 @@ focusing on a specific button. The tour never covers a different application.
 On a new profile, startup first shows the welcome scene in the selected UI language, beginning
 with “Welcome, traveler from reality.” and the author's supplied Chinese, Japanese and Korean
 equivalents. It introduces VUA, then points to Home, network checks, environment cards and their
-actions, Tools, Avatar-editing preparation/explicit AMF enablement, Tasks, Help and Settings.
+actions, Tools, Avatar-editing preparation/AMF controls, Tasks, Help and Settings.
 Development tool entries remain descriptions, not claims of installation. These are available
 host controls; complex AMF workflow teaching follows AMF's own delivery.
 
@@ -209,6 +209,7 @@ code and real-machine checks.
 
 ## Document changelog
 
+- 1.8.1 (2026-10-10): align the tour's Avatar-editing wording with fresh-default AMF activation without giving guidance any module-lifecycle authority.
 - 1.8.0 (2026-10-10): add the author's four-language first-use welcome and automatic feature tour before the independent wizard, preserving existing profiles, manual replay and legacy active-step identity.
 - 1.7.1 (2026-10-10): align encyclopedia presentation with the retired big-screen mode; desktop architecture and the design standard own layout retirement, and guidance progress/window semantics remain intact.
 - 1.7.0 (2026-10-10): make all four Help entries child pages, retain explicit tour/game-window start and add native page/chapter/wizard history while preserving separate progress and fresh preparation checks.
@@ -218,4 +219,3 @@ code and real-machine checks.
 - 1.3.0 (2026-10-08): keep the independent first-run wizard and manually opened app tour distinct; route Help and tour anchors through the fixed directory.
 - 1.2.0 (2026-10-08): record the delivered game-window observer and automatic guide following (game-window-observe v0.1); real-machine acceptance remains in the delivery plan.
 - 1.1.0 (2026-10-07): distinguish the delivered three presentations from the remaining game-window observer and automatic lifecycle.
-- 1.0.0 (2026-10-05): accept three guidance contexts, define their window/state responsibilities and map migration from completed A/B slices.

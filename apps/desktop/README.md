@@ -61,8 +61,9 @@ label; the `desktop-profile` startup diagnostic prints the selected directories.
 
 The host profile contains its task database and module selection. AMF owns its separate task
 database, BDL, material associations, managed warehouse/production directories and download staging.
-AMF is installed with VUA; Settings → Modules enables the bundled payload. Without a saved enable
-choice, fresh and existing BDL profiles keep AMF disabled. Explicit choices survive restart, and
+AMF is installed with VUA and enabled for new profiles. Existing profiles without a saved choice
+retain the old disabled default; Avatar editing and Settings → Modules control the payload.
+Explicit choices survive restart, and
 disabling retains its data. Existing BDL profiles retain their original data locations.
 See [module ownership and migration](../../docs/architecture/modules.md) for paths and recovery.
 Shared settings, guide reading state and browser storage/cache remain in the selected profile.

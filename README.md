@@ -23,8 +23,8 @@ Planned optional connections cover tracking, VR overlays, sleep utilities and ca
 
 > **Sugar, spice, and everything nice.**
 
-AMF is the first-party editing module installed with VUA. Its editing menus appear after you enable
-it under Settings → Modules. Your enable choice is remembered. Its asset library and private BDL
+AMF is the first-party editing module installed with VUA and enabled for new users. You can turn
+it off in Avatar editing or Settings → Modules; existing choices are remembered. Its asset library and private BDL
 stay together, and disabling it preserves your data.
 
 Combine your own materials, capture the choices in a Recipe, and share the Recipe so others can reproduce the setup with assets they obtain themselves. The goal is automated Avatar production with checks and controlled changes before handing the result to the official SDK; a Recipe contains references and settings, not paid assets.

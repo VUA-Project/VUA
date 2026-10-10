@@ -1,7 +1,7 @@
 # Electron desktop and presentation architecture
 
 
-> Document version: 1.19.0
+> Document version: 1.20.0
 > Status: Accepted
 > Scope: `apps/desktop`, `packages/design-system`, frontend Gateway
 > Updated: 2026-10-10
@@ -158,8 +158,14 @@ Separate Goal reselection, Language, Version and Donation pages are removed; Abo
 version, update, debug and diagnostics controls. Old goal links open Help's getting-started wizard;
 other historical Settings page IDs migrate to About or Theme.
 Language reloads retain the Settings return page through the current history entry.
-The resource panel keeps its observed RAM/VRAM facts without a sampled-time label; the
-underlying snapshot is unchanged.
+The resource panel shows observed CPU/GPU/RAM/VRAM without a sampled-time label. Its compact
+**resource headroom** is the remaining mean of available readings, with a separate near-full
+dimension indication. It is not a performance forecast. GPU utilization and VRAM refer to the
+same selected card; [desktop resource v0.2](../protocols/desktop-resource-v0.2.md) owns sampling,
+multi-adapter selection, unavailable readings, expiry and the retained V1 port.
+The Home logo replaces jurisdiction colours through a 380 ms 120° upper-right-to-lower-left
+wipe. Previous and incoming marks keep their own colours; resource saving and reduced motion
+switch directly. The logo remains the Home action, with no page-name text beside it.
 
 Account-help navigation uses that same settings return path.
 Settings → Accounts retains the N5 BOOTH sign-in/probe/logout surface; Steam, VRChat and Unity
@@ -309,8 +315,9 @@ and its badge. `preview-overlay.mjs` opts into that isolated demonstration.
 
 ## Standalone Windows packaging
 
-Without a saved AMF enable choice, both fresh and legacy profiles start host environment/play
-services alone. AMF is installed with VUA; Avatar editing explains it and exposes the enable
+New users receive enabled AMF alongside the host; existing saved choices are retained. Old
+profiles without registration keep the former disabled default. AMF is installed with VUA;
+Avatar editing explains it and exposes the enable
 switch, while the disabled sidebar entry opens that setup section. Settings → Modules retains
 the existing module controls. Explicit enablement starts the local
 payload. Selection/readiness facts control its navigation, wizard entry and BOOTH
@@ -362,6 +369,7 @@ redistribution review authorizes each bundled binary before a public release.
 
 ## Document changelog
 
+- 1.20.0 (2026-10-10): enable AMF for fresh profiles, add qualified CPU/GPU/RAM/VRAM headroom through desktop resource v0.2, and apply a reduced-motion-aware 120° Home-logo colour wipe.
 - 1.19.0 (2026-10-10): implement the approved small monochrome native splash, independent desktop-startup v0.1 face, Windows language selection and first-use welcome/tour handoff while preserving saved profiles.
 - 1.18.0 (2026-10-10): place each scenario/editor/manager's collapsible details directly beneath its own card, separate compact language and Search controls, migrate retired goal links to Help and retire big-screen layout/navigation/tray actions while retaining the legacy event shape.
 - 1.17.0 (2026-10-10): verify BOOTH account access before offering library sync with direct login/retry handoffs, discover Editors through the host and inspect fresh Unity 2022 entry before CLI acquisition, and replace the AMF Home Inspection card with Finished Avatars and Package Manager.
@@ -371,6 +379,3 @@ redistribution review authorizes each bundled binary before a public release.
 - 1.13.0 (2026-10-09): scope optional AMF frontend/BOOTH services to module readiness and document the two-provider payload; retain host task-window independence and legacy data paths.
 - 1.12.1 (2026-10-09): align guide transparency/drag memory, normal game-exit cards and the regional-placeholder/expanded-website split with their owning documents.
 - 1.12.0 (2026-10-09): implement observed two-half play sessions and scoped close, move network/runtime discovery into Play, and add complete-editor and manager-app inventory to Avatar editing.
-- 1.11.0 (2026-10-09): apply the compact-shell ruling, move command search into Settings, replace the appearance select with joined buttons and a Dark default, and retarget the task-tour step to Home.
-
-Earlier entries remain in Git history.

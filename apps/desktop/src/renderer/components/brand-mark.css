@@ -1,0 +1,15 @@
+.vua-brand-switch { position: relative; display: block; width: 30px; height: 30px; }
+.vua-brand-switch__current, .vua-brand-switch__previous { position: absolute; inset: 0; display: block; }
+.vua-brand-switch__current--wiping { animation: vua-brand-wipe 380ms cubic-bezier(.22, .65, .3, 1) both; }
+/* The advancing edge is perpendicular to the logo's 120° stroke: the reveal
+ * travels from the upper right to the lower left without moving the mark. */
+@keyframes vua-brand-wipe {
+  from { clip-path: polygon(-100% -200%, 200% -200%, 200% 57.735%, -100% -115.470%); }
+  to { clip-path: polygon(-100% -200%, 200% -200%, 200% 215.470%, -100% 42.265%); }
+}
+html[data-effects="off"] .vua-brand-switch__previous { display: none; }
+html[data-effects="off"] .vua-brand-switch__current--wiping { animation: none; clip-path: none; }
+@media (prefers-reduced-motion: reduce) {
+  .vua-brand-switch__previous { display: none; }
+  .vua-brand-switch__current--wiping { animation: none; clip-path: none; }
+}

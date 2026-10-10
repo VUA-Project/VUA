@@ -1,189 +1,136 @@
-import { execFile, spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import os from "node:os";
-import type { SystemResourceUsageV1 } from "@vua/contracts";
+import type { SystemResourceUsageV1, SystemResourceUsageV2 } from "@vua/contracts";
 
-/**
- * 系统资源占用采集(2026-09-25 用户裁决:顶栏占用查看器):
- * - RAM:os 模块直接读,恒在场;
- * - VRAM(仅 Windows):总量读显卡注册表 qwMemorySize(64 位,WMI
- *   AdapterRAM 在 >4GB 时截断不可靠),已用读 GPU 性能计数器
- *   \GPU Adapter Memory(*)\Dedicated Usage——经常驻 typeperf 子进程
- *   连续采样(避免每次采样都付出进程启动成本),多适配器取主导值;
- * - 诚实口径:任一采集路径不可用即对应字段 null,绝不猜值、绝不
- *   回退旧读数冒充当前;非 Windows 平台 VRAM 恒 null。
- * 采集自身开销:一个 typeperf 常驻进程(2s 采样间隔)+ 一次性注册表查询。
- */
+export const RESOURCE_STALE_AFTER_MS = 6_000;
+export const RESOURCE_RESPAWN_DELAY_MS = 30_000;
 
-/** typeperf 采样间隔(秒):顶栏数字与弹层共读的缓存新鲜度 */
-export const VRAM_SAMPLE_INTERVAL_SECONDS = 2;
-/** typeperf 意外退出后的重试延迟(ms):计数器偶发不可用不等于永久缺席 */
-export const VRAM_RESPAWN_DELAY_MS = 30_000;
+export interface GpuSample {
+  readonly id: string;
+  readonly name: string;
+  readonly kind: "discrete" | "integrated" | "unknown";
+  readonly usagePercent: number | null;
+  readonly dedicatedUsedBytes: number | null;
+  readonly dedicatedTotalBytes: number | null;
+}
+interface NativeSample { readonly cpuUsagePercent: number | null; readonly gpus: readonly GpuSample[] }
 
-const GPU_MEMORY_COUNTER = "\\GPU Adapter Memory(*)\\Dedicated Usage";
-const GPU_CLASS_REGISTRY_KEY =
-  "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e968-e325-11ce-bfc1-08002be10318}";
+const finiteOrNull = (value: unknown, max = Number.MAX_SAFE_INTEGER): value is number | null =>
+  value === null || (typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= max);
 
-/**
- * 解析 typeperf CSV 采样行:首列为时间戳,其余为各适配器计数器值(字节);
- * 取各适配器中的最大值(主导 GPU 口径)。表头行/空行/无数值行返回 null。
- */
-export function parseTypeperfSampleLine(line: string): number | null {
-  const trimmed = line.trim();
-  if (trimmed.length === 0) return null;
-  const fields = trimmed.split(",");
-  // 跳过首列时间戳;数值字段带引号,形如 "12345678" 或 " "
-  let max: number | null = null;
-  for (const field of fields.slice(1)) {
-    // 去引号后再 trim:空白字段(如 " ")Number 会强转为 0,必须先排除
-    const text = field.trim().replace(/^"|"$/g, "").trim();
-    if (text.length === 0) continue;
-    const value = Number(text);
-    if (!Number.isFinite(value) || value < 0) continue;
-    if (max === null || value > max) max = value;
-  }
-  return max;
+export function parseResourceSample(line: string): NativeSample | null {
+  try {
+    const value = JSON.parse(line) as NativeSample;
+    if (!value || !finiteOrNull(value.cpuUsagePercent, 100) || !Array.isArray(value.gpus) || value.gpus.length > 64) return null;
+    const ids = new Set<string>();
+    for (const gpu of value.gpus) {
+      if (!gpu || typeof gpu.id !== "string" || !gpu.id.length || gpu.id.length > 256 || ids.has(gpu.id)
+        || typeof gpu.name !== "string" || !gpu.name.length || gpu.name.length > 256
+        || !["discrete", "integrated", "unknown"].includes(gpu.kind)
+        || !finiteOrNull(gpu.usagePercent, 100) || !finiteOrNull(gpu.dedicatedUsedBytes)
+        || !finiteOrNull(gpu.dedicatedTotalBytes)) return null;
+      ids.add(gpu.id);
+    }
+    return value;
+  } catch { return null; }
 }
 
-/** 识别 typeperf 表头行(PDH-CSV 版本行,含计数器路径而非读数) */
-export function isTypeperfHeaderLine(line: string): boolean {
-  return line.includes(GPU_MEMORY_COUNTER.split("\\")[2] ?? "GPU Adapter Memory")
-    || line.startsWith("\"(PDH-CSV");
-}
-
-/**
- * 解析 reg query qwMemorySize 输出:各子键下
- * `HardwareInformation.qwMemorySize    REG_QWORD    0x...` 行,
- * 取最大值(主导适配器);一个都解析不到返回 null。
- */
-export function parseRegistryQwMemorySize(text: string): number | null {
-  let max: number | null = null;
-  for (const line of text.split(/\r?\n/)) {
-    if (!line.includes("HardwareInformation.qwMemorySize")) continue;
-    const match = line.match(/REG_QWORD\s+(0x[0-9a-fA-F]+|\d+)/);
-    if (!match || match[1] === undefined) continue;
-    const value = match[1].startsWith("0x")
-      ? Number.parseInt(match[1], 16)
-      : Number.parseInt(match[1], 10);
-    if (!Number.isFinite(value) || value <= 0) continue;
-    if (max === null || value > max) max = value;
-  }
-  return max;
+/** Never average adapters or pair memory from different cards. Discrete cards
+ * take precedence over UMA. Among them, use the busiest measured card, then
+ * highest VRAM pressure. Missing utilization never stands in for measured zero. */
+export function selectResourceGpu(gpus: readonly GpuSample[]): GpuSample | null {
+  const discrete = gpus.filter(gpu => gpu.kind === "discrete");
+  const candidates = discrete.length ? discrete : gpus;
+  const memoryPressure = (gpu: GpuSample) => gpu.dedicatedUsedBytes !== null && gpu.dedicatedTotalBytes !== null && gpu.dedicatedTotalBytes > 0
+    ? gpu.dedicatedUsedBytes / gpu.dedicatedTotalBytes : -1;
+  return [...candidates].sort((a, b) => (b.usagePercent ?? -1) - (a.usagePercent ?? -1)
+    || memoryPressure(b) - memoryPressure(a) || a.id.localeCompare(b.id))[0] ?? null;
 }
 
 export interface SystemUsageCollectorOptions {
-  /** 平台注入(测试可模拟非 Windows 降级路径) */
   readonly platform?: NodeJS.Platform;
-  /** 子进程 spawn 注入(测试不碰真进程) */
   readonly spawnImpl?: typeof spawn;
-  readonly execFileImpl?: typeof execFile;
+  readonly now?: () => number;
 }
 
-/**
- * 占用采集器:start 后常驻 typeperf 流式采样 VRAM 已用、一次性查询 VRAM
- * 总量;snapshot() 合并实时 RAM 与最新 VRAM 缓存。stop 幂等。
- */
+/** One read-only native helper using the bundled host binary. PDH/DXGI stay
+ * behind the native adapter. No shell, task DB or AMF dependency. Expired or
+ * failed readings become null rather than remaining visible as current facts. */
 export class SystemUsageCollector {
-  private vramUsedBytes: number | null = null;
-  private vramTotalBytes: number | null = null;
-  private typeperf: ChildProcessWithoutNullStreams | null = null;
+  private sample: NativeSample | null = null;
+  private sampledAt = 0;
+  private child: ChildProcessWithoutNullStreams | null = null;
   private respawnTimer: ReturnType<typeof setTimeout> | null = null;
   private stopped = false;
+  private executable: string | null = null;
   private readonly platform: NodeJS.Platform;
   private readonly spawnImpl: typeof spawn;
-  private readonly execFileImpl: typeof execFile;
+  private readonly now: () => number;
 
   constructor(options: SystemUsageCollectorOptions = {}) {
     this.platform = options.platform ?? process.platform;
     this.spawnImpl = options.spawnImpl ?? spawn;
-    this.execFileImpl = options.execFileImpl ?? execFile;
+    this.now = options.now ?? Date.now;
   }
-
-  start(): void {
-    if (this.platform !== "win32") return;
-    this.refreshVramTotal();
-    this.spawnTypeperf();
+  start(executable?: string): void {
+    if (this.platform !== "win32" || !executable || this.child || this.stopped) return;
+    this.executable = executable;
+    this.spawnSampler();
   }
-
-  snapshot(): SystemResourceUsageV1 {
+  snapshotV2(): SystemResourceUsageV2 {
+    const fresh = this.sample !== null && this.now() - this.sampledAt <= RESOURCE_STALE_AFTER_MS ? this.sample : null;
+    const gpu = fresh ? selectResourceGpu(fresh.gpus) : null;
     const ramTotal = os.totalmem();
-    return {
-      schemaVersion: 1,
-      ramUsedBytes: ramTotal - os.freemem(),
-      ramTotalBytes: ramTotal,
-      vramUsedBytes: this.vramUsedBytes,
-      vramTotalBytes: this.vramTotalBytes,
-      sampledAt: new Date().toISOString(),
-    };
+    return { schemaVersion: 2, ramUsedBytes: ramTotal - os.freemem(), ramTotalBytes: ramTotal,
+      cpuUsagePercent: fresh?.cpuUsagePercent ?? null, gpuUsagePercent: gpu?.usagePercent ?? null,
+      gpuName: gpu?.name ?? null, gpuKind: gpu?.kind ?? null,
+      vramUsedBytes: gpu?.kind === "discrete" ? gpu.dedicatedUsedBytes : null,
+      vramTotalBytes: gpu?.kind === "discrete" ? gpu.dedicatedTotalBytes : null,
+      sampledAt: new Date(this.now()).toISOString() };
   }
-
+  snapshot(): SystemResourceUsageV1 {
+    const value = this.snapshotV2();
+    return { schemaVersion: 1, ramUsedBytes: value.ramUsedBytes, ramTotalBytes: value.ramTotalBytes,
+      vramUsedBytes: value.vramUsedBytes, vramTotalBytes: value.vramTotalBytes, sampledAt: value.sampledAt };
+  }
   stop(): void {
     this.stopped = true;
-    if (this.respawnTimer !== null) {
-      clearTimeout(this.respawnTimer);
-      this.respawnTimer = null;
-    }
-    this.typeperf?.kill();
-    this.typeperf = null;
+    this.sample = null;
+    if (this.respawnTimer !== null) { clearTimeout(this.respawnTimer); this.respawnTimer = null; }
+    this.child?.stdin.end();
+    this.child?.kill();
+    this.child = null;
   }
-
-  private refreshVramTotal(): void {
-    this.execFileImpl(
-      "reg",
-      ["query", GPU_CLASS_REGISTRY_KEY, "/v", "HardwareInformation.qwMemorySize", "/s"],
-      { encoding: "utf8", windowsHide: true },
-      (error, stdout) => {
-        if (error) {
-          this.vramTotalBytes = null;
-          return;
-        }
-        this.vramTotalBytes = parseRegistryQwMemorySize(String(stdout));
-      },
-    );
-  }
-
-  private spawnTypeperf(): void {
-    if (this.stopped) return;
+  private spawnSampler(): void {
+    if (this.stopped || !this.executable) return;
     let child: ChildProcessWithoutNullStreams;
-    try {
-      child = this.spawnImpl(
-        "typeperf",
-        [GPU_MEMORY_COUNTER, "-si", String(VRAM_SAMPLE_INTERVAL_SECONDS)],
-        { windowsHide: true },
-      ) as ChildProcessWithoutNullStreams;
-    } catch {
-      this.scheduleRespawn();
-      return;
-    }
-    this.typeperf = child;
+    try { child = this.spawnImpl(this.executable, ["--observe-system-resources"], { windowsHide: true }) as ChildProcessWithoutNullStreams; }
+    catch { this.scheduleRespawn(); return; }
+    this.child = child;
     let buffered = "";
     child.stdout.on("data", (chunk: Buffer | string) => {
+      if (this.stopped || this.child !== child) return;
       buffered += String(chunk);
+      if (buffered.length > 65_536) { this.sample = null; buffered = ""; return; }
       const lines = buffered.split(/\r?\n/);
       buffered = lines.pop() ?? "";
       for (const line of lines) {
-        if (isTypeperfHeaderLine(line)) continue;
-        const sample = parseTypeperfSampleLine(line);
-        if (sample !== null) this.vramUsedBytes = sample;
+        this.sample = parseResourceSample(line);
+        this.sampledAt = this.now();
       }
     });
-    child.on("error", () => {
-      this.vramUsedBytes = null;
+    child.stderr.resume();
+    child.on("error", () => { this.sample = null; child.kill(); });
+    child.on("close", () => {
+      if (this.child !== child) return;
+      this.child = null;
+      this.sample = null;
       this.scheduleRespawn();
     });
-    child.on("exit", () => {
-      this.typeperf = null;
-      if (!this.stopped) {
-        this.vramUsedBytes = null;
-        this.scheduleRespawn();
-      }
-    });
   }
-
   private scheduleRespawn(): void {
     if (this.stopped || this.respawnTimer !== null) return;
-    this.respawnTimer = setTimeout(() => {
-      this.respawnTimer = null;
-      this.spawnTypeperf();
-    }, VRAM_RESPAWN_DELAY_MS);
+    this.respawnTimer = setTimeout(() => { this.respawnTimer = null; this.spawnSampler(); }, RESOURCE_RESPAWN_DELAY_MS);
+    this.respawnTimer.unref();
   }
 }

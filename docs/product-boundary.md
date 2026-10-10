@@ -1,7 +1,7 @@
 # VUA product boundary
 
 
-> Document version: 2.22.0
+> Document version: 2.23.0
 > Status: Accepted
 > Scope: Entire VUA product
 > Updated: 2026-10-10
@@ -13,9 +13,9 @@ VUA is a Windows-first, local-first VRChat **scenario** host (the author's term:
 It installs, manages and launches the capabilities a scenario needs, with a SOP list for preparation,
 use and recovery. The core audience includes players unfamiliar with Unity or the required software.
 PC screen play and PICO streaming are play scenarios; self-built AMF supplies the Avatar-editing
-scenario. Under the 2026-10-10 user ruling, Ibis installs AMF with VUA but waits for a separate
-enable action before showing its Warehouse, Recipe, Assembly, checks and Release navigation.
-An existing enable choice is remembered; finding legacy BDL data alone does not enable AMF.
+scenario. Under the latest 2026-10-10 user ruling, Ibis installs AMF with VUA and enables it
+for new users. Existing enable/disable choices are remembered; existing profiles without a
+choice retain the old disabled default, and finding legacy BDL data alone does not enable AMF.
 External Avatar-editing modules are deferred beyond Ibis. BDL stays private inside AMF.
 
 Recipe-first production and reproducible production records belong to AMF. The VUA host remains
@@ -606,6 +606,7 @@ plugin execution and a marketplace still require their separately accepted secur
 
 ## Document changelog
 
+- 2.23.0 (2026-10-10): enable bundled AMF for new users while retaining existing choices, legacy opt-in behavior and host/BDL isolation.
 - 2.22.0 (2026-10-10): align scenario-host/AMF/BDL stage ownership, selected N2 module/software sources and separate release acceptance with the author's revised N sequence; preserve open N1/N5 outcomes.
 - 2.21.1 (2026-10-10): align preparation-reading wording with the main Help encyclopedia ruling without changing guidance scope or acceptance.
 - 2.21.0 (2026-10-10): distinguish ordinary local-material intake from active support for pirated acquisition sources, without introducing rights classification or new intake gates.
@@ -615,6 +616,3 @@ plugin execution and a marketplace still require their separately accepted secur
 - 2.17.0 (2026-10-09): require managed ZIP extraction for local imports and BOOTH downloads while preserving original archives and separate production qualification.
 - 2.16.0 (2026-10-09): bound N5 closure to intact local-file retention, UnityPackage production intake, official lookup/minimal manual metadata and optional dependency clues; defer third-party search.
 - 2.15.0 (2026-10-08): add content-based migration reconciliation and narrow N5 to local record removal and persisted link clues; defer final Recipe/VPM and production-loop work.
-- 2.14.0 (2026-10-08): replace the missing-file relink requirement with explicit BOOTH re-download and record official-ID, third-party and manual source-supplementation routes.
-
-Earlier entries remain in Git history.

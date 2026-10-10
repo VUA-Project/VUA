@@ -1,7 +1,7 @@
 # VUA design standard v0.17.0
 
 
-> Document version: 0.17.0
+> Document version: 0.18.0
 > Status: Accepted
 > Scope: Electron desktop, desktop overlay, and VR overlay presentation  
 > Updated: 2026-10-10
@@ -132,6 +132,14 @@ When AMF is disabled, a sidebar enable entry opens its explanatory setup section
 editing; the actual switch lives there and does not enable AMF merely by navigating. These navigation changes
 do not activate AMF or expand release acceptance. The system-resource panel omits its sampling
 time label while keeping the observed resource values and unavailable states.
+The latest 2026-10-10 ruling enables AMF for new users while preserving saved opt-outs. The
+Home logo changes jurisdiction colours with a 380 ms 120° wipe from upper right to lower left;
+reduced motion/resource saving switch directly without retaining an old decorative layer.
+Resource details add CPU/GPU to RAM/VRAM. Compact **resource headroom** averages available
+readings with an independent near-full indicator, not a performance/FPS forecast. Use one
+selected GPU for utilization and VRAM; sampling/selection/null behavior is owned by
+[desktop resource v0.2](../protocols/desktop-resource-v0.2.md).
+
 AMF's Home cards are Warehouse, Recipe, Workshop, Finished Avatars (成品) and Package Manager,
 in Home and the AMF directory. Replace the Inspection Home card without removing its report/sidebar
 capability. Finished Avatars uses the same title in its card, sidebar and page heading.
@@ -787,6 +795,7 @@ direction.
 
 ## 12. Document changelog
 
+- 0.18.0 (2026-10-10): define the fresh enabled AMF entry, resource-headroom/saturation presentation and 120° jurisdiction-logo replacement with flattened-motion fallbacks.
 - 0.17.0 (2026-10-10): accept the small monochrome ray/white-logo startup and first-use welcome/tour, preserving normal shell themes, matrix/glass and resource-saving preferences.
 - 0.16.0 (2026-10-10): anchor collapsible details beneath each individual card, separate translation/compact-language and Search rows, route retired goal links to Help and retire big-screen mode while preserving native control semantics and visual/resource preferences.
 - 0.15.0 (2026-10-10): replace the AMF Home Inspection card with Finished Avatars and Package Manager in both modes, retaining inspection reports and aligning the finished-output title across navigation.
@@ -796,6 +805,5 @@ direction.
 - **0.12.0 (2026-10-09)**: replace route-only preparation tiles with two-half play cards, merge network/runtime facts into Play, and add verified editor and separate manager-software/config detection to Avatar editing.
 - **0.11.0 (2026-10-09)**: narrow the sidebar, retire the bottom bar and four redundant header controls, move search into Settings, and adopt connected appearance choices with a Dark default and preserved motion fallbacks.
 - **0.10.0 (2026-10-09)**: separate tasks from onboarding, define settings-only navigation and return, restore Inspection to Avatar, add tray gestures and recognizable headset glyphs, and remove the header page-name duplicate.
-- **0.9.0 (2026-10-08)**: implement the accepted fixed Home/logo entry, independent branching wizard, concise navigation and desktop/big-screen hierarchy while retaining grid, glass and resource saving.
 
 Earlier entries remain in Git history.

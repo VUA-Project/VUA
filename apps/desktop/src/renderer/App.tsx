@@ -964,13 +964,12 @@ function AppShell({
        *  拖拽属性只放在容器与品牌元素上,Tabs/按钮保持可点 */}
       <header className="vua-shell__header vua-drag-region">
         <button type="button" className="vua-shell__logo-home" aria-label={strings.journey.home} title={strings.journey.home} data-nav-id="logo-home" onClick={() => navigate("home")}>
-          <span className="vua-shell__wordmark"><BrandMark variant={activeModule === "env" || activeModule === "production" ? "solid" : "mixed"} /></span>
+          <span className="vua-shell__wordmark"><BrandMark domain={activeModule} /></span>
         </button>
         <div className="vua-shell__location vua-drag-region">
           {settingsOpen ? <Button variant="primary" className="vua-shell__back" data-nav-id="shell-back" onClick={returnFromSettings}><Icon name="arrow-left" size={20} />{strings.journey.back}</Button> : null}
         </div>
-        {/* 占用查看器(2026-09-25 用户裁决):设置按钮左侧常驻读数,
-         *  RAM/VRAM 取高;点击展开右上角详情小窗 */}
+        {/* Resource headroom summary; details retain each measured resource. */}
         <ResourceMonitor />
         {/* 设置固定最右侧(§2.1):与业务 Tab 同款平行四边形 pressed 卡;
          *  S-X-1 起顶栏选中态由卡片自身承载(深底+内阴影),不再用滑动 pill */}

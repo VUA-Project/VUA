@@ -486,6 +486,10 @@ function registerIpc(provider: ModuleProvider): void {
     assertLocalSender(senderFrameUrl(event));
     return systemUsage.snapshot();
   });
+  ipcMain.handle("vua:system:resource-usage-v2", (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    return systemUsage.snapshotV2();
+  });
 
   // 文件系统窄面(2026-09-25 用户裁决:素材导入应用内文件夹选择器):
   // 只读列目录(仅子目录) + 单层新建;失败收信不抛,渲染层按 error
@@ -1529,6 +1533,12 @@ app.whenReady().then(async () => {
     startupWindow.on("close", () => app.quit());
   }
   amfRegistry = new AmfRegistry(app.getPath("userData"));
+  if (amfRegistry.needsRegistration) {
+    // Record the fresh-user default before either provider creates its DB.
+    // A later launch must retain this choice, including an explicit disable.
+    try { amfRegistry.save(amfRegistry.registration.enabled); }
+    catch { console.error("[vua] Could not retain the initial AMF preference"); }
+  }
   provider = new ModuleProvider({
     host: createDesktopOrchestratorProvider(resolveProviderEndpoint()),
     enabled: amfRegistry.registration.enabled,
@@ -1573,7 +1583,7 @@ app.whenReady().then(async () => {
     broadcastGatewayEvent(rendererUrl, event);
   });
   registerIpc(provider);
-  systemUsage.start();
+  systemUsage.start(desktopRuntime.providerExecutable);
   await createWindow();
   if (packagedSmoke && mainWindow) {
     await packagedSmoke.verify(mainWindow, provider);

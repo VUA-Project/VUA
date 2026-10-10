@@ -13,11 +13,23 @@ function profile() {
 afterEach(() => { for (const directory of profiles.splice(0)) fs.rmSync(directory, { recursive: true, force: true }); });
 
 describe("host-owned AMF selection and data layout", () => {
-  it("fresh reads neither create AMF data nor enable editing", () => {
+  it("fresh profiles default to enabled without creating module data during selection", () => {
     const directory = profile();
     const registry = new AmfRegistry(directory);
-    expect(registry.registration).toEqual({ schemaVersion: "0.1", enabled: false, dataLayout: "isolated" });
+    expect(registry.registration).toEqual({ schemaVersion: "0.1", enabled: true, dataLayout: "isolated" });
+    expect(registry.needsRegistration).toBe(true);
     expect(fs.readdirSync(directory)).toEqual([]);
+    registry.save(registry.registration.enabled);
+    fs.mkdirSync(path.join(directory, "host"));
+    fs.writeFileSync(path.join(directory, "host", "tasks.db"), "host");
+    expect(new AmfRegistry(directory).registration.enabled).toBe(true);
+  });
+
+  it("an existing host profile without a saved module choice keeps the old disabled default", () => {
+    const directory = profile();
+    fs.mkdirSync(path.join(directory, "host"));
+    fs.writeFileSync(path.join(directory, "host", "tasks.db"), "host");
+    expect(new AmfRegistry(directory).registration.enabled).toBe(false);
   });
 
   it("legacy data waits for explicit enable and keeps its layout even if BDL cannot be read", () => {

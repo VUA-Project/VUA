@@ -283,6 +283,7 @@ const api: VuaDesktopApiV2 = Object.freeze({
     // 系统资源占用(2026-09-25 裁决:顶栏占用查看器):读 Main 侧缓存
     // 快照;VRAM 采集不可用时字段 null,渲染层如实呈现「不可用」
     readResourceUsage: () => ipcRenderer.invoke("vua:system:resource-usage"),
+    readResourceUsageV2: () => ipcRenderer.invoke("vua:system:resource-usage-v2"),
   }),
   // 文件系统窄面(2026-09-25 用户裁决:素材导入应用内文件夹选择器):
   // 只读列目录 + 单层新建;失败收信不抛,options 缺席经 null 透传(Main

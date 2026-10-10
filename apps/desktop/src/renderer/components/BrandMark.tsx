@@ -1,15 +1,15 @@
+import { useEffect, useState } from "react";
+import "./brand-mark.css";
+
 /**
  * 正式字标(品牌候选 06「Level」,2026-10-07 用户裁决启用):
  * 120° 斜笔 VUA 组合标志,几何取自 _local_branding/VUA/candidates-06 的
  * SVG 主稿(200×200 外轮廓、16 单位笔画,U/A 底部连接线齐平,几何未改动)。
  *
- * 两种着色(用户裁决:环境部署紫、模型生产橙、设置三色混合):
- * - solid:三组字母全部消费 --vua-accent 辖区别名——env 区解析为品牌紫、
- *   production 区解析为 AMF 橙,浅色主题自动落到压暗令牌(#6557D2/#BB4A10);
- * - mixed:V 消费 --vua-accent(设置区=紫)、A 固定 --vua-orange 基础令牌
- *   (不随辖区),U 消费 --vua-text-strong——候选稿的 U 为纯黑,只适合浅色
- *   底评审;顶栏深色画布上以 text-strong 适配双主题(浅色下仍为黑)。
- * 颜色全部经语义令牌消费,不引入新的字面色值(check-contrast 辖区不变)。
+ * 环境域为紫色,AMF 域为橙色,其它域为三色混合。每层直接消费对应
+ * 基础语义令牌,避免旧图层随新页面的 --vua-accent 一起变色。
+ * 混合标志的 U 使用 --vua-text-strong 适配深浅色主题;切换采用
+ * 120° 从右上向左下覆盖,保留既有品牌几何和对比度令牌。
  */
 const LETTER_PATHS = {
   v: [
@@ -28,14 +28,18 @@ const LETTER_PATHS = {
   ],
 } as const;
 
-export function BrandMark({ variant }: { variant: "solid" | "mixed" }) {
+type BrandDomain = "env" | "production" | "global" | "settings";
+
+function Letters({ domain }: { domain: BrandDomain }) {
+  const accent = domain === "production" ? "var(--vua-orange)" : "var(--vua-purple)";
+  const mixed = domain !== "env" && domain !== "production";
   const fills = {
-    v: "var(--vua-accent)",
-    u: variant === "mixed" ? "var(--vua-text-strong)" : "var(--vua-accent)",
-    a: variant === "mixed" ? "var(--vua-orange)" : "var(--vua-accent)",
+    v: accent,
+    u: mixed ? "var(--vua-text-strong)" : accent,
+    a: mixed ? "var(--vua-orange)" : accent,
   } as const;
   return (
-    <svg viewBox="0 0 200 200" role="img" aria-label="VUA" fill="currentColor" stroke="none">
+    <svg viewBox="0 0 200 200" aria-hidden="true" fill="currentColor" stroke="none">
       <g fill={fills.v}>
         {LETTER_PATHS.v.map((path) => <path key={path} d={path} />)}
       </g>
@@ -47,4 +51,21 @@ export function BrandMark({ variant }: { variant: "solid" | "mixed" }) {
       </g>
     </svg>
   );
+}
+
+/** Two decorative layers keep their own domain colours during the 120° wipe.
+ * Cleanup uses a timer rather than animationend, so flattened motion cannot
+ * strand the old layer. Rapid navigation replaces the transition immediately. */
+export function BrandMark({ domain }: { domain: BrandDomain }) {
+  const [transition, setTransition] = useState({ current: domain, previous: null as BrandDomain | null });
+  if (transition.current !== domain) setTransition({ current: domain, previous: transition.current });
+  useEffect(() => {
+    if (transition.previous === null) return;
+    const timer = window.setTimeout(() => setTransition(current => ({ ...current, previous: null })), 420);
+    return () => window.clearTimeout(timer);
+  }, [transition.current, transition.previous]);
+  return <span className="vua-brand-switch" role="img" aria-label="VUA">
+    {transition.previous !== null ? <span className="vua-brand-switch__previous" aria-hidden="true"><Letters domain={transition.previous} /></span> : null}
+    <span key={domain} className={transition.previous === null ? "vua-brand-switch__current" : "vua-brand-switch__current vua-brand-switch__current--wiping"} data-brand-domain={domain} aria-hidden="true"><Letters domain={domain} /></span>
+  </span>;
 }
