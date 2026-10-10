@@ -1,11 +1,11 @@
 # Electron desktop and presentation architecture
 
 
-> Document version: 1.20.0
+> Document version: 1.21.0
 > Status: Accepted
 > Scope: `apps/desktop`, `packages/design-system`, frontend Gateway
-> Updated: 2026-10-10
-> Last conformance review: 2026-10-10 (controlled native startup, OS-language/tour continuity and retained card/history/account/AMF/Settings checks; physical app/device and human-language review pending)
+> Updated: 2026-10-11
+> Last conformance review: 2026-10-11 (regional reference UI and restored topbar Help, retaining child/history and Settings behavior; physical game/device and human-language review pending)
 > Normative effect: Yes
 
 ## Technology decision
@@ -88,10 +88,11 @@ restoring the old two-tab presentation. Wizard choices never hide features or ch
 The [design standard](../design/design-standard.md#3-platform-and-information-architecture)
 owns the accepted layout, logo colors, unavailable peers and preserved visual preferences.
 
-Environment contains Play, Tools, Avatar editing and Help. Tools groups the planned tracking,
+Environment contains Play, Tools and Avatar editing. Tools groups the planned tracking,
 translation, VR utilities and capture integrations, independently of AMF. Its unwired entries
-offer collapsible descriptions with disabled development actions, not installed/launchable plugin claims. Help replaces the
-former topbar entry and contains Getting started, the app tour, Knowledge encyclopedia and
+offer collapsible descriptions with disabled development actions, not installed/launchable plugin claims. Help is a global topbar
+parallelogram beside Settings, with no sidebar duplicate; its active state covers all Help children.
+Home exposes it among global actions, and Search retains its entry. Help contains Getting started, the app tour, Knowledge encyclopedia and
 In-game assistant. The encyclopedia is a main-window page with hardware introductions and
 the existing shared preparation chapters/bookmark. Play links directly to hardware reading.
 All four Help cards open main-window child pages; tour and game-assistant pages then offer
@@ -110,8 +111,8 @@ Opening Steam or a guide does not prove installation, login or successful play.
 Play and Tools have equally sized two-half cards: collapsible details on the left and status/action on the
 right. Normal game exit retains **Close** only while owned software survives, with no failure
 warning. Play/Tools cards are 88 px high, half their previous heights;
-the two action/detail halves remain intact. Network's equally tall tile is above the grid; its regional Ping is explicitly unavailable
-until targets are verified and website tests remain in expanded details. The expandable runtime inventory stays
+the two action/detail halves remain intact. Network's equally tall tile is above the grid; it offers
+approximate [regional HTTPS references](network-onboarding.md), while website tests remain in expanded details. The expandable runtime inventory stays
 on Play. The retired Software & connections page is absent from Home, sidebar and tour;
 old stored page IDs migrate to Play. Wizard choices still do not control these entries.
 The typed play port consumes the Candidate [play-session family](play-sessions.md), keeps
@@ -369,6 +370,7 @@ redistribution review authorizes each bundled binary before a public release.
 
 ## Document changelog
 
+- 1.21.0 (2026-10-11): restore Help beside Settings in the topbar and align compact network UI with explicitly approximate regional references, preserving child history and independent website tests.
 - 1.20.0 (2026-10-10): enable AMF for fresh profiles, add qualified CPU/GPU/RAM/VRAM headroom through desktop resource v0.2, and apply a reduced-motion-aware 120° Home-logo colour wipe.
 - 1.19.0 (2026-10-10): implement the approved small monochrome native splash, independent desktop-startup v0.1 face, Windows language selection and first-use welcome/tour handoff while preserving saved profiles.
 - 1.18.0 (2026-10-10): place each scenario/editor/manager's collapsible details directly beneath its own card, separate compact language and Search controls, migrate retired goal links to Help and retire big-screen layout/navigation/tray actions while retaining the legacy event shape.
@@ -378,4 +380,3 @@ redistribution review authorizes each bundled binary before a public release.
 - 1.14.0 (2026-10-10): clarify AMF's bundled installation and separate activation for fresh/legacy profiles; retain saved choices and omit external editing placeholders from Ibis.
 - 1.13.0 (2026-10-09): scope optional AMF frontend/BOOTH services to module readiness and document the two-provider payload; retain host task-window independence and legacy data paths.
 - 1.12.1 (2026-10-09): align guide transparency/drag memory, normal game-exit cards and the regional-placeholder/expanded-website split with their owning documents.
-- 1.12.0 (2026-10-09): implement observed two-half play sessions and scoped close, move network/runtime discovery into Play, and add complete-editor and manager-app inventory to Avatar editing.

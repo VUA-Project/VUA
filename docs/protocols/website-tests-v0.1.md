@@ -1,6 +1,6 @@
 # Website tests v0.1
 
-> Document version: 0.1
+> Document version: 0.2
 > Status: Candidate
 > Family: website-tests
 
@@ -24,6 +24,12 @@ The Rust adapter runs the batch concurrently and bounds redirects and elapsed ti
 carry no browser session. A HEAD refusal (405/501) falls back to GET response headers only.
 Local website preferences are UI state; no results or account data are persisted by this query.
 
+The four fixed Oracle regional reference origins named by [network onboarding](../architecture/network-onboarding.md)
+never follow redirects. Their observations use the same unchanged v0.1 wire/schema vocabulary.
+The regional UI may present an expected anonymous root 404 as an approximate response time;
+the raw observation remains `http_error`, and ordinary website cards still show HTTP 404.
+Unexpected HTTP errors, redirects, rate limits and transport failures are not regional latency.
+
 Schema: [website-test.schema.json](../../schemas/website-tests/v0.1/website-test.schema.json).
 Implementation: [types and guards](../../packages/contracts/src/website-test.ts),
 [Provider route](../../crates/provider-host/src/network_routes.rs),
@@ -31,4 +37,5 @@ Implementation: [types and guards](../../packages/contracts/src/website-test.ts)
 
 ## Document changelog
 
+- 0.2 (2026-10-11): document origin-pinned geographic references and UI treatment of their expected root response, retaining the Candidate v0.1 request/result vocabulary.
 - 0.1 (2026-10-07): introduce selected/custom website tests for the compact play-environment cards.

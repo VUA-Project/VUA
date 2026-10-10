@@ -96,8 +96,9 @@ async function run() {
     await js('localStorage.setItem("vua-locale","zh-CN"); location.reload()');
     await waitFor(() => js('!!document.querySelector(".vua-onboarding") && !document.querySelector(".vua-boot-splash") && document.documentElement.lang==="zh-CN"'), "localized fresh entry");
     await js('document.querySelector(".vua-journey-top button").click()');
-    await waitFor(() => js('!!document.querySelector("[data-nav-id=nav-help]")'), "environment directory");
-    assert(await js('!!document.querySelector("[data-nav-id=nav-tools-discover]") && ![...document.querySelectorAll(".vua-shell__topbar button")].some(b=>b.textContent==="帮助")'), "Tools and Help belong in the environment directory, not the topbar");
+    await waitFor(() => js('!!document.querySelector("[data-nav-id=shell-help]")'), "Help in topbar");
+    assert(await js('(()=>{const h=document.querySelector("[data-nav-id=shell-help]"),s=document.querySelector("[data-nav-id=shell-settings]");return h.closest("header")&&h.nextElementSibling===s&&!document.querySelector(".vua-shell__sidebar [data-nav-id=nav-help]")&&getComputedStyle(h).transform===getComputedStyle(s).transform})()'), "Help shares Settings parallelogram styling in the topbar with no sidebar duplicate");
+    assert(await js('!!document.querySelector(".vua-shell__sidebar [data-nav-id=nav-tools-discover]")'), "Tools remains in the Environment sidebar");
     await js('document.querySelector("[data-nav-id=nav-tools-discover]").click()');
     await waitFor(() => js('!!document.querySelector(".vua-tools-hub")'), "tool directory");
     assert(await js('document.querySelector(".vua-tools-hub").textContent.includes("VRCFaceTracking") && document.querySelector(".vua-tools-hub").textContent.includes("VRCS") && document.querySelector(".vua-tools-hub").textContent.includes("OVR Overlay Translator") && !document.querySelector("[data-nav-id=tool-vrcft-action]").disabled && [...document.querySelectorAll(".vua-tools-hub .vua-environment-card:not([data-card=tool-vrcft]) .vua-environment-card__action")].every(b=>b.disabled)'), "VRCFT offers device selection; other tool actions remain honest development placeholders");
@@ -117,6 +118,14 @@ async function run() {
     await waitFor(() => js('!!document.querySelector("[data-nav-id=play-hardware-help]")'), "Play cards");
     window.setSize(1180, 820);
     await delay(100);
+    if (process.env.VUA_TEST_NETWORK_LIVE === "1") {
+      await waitFor(() => js('!document.querySelector("[data-nav-id=play-network-test]").disabled'), "Regional probe available");
+      await js('document.querySelector("[data-nav-id=play-network-test]").click()');
+      await waitFor(() => js('!document.querySelector("[data-nav-id=play-network-test]").disabled'), "Explicit regional response");
+      const timings = await js('document.querySelector(".vua-network-tile__results").textContent');
+      fs.writeFileSync(path.join(output, "live-regional-reference.json"), JSON.stringify({ scope: "Actual native HTTPS response time to Oracle regional origins, not game Ping", timings }, null, 2));
+      assert(timings.includes("≈"), "At least one live regional reference returned a timed response");
+    }
     assert(await js('[...document.querySelectorAll(".vua-play-page .vua-environment-card")].every(c=>Math.abs(c.getBoundingClientRect().height-88)<1)'), "All Play cards, including network, are half-height");
     const cardLayout = await js('[...document.querySelectorAll(".vua-play-page .vua-environment-card button")].map(b=>({label:b.getAttribute("data-nav-id"),overflow:b.scrollHeight-b.clientHeight}))');
     assert(cardLayout.every(row => row.overflow < 3), "Compact card content fits without vertical clipping");
@@ -161,7 +170,7 @@ async function run() {
     await js('document.querySelector("[data-nav-id=play-hardware-help]").click()');
     await waitFor(() => js('document.querySelector("[role=tab][aria-selected=true]")?.textContent==="硬件介绍"'), "Hardware introduction in Help");
     assert(BrowserWindow.getAllWindows().length === 1, "Hardware help opens inside the main window");
-    assert(await js('document.querySelector("[data-nav-id=nav-help]").getAttribute("aria-current")==="page" && !!document.querySelector("[data-guide-section=identify-device]")'), "Encyclopedia keeps Help selected and targets hardware");
+    assert(await js('document.querySelector("[data-nav-id=shell-help]").getAttribute("aria-current")==="page" && !!document.querySelector("[data-guide-section=identify-device]")'), "Encyclopedia keeps Help selected and targets hardware");
     await capture("hardware-dark");
     assert(await chapterContrast() >= 4.5, "Selected chapter text is legible in dark appearance");
     await js('const unsubscribe = window.vua.window.encyclopediaTargetEvents.subscribe(()=>{}); unsubscribe(); unsubscribe()');
@@ -184,7 +193,7 @@ async function run() {
       await waitFor(() => js('!!document.querySelector("[data-nav-id=help-encyclopedia]")'), `${child} mouse Back`);
       side('browser-forward');
       await waitFor(() => js(`location.hash.startsWith('#${child}') && !!document.querySelector('[data-nav-id=help-child-back]')`), `${child} mouse Forward`);
-      assert(await js('document.querySelector("[data-nav-id=nav-help]").getAttribute("aria-current")==="page"'), `${child} restores on mouse Forward`);
+      assert(await js('document.querySelector("[data-nav-id=shell-help]").getAttribute("aria-current")==="page"'), `${child} restores on mouse Forward`);
       if (child === 'help-wizard') {
         await js('[...document.querySelectorAll(".vua-onboarding .vua-route-tile")][0].click()');
         await waitFor(() => js('document.querySelector(".vua-onboarding").dataset.wizardStep==="play-mode"'), "Wizard choice");

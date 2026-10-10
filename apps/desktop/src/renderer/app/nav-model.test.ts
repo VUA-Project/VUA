@@ -104,7 +104,7 @@ test("environment module carries the merged tools group with labels, page ids un
   );
   assert.deepEqual(
     env?.groups[0]?.pages.map((p) => p.id),
-    ["env-play", "tools-discover", "env-create", "help"],
+    ["env-play", "tools-discover", "env-create"],
   );
   assert.deepEqual(
     env?.groups[1]?.pages.map((p) => p.id),
@@ -112,6 +112,12 @@ test("environment module carries the merged tools group with labels, page ids un
   );
   assert.equal(strings.nav.groups.env, "环境");
   assert.equal(strings.nav.groups.tools, "工具");
+});
+
+test("Help retains its deep link and is one click away outside the business sidebar", () => {
+  assert.equal(isPageId("help"), true);
+  assert.equal(clicksToReach("help", "warehouse"), 1);
+  assert.ok(!modules.some(module => module.groups.some(group => group.pages.some(page => page.id === "help"))));
 });
 
 test("production sidebar is one flat group without a group label, pages in flow order", () => {

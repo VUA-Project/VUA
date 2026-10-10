@@ -131,12 +131,12 @@ async function run() {
       await reload("");
       await waitFor(wizard, "completed tour remains completed");
       await js('document.querySelector(".vua-journey-top button").click()');
-      await waitFor(() => js('!!document.querySelector("[data-nav-id=nav-help]") && !document.querySelector(".vua-onboarding")'), "onboarded profile");
+      await waitFor(() => js('!!document.querySelector("[data-nav-id=shell-help]") && !document.querySelector(".vua-onboarding")'), "onboarded profile");
       await reload('localStorage.removeItem("vua-tour-progress");localStorage.setItem("vua-effects","off")');
       await waitFor(() => js('!!document.querySelector(".vua-shell") && document.documentElement.dataset.effects==="off"'), "returning profile");
       await delay(500);
       assert(await js('!document.querySelector(".vua-tour") && !document.querySelector(".vua-onboarding")'), "Existing profiles never auto-start the new welcome or feature tour");
-      await js('document.querySelector("[data-nav-id=nav-help]").click()');
+      await js('document.querySelector("[data-nav-id=shell-help]").click()');
       await waitFor(() => js('!!document.querySelector("[data-nav-id=help-tour]")'), "Help tour entry");
       await js('document.querySelector("[data-nav-id=help-tour]").click()');
       await waitFor(() => js('!!document.querySelector("[data-nav-id=help-start-tour]")'), "Help tour child");

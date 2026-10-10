@@ -25,4 +25,12 @@
 .vua-network__form label { display: grid; gap: 6px; }
 .vua-network__form input { padding: 8px; border: 1px solid var(--vua-border); border-radius: var(--vua-radius-control); background: var(--vua-bg-panel); color: var(--vua-text-strong); font: inherit; }
 .vua-network__form-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.vua-network__references { padding: 20px 24px; border-bottom: 1px solid var(--vua-border); display: grid; gap: 12px; }
+.vua-network__references h2, .vua-network__references p { margin: 0; }
+.vua-network__references ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.vua-network__references li { min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--vua-border); border-radius: var(--vua-radius-control); padding: 12px; }
+.vua-network__references li > span { min-width: 0; display: grid; gap: 4px; }
+.vua-network__region-test { flex-shrink: 0; border: 0; padding: 8px; border-radius: var(--vua-radius-control); background: transparent; color: var(--vua-accent); font: inherit; cursor: pointer; }
+.vua-network-tile .vua-environment-card__spin { display: inline-flex; }
+@media (max-width: 600px) { .vua-network__references ul { grid-template-columns: 1fr; } }
 @media (max-width: 600px) { .vua-network__header { padding: 12px; gap: 10px; } .vua-network__cards { padding: 12px; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); } }

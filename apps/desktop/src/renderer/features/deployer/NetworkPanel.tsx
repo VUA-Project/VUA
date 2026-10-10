@@ -11,6 +11,7 @@ import { Button } from "../../components/primitives/Button.tsx";
 import { ContentDialog } from "../../components/primitives/ContentDialog.tsx";
 import { DEFAULT_TEST_WEBSITES, normalizeWebsiteUrl, parseTestWebsites, type TestWebsite } from "./website-model.ts";
 import { brandGlyphPath } from "./website-glyphs.ts";
+import { REGIONAL_REFERENCES, referenceElapsed, type RegionalReference } from "./regional-reference.ts";
 import "./website-tests.css";
 
 const copy = strings.websiteTests;
@@ -40,7 +41,9 @@ export function NetworkPanel({ compact = false }: { compact?: boolean }) {
     try { return parseTestWebsites(localStorage.getItem(storageKeys.testWebsites)); } catch { return DEFAULT_TEST_WEBSITES; }
   });
   const [states, setStates] = useState<Record<string, CardState>>({});
+  const [referenceStates, setReferenceStates] = useState<Record<string, CardState>>({});
   const pending = useRef(new Set<string>());
+  const referencePending = useRef(new Set<string>());
   const generation = useRef(0);
   const [editor, setEditor] = useState<{ original: string | null; name: string; url: string } | null>(null);
   const [formError, setFormError] = useState(false);
@@ -48,7 +51,7 @@ export function NetworkPanel({ compact = false }: { compact?: boolean }) {
 
   useEffect(() => {
     const ticket = ++generation.current;
-    pending.current.clear(); setStates({}); setReady(null);
+    pending.current.clear(); referencePending.current.clear(); setStates({}); setReferenceStates({}); setReady(null);
     if (port) void port.websiteCapability().then(c => { if (generation.current === ticket) setReady(c.state === "ready"); }, () => { if (generation.current === ticket) setReady(false); });
     else setReady(false);
     return () => { generation.current++; };
@@ -59,21 +62,23 @@ export function NetworkPanel({ compact = false }: { compact?: boolean }) {
     try { localStorage.setItem(storageKeys.testWebsites, JSON.stringify(next)); setStorageFailed(false); }
     catch { setStorageFailed(true); }
   };
-  const test = async (selected: readonly TestWebsite[]) => {
+  const test = async (selected: readonly TestWebsite[], regional = false) => {
     if (!port || !ready) return;
-    const urls = selected.map(s => s.url).filter(url => !pending.current.has(url));
+    const requests = regional ? referencePending.current : pending.current;
+    const update = regional ? setReferenceStates : setStates;
+    const urls = selected.map(s => s.url).filter(url => !requests.has(url));
     if (!urls.length) return;
     const ticket = generation.current;
-    urls.forEach(url => pending.current.add(url));
-    setStates(previous => ({ ...previous, ...Object.fromEntries(urls.map(url => [url, { busy: true }])) }));
+    urls.forEach(url => requests.add(url));
+    update(previous => ({ ...previous, ...Object.fromEntries(urls.map(url => [url, { busy: true }])) }));
     try {
       const results = await port.testWebsites(urls);
-      if (ticket === generation.current) setStates(previous => ({ ...previous,
+      if (ticket === generation.current) update(previous => ({ ...previous,
         ...Object.fromEntries(results.map(result => [result.url, { busy: false, result }])) }));
     } catch {
-      if (ticket === generation.current) setStates(previous => ({ ...previous,
+      if (ticket === generation.current) update(previous => ({ ...previous,
         ...Object.fromEntries(urls.map(url => [url, { busy: false }])) }));
-    } finally { if (ticket === generation.current) urls.forEach(url => pending.current.delete(url)); }
+    } finally { if (ticket === generation.current) urls.forEach(url => requests.delete(url)); }
   };
   const saveEditor = (event: FormEvent) => {
     event.preventDefault();
@@ -87,18 +92,32 @@ export function NetworkPanel({ compact = false }: { compact?: boolean }) {
     setEditor(null);
   };
   if (!port && !compact) return null;
-  const busy = Object.values(states).some(state => state.busy);
+  const busy = sites.some(site => states[site.url]?.busy);
+  const regionBusy = REGIONAL_REFERENCES.some(region => referenceStates[region.url]?.busy);
+  const regionLabel = (region: RegionalReference) => {
+    const state = referenceStates[region.url];
+    if (state?.busy) return copy.testing;
+    if (!state) return "—";
+    const ms = referenceElapsed(region, state.result);
+    return ms !== null ? format(copy.approximateMilliseconds, { ms }) : state.result?.httpStatus !== null && state.result?.httpStatus !== undefined
+      ? format(copy.httpStatus, { code: state.result.httpStatus }) : copy.statuses[state.result?.status ?? "probe_error"];
+  };
+  const regionSites = REGIONAL_REFERENCES.map(region => ({ name: copy.regionCities[region.id], url: region.url }));
   return <>
     {compact ? <article className="vua-environment-card vua-network-tile">
       <button type="button" className="vua-environment-card__details" data-nav-id="play-network-details" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>
-        <span className="vua-route-tile__icon" aria-hidden="true"><Icon name="gauge" size={24} /></span><strong>{strings.environmentCards.network}</strong>
-        <span className="vua-network-tile__results"><span>{copy.europe}<span>—</span></span><span>{copy.america}<span>{copy.west} — · {copy.east} —</span></span><span>{copy.japan}<span>—</span></span></span>
+        <span className="vua-route-tile__icon" aria-hidden="true"><Icon name="gauge" size={24} /></span><strong>{copy.regionTitle}</strong>
+        <span className="vua-network-tile__results" aria-live="polite"><span title={copy.regionCities.eu}>{copy.europe}<span>{regionLabel(REGIONAL_REFERENCES[3])}</span></span><span>{copy.america}<span title={copy.regionCities.usw}>{copy.west} {regionLabel(REGIONAL_REFERENCES[0])}</span><span title={copy.regionCities.use}>{copy.east} {regionLabel(REGIONAL_REFERENCES[1])}</span></span><span title={copy.regionCities.jp}>{copy.japan}<span>{regionLabel(REGIONAL_REFERENCES[2])}</span></span></span>
       </button>
-      <button type="button" className="vua-environment-card__action" data-nav-id="play-network-test" disabled aria-label={copy.regionUnavailable}>
-        <span aria-hidden="true"><Icon name="gauge" size={24} /></span><span role="status">{copy.regionUnavailable}</span>
+      <button type="button" className="vua-environment-card__action" data-nav-id="play-network-test" disabled={!ready || regionBusy} aria-label={ready === false ? copy.regionUnavailable : copy.testRegions} onClick={() => { void test(regionSites, true); }}>
+        <span className={regionBusy ? "vua-environment-card__spin" : undefined} aria-hidden="true"><Icon name={regionBusy ? "refresh" : "gauge"} size={24} /></span><span role="status">{regionBusy ? copy.testing : ready === false ? copy.regionUnavailable : copy.testRegions}</span>
       </button>
     </article> : null}
     <Card className="vua-network" hidden={compact && !expanded}>
+    {compact ? <section className="vua-network__references" aria-label={copy.regionTitle}>
+      <h2>{copy.regionTitle}</h2><p className="vua-text-secondary">{copy.regionScope}</p>
+      <ul>{REGIONAL_REFERENCES.map(region => <li key={region.id}><span><strong>{copy.regionCities[region.id]}</strong><span className="vua-text-secondary">Oracle Cloud · {region.id.toUpperCase()}</span></span><button type="button" className="vua-network__region-test" data-region-test={region.id} title={region.url} disabled={!ready || referenceStates[region.url]?.busy} aria-label={format(copy.testSite, { name: copy.regionCities[region.id] })} onClick={() => { void test([{ name: copy.regionCities[region.id], url: region.url }], true); }}><span role="status">{referenceStates[region.url] ? regionLabel(region) : copy.test}</span></button></li>)}</ul>
+    </section> : null}
     <header className="vua-network__header">
       {/* 仪表盘字形:本面板测的是到站耗时(ms),不是信号有无 */}
       <span className="vua-network__heading-icon"><Icon name="gauge" size={24} /></span><h2>{copy.title}</h2>
