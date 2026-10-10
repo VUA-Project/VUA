@@ -9,6 +9,7 @@ import { VrOverlaySurface } from "./features/overlay/VrOverlaySurface.tsx";
 import { ReaderSurface } from "./features/reader/ReaderSurface.tsx";
 import { GameGuideSurface } from "./features/game-guide/GameGuideSurface.tsx";
 import { currentLocale } from "./i18n/index.ts";
+import { BootSplash } from "./components/splash/BootSplash.tsx";
 import "@vua/design-system/tokens.css";
 import "@vua/design-system/base.css";
 import "./app-shell.css";
@@ -51,7 +52,9 @@ if (import.meta.hot) import.meta.hot.dispose(stopLocaleSync);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    {surface === "tutorial" ? (
+    {surface === "splash" ? (
+      <BootSplash />
+    ) : surface === "tutorial" ? (
       <TutorialSurface />
     ) : surface === "overlay-desktop" ? (
       <DesktopOverlaySurface />

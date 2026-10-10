@@ -4,6 +4,7 @@ import { strings as en, type Strings } from "./strings.en.ts";
 import { strings as ja } from "./strings.ja.ts";
 import { strings as ko } from "./strings.ko.ts";
 import { storageKeys } from "../app/storage-keys.ts";
+import { systemLanguages } from "./system-languages.ts";
 
 /**
  * 当前语言表(C-I18N):应用启动时按 fallback 链选表一次;
@@ -22,11 +23,6 @@ function readStoredLocale(): string | null {
   } catch {
     return null;
   }
-}
-
-function systemLanguages(): readonly string[] {
-  if (typeof navigator === "undefined") return [];
-  return navigator.languages ?? (navigator.language ? [navigator.language] : []);
 }
 
 export const currentLocale: LocaleId = (() => {

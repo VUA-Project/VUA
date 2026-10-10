@@ -1,11 +1,11 @@
 # Electron desktop and presentation architecture
 
 
-> Document version: 1.18.0
+> Document version: 1.19.0
 > Status: Accepted
 > Scope: `apps/desktop`, `packages/design-system`, frontend Gateway
 > Updated: 2026-10-10
-> Last conformance review: 2026-10-10 (controlled card/history/account-entry/AMF activation/Settings checks and read-only C1 inspection; physical app/device and human-language review pending)
+> Last conformance review: 2026-10-10 (controlled native startup, OS-language/tour continuity and retained card/history/account/AMF/Settings checks; physical app/device and human-language review pending)
 > Normative effect: Yes
 
 ## Technology decision
@@ -48,6 +48,30 @@ application use cases without a generic module registry or runtime composition f
 
 Core catalog entries represent trusted behavior built directly into VUA and gain no authority through
 runtime registration. The future community plugin host provides a separate capability context.
+
+## Startup and first-use language
+
+The author's 2026-10-10 approval replaces the full-window text/grid opening with a centered,
+frameless 480 × 320 DIP startup surface. It begins white; five thick black rays travel from the
+upper right toward the lower left at 120°, revealing the supplied monochrome white VUA logo.
+A loading circle sits below it. There are no visible labels, buttons or version/update badges.
+Reduced motion or resource saving shows the static black/white result and shortens its dwell.
+
+Main opens this presentation before provider startup and holds the main window hidden while
+the renderer loads. The local `surface=splash` branch never instantiates App or its Gateway.
+The main renderer's existing renderer/Gateway/provider/paint milestones report completion
+through Candidate [desktop-startup v0.1](../protocols/desktop-startup-v0.1.md); Main then shows
+the shell and destroys the small window. A bounded renderer-load fallback prevents a missing
+completion signal from trapping the application. Controlled packaged diagnostics keep windows
+hidden and use their existing watchdog.
+
+Locale selection already had the saved-choice → supported system language → English order.
+Main now supplies Windows' ordered preferred UI languages through local preload arguments,
+instead of letting Electron's browser language decide first use. Native input is bounded in
+preload; browser previews retain their navigator fallback. The saved manual choice always wins,
+and inferred choices do not become a saved override. PICO distribution and network targets
+remain independent. The first-use welcome/tour precedes the route wizard as defined by
+[guidance architecture](guidance.md#2-vua-app-tour), without enabling AMF or changing Home.
 
 Main returns normalized navigation/download events through narrow ports and retains `Session`,
 `WebContents` and `DownloadItem` handles. Browser storage owns cookies/tokens; they are not copied
@@ -338,6 +362,7 @@ redistribution review authorizes each bundled binary before a public release.
 
 ## Document changelog
 
+- 1.19.0 (2026-10-10): implement the approved small monochrome native splash, independent desktop-startup v0.1 face, Windows language selection and first-use welcome/tour handoff while preserving saved profiles.
 - 1.18.0 (2026-10-10): place each scenario/editor/manager's collapsible details directly beneath its own card, separate compact language and Search controls, migrate retired goal links to Help and retire big-screen layout/navigation/tray actions while retaining the legacy event shape.
 - 1.17.0 (2026-10-10): verify BOOTH account access before offering library sync with direct login/retry handoffs, discover Editors through the host and inspect fresh Unity 2022 entry before CLI acquisition, and replace the AMF Home Inspection card with Finished Avatars and Package Manager.
 - 1.16.0 (2026-10-10): unify collapsible scenario/tool/editor details, add native Help/chapter/wizard history and Avatar-editing AMF activation, and consolidate Settings language/version controls without changing vendor/device evidence.
@@ -347,6 +372,5 @@ redistribution review authorizes each bundled binary before a public release.
 - 1.12.1 (2026-10-09): align guide transparency/drag memory, normal game-exit cards and the regional-placeholder/expanded-website split with their owning documents.
 - 1.12.0 (2026-10-09): implement observed two-half play sessions and scoped close, move network/runtime discovery into Play, and add complete-editor and manager-app inventory to Avatar editing.
 - 1.11.0 (2026-10-09): apply the compact-shell ruling, move command search into Settings, replace the appearance select with joined buttons and a Dark default, and retarget the task-tour step to Home.
-- 1.10.0 (2026-10-09): implement settings-only sidebar/return, separate real task status and appearance from guides/demo previews, and add the localized VUA tray with typed main-renderer gestures and normal shutdown.
 
 Earlier entries remain in Git history.

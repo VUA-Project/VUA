@@ -1,9 +1,9 @@
 # Guidance architecture: app tour, knowledge encyclopedia and game guide
 
-> Document version: 1.7.1
+> Document version: 1.8.0
 > Status: Accepted
 > Updated: 2026-10-10
-> Last conformance review: 2026-10-09 (background-alpha and relative-placement repairs with controlled Chromium/decision checks; author recheck pending)
+> Last conformance review: 2026-10-10 (controlled first-use greeting, real feature anchors, skip/finish/resume, locale and legacy-bookmark checks; author and four-language human review pending)
 > Scope: First play release guidance in Electron and React
 
 For people: VUA teaches three different activities in three appropriate places: using VUA,
@@ -13,6 +13,8 @@ reused without giving every activity the same window behavior.
 For Agents: the author's 2026-10-10 ruling embeds preparation reading in Help as the knowledge
 encyclopedia, superseding the separate-window presentation from 2026-10-05. The encyclopedia,
 app tour and game guide keep separate progress, with task status retaining its own entry.
+The later 2026-10-10 startup ruling adds a first-use welcome and automatic app-tour entry
+before the independent route wizard, superseding the earlier manual-only initial tour.
 The game guide implements the automatic window following specified below through the read-only
 game-window observation (`vua.game-window-observe/v0.1`); real-machine acceptance against an
 actual VRChat window remains in the delivery plan. Product scope belongs to the
@@ -24,7 +26,7 @@ implementation order/status to the [first play delivery plan](../development/fir
 
 | Context | What the player is trying to do | Presentation | Progress means |
 | --- | --- | --- | --- |
-| VUA app tour | Learn where to choose a play route, inspect the environment, review installation and return to play | A transparent highlight layer inside the main VUA window, with readable instruction cards and ordered navigation | The tour step was completed or explicitly skipped |
+| VUA app tour | Meet VUA and locate play, tools, editing preparation, progress and help | A centered welcome scene followed by a transparent highlight layer inside the main VUA window, with readable cards and ordered navigation | The tour step was completed or explicitly skipped |
 | Knowledge encyclopedia | Read hardware introductions, room preparation, equipment connection, installation and troubleshooting instructions | A page inside Help in the main desktop window, using its appearance | The last chapter/section the player was reading |
 | VRChat game guide | Follow game controls/settings and find a suitable tutorial world while playing | A small adjustable-transparency guide associated with the Windows VRChat game window | The player confirmed or skipped a game instruction |
 
@@ -53,14 +55,20 @@ Render the tour in the main React tree. Highlight real VUA controls over a highl
 mask; keep instruction text legible. Broad highlights and arrows may explain a page before
 focusing on a specific button. The tour never covers a different application.
 
-The initial tour follows the first-play route: choose desktop or PICO, read network results,
-inspect software, review the installation plan, find progress/user handoffs, and locate the
-play and guide entries. Page navigation follows those steps. Limit this delivery to available
-first-play controls; Avatar production tours follow their own delivery.
+On a new profile, startup first shows the welcome scene in the selected UI language, beginning
+with “Welcome, traveler from reality.” and the author's supplied Chinese, Japanese and Korean
+equivalents. It introduces VUA, then points to Home, network checks, environment cards and their
+actions, Tools, Avatar-editing preparation/explicit AMF enablement, Tasks, Help and Settings.
+Development tool entries remain descriptions, not claims of installation. These are available
+host controls; complex AMF workflow teaching follows AMF's own delivery.
 
-The first-run branching wizard is independent of this control-location tour. Open the tour
-explicitly from Help or command search; completing/exiting the wizard does not automatically
-start a second overlay. Resume an already-active tour using its own bookmark.
+The feature tour supports next/back and skip, without timed page advancement or business
+actions. Finishing or skipping it enters the independent branching route wizard; it does not
+write goals, accept installation plans, launch software or enable AMF. Existing onboarded
+profiles do not automatically start the new welcome on upgrade. Help or command search can
+replay it. Closing during an active tour resumes its step; completed/skipped state stays terminal
+even if the route wizard has not finished. Local progress v2 migrates old active v1 bookmarks
+by feature identity so inserted scenes do not change the content being resumed.
 
 Provide back, next, skip/exit and restart. A real action can advance its associated step, but
 opening an installer is not installation success. Waiting for a download does not trap the
@@ -201,6 +209,7 @@ code and real-machine checks.
 
 ## Document changelog
 
+- 1.8.0 (2026-10-10): add the author's four-language first-use welcome and automatic feature tour before the independent wizard, preserving existing profiles, manual replay and legacy active-step identity.
 - 1.7.1 (2026-10-10): align encyclopedia presentation with the retired big-screen mode; desktop architecture and the design standard own layout retirement, and guidance progress/window semantics remain intact.
 - 1.7.0 (2026-10-10): make all four Help entries child pages, retain explicit tour/game-window start and add native page/chapter/wizard history while preserving separate progress and fresh preparation checks.
 - 1.6.0 (2026-10-10): move Help into the environment directory, embed the knowledge encyclopedia with hardware introductions, and add a versioned Main-navigation face while retaining V1 reader compatibility.

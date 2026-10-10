@@ -89,7 +89,7 @@ import {
   installLocalContentNavigationPolicy,
   installPermissionDenyPolicy,
   isAllowedLocalSender,
-  localWindowWebPreferences,
+  localWindowWebPreferences as secureLocalWindowPreferences,
 } from "./security.js";
 import { checkLatestRelease } from "./update-check.js";
 import { SystemUsageCollector } from "./system-usage.js";
@@ -98,6 +98,14 @@ import { resolveDesktopRuntime } from "./runtime-paths.js";
 import { preparePackagedSmoke } from "./packaged-smoke.js";
 import { configureDesktopProfile, resolveDesktopProfile, tagDevelopmentWindow } from "./runtime-profile.js";
 import { createVuaTray } from "./system-tray.js";
+import { createStartupWindow } from "./startup-window.js";
+
+function localWindowWebPreferences(preload: string) {
+  return {
+    ...secureLocalWindowPreferences(preload),
+    additionalArguments: [`--vua-system-languages=${encodeURIComponent(JSON.stringify(app.getPreferredSystemLanguages()))}`],
+  };
+}
 
 registerImageCacheScheme();
 
@@ -127,6 +135,17 @@ if (desktopProfile.kind !== "release") {
 }
 const packagedSmoke = preparePackagedSmoke();
 let mainWindow: BrowserWindow | null = null;
+let startupWindow: BrowserWindow | null = null;
+let startupFallback: ReturnType<typeof setTimeout> | null = null;
+
+function completeStartup(): void {
+  if (startupWindow === null) return;
+  if (startupFallback !== null) clearTimeout(startupFallback);
+  startupFallback = null;
+  if (mainWindow !== null && !mainWindow.isDestroyed()) mainWindow.show();
+  if (!startupWindow.isDestroyed()) startupWindow.destroy();
+  startupWindow = null;
+}
 let systemTray: ReturnType<typeof createVuaTray> | null = null;
 let shellListening = false;
 let encyclopediaListening = false;
@@ -490,6 +509,11 @@ function registerIpc(provider: ModuleProvider): void {
     return createFsDirectory(parentPath, name);
   });
 
+  ipcMain.handle("vua:startup:complete", event => {
+    assertLocalSender(senderFrameUrl(event));
+    if (mainWindow === null || event.sender !== mainWindow.webContents || event.senderFrame !== event.sender.mainFrame) throw new Error("startup completion requires the main frame");
+    completeStartup();
+  });
   ipcMain.handle("vua:window:minimize", (event) => {
     assertLocalSender(senderFrameUrl(event));
     BrowserWindow.fromWebContents(event.sender)?.minimize();
@@ -1347,7 +1371,10 @@ async function createWindow(): Promise<void> {
     openExternal: (url) => void shell.openExternal(url),
     confirmNavigation,
   });
-  mainWindow.once("ready-to-show", () => { if (!packagedSmoke) mainWindow?.show(); });
+  mainWindow.once("ready-to-show", () => {
+    if (!packagedSmoke && startupWindow === null) mainWindow?.show();
+  });
+  if (startupWindow !== null) startupFallback = setTimeout(completeStartup, 8_000);
 
   if (provider?.amfReady()) await ensureAmfShell();
   mainWindow.on("resize", () => remoteContent?.refreshBounds());
@@ -1372,6 +1399,10 @@ async function createWindow(): Promise<void> {
     overlayWindow?.destroy();
     readerWindow?.destroy();
     gameGuideWindow?.destroy();
+    if (startupWindow !== null && !startupWindow.isDestroyed()) startupWindow.destroy();
+    startupWindow = null;
+    if (startupFallback !== null) clearTimeout(startupFallback);
+    startupFallback = null;
   });
 
   if (rendererUrl) await mainWindow.loadURL(rendererUrl);
@@ -1488,6 +1519,15 @@ async function ensureAmfShell(): Promise<void> {
 }
 
 app.whenReady().then(async () => {
+  installPermissionDenyPolicy(session.defaultSession);
+  if (!packagedSmoke) {
+    startupWindow = await createStartupWindow({
+      ...(rendererUrl ? { rendererUrl } : {}),
+      rendererFile: path.join(__dirname, "../renderer/index.html"),
+      preferences: localWindowWebPreferences(path.join(__dirname, "preload.js")),
+    });
+    startupWindow.on("close", () => app.quit());
+  }
   amfRegistry = new AmfRegistry(app.getPath("userData"));
   provider = new ModuleProvider({
     host: createDesktopOrchestratorProvider(resolveProviderEndpoint()),
@@ -1532,7 +1572,6 @@ app.whenReady().then(async () => {
     }
     broadcastGatewayEvent(rendererUrl, event);
   });
-  installPermissionDenyPolicy(session.defaultSession);
   registerIpc(provider);
   systemUsage.start();
   await createWindow();

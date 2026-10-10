@@ -43,10 +43,12 @@ async function run() {
     require(path.join(desktop, "dist/packaged-electron/main.js"));
     await app.whenReady();
     await waitFor(() => {
-      window = BrowserWindow.getAllWindows().find(candidate => candidate.webContents.getURL().startsWith("file:"));
+      window = BrowserWindow.getAllWindows().find(candidate => candidate.webContents.getURL().startsWith("file:") && !candidate.webContents.getURL().includes("surface=splash"));
       return Boolean(window && !window.webContents.isLoading());
     }, "production renderer");
     const js = source => window.webContents.executeJavaScript(source);
+    await waitFor(() => js('document.querySelector(".vua-tour")?.dataset.tourStep==="welcome"'), "first-use welcome");
+    await js('document.querySelector(".vua-tour__actions button").click()');
     await waitFor(() => js('!!document.querySelector(".vua-onboarding") && !document.querySelector(".vua-boot-splash")'), "fresh wizard");
     const checks = [];
     const assert = (condition, label) => { if (!condition) throw new Error(label); checks.push(label); };

@@ -1,6 +1,6 @@
 # Desktop-window v0.2: main Help navigation
 
-> Document version: 1.0.1
+> Document version: 1.0.2
 > Status: Candidate
 > Updated: 2026-10-10
 > Scope: Local Electron preload/Main navigation; no Provider or task-frame change
@@ -9,7 +9,8 @@ For people: preparation chapters and hardware introductions open inside the main
 with the same reading bookmark. They do not create another reader window.
 
 For Agents: `DesktopWindowApiV2` extends the retained `DesktopWindowApiV1`.
-`VuaDesktopApiV2` changes only the type of its `window` member; the V1 interface remains intact.
+This face replaces the aggregate's `window` type; the V1 interface remains intact. Independent
+optional faces such as [desktop-startup v0.1](desktop-startup-v0.1.md) have their own definitions.
 The producer is Electron Main/preload and the consumer is the main renderer's App shell.
 [Guidance architecture](../architecture/guidance.md) owns the presentations and progress.
 
@@ -64,5 +65,6 @@ machine-readable schema/vector family or freeze exemption has been accepted.
 
 ## Document changelog
 
+- 1.0.2 (2026-10-10): clarify ownership of the window replacement alongside the independently versioned optional startup face; no window operation or event changes.
 - 1.0.1 (2026-10-10): update consumer evidence after big-screen layout retirement; no operation, event or retained V1 shape changes.
 - 1.0.0 (2026-10-10): define the additive v0.2 main Help navigation face with queued local targets, explicit compatibility and controlled consumer evidence.

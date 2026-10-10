@@ -13,21 +13,21 @@
  *   任务;等待下载不会把玩家困在导览里;
  * - 键盘纪律:步进后焦点落在指引卡,Esc = 跳出,←/→ 翻步,Tab 在卡内
  *   循环;导览结束恢复先前焦点;
- * - 进度状态独立(storageKeys.tourProgress):从未运行 = 自动开始,
+ * - 进度状态独立(storageKeys.tourProgress):新档案从未运行 = 自动开始,
  *   active 按步号恢复(中途关应用),completed/skipped 不再自动出现;
- *   重播经命令面板,不重置阅读器或安装状态。
+ *   重播经帮助或命令面板,不重置阅读器或安装状态。
  */
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { storageKeys } from "../../app/storage-keys.ts";
 import { Button } from "../../components/primitives/Button.tsx";
-import { format, strings } from "../../i18n/index.ts";
+import { format, strings, termLabel } from "../../i18n/index.ts";
 import type { PageId } from "../../app/nav-model.ts";
 import {
   TOUR_STEPS,
   normalizeStep,
   parseTourProgress,
   serializeTourProgress,
-  type TourProgressV1,
+  type TourProgressV2,
 } from "./tour-model.ts";
 import "./tour.css";
 
@@ -64,7 +64,7 @@ function rectOf(element: Element): AnchorRect {
   };
 }
 
-function readStoredProgress(): TourProgressV1 | null {
+function readStoredProgress(): TourProgressV2 | null {
   try {
     return parseTourProgress(localStorage.getItem(storageKeys.tourProgress));
   } catch {
@@ -72,7 +72,7 @@ function readStoredProgress(): TourProgressV1 | null {
   }
 }
 
-function persistProgress(progress: TourProgressV1): void {
+function persistProgress(progress: TourProgressV2): void {
   try {
     localStorage.setItem(storageKeys.tourProgress, serializeTourProgress(progress));
   } catch {
@@ -109,15 +109,17 @@ export function AppTour({
   navigate,
   startRequest,
   autoStart = true,
+  onFinish,
 }: {
   page: PageId;
   navigate: (target: PageId) => void;
   /** 壳侧重播信号:值递增 = 从第一步重开(命令面板入口) */
   startRequest: number;
   autoStart?: boolean;
+  onFinish?: (status: "completed" | "skipped") => void;
 }) {
   const copy = strings.tour;
-  const [progress, setProgress] = useState<TourProgressV1 | null>(() => readStoredProgress());
+  const [progress, setProgress] = useState<TourProgressV2 | null>(() => readStoredProgress());
   const [target, setTarget] = useState<AnchorTarget>(undefined);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
@@ -134,7 +136,7 @@ export function AppTour({
     if (!autoStart) return;
     setProgress((current) => {
       if (current !== null) return current;
-      const started: TourProgressV1 = { v: 1, status: "active", step: 0 };
+      const started: TourProgressV2 = { v: 2, status: "active", step: 0 };
       persistProgress(started);
       return started;
     });
@@ -145,7 +147,7 @@ export function AppTour({
   useEffect(() => {
     if (startRequest === lastStartRequest.current) return;
     lastStartRequest.current = startRequest;
-    const restarted: TourProgressV1 = { v: 1, status: "active", step: 0 };
+    const restarted: TourProgressV2 = { v: 2, status: "active", step: 0 };
     persistProgress(restarted);
     setProgress(restarted);
   }, [startRequest]);
@@ -162,6 +164,7 @@ export function AppTour({
   // 超时 = 该步锚点缺席,诚实进入缺席态
   useEffect(() => {
     if (!active) return;
+    if (stepDef.anchor === null) { setTarget(null); return; }
     let attempts = 0;
     let frame: number | null = null;
     let cancelled = false;
@@ -169,7 +172,7 @@ export function AppTour({
     const run = () => {
       if (cancelled) return;
       attempts += 1;
-      const element = document.querySelector(stepDef.anchor);
+      const element = document.querySelector(stepDef.anchor!);
       if (element instanceof HTMLElement) {
         element.scrollIntoView({ block: "center" });
         setTarget(rectOf(element));
@@ -190,9 +193,9 @@ export function AppTour({
 
   // 在位锚点跟随滚动/窗口变化(缺席态不升级——缺席说明保持可读)
   useEffect(() => {
-    if (!active) return;
+    if (!active || stepDef.anchor === null) return;
     const refresh = () => {
-      const element = document.querySelector(stepDef.anchor);
+      const element = document.querySelector(stepDef.anchor!);
       if (!(element instanceof HTMLElement)) return;
       setTarget((current) => (current === null ? current : rectOf(element)));
     };
@@ -219,7 +222,7 @@ export function AppTour({
     return () => cancelAnimationFrame(frame);
   }, [active, stepIndex]);
 
-  const applyProgress = useCallback((next: TourProgressV1) => {
+  const applyProgress = useCallback((next: TourProgressV2) => {
     persistProgress(next);
     setProgress(next);
   }, []);
@@ -227,16 +230,17 @@ export function AppTour({
   const goTo = useCallback(
     (next: number) => {
       if (progress?.status !== "active") return;
-      applyProgress({ v: 1, status: "active", step: normalizeStep(next, TOUR_STEPS.length) });
+      applyProgress({ v: 2, status: "active", step: normalizeStep(next, TOUR_STEPS.length) });
     },
     [progress, applyProgress],
   );
 
   const exit = useCallback(
     (status: "completed" | "skipped") => {
-      applyProgress({ v: 1, status, step: 0 });
+      applyProgress({ v: 2, status, step: 0 });
+      onFinish?.(status);
     },
-    [applyProgress],
+    [applyProgress, onFinish],
   );
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -278,14 +282,15 @@ export function AppTour({
 
   const stepCopy = copy.steps[stepDef.id as keyof typeof copy.steps];
   const absentCopy = "absent" in stepCopy ? stepCopy.absent : undefined;
-  const absent = target === null;
+  const welcome = stepDef.anchor === null;
+  const absent = !welcome && target === null;
   const cardStyle =
     target === null || target === undefined
       ? centerCard()
       : placeCard(target);
 
   return (
-    <div className="vua-tour" role="dialog" aria-modal="true" aria-label={copy.title} data-absent={absent || undefined} onKeyDown={onKeyDown}>
+    <div className="vua-tour" role="dialog" aria-modal="true" aria-label={copy.title} data-tour-step={stepDef.id} data-welcome={welcome || undefined} data-absent={absent || undefined} onKeyDown={onKeyDown}>
       {target != null ? (
         <div
           className="vua-tour__highlight"
@@ -297,7 +302,7 @@ export function AppTour({
           }}
         />
       ) : null}
-      <div className="vua-tour__card" ref={cardRef} tabIndex={-1} style={cardStyle}>
+      <div className={`vua-tour__card${welcome ? " vua-tour__card--welcome" : ""}`} ref={cardRef} tabIndex={-1} style={welcome ? undefined : cardStyle}>
         <p className="vua-tour__counter">
           {format(strings.onboarding.steps.counter, {
             current: stepIndex + 1,
@@ -305,7 +310,7 @@ export function AppTour({
           })}
         </p>
         <h2 className="vua-tour__title">{stepCopy.title}</h2>
-        <p className="vua-tour__body">{stepCopy.body}</p>
+        <p className="vua-tour__body">{format(stepCopy.body, { amf: termLabel("amf") })}</p>
         {absent ? <p className="vua-tour__absent">{absentCopy ?? copy.absentDefault}</p> : null}
         <div className="vua-tour__actions">
           <Button variant="subtle" onClick={() => exit("skipped")}>

@@ -1,35 +1,44 @@
-/**
- * 应用导览模型回归(三类引导架构 §2:小型类型化步表 + 独立进度状态)。
- */
 import assert from "node:assert/strict";
 import { test } from "vitest";
-import {
-  TOUR_STEPS,
-  normalizeStep,
-  parseTourProgress,
-  serializeTourProgress,
-} from "./tour-model.ts";
+import { TOUR_STEPS, firstTourRequired, normalizeStep, parseTourProgress, serializeTourProgress } from "./tour-model.ts";
 
-test("步表结构:每步有唯一 id、合法页面与非空锚点选择器", () => {
-  const ids = new Set(TOUR_STEPS.map((s) => s.id));
-  assert.equal(ids.size, TOUR_STEPS.length);
-  assert.ok(TOUR_STEPS.length >= 5, "首玩路线至少覆盖五处入口");
-  for (const step of TOUR_STEPS) {
-    assert.ok(step.page.length > 0, `${step.id} 页面缺失`);
-    assert.ok(step.anchor.startsWith(".") || step.anchor.startsWith("["), `${step.id} 锚点须是类名/属性选择器`);
+test("the welcome scene precedes real, unique controls across the available VUA areas", () => {
+  assert.equal(TOUR_STEPS[0]?.id, "welcome");
+  assert.equal(TOUR_STEPS[0]?.anchor, null);
+  assert.equal(new Set(TOUR_STEPS.map(step => step.id)).size, TOUR_STEPS.length);
+  for (const step of TOUR_STEPS.slice(1)) {
+    assert.ok(step.page && step.anchor && /^[.[]/.test(step.anchor), step.id);
+  }
+  for (const id of ["route", "network", "checks", "plan", "tools", "creator", "tasks", "guide", "settings"]) {
+    assert.ok(TOUR_STEPS.some(step => step.id === id), id);
   }
 });
 
-test("首玩路线覆盖:路线选择/网络/检查/计划/任务/引导入口按序出现", () => {
-  assert.deepEqual(
-    TOUR_STEPS.map((s) => s.id),
-    ["route", "network", "checks", "plan", "tasks", "guide"],
-  );
+test("a returning V1 tour resumes the same content after new scenes are inserted", () => {
+  for (const [step, id] of ["route", "network", "checks", "plan", "tasks", "guide"].entries()) {
+    const progress = parseTourProgress(JSON.stringify({ v: 1, status: "active", step }));
+    assert.equal(progress?.v, 2);
+    assert.equal(TOUR_STEPS[progress!.step]?.id, id);
+  }
+  for (const status of ["completed", "skipped"]) {
+    assert.deepEqual(parseTourProgress(JSON.stringify({ v: 1, status, step: 4 })), { v: 2, status, step: 0 });
+    assert.equal(firstTourRequired(false, JSON.stringify({ v: 1, status, step: 4 })), false);
+  }
 });
 
-test("normalizeStep:越界/非数钳回合法区间", () => {
-  assert.equal(normalizeStep(0, 6), 0);
-  assert.equal(normalizeStep(5, 6), 5);
+test("first use shows the tour before the wizard; existing profiles do not auto-start it", () => {
+  assert.equal(firstTourRequired(false, null), true);
+  assert.equal(firstTourRequired(false, "invalid"), true);
+  assert.equal(firstTourRequired(false, '{"v":2,"status":"active","step":2}'), true);
+  assert.equal(firstTourRequired(false, '{"v":2,"status":"completed","step":0}'), false);
+  assert.equal(firstTourRequired(false, '{"v":2,"status":"skipped","step":0}'), false);
+  assert.equal(firstTourRequired(true, null), false);
+});
+
+test("corrupt, unknown and noninteger progress does not silently become a completed tour", () => {
+  for (const raw of [null, undefined, "", "not-json", "42", "[1,2]", '{"v":3,"status":"active","step":0}', '{"v":2,"status":"running","step":0}', '{"v":2,"status":"active","step":"2"}', '{"v":2,"status":"active"}']) {
+    assert.equal(parseTourProgress(raw), null);
+  }
   assert.equal(normalizeStep(-1, 6), 0);
   assert.equal(normalizeStep(99, 6), 5);
   assert.equal(normalizeStep(Number.NaN, 6), 0);
@@ -37,38 +46,8 @@ test("normalizeStep:越界/非数钳回合法区间", () => {
   assert.equal(normalizeStep(0, 0), 0);
 });
 
-test("进度解析:合法载荷原样;形状垃圾/词表外/版本不符 → null", () => {
-  assert.deepEqual(parseTourProgress('{"v":1,"status":"active","step":2}'), {
-    v: 1,
-    status: "active",
-    step: 2,
-  });
-  assert.deepEqual(parseTourProgress('{"v":1,"status":"completed","step":0}'), {
-    v: 1,
-    status: "completed",
-    step: 0,
-  });
-  assert.equal(parseTourProgress(null), null);
-  assert.equal(parseTourProgress(undefined), null);
-  assert.equal(parseTourProgress(""), null);
-  assert.equal(parseTourProgress("not-json"), null);
-  assert.equal(parseTourProgress('{"v":2,"status":"active","step":0}'), null);
-  assert.equal(parseTourProgress('{"v":1,"status":"running","step":0}'), null);
-  assert.equal(parseTourProgress('{"v":1,"status":"active","step":"2"}'), null);
-  assert.equal(parseTourProgress('{"v":1,"status":"active"}'), null);
-  assert.equal(parseTourProgress("[1,2]"), null);
-  assert.equal(parseTourProgress("42"), null);
-});
-
-test("序列化与解析对偶;终态步号归零(不留陈旧步号)", () => {
-  const active = { v: 1 as const, status: "active" as const, step: 3 };
+test("V2 progress round-trips and terminal progress discards the old step", () => {
+  const active = { v: 2 as const, status: "active" as const, step: 3 };
   assert.deepEqual(parseTourProgress(serializeTourProgress(active)), active);
-  const skipped = { v: 1 as const, status: "skipped" as const, step: 3 };
-  assert.deepEqual(parseTourProgress(serializeTourProgress(skipped)), {
-    v: 1,
-    status: "skipped",
-    step: 0,
-  });
-  const completed = { v: 1 as const, status: "completed" as const, step: 0 };
-  assert.deepEqual(parseTourProgress(serializeTourProgress(completed)), completed);
+  assert.deepEqual(parseTourProgress(serializeTourProgress({ v: 2, status: "skipped", step: 3 })), { v: 2, status: "skipped", step: 0 });
 });

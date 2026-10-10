@@ -383,13 +383,29 @@ demoTaskTitle: "Demo task",
     /** Fallback absent note when a step has no specific hint */
     absentDefault: "This entry is not shown right now. You can continue the tour and come back later.",
     steps: {
+      welcome: {
+        title: "Welcome, traveler from reality.",
+        body: "I'm VUA. I bring play setup, useful tool entries and Avatar preparation into one place. Let's take a quick look around.",
+      },
+      tools: {
+        title: "Extra tools live here",
+        body: "Face tracking, translation and other useful tools belong here. Entries marked In development offer a description while installation and launch are still being built.",
+      },
+      creator: {
+        title: "Avatar editing starts here",
+        body: "Check Unity and package managers here. {amf} comes with VUA; enable it when you want to manage assets or edit Avatars. Play setup works independently.",
+      },
+      settings: {
+        title: "Make VUA feel like yours",
+        body: "Appearance, interface language and account entries are in Settings. Back returns to your previous page. Search at the bottom of this sidebar can replay the tour.",
+      },
       route: {
         title: "This is where you choose",
-        body: "The logo takes you Home. Play, Avatar editing and Avatar tools stay available regardless of your wizard choices.",
+        body: "The logo takes you Home. Play, Tools and Avatar editing stay in the sidebar regardless of your wizard choices.",
       },
       network: {
         title: "Network checks live here",
-        body: "The top card tests all saved websites from its right half. Open its left half to test or edit individual websites and read connection help. Testing starts only when you click.",
+        body: "The right half checks website connectivity; the left half shows results and individual tests. Regional server Ping is still being connected. Tests run only when you click.",
         absent: "Return to Play to find network tests.",
       },
       checks: {

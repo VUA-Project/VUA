@@ -1,11 +1,11 @@
-# VUA design standard v0.16.0
+# VUA design standard v0.17.0
 
 
-> Document version: 0.16.0
+> Document version: 0.17.0
 > Status: Accepted
 > Scope: Electron desktop, desktop overlay, and VR overlay presentation  
 > Updated: 2026-10-10
-> Last conformance review: 2026-10-10 (controlled individual-card layout, short-window language/Search, retired-mode fallback and retained receipt/theme/resource behavior; author app/device and human-language review pending)
+> Last conformance review: 2026-10-10 (controlled small native splash, welcome/tour and retained card/language/appearance/resource behavior; author app/device and human-language review pending)
 > Normative effect: Governs interaction, visual, and accessibility implementation;
 > does not expand product scope or replace versioned application contracts
 
@@ -699,17 +699,19 @@ changelog history already uses.
   sources while preserving their separate progress; actual window and headset UI need human review.
   Task/runtime overlays use stronger text contrast, fewer levels, larger targets, stable snapshots
   and semantic actions. No blur, complex background or long lists; desktop fallback remains available.
-- **Global shell: boot splash and notification center:** the boot splash is the brand's first
-  frame, never a loading-mask stand-in: the square column grid falling top-to-bottom and the
-  central VUA letter frames in a purple-orange gradient stroke are the fixed ceremony. Exit is
-  driven by the real startup chain — the fade-out happens only when the animation budget is spent
-  AND all four milestones (renderer/gateway/provider/paint) have been reached; otherwise the
-  splash enters a waiting state (breathing columns plus an honest waiting caption), and the hard
-  cap forces exit on schedule with the main UI's own honest-absence rendering taking over.
-  Escape and click skip immediately. With flattened motion (reduced-motion / effects off) the
-  animations flatten entirely, the dwell shortens, and milestones are not awaited. The
-  bottom-left version badge reads build-time injected facts (version · commit · dirty); the
-  update badge appears only for "newer available" — a failed check or up-to-date never disturbs.
+- **Global shell: boot splash and notification center:** the 2026-10-10 approved opening is
+  a centered 480 × 320 DIP native window, initially pure white. Thick black parallel rays travel
+  at 120° from upper right to lower left, revealing the supplied white logo on the final black
+  background. It contains only that logo and a loading circle below: no buttons, captions,
+  click/Escape skip, version/update labels or matrix background. This fixed monochrome opening
+  is an explicit color exception; normal shell themes and the retained matrix/glass are unchanged.
+  After the animation budget, real renderer/Gateway/provider/paint readiness hands off to Main;
+  if delayed, the circle continues until the bounded fallback and the shell's honest state take
+  over. Reduced-motion/resource-saving keeps the final static monochrome frame with a shorter
+  dwell. On a new profile, the first main-window scene welcomes the traveler in the selected
+  language, then introduces real controls through the tour before the independent wizard.
+  Tour back/next/skip, readable cards, existing-profile compatibility and replay follow
+  [guidance architecture](../architecture/guidance.md#2-vua-app-tour).
   The notification center (header bell) projects the task facts without invented counts;
   the former bottom taskbar is retired by the 2026-10-09 user ruling. When the task-engine
   capability is not ready the entry never appears at all (§2 "Explicit facts and recovery"
@@ -785,6 +787,7 @@ direction.
 
 ## 12. Document changelog
 
+- 0.17.0 (2026-10-10): accept the small monochrome ray/white-logo startup and first-use welcome/tour, preserving normal shell themes, matrix/glass and resource-saving preferences.
 - 0.16.0 (2026-10-10): anchor collapsible details beneath each individual card, separate translation/compact-language and Search rows, route retired goal links to Help and retire big-screen mode while preserving native control semantics and visual/resource preferences.
 - 0.15.0 (2026-10-10): replace the AMF Home Inspection card with Finished Avatars and Package Manager in both modes, retaining inspection reports and aligning the finished-output title across navigation.
 - 0.14.0 (2026-10-10): standardize collapsible Play/Tools/editor details and compact tool widths, distinguish navigable Help child pages with Back/Forward, and place AMF activation and consolidated Settings controls in their accepted locations.
@@ -794,6 +797,5 @@ direction.
 - **0.11.0 (2026-10-09)**: narrow the sidebar, retire the bottom bar and four redundant header controls, move search into Settings, and adopt connected appearance choices with a Dark default and preserved motion fallbacks.
 - **0.10.0 (2026-10-09)**: separate tasks from onboarding, define settings-only navigation and return, restore Inspection to Avatar, add tray gestures and recognizable headset glyphs, and remove the header page-name duplicate.
 - **0.9.0 (2026-10-08)**: implement the accepted fixed Home/logo entry, independent branching wizard, concise navigation and desktop/big-screen hierarchy while retaining grid, glass and resource saving.
-- **0.8.0 (2026-10-05)**: define three guidance presentations and their topbar/contextual entries while retaining the two-business-tab shell.
 
 Earlier entries remain in Git history.

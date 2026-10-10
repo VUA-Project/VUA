@@ -1674,8 +1674,15 @@ export interface DesktopWindowApiV2 extends DesktopWindowApiV1 {
   };
 }
 
+/** Independent desktop-startup v0.1 face; no Provider or retained V1 behavior change. */
+export interface DesktopStartupApiV01 {
+  readonly systemLanguages: readonly string[];
+  complete(): Promise<void>;
+}
+
 export interface VuaDesktopApiV2 extends Omit<VuaDesktopApiV1, "window"> {
   readonly window: DesktopWindowApiV2;
+  readonly startup?: DesktopStartupApiV01;
 }
 
 export interface VuaDesktopApiV1 {

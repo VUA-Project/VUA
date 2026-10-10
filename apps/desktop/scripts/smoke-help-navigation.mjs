@@ -43,7 +43,7 @@ async function run() {
     createRequire(import.meta.url)(path.join(desktop, "dist/packaged-electron/main.js"));
     await app.whenReady();
     await waitFor(() => {
-      window = BrowserWindow.getAllWindows().find(candidate => candidate.webContents.getURL().startsWith("file:"));
+      window = BrowserWindow.getAllWindows().find(candidate => candidate.webContents.getURL().startsWith("file:") && !candidate.webContents.getURL().includes("surface=splash"));
       return window && !window.webContents.isLoading();
     }, "production renderer");
     // Chromium's Back intervention skips script-created entries without user activation.
@@ -86,7 +86,9 @@ async function run() {
       await delay(100);
       fs.writeFileSync(path.join(output, `${name}.png`), (await window.webContents.capturePage()).toPNG());
     };
-    await waitFor(() => js('!!document.querySelector(".vua-onboarding") && !document.querySelector(".vua-boot-splash")'), "fresh entry");
+    await waitFor(() => js('document.querySelector(".vua-tour")?.dataset.tourStep==="welcome"'), "first-use welcome");
+    await js('document.querySelector(".vua-tour__actions button").click()');
+    await waitFor(() => js('!!document.querySelector(".vua-onboarding") && !document.querySelector(".vua-boot-splash")'), "fresh entry after tour skip");
     // Use an explicit UI preference instead of depending on the test machine's locale.
     await js('localStorage.setItem("vua-locale","zh-CN"); location.reload()');
     await waitFor(() => js('!!document.querySelector(".vua-onboarding") && !document.querySelector(".vua-boot-splash") && document.documentElement.lang==="zh-CN"'), "localized fresh entry");

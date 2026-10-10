@@ -56,10 +56,11 @@ import { creatorEnvReady } from "./features/deployer/deployer-model.ts";
 import { OnboardingPage, type OnboardingResult } from "./features/onboarding/OnboardingPage.tsx";
 import { NavigationConfirmOverlay } from "./app/NavigationConfirmOverlay.tsx";
 import { AppTour } from "./features/tour/AppTour.tsx";
+import { firstTourRequired } from "./features/tour/tour-model.ts";
 import { LoginBrowserOverlay } from "./app/LoginBrowserOverlay.tsx";
 import { NotificationPopover } from "./features/task-center/NotificationPopover.tsx";
 import { ResourceMonitor } from "./features/resource-monitor/ResourceMonitor.tsx";
-import { BootSplash } from "./components/splash/BootSplash.tsx";
+import { BootGate, BootSplash } from "./components/splash/BootSplash.tsx";
 import { bootProgress } from "./app/boot-progress.ts";
 import { ToolsPage, type ToolsPageId } from "./features/tools/ToolsPage.tsx";
 import { ToolsHub } from "./features/tools/ToolsHub.tsx";
@@ -629,6 +630,9 @@ function AppShell({
   page,
   navigate: navigatePage,
   showOnboarding,
+  autoStartTour,
+  startupComplete,
+  onTourFinish,
   onOnboardingComplete,
   actions,
   uiRoot,
@@ -637,6 +641,9 @@ function AppShell({
   page: PageId;
   navigate: (target: PageId) => void;
   showOnboarding: boolean;
+  autoStartTour: boolean;
+  startupComplete: boolean;
+  onTourFinish: () => void;
   onOnboardingComplete: (result: OnboardingResult) => void;
   /** 壳层注入的动作(openPalette/navigate 由 AppShell 内部补齐,见 pageActions) */
   actions: Omit<PageActions, "openPalette" | "navigate" | "openAccounts" | "startTour">;
@@ -1049,7 +1056,7 @@ function AppShell({
       <NavigationConfirmOverlay />
       {/* 应用导览(三类引导裁决 2026-10-05):主窗口内有序高亮;从未运行自动
        *  开始,active 按步号恢复,重播经命令面板;状态独立于阅读器/安装 */}
-      {!showOnboarding ? <AppTour page={page} navigate={navigate} startRequest={tourStartRequest} autoStart={false} /> : null}
+      {!showOnboarding && startupComplete ? <AppTour page={page} navigate={navigate} startRequest={tourStartRequest} autoStart={autoStartTour} onFinish={onTourFinish} /> : null}
       {/* 窗口级登录浏览器(2026-10-05 用户裁决):无开启意图时零渲染;视图
           生命周期归组件(卸载即关),宿主不依赖任何页面/弹窗 */}
       <LoginBrowserOverlay />
@@ -1078,8 +1085,23 @@ export function App() {
     resolveEntry(storedGoals, override === null ? readStoredPage() : null),
   );
   const [showOnboarding, setShowOnboarding] = useState(entry.showOnboarding);
-  // 启动开屏:首帧覆盖层,播完/跳过后卸载;与 Gateway 装配并行,不阻塞数据
+  const [firstTourPending, setFirstTourPending] = useState(() => {
+    if (override !== null) return false;
+    try { return firstTourRequired(!entry.showOnboarding, localStorage.getItem(storageKeys.tourProgress)); }
+    catch { return entry.showOnboarding; }
+  });
+  // Main owns the native splash; browser previews retain an in-page fallback.
   const [splashDone, setSplashDone] = useState(false);
+  const nativeStartup = window.vua?.startup;
+  const finishStartup = () => {
+    setSplashDone(true);
+    void nativeStartup?.complete().catch(() => { /* Main's bounded fallback still opens the shell. */ });
+  };
+  const finishFirstTour = () => {
+    if (!firstTourPending) return;
+    setFirstTourPending(false);
+    setPage("home");
+  };
   // 启动里程碑(Phase A 牵线):gateway 装配完成即报;provider 探针=首个
   // capability 应答(任一结果均计,测网关链活性);paint 由 AppShell 首效应上报
   useEffect(() => {
@@ -1090,7 +1112,7 @@ export function App() {
     );
   }, [gateway]);
   // 版本检测(2026-09-19 裁决:默认开启、设置可关):启动后静默自检一次,
-  // 结果落缓存供开屏角标/设置页呈现;延迟 2.5s 让启动链路先行,失败
+  // 结果落缓存供设置页呈现;延迟 2.5s 让启动链路先行,失败
   // 恒落 check-failed 缓存(不弹打扰、不猜态)
   useEffect(() => {
     const timer = window.setTimeout(() => void runUpdateCheck(), 2500);
@@ -1166,14 +1188,17 @@ export function App() {
 
   return (
     <GatewayProvider gateway={gateway}>
-      {!splashDone ? <BootSplash onDone={() => setSplashDone(true)} /> : null}
+      {!splashDone ? (nativeStartup ? <BootGate onDone={finishStartup} /> : <BootSplash onDone={finishStartup} />) : null}
       {uiRoot === "forest-green" ? (
         <ForestVariantRoot onBackToCurrent={() => setUiRoot("current")} />
       ) : (
         <AppShell
           page={page}
           navigate={navigate}
-          showOnboarding={showOnboarding}
+          showOnboarding={showOnboarding && !firstTourPending}
+          autoStartTour={firstTourPending}
+          startupComplete={splashDone}
+          onTourFinish={finishFirstTour}
           onOnboardingComplete={handleOnboardingComplete}
           actions={actions}
           uiRoot={uiRoot}

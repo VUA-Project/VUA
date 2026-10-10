@@ -1,6 +1,6 @@
 # First play release: implementation checkpoint and remaining work
 
-> Document version: 1.14.0
+> Document version: 1.15.0
 > Status: Accepted
 > Updated: 2026-10-10
 > Scope: Desktop play, PICO 4 Pro USB/Wi-Fi, optional eye tracking and three guidance contexts
@@ -255,16 +255,25 @@ four locales at the supported window sizes. Headset readability is checked in th
 
 ### B. VUA app tour
 
-Implemented in `acef54a0`; connect later installation and launch actions as they land.
+The original tour landed in `acef54a0`. The 2026-10-10 ruling now starts a new profile with
+the author's four-language welcome, then introduces real Home, Play, Tools, Avatar-editing
+preparation/AMF enablement, Tasks, Help and Settings controls. Finish/skip enters the independent
+branching wizard. Existing onboarded profiles are not welcomed again; active reading bookmarks
+resume by feature identity across the local v1 → v2 migration. Help/Search can replay it.
 
-Add a short ordered tour inside the main VUA window using real page/control anchors. Cover
-route choice, network results, environment inspection, plan review, task progress and the play/
-guide entries. Provide back/next, skip/exit and restart, with clear handling for missing controls
-or a task waiting on the user. Keep tour state separate from the reader and installation state.
+The same slice replaces the full-window opening with the approved 480 × 320 DIP native logo/ray
+window and loading circle. System-language ordering was already designed; Main now supplies the
+Windows preference list, with supported language-family matching and English fallback, while a
+saved manual choice remains authoritative. The new local desktop-startup face is Candidate.
 
-Build against available controls now and connect later install/launch steps as those actions
-land. Check keyboard focus, page transitions, resume/restart and exit during a live task.
-The tour must not need a general tutorial service or an AMF workflow to operate.
+Controlled production-Main/preload/renderer checks cover native presentation/teardown, all four
+welcome phrases, short-window layout, actual feature anchors, finish/skip/restart, legacy active
+steps, existing profiles and resource-saving startup. Dedicated ordered/unsupported-language
+cases cover fallback without treating browser defaults as Windows preferences. The existing Help
+and AMF smokes now traverse the first-use tour before the wizard. Source checks are not an
+installer/device pass or four-language human review; those remain below. No new local ZIP is
+made during the author's UI review. The tour still requires neither a general tutorial service
+nor AMF activation.
 
 ### C. VRChat game guide
 
@@ -376,6 +385,7 @@ installation, PICO connection, real-material production and four-language human 
 
 ## Document changelog
 
+- 1.15.0 (2026-10-10): record the approved small native opening, Windows language handoff and first-use welcome/tour continuity, with controlled UI evidence and unchanged physical/human release acceptance.
 - 1.14.0 (2026-10-10): record per-card detail placement, separated compact language/Search controls, goal-link migration and full big-screen retirement while retaining pending device/install/material acceptance and no local ZIP.
 - 1.13.0 (2026-10-10): record unified card toggles, Help history, Avatar-editing AMF setup and consolidated Settings; align scenario-stage ownership while retaining pending physical acceptance and no new ZIP.
 - 1.12.0 (2026-10-10): record environment Tools/Help, embedded hardware/knowledge reading and compact Play checks without claiming new tool integrations, hardware acceptance or another ZIP.
@@ -385,6 +395,5 @@ installation, PICO connection, real-material production and four-language human 
 - 1.8.0 (2026-10-09): record two-half play cards, scoped observed launch/close and creator inventory while retaining real vendor/device checks and the author’s no-package UI review.
 - 1.7.0 (2026-10-09): record the compact shell and Settings search/appearance corrections, update the task-tour destination and expand the controlled UI checks to 56; no new ZIP or physical-acceptance claim.
 - 1.6.0 (2026-10-09): record the author's development-mode UI corrections, task/theme separation, settings return, headset glyphs and native tray checks; defer another ZIP while the UI is under review.
-- 1.5.0 (2026-10-08): record the integrated wizard/Home implementation and controlled UI checks, with official account handoff and real-device/installer/human review still separate.
 
 Earlier entries remain in Git history.

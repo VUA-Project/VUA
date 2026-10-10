@@ -54,7 +54,18 @@ const shellCommandListeners = new WeakMap<
   (event: IpcRendererEvent, payload: unknown) => void
 >();
 
+const languageArgument = process.argv.find(argument => argument.startsWith("--vua-system-languages="));
+let systemLanguages: readonly string[] = [];
+try {
+  const decoded: unknown = JSON.parse(decodeURIComponent(languageArgument?.slice("--vua-system-languages=".length) ?? "[]"));
+  if (Array.isArray(decoded) && decoded.length <= 32 && decoded.every(language => typeof language === "string" && language.length <= 64)) systemLanguages = decoded;
+} catch { /* Missing OS languages use the source-language fallback. */ }
+
 const api: VuaDesktopApiV2 = Object.freeze({
+  startup: Object.freeze({
+    systemLanguages: Object.freeze(systemLanguages),
+    complete: () => ipcRenderer.invoke("vua:startup:complete"),
+  }),
   amfModule: Object.freeze({
     snapshot: () => ipcRenderer.invoke("vua:amf-module:snapshot"),
     setEnabled: (enabled: boolean) => ipcRenderer.invoke("vua:amf-module:set-enabled", enabled),
