@@ -36,6 +36,8 @@ export class ModuleProvider implements OrchestratorProviderV01 {
   readonly #listeners = new Set<ProviderEventListenerV01>();
   readonly #moduleListeners = new Set<(snapshot: AmfModuleSnapshotV01) => void>();
   readonly #taskOwners = new Map<string, "host" | "amf">();
+  /** `updatedAt` when this process first listed each task: the list's sort key. */
+  readonly #taskFirstSeen = new Map<string, string>();
   #amf: OrchestratorProviderV01 | undefined;
   #amfUnsubscribes: ProviderUnsubscribe[] = [];
   #enabled: boolean;
@@ -227,9 +229,14 @@ export class ModuleProvider implements OrchestratorProviderV01 {
       const amfTasks = optional?.ok && "revision" in optional.value && "tasks" in optional.value ? optional.value.tasks as readonly TaskSnapshotV01[] : [];
       hostTasks.forEach(task => this.#taskOwners.set(task.taskId, "host"));
       amfTasks.forEach(task => this.#taskOwners.set(task.taskId, "amf"));
+      // Newest first, by the time each task first appeared. Progress moves `updatedAt` on every
+      // tick, so rows keep their place while concurrent downloads run.
+      const tasks = [...hostTasks, ...amfTasks];
+      for (const task of tasks) if (!this.#taskFirstSeen.has(task.taskId)) this.#taskFirstSeen.set(task.taskId, task.updatedAt);
+      const firstSeen = (task: TaskSnapshotV01) => this.#taskFirstSeen.get(task.taskId) ?? task.updatedAt;
       return { ...core, value: { contractVersion: this.contractVersion,
         revision: this.#nextRevision(core.value.revision, optional?.ok && "revision" in optional.value ? optional.value.revision : 0),
-        tasks: [...hostTasks, ...amfTasks].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.taskId.localeCompare(b.taskId)) } };
+        tasks: tasks.sort((a, b) => firstSeen(b).localeCompare(firstSeen(a)) || a.taskId.localeCompare(b.taskId)) } };
     }
     if (request.method === "application.getSnapshot" && "capabilities" in core.value) {
       const host = core.value as ApplicationSnapshotV01;

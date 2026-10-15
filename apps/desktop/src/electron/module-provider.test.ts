@@ -143,6 +143,23 @@ describe("host / optional AMF process boundary", () => {
     await provider.prepareShutdown({ timeoutMs: 100 });
   });
 
+  it("lists tasks newest first and keeps each row in place while progress updates it", async () => {
+    const { provider, host, amf } = setup();
+    await provider.start(); await provider.setAmfEnabled(true);
+    const at = (row: TaskSnapshotV01, updatedAt: string): TaskSnapshotV01 => ({ ...row, updatedAt });
+    const order = async () => {
+      const list = await provider.invoke(query("task.list"));
+      return list.ok && "tasks" in list.value ? list.value.tasks.map(row => row.taskId) : [];
+    };
+    host.tasks = [at(task("slow-download", "running"), "2026-10-16T10:00:00.000Z")];
+    amf.tasks = [at(task("fast-download", "running"), "2026-10-16T10:00:01.000Z")];
+    expect(await order()).toEqual(["fast-download", "slow-download"]);
+    host.tasks = [at(task("slow-download", "running"), "2026-10-16T10:00:09.000Z")];
+    amf.tasks = [at(task("fast-download", "running"), "2026-10-16T10:00:05.000Z"), at(task("newer-download", "queued"), "2026-10-16T10:00:08.000Z")];
+    expect(await order()).toEqual(["newer-download", "fast-download", "slow-download"]);
+    await provider.setAmfEnabled(false); await provider.prepareShutdown({ timeoutMs: 100 });
+  });
+
   it("keeps the module enabled while an AMF task or shell download is active", async () => {
     let downloading = false;
     const { provider, amf, saved } = setup({ shellBusy: () => downloading });
