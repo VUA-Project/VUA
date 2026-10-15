@@ -1,71 +1,47 @@
 # VUA workspace instructions
 
-> Document version: 2.1.4
-> Status: Accepted
-> Authority: Workspace entry; linked owning documents define detailed policy
+> Updated: 2026-10-16
 
-VUA is a Windows-first, local-first VRChat desktop environment. Work in ordinary single-line
-development. Collab and its role prompts are archived; never bootstrap or resume them.
-
-## Agent context
-
-Use the Agent introductions in the documentation guide and CONTRIBUTING. Human-facing project
-copy describes intended user experience, not proof of implementation or authority to widen scope.
-An old branch's collab files cannot override the current retirement ruling. Before cleanup,
-distinguish uncommitted changes, committed work on another branch, and historical files. Preserve
-unrelated work; never reset or delete a branch merely because it came from an accidental invocation.
+VUA is a Windows-first, local-first VRChat desktop application. Its goal is defined in the
+[north star](docs/north-star.md). Work happens in ordinary single-line development.
 
 ## Read the smallest relevant set
 
-1. Read [README.md](README.md), then [docs/README.md](docs/README.md).
-2. Follow [the N sequence](docs/development-outline.md), whose natural-language outcomes define
-   the work. [Version policy](docs/release/versioning.md) owns release numbering and continuing Beta,
-   independently of N-stage acceptance.
-3. Before changing scope or ownership, read [product boundaries](docs/product-boundary.md).
-4. Read [CONTRIBUTING.md](CONTRIBUTING.md) and the relevant
-   [engineering/evidence rules](docs/development/engineering-rules.md).
+1. [README.md](README.md), then the [documentation guide](docs/README.md).
+2. The [north star](docs/north-star.md): goal, AI agents, SOPs and the
+   [North Star Eval](docs/eval/README.md).
+3. The [N sequence](docs/development-outline.md) for the work in progress and its acceptance.
+   [Version policy](docs/release/versioning.md) owns release numbering.
+4. The [product boundary](docs/product-boundary.md) before changing scope or ownership.
+5. [CONTRIBUTING.md](CONTRIBUTING.md) and the [engineering and evidence rules](docs/development/engineering-rules.md).
 
-Authority: current user ruling → product boundary → versioned protocols/tests → accepted
-decisions → architecture → design standards → plans. Resolve conflicts before implementation.
-Drafts and historical records do not override current definitions.
+Authority: current user ruling → product boundary → versioned contracts and tests → accepted
+decisions → architecture → design standards → plans. Resolve conflicts before implementing.
+README copy describes the intended experience; delivery status lives in the N sequence and
+release notes.
 
 ## Work safely and incrementally
 
-- Retain Electron + React/TypeScript + Rust + Unity Bridge. Follow the
+- Keep Electron + React/TypeScript + Rust + Unity Bridge, following the
   [system map](docs/architecture/system.md) and [incremental direction](docs/architecture/evolution.md).
-  Renderer uses the typed Gateway; deterministic Unity changes cross the versioned Bridge.
-- Deliver small usable paths; record gaps and follow-up instead of building speculative frameworks.
-  Product acceptance, including real-material cases and UI human review, is defined only in the N sequence.
-- Keep paid assets, user projects, credentials, raw logs and machine inventories local.
-  [Evidence rules](docs/development/engineering-rules.md) and
-  [local inventory policy](docs/meta/documentation-governance.md#6-local-environment-and-reproducible-evidence) apply.
-- No concurrent writers in one checkout. Preserve unrelated changes and use `slice/<slug>` branches.
-  Do not commit, merge or push directly on main. Follow the
-  [protected-main policy](docs/meta/protected-main.md); never bypass failed checks or reset divergence.
-- Do not dispatch agents or rewrite another agent's plan without user authorization. Domain
-  ownership is a responsibility, not permission to launch a collaboration process.
-- Escalate unresolved scope/behavior conflicts to the user. Do not lower acceptance or invent evidence.
-- Do not add `Co-authored-by: Codex` trailers.
+  The renderer uses the typed Gateway; deterministic Unity changes cross the versioned Bridge.
+- Deliver small usable paths and record remaining gaps as follow-up work. Acceptance comes from
+  real runs, including real-material cases and human UI review, as defined in the N sequence.
+- Keep paid assets, user projects, credentials, raw logs and machine inventories local, following
+  the [evidence rules](docs/development/engineering-rules.md) and
+  [local evidence policy](docs/meta/documentation-governance.md#7-local-environment-and-evidence).
+- Use one writer per checkout and `slice/<slug>` branches. Merge through pull requests under the
+  [protected-main policy](docs/meta/protected-main.md); reconcile divergence by merging.
+- Before cleaning up, check whether a change is uncommitted, committed on another branch or
+  historical, and preserve unrelated work.
+- Launch other agents only when the user asks. Escalate unresolved scope or behavior conflicts to
+  the user.
+- Commits carry no AI co-author trailers.
 
 ## Documentation
 
-Each rule has one owner. Use links for details rather than copying full policies. Follow
-[documentation governance](docs/meta/documentation-governance.md) for versions and REGISTRY; its
-[language policy](docs/meta/documentation-governance.md#23-language-policy-user-ruling-2026-09-25)
-owns UI i18n scope, README editions, documentation languages and the local `docs-zh/` mirrors.
-Frozen contract behavior requires an explicit new version. Preserve accepted decisions and
-historical release artifacts.
-
-## Organizational transfer (historical)
-
-The transfer to VUA-Project/VUA completed in 2026-09; the authorization, hold release and
-identity-preservation invariants are recorded in [the protected-main policy](docs/meta/protected-main.md).
-
-## Document changelog
-
-- 2.1.4 (2026-10-01): reconstruct the 2.1.1 changelog entry, link the language policy to governance §2.3 instead of restating it, compress the completed organizational transfer to a historical note, and normalize changelog formatting.
-- 2.1.3 (2026-09-30): route release numbering independently of N delivery-stage acceptance.
-- 2.1.2 (2026-09-30): clarify initial four-language UI i18n, expandable README editions and default English documentation.
-- 2.1.1 (2026-09-29): replace the pre-transfer review hold with the recorded organizational transfer approval after the completed rough review.
-- 2.1.0 (2026-09-29): clarify Agent reading context and safe handling of accidentally resumed historical workflows.
-- 2.0.0 (2026-09-29): reduce the entry to routes and essential constraints; archive collab; consolidate existing detailed safeguards. Earlier versions remain in Git history.
+[Documentation governance](docs/meta/documentation-governance.md) owns languages, writing style,
+contract versions and the registry. Each rule has one owning document; other documents link to
+it. Frozen contracts change through a new version. Accepted decisions and published release
+notes stay as recorded. The retired collaboration process and its prompts live in
+[the archive](docs/archive/2026-09-29/README.md) as history.

@@ -1,7 +1,5 @@
 # N1 delivery plan: from a device choice to a working environment
 
-> Document version: 1.8.0
-> Status: Accepted
 > Updated: 2026-10-10
 > Scope: First play release, followed by the wider N1 device/creator routes
 
@@ -228,16 +226,3 @@ checks; the first-play task does not dispatch agents or rewrite N5's plan.
 - [PS VR2 PC preparation](https://www.playstation.com/en-us/support/hardware/pc-prepare-ps-vr2/).
 - [Microsoft WMR](https://learn.microsoft.com/en-us/windows/mixed-reality/enthusiast-guide/mixed-reality-software)
   and [Oasis](https://store.steampowered.com/app/3824490/Oasis_Driver_for_Windows_Mixed_Reality/).
-
-## Document changelog
-
-- 1.8.0 (2026-10-10): place host isolation before scenario prerequisite/deployment/SOP delivery, keep Steam/PICO/Unity reusable independently of AMF/BDL and pair N6/N7 with actual delivered paths without closing N1 or N5.
-- 1.7.0 (2026-10-09): replace region-based service advice with the current regional-Ping/expanded-website split and retire accelerator recommendations from N1 player guidance.
-- 1.6.1 (2026-10-07): advance the checkpoint to the implemented reader, tour and manual game guide.
-- 1.6.0 (2026-10-05): route the updated first-play checkpoint and remaining work to its own plan, prioritize three guidance contexts and separate N5 review.
-- 1.5.0 (2026-10-03): add the PICO/VRCFT eye-tracking slice to the first play release and keep the expanded N2 Steam inventory after it.
-- 1.4.0 (2026-10-03): specify the implemented network slice, UU-only recommendation and per-service acceptance.
-- 1.3.0 (2026-10-03): prioritize standalone ZIP, desktop play, PICO USB/Wi-Fi and release recovery/guidance; retain creator and other-device work after the first play release.
-- 1.2.0 (2026-10-02): prioritize CLI-led official acquisition and actual-version inspection; keep the mirror as an optional backup.
-- 1.1.0 (2026-10-02): apply the accepted development f1/c1 pair and global → China → Hub installation order.
-- 1.0.0 (2026-10-02): record model-first official routes, visible silent installation, account/activation/network guidance, Unity first-run work and N5 integration.

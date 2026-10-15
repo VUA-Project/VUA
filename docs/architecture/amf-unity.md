@@ -1,12 +1,7 @@
 # AMF and Unity Bridge architecture
 
-
-> Document version: 1.3.0
-> Status: Accepted
 > Scope: AMF application services, Recipe, Build Record, `unity/`
 > Updated: 2026-10-09
-> Last conformance review: 2026-09-06
-> Normative effect: Yes
 
 ## AMF production model
 
@@ -155,33 +150,3 @@ vocabulary took zero new operations — the current frozen face is
   product or user content; developers may use their own lawfully obtained assets for local Unity
   integration and smoke validation, and the assets, projects, configuration, and outputs remain
   local.
-
-## Document changelog
-
-- 1.3.0 (2026-10-09): scope production and private BDL to the optional AMF process; link host lifecycle and migration ownership.
-- 1.2.3 (2026-10-01): mark the handoff section's proposal-023 stance as an archived 2026-09-16
-  historical reference and note that the current frozen Bridge command face is v4 (v3 was current
-  when the section landed); refresh the stale header date; no behavior change.
-- 1.2.2 (2026-09-28): remove obsolete mirror metadata and clarify current ownership where needed during the N documentation audit.
-- 1.2.1 (2026-09-23): structure aligned with the authoritative ZH edition — "Operations and
-  safety" is its own section again, recovering two sub-points lost to the folded wording ("the
-  Orchestrator writes requests atomically and Unity writes results atomically" and "a
-  project-fingerprint mismatch requires a fresh Inspect"), and the "Unity Bridge boundary"
-  section regains "final login and upload stay in the official VRChat SDK Panel"; the
-  authoritative ZH text is unchanged.
-- 1.2.0 (2026-09-22): user ruling of 2026-09-22 landed — Recipe redefined from "desired state" to
-  a stackable set of modifications (overlay semantics, preserve-by-default, explicit deletion,
-  four conflict options, bounded reproduction, pointing at product boundary 1.5.0's "Production
-  scope and product rulings"); the Inspection stage left the production model, checks fold into
-  production records and the notification center, and a Release placeholder record is distinct
-  from an immutable Build Record; new "MA and SDK responsibility boundary" section; the "stable
-  references" wording now states object location awaits real-machine verification (undecided);
-  stale ALCOM/VCC wording corrected to read-only originals plus the copy write path (aligned with
-  the accepted U3/U14 rulings, changing no existing boundary). Mirrors the ZH edition.
-- 1.1.0 (2026-09-16): added the "Release handoff process face" section — proposal 023 production
-  implementation slice (bridge handshake signal `EditorHandshake` + Rust process/window-face port
-  `handoff` module + `schemas/unity-bridge/handshake/v1.0/`); the Bridge command face is unchanged.
-- 1.0.1 (2026-09-08): mirror fix — "Unity/VPM/tool versions" aligned with the authoritative ZH
-  wording ("Unity、VPM 包与工具版本"); per BOARD #9 terminology, VPM 包 = VPM package.
-- 1.0.0 (2026-09-06): entered version management; header normalized and conformance-review date
-  added. Content reviewed against reality with no change.

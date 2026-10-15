@@ -1,10 +1,7 @@
 # VUA Catalog Risk Gate v1
 
-> Document version: 1.0.0  
-> Status: Accepted  
-> Rule ID: `vua.risk-gate/v1`  
-> Scope: `core / plugin / external` catalog entries  
-> Normative effect: Derives release risk and blocks incomplete entries
+> Rule ID: `vua.risk-gate/v1`
+> Scope: `core / plugin / external` catalog entries
 > Updated: 2026-10-02
 
 ## Gate algorithm
@@ -37,9 +34,3 @@ user and release risk, not only VUA authority. When evidence matches no known ru
 - Environment deployment is **medium** because it may launch installers and perform confirmed scoped changes.
 - Live translation and voice changing are **medium** because they may send selected text or access audio devices.
 - VUA skins are **low** only while limited to validated presentation tokens/assets with no code execution.
-
-## Document changelog
-
-- 1.0.0 (2026-10-02): add the managed-document header; no rule change. The gate remains policy
-  text — the enforcing release check is not yet implemented and entries are reviewed by hand
-  (see the [catalog README](README.md#release-risk-gate)).

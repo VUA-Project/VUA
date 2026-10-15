@@ -1,11 +1,7 @@
 # Versioning policy
 
-
-> Document version: 3.3.0
-> Status: Accepted
 > Scope: VUA product releases, tags, packages, and public contracts
 > Updated: 2026-10-13
-> Normative effect: Yes
 
 ## Product version
 
@@ -117,10 +113,9 @@ records pending implementation and validation work.
 
 - Each public release has release notes; this rule applies going forward. Tag `v0.4.0` predates it
   and has no release notes — the notes series starts at `v0.4.1`. Breaking `0.x` changes name the
-  affected API/format and the required migration or reset behavior. Per
-  [documentation governance](../meta/documentation-governance.md) §2.7, the release-notes document
-  version matrix rule applies from the next release after 2026-10-01; existing release notes
-  predate it and, as immutable historical records, are not retrofitted.
+  affected API/format and the required migration or reset behavior. Release notes name the
+  released commit and the contract versions the release serves, and are written in the languages
+  set by [documentation governance](../meta/documentation-governance.md#5-language).
 - Deprecation is documented before removal wherever users or community developers need a migration
   window.
 - Build metadata such as `+sha.<commit>` may identify CI artifacts but does not affect precedence or
@@ -151,23 +146,3 @@ an explicit decision based on the selected code and distribution. N2 guides Stea
 and installation, then invokes independently installed official tools through supported external
 entry points. Upstream distributions retain their own licenses; follow
 [third-party notices](../../THIRD_PARTY_NOTICES.md) for any future redistribution.
-
-## Document changelog
-
-- 3.3.0 (2026-10-13): record the author's explicit v0.6.7 release selection and the independent AMF 0.1.0 baseline, retaining ordinary SemVer and N-stage independence.
-
-- 3.2.0 (2026-10-11): record the explicit v0.6.6 Ibis numbering/current-ZIP ruling, preserving continuing Beta and subsequent installer/module-update work.
-- 3.1.0 (2026-10-11): add independent AMF payload identity/compatibility and exact runtime inventory, keeping host numbering, immutable mirrored artifacts and historical publication evidence separate.
-- 3.0.1 (2026-10-01): define tag versus published release/artifact, record the current publication
-  state (`v0.6.0` tag without a GitHub Release; the only Release, `v0.5.0`, carries no assets),
-  note the `v0.4.0` release-notes gap, and qualify the notes rule as forward-going.
-
-- 3.0.0 (2026-09-30): user ruling decouples N delivery stages from product versions; choose release numbers from actual changes and retain independent contract/document versions.
-
-- 2.1.1 (2026-09-30): align the N2 summary and licensing guidance with official external-tool connections.
-
-- 2.1.0 (2026-09-28): clarify third-party compatibility change disclosure and separate licensing review.
-
-
-- 2.0.0 (2026-09-28): replace the stable-release roadmap and patch-only-fix convention with the explicitly mapped continuing-Beta N sequence.
-- 1.0.0 (2026-09-02): original product/protocol versioning policy.

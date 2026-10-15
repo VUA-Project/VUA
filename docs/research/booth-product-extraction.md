@@ -1,7 +1,5 @@
 # BOOTH product page extraction spec
 
-
-> Document version: 1.0.0
 > Status: Research record — retained extraction study; input to the N5 capability audit, no normative effect
 > Spec content version: 0.2 (0.1 amended by golden-anchor ancestor trace)
 > Scope: BOOTH product page (static archive) extraction research for BDL
@@ -103,19 +101,3 @@ archive-confirmed facts.
   Docs/Drive automated-access policy review; v1 keeps human extraction.
 - Compatibility/dependency extraction rules from body text and subproduct
   names — same method: real HTML first, rules second.
-
-## Document changelog
-
-- 1.0.0 (2026-10-02): re-header as a research record — the previous
-  "Accepted — governs the recognition-pipeline rewrite" status predated the
-  N5 audit-first ruling; the spec is now evidence input to the N5 capability
-  audit with no normative effect, the from-zero rewrite is reframed as an
-  exercised proposal the audit judges, live-site/post-render rows beyond the
-  two-archive evidence base are marked live-check pending, and the current
-  production schema (`schemas/bdl/v0.2`) is named alongside the spike schema.
-- 0.2 (2026-09-04): corrected the author/shop-name location — the shop
-  block is a separate `section.shop-items` outside `.summary`; found by the
-  golden-anchor ancestor trace during the first recognition-pipeline run
-  (Meiyun 4431242 extracted with `shop_name` missing under the v0.1 rule).
-- 0.1 (2026-09-04): initial rules from the observed HTML of products
-  4431242 and 5986971.

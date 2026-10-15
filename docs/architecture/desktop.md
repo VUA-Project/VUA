@@ -1,12 +1,7 @@
 # Electron desktop and presentation architecture
 
-
-> Document version: 1.32.0
-> Status: Accepted
 > Scope: `apps/desktop`, `packages/design-system`, frontend Gateway
 > Updated: 2026-10-13
-> Last conformance review: 2026-10-12 (controlled library columns, inline link filtering, import popup, corners, public search and intake checks; real account/material/device and human-language review pending)
-> Normative effect: Yes
 
 ## Technology decision
 
@@ -455,7 +450,7 @@ React implements workbenches, guidance, cards, Recipe editing, feedback, and acc
 domain models remain in the application core. Typed error codes map to localized messages. The UI
 ships four initial locales — English, Simplified Chinese, Japanese, and Korean
 (`apps/desktop/src/renderer/i18n/strings.{en,zh-CN,ja,ko}.ts`); the language policy is owned by
-[documentation governance §2.3](../meta/documentation-governance.md#23-language-policy-user-ruling-2026-09-25).
+[documentation governance](../meta/documentation-governance.md#5-language).
 Accepted tasks survive page unload. Drag-and-drop always has keyboard and button alternatives. Tokens and components are
 promoted only after real-page validation.
 
@@ -488,19 +483,3 @@ The optional native `fs.navigation` face returns Electron's resolved Desktop/Doc
 ## Installed Windows distribution
 
 [Windows distribution architecture](windows-distribution.md) owns the signed bootstrap, complete mirrored Electron runtime, independent AMF UI/native entry, native helper, typed Desktop v3 updater and recovery. Development and legacy ZIP keep their existing resource paths. Folder-picker drive discovery uses the fixed host executable’s read-only `--list-drives` mode (`GetLogicalDrives` on Windows), rather than starting PowerShell or probing volumes.
-
-## Document changelog
-
-- 1.32.0 (2026-10-13): route NSIS packaged bootstrap and complete AMF UI/native updates to the owning Windows distribution architecture; add fixed native drive discovery to avoid PowerShell cold-start I/O.
-
-- 1.31.0 (2026-10-12): Add shared resizable list columns, body-portal import menus and reversible inline product-link filtering.
-- 1.30.0 (2026-10-12): add imported-origin filtering, entry-level cards, scroll-anchored selection, persistent card removal, native picker locations/drives and the separate read-only migration preview.
-
-- 1.29.0 (2026-10-12): load notification styles at their shared owner, remove state/hover row fills, add single-card scoped folder actions and put the view toggle beside search.
-- 1.28.0 (2026-10-12): add host file/folder drops with explicit AMF activation, task-driven library refresh, title/shop/variant order and fast-download corner reconciliation.
-- 1.27.0 (2026-10-12): add public source discovery, fact-based library corners, native pause/resume, direct folder intake and category-enrichment refresh.
-- 1.26.0 (2026-10-12): add scoped bulk local-file actions, native category filtering and measured download notifications; move raw task diagnostics into Experimental and retire demo/variant panels.
-
-- 1.25.0 (2026-10-11): install the dormant image loader before renderer creation while retaining AMF cache gates, bound detail enrichment to one attempt, and connect mixed-card selection and discoverable product-clue dialogs.
-- 1.24.0 (2026-10-11): restore BOOTH account reads through tracked session redirects, refresh account status on login close, align library filters and add the bounded active-AMF folder action.
-- 1.23.0 (2026-10-11): retain Wiki/material browsing across shell navigation with eight-tab sessions, independent native history/state and bounded local popup tabs; preserve transient account/import lifetimes and storage ownership.

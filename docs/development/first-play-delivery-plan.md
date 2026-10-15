@@ -1,7 +1,5 @@
 # First play release: implementation checkpoint and remaining work
 
-> Document version: 1.22.0
-> Status: Accepted
 > Updated: 2026-10-11
 > Scope: Desktop play, PICO 4 Pro USB/Wi-Fi, optional eye tracking, three guidance contexts and Windows delivery
 
@@ -445,16 +443,3 @@ The host task window reads core tasks without requiring production documents. Le
 in place, with owner-specific transactional task imports; [module architecture](../architecture/modules.md)
 owns the detailed lifecycle/data rules. Controlled isolation evidence is separate from real software
 installation, PICO connection, real-material production and four-language human acceptance above.
-
-## Document changelog
-
-- 1.22.0 (2026-10-11): prioritize the authorized current-state v0.6.6 Ibis ZIP publication and exact-build evidence/notices; retain subsequent installer/update work and pending acceptance.
-- 1.21.0 (2026-10-11): route release installation/update work to the new NSIS/mirror and independent incremental AMF plan, retaining prior ZIP/UI evidence and pending physical/material/human acceptance.
-- 1.20.0 (2026-10-11): record warm regional-reference sampling and retained bounded Wiki/material browser sessions with independent page state; preserve physical/material/human acceptance and the development-only no-ZIP checkpoint.
-- 1.19.0 (2026-10-11): record host Wiki and AMF website shortcuts with shell-sized browser controls, preserved BOOTH boundaries and controlled UI evidence, without declaring N1/N5 or packaging complete.
-- 1.18.0 (2026-10-11): record approximate geographic references and restored topbar Help while deferring exact room measurement and retaining physical/human acceptance.
-- 1.17.0 (2026-10-10): record the Candidate VRCFT connection and device/module guidance, supersede its earlier placeholder and retain vendor-installation and physical-tracking acceptance without another ZIP.
-- 1.16.0 (2026-10-10): align fresh AMF activation with the latest user ruling while retaining old-profile choices and independent real-software, device and production acceptance.
-- 1.15.0 (2026-10-10): record the approved small native opening, Windows language handoff and first-use welcome/tour continuity, with controlled UI evidence and unchanged physical/human release acceptance.
-- 1.14.0 (2026-10-10): record per-card detail placement, separated compact language/Search controls, goal-link migration and full big-screen retirement while retaining pending device/install/material acceptance and no local ZIP.
-- 1.13.0 (2026-10-10): record unified card toggles, Help history, Avatar-editing AMF setup and consolidated Settings; align scenario-stage ownership while retaining pending physical acceptance and no new ZIP.

@@ -1,7 +1,5 @@
 # VUA host and optional AMF module
 
-> Document version: 1.6.0
-> Status: Accepted
 > Scope: First-party module composition, lifecycle and data ownership
 > Updated: 2026-10-13
 
@@ -119,14 +117,3 @@ is supplemented by a real Main/preload/production-renderer smoke for fresh entry
 asset-library navigation and data-preserving disable/Settings return. These tests are not
 real-material, PICO, installer or four-language human acceptance. Those outcomes remain
 owned by the [N sequence](../development-outline.md) and [Ibis plan](../development/first-play-delivery-plan.md).
-
-## Document changelog
-
-- 1.6.0 (2026-10-13): record complete AMF UI/native release payloads, host bindings and installed update/recovery boundary without claiming shared Rust-library extraction or full acceptance.
-
-- 1.5.0 (2026-10-11): distinguish current process isolation from the accepted next independent UI/backend payload and incremental-update boundary, retaining bundled defaults, lifecycle admission and private data ownership.
-- 1.4.0 (2026-10-10): retain the fresh enabled default before provider initialization, preserve existing opt-outs and old-profile defaults, and keep independent module lifecycle/data ownership.
-- 1.3.0 (2026-10-10): expose the bundled AMF activation switch and explanation in Avatar editing, with a disabled-sidebar setup entry; retain host-owned Unity preparation and the existing lifecycle contract.
-- 1.2.0 (2026-10-10): record the author's external-module deferral rationale and route the retained AI idea to future external-Agent tool access.
-- 1.1.0 (2026-10-10): distinguish bundled installation from explicit activation, keep legacy data from implicitly enabling AMF, and remove external editing placeholders from Ibis.
-- 1.0.0 (2026-10-09): define the scenario/module distinction and implemented optional AMF＋BDL process, data, navigation and recovery boundaries; preserve legacy profiles and frozen contracts.

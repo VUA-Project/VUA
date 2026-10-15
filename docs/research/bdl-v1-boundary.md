@@ -1,7 +1,5 @@
 # BDL v1 functional boundary
 
-
-> Document version: 1.0.0
 > Status: Research record — historical boundary study (product-owner ruling recorded 2026-09-04); input to the N5 capability audit, no current normative effect
 > Scope: BDL v1 spike schema and pipeline design input (historical)
 > Updated: 2026-10-02
@@ -87,11 +85,3 @@ the same namespaced value.
   anchors and synthetic fixtures the same day. Under the N5 audit-first
   ruling, whether that pipeline is retained, completed, or replaced is
   decided by the capability audit, not by this document.
-
-## Document changelog
-
-- 1.0.0 (2026-10-02): re-header as a research record — the 2026-09-04 freeze
-  ruling is historical; the spike-era normative framing is retired in favor
-  of the N5 capability audit, the current frozen production schema
-  (`schemas/bdl/v0.2`) is named next to the historical spike schema, and the
-  extraction-spec open item is updated to its landed state.

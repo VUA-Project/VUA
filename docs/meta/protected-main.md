@@ -1,12 +1,5 @@
 # Protected-main integration policy
 
-> Document version: 1.4.0
-> Status: Accepted
-> Authority: user-approved repository foundation work, 2026-09-22
-> Effective: when this policy is merged. Server-side branch protection is configured in GitHub
-> repository settings by the repository operator (the user); no enforcement snapshot is recorded
-> in this repository.
-
 Collab is archived and retired as of 2026-09-28. Its special checkout/coordination duties below
 are historical and inactive; ordinary branch-and-PR development is the only current workflow.
 The user authorized transfer to VUA-Project on 2026-09-28. Update the remote only after verifying
@@ -55,12 +48,3 @@ For **v0.6.7 only**, the user authorized VUA-PHR to publish the release on 2026-
 because the personal development account Aran52 currently has read-only access to the
 canonical repository. This publication exception does not grant collaborator permissions
 or change the personal-account development and organization-account merge responsibilities.
-
-## Document changelog
-
-- 1.4.0 (2026-10-13): record the explicit one-release VUA-PHR publication exception for v0.6.7; preserve personal-account development and all integration checks.
-- 1.3.0 (2026-10-11): record personal-account development after v0.6.6, with the existing organization publishing identity retained only for merge confirmation; preserve branch/PR/check safeguards.
-- 1.2.3 (2026-10-01): mark the retired collab-era items 4–5 as historical; state where server-side branch protection lives (GitHub repository settings, operator-owned, no in-repo snapshot); reconstruct the missing 1.2.1/1.2.2 changelog entries from git history.
-- 1.2.2 (2026-09-29): record the user's release of the organizational-transfer review hold, subject to the requested README and Issue-template corrections.
-- 1.2.1 (2026-09-29): simplify item 1 to the ordinary feature-branch PR flow, hold the organizational transfer for user review, and repoint the foundation-assignment link to the collab archive.
-- 1.2.0 (2026-09-28): move the continuing repository PR policy out of retired collab; record transfer authorization and identity-preserving remote cutover.

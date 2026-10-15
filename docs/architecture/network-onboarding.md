@@ -1,8 +1,5 @@
 # First-play network observations
 
-> Document version: 2.2.0
-> Status: Accepted
-> Last conformance review: 2026-10-11 (four-language controlled UI, public reference-origin responses and warm-connection sampling; VRChat/Photon room measurement deferred)
 > Scope: N1 first desktop/PICO play release
 
 ## User outcome and approximate regional references
@@ -126,11 +123,3 @@ All four public origins responded without redirects on the local network; observ
 local and not fixtures or a guarantee for another user's connection. Actual VRChat room Ping, vendor login/loading and PICO connection
 acceptance remain separate physical observations. Raw machine reports stay in
 `_local_real_machine/`, outside Git.
-
-## Document changelog
-
-- 2.2.0 (2026-10-11): exclude initial connection setup from fixed regional references with a discarded warm-up and three-response median; preserve ordinary website timing, geographic scope and incomplete-sample failure reporting.
-- 2.1.0 (2026-10-11): accept four geographic Oracle reference origins for explicitly approximate, user-triggered HTTPS timing; retain precise room measurement as deferred and preserve independent expanded website tests.
-- 2.0.0 (2026-10-09): retire Connection help, usage-region identification and accelerator recommendations; move website tests into details and report regional Ping unavailable pending verified targets.
-- 1.1.0 (2026-10-07): replace the large network form with editable VRChat/Steam/GitHub test cards and fold regional advice into help.
-- 1.0.0 (2026-10-03): define the implemented first-play network check, UU-only recommendation and its boundaries.

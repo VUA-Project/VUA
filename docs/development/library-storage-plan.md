@@ -1,13 +1,8 @@
 # Library storage plan — Steam-style movable libraries
 
-> Document version: 0.1.0
 > Status: Backlog (deferred; not accepted for implementation)
 > Scope: Design direction for multi-library user-data storage, within the product boundary
 > Updated: 2026-10-06
-> Authority: User direction of 2026-10-06 — boundary ruling accepted, Steam-parity feature set
-> named, implementation deferred behind N5 closure ("如果工程量太大就先落文档"). This document
-> records the rulings and the engineering breakdown so a later slice can pick it up without
-> re-deriving them. Acceptance stays with the [N sequence](../development-outline.md).
 
 ## Reading context
 

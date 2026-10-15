@@ -1,10 +1,8 @@
 # Local library migration: material boundaries and preview
 
-> Document version: 0.1.0
 > Status: Draft — grouping design for author review; not migration acceptance
 > Updated: 2026-10-12
 > Owner: AMF
-> Authority: The author's 2026-10-12 split between single-item intake and multi-item migration
 
 ## Delivered entry points
 
@@ -155,8 +153,3 @@ card removal and the directory picker, then exposes the read-only migration prev
 slice should implement the boundary-editing model and coverage tests from this matrix before
 adding grouped copying. Real mixed-library acceptance and human UI review stay in N5; this draft
 does not declare them complete or introduce a new release prerequisite.
-
-## Document changelog
-
-- 0.1.0 (2026-10-12): record the author's separate migration entry, delivered read-only preview,
-  explicit grouping proposal, coverage/overlap rules and corner-case review matrix.

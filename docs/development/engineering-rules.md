@@ -1,7 +1,5 @@
 # Engineering and evidence rules
 
-> Document version: 1.0.1
-> Status: Accepted
 > Scope: Existing implementation and evidence safeguards extracted from AGENTS
 
 Delivery scope and acceptance belong to the [N sequence](../development-outline.md);
@@ -72,10 +70,3 @@ VUA-owned composition; community extensions cannot receive its in-process author
 Catalog classification is core/plugin/external; registration grants no execution or distribution
 authority, and release risk is derived by the gate rather than self-assigned. These constraints
 are carried forward from the previous workspace instructions, not new product scope.
-
-## Document changelog
-
-- 1.0.1 (2026-09-29): route VRChat-specific privacy rules to the product boundary.
-
-
-- 1.0.0 (2026-09-29): consolidate existing implementation, privacy and evidence rules from the workspace entry.

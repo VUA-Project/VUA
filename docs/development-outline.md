@@ -1,76 +1,52 @@
 # VUA development sequence
 
-> Document version: 3.27.1
-> Status: Accepted
-> Updated: 2026-10-13
-> Authority: User rulings of 2026-09-28 through 2026-10-12, including independent release numbering, scenario-host ownership, AMF/BDL isolation and separate host/module acceptance
-> Scope: N1-N7, real-machine deployment and real-material workflows, continuing Beta
-> Normative effect: Schedules accepted product work; product scope belongs to product-boundary.md
+> Updated: 2026-10-16
 
-## Reading context
+The N sequence schedules VUA's work toward the [north star](north-star.md). Each stage names a
+player task, the acceptance rows that show it works and the evidence those rows need. The
+[North Star Eval](eval/README.md) measures the outcome: an acceptance run that matches an Eval
+case is recorded as a run of that case. The [product boundary](product-boundary.md) owns scope
+and the [version policy](release/versioning.md) owns release numbers.
 
-**For people:** the sequence and acceptance tables describe what each stage should let you do
-and what evidence establishes success; detailed implementation choices belong elsewhere.
+## Working with the sequence
 
-**If you are an Agent:** use the user's current task and its acceptance row to bound the slice.
-Do not mark a gate complete from document edits, simulated results or code presence. Record the
-actual environment, outputs, remaining blockers and whether UI human acceptance is still pending.
-The role table assigns responsibility, not standing sessions or permission to dispatch agents.
+- Bound each slice by the user's request and its acceptance row.
+- A row passes when it is exercised against real software, devices, files or materials, with the
+  environment, source revision, outcome and evidence location recorded. Synthetic input counts
+  as component evidence for the parts it covers.
+- UI rows also pass a human usability review.
+- Build the shortest usable path, run it, fix its first blocker, then broaden coverage. Record
+  non-blocking gaps with their impact, workaround and follow-up.
+- Keep cross-module inputs, outputs, errors and format changes explicit.
+- Audit existing code before replacing it, and keep what works. The earlier M/W schedule is
+  archived in Git history; old tags, artifacts and release notes stay as published.
 
-## Direction and historical disposition
-
-Build the shortest usable path, run it, fix its first blocker, then broaden coverage. Prefer
-small working slices to complete module designs. Known non-blocking gaps and technical debt may
-carry forward with their impact, workaround, and follow-up recorded. Do not require every agent
-to clear every issue before another independent path proceeds. Keep necessary cross-module
-inputs, outputs, errors, and format changes explicit, without speculative framework work.
-
-The N sequence replaces the M/W development schedule. M0-M3 remain historical records. Old M4's
-closure is withdrawn as proof of complete material management; its scope is reopened under N5.
-The user's report that M4 only provided basic loading and SQLite creation is an audit trigger,
-not an already verified technical finding. Audit existing capabilities before deciding what to
-retain, complete, or rewrite. Do not discard working code by assumption. Old tags, artifacts,
-and release notes remain immutable; Git history preserves the old M schedule. M5 and later
-old schedules, indivisible W25 windows, and global waits for human operation are superseded.
-
-VUA remains Beta until the author explicitly requests a different release stage. There is no
-scheduled v1.0.0 or production-safety guarantee. Passing a gate proves its recorded scenarios,
-not universal compatibility or defect-free operation. N stages define outcomes and acceptance;
-product versions are selected independently from actual release changes. One stage can span
-several releases, and a release can include slices from several stages. Publication does not
-close a stage. Beta is lifecycle metadata; historical package versions and tags are unchanged.
-See [versioning](release/versioning.md).
+VUA stays in Beta until the author chooses another stage. A stage can span several releases and a
+release can carry slices from several stages; a stage closes when its acceptance rows pass.
 
 ## New sequence
 
-The host/AMF module boundary precedes new scenario integrations under the 2026-10-09 user ruling.
-VUA's host path must work with AMF absent or failed. N1/N2 prepare and connect scenario prerequisites;
-N3/N4/N5 retain their real-material, Recipe and acquisition acceptance inside optional AMF. N6 covers
-each installed scenario's interruption/removal boundary, and N7 verifies the actual selected release
-paths. This changes ownership and implementation order without marking a gate passed or requiring
-AMF production acceptance for the independent play release. See [module architecture](architecture/modules.md).
+VUA's host runs play and setup scenarios whether AMF is enabled, disabled or failed
+([module architecture](architecture/modules.md)). N1 and N2 prepare and connect scenario
+prerequisites; N3–N5 are AMF's production, Recipe and acquisition work; N6 adds recovery to every
+delivered path; N7 covers installers, releases and the user guide.
 
-Ibis installs the first-party AMF payload with VUA and enables it for new users. Saved enable/disable
-choices, existing-profile defaults and legacy data are retained. External Avatar-editing module integration
-and placeholder entries are deferred beyond this release under the 2026-10-10 user ruling.
+Ibis installs AMF with VUA and enables it for new users, keeping saved choices and legacy data.
+External Avatar-editing modules are scheduled after Ibis.
 
 | Gate | User task | Status |
 | --- | --- | --- |
-| N1 | Isolate the host, then detect, deploy and guide each scenario's prerequisites and SOP | Desktop/PICO play subset first; complete real-machine acceptance pending |
-| N2 | Select optional modules and connect chosen external software from Steam, official installers or GitHub releases | VRCFT Candidate connection and device-guidance slice; real installation/tracking acceptance pending; other selected entries planned |
-| N3 | Accept AMF's complex real-material Avatar production and SDK handoff | Planned; independent of host-only publication |
-| N4 | Accept AMF's Recipe saving, sharing and reproduction | Planned; independent AMF scope |
-| N5 | Accept AMF + BDL material management and acquisition | Existing code, audit and review retained; independent acceptance remains open |
-| N6 | Complete interruption, return, reinspection and retry with each scenario; handle module disable/removal | Required with each delivered path; consolidated cross-boundary acceptance pending |
-| N7 | Record host and module release, compatibility and regression scopes separately | Ibis accepts the scenarios actually delivered; remaining release scope stays open |
+| N1 | Detect, deploy and guide each scenario's prerequisites and SOP | Desktop and PICO play delivered in Ibis; real-machine acceptance rows open |
+| N2 | Connect optional external software from Steam, official installers or GitHub releases | VRCFT connection and device guidance delivered as Candidate; real installation and tracking rows open; other entries planned |
+| N3 | Produce a complex Avatar from real materials and hand it to the VRChat SDK | Current focus; production code from the M stages awaits its first real Unity run |
+| N4 | Save, share and reproduce Recipes | Follows N3 |
+| N5 | Manage AMF materials and BOOTH acquisition | Library and acquisition paths delivered; real-account, material and human review rows open |
+| N6 | Interrupt, return, reinspect and retry every delivered path; disable or remove modules | Delivered with each path; cross-path review open |
+| N7 | Release host and module builds with compatibility and regression records | v0.6.7 delivered NSIS installers and AMF updates; clean-machine, blocked-GitHub, physical and human review rows open |
 
-Gate order is delivery order, not a prohibition on useful independent work. Minimum material
-handling needed by N3 lands there; full material-management rework follows the N5 audit. No gate
-below is declared passed by this document. Every mandatory acceptance row must be exercised;
-non-blocking defects may remain documented, but an untested required outcome is not a pass.
-The 2026-10-10 sequence revision does not record N1 or N5 as complete. Their existing delivery
-and review evidence stays valid at its recorded scope; full real-machine/material acceptance
-and author UI review remain separate from implementation progress.
+Gate order sets priority, and independent useful work can proceed in parallel. N3 includes the
+minimum material handling it needs; the full material library belongs to N5. Every mandatory
+acceptance row is exercised before its stage closes; documented non-blocking defects may remain.
 
 ## Test environments and evidence
 
@@ -301,48 +277,48 @@ binary redistribution requires a separate review under [third-party notices](../
 
 ## N3: complex real-material Avatar production
 
-Owner: **AMF**. This gate accepts complex Avatar editing, not host environment preparation;
-it is not a prerequisite for publishing a host-only scenario. Bundling or enabling AMF alone
-does not close N3 or broaden a release's advertised production scope.
+Owner: **AMF**. The player combines owned materials in one project and hands the result to the
+VRChat SDK, working through AMF's factory stations rather than Unity concepts.
 
-User task: combine owned materials in one project and hand the result to VRC SDK.
-Minimum successful case: **one real Avatar + at least two actively used dependencies/plugins +
-at least six other real materials, together in one project and one production run**. Do not count
-individual files from one package as separate materials or install unused plugins to meet the count.
+Minimum case: **one real Avatar, at least two actively used dependencies or plugins and at least
+six other real materials, together in one project and one production run.** Each counted
+material is a separate product that the result actually uses.
 
 | Function | Required behavior and observable acceptance |
 | --- | --- |
-| Intake | Admit the actual materials as usable production inputs, not merely copied files; retain original sources |
-| Relationships | Resolve or ask the user to confirm dependencies and targets; reuse shared dependencies; identify conflicting versions or relationships by material |
-| Target selection | Clearly select which Avatar/object receives each outfit, accessory, or operation; ambiguity is resolved explicitly |
-| Assembly | Execute imports, bindings, and supported settings through the Bridge; verify actual object relationships, not only a success receipt |
-| Records | Record material/dependency inputs and each operation/result, with a locatable failed step |
-| SDK handoff | The real SDK recognizes the resulting Avatar and reaches its build/upload-check flow; merely opening Unity does not pass |
-| Existing projects | ALCOM/VCC originals stay read-only; create an independent VUA-managed copy and reinspect it before changes |
+| Intake | The materials become usable production inputs, with their original sources retained |
+| Relationships | VUA resolves dependencies and targets or asks the player to confirm them, reuses shared dependencies and names conflicting versions or relationships per material |
+| Target selection | Every outfit, accessory and operation has an explicit target Avatar or object; the player resolves ambiguous targets |
+| Assembly | Imports, bindings and supported settings run through the Bridge, and the Bridge verifies the resulting object relationships |
+| Records | The Build Record lists material and dependency inputs and every operation with its result; a failed step can be located |
+| SDK handoff | The VRChat SDK recognizes the resulting Avatar and reaches its build and upload checks |
+| Player view | The player completes the run from the factory stations; Unity terms appear only in technical details, and the production animation follows the real steps. Station and animation details are settled from real runs |
+| Existing projects | ALCOM/VCC original projects stay read-only; VUA creates an independent managed copy and reinspects it before changes |
 
-Run the full complex case, repeat it in a separate clean project, and exercise a missing-dependency
-or relationship-conflict variant with a concrete resolution path. Agents may drive real Unity,
-Bridge, and SDK and inspect bindings/build outputs/logs. Actual account upload is not mandatory
-for this gate and remains a user action. N5's complete library work does not block minimum intake.
+Run the full case, repeat it in a separate clean project, and exercise a missing-dependency or
+relationship-conflict variant through its resolution. Agents can drive real Unity, the Bridge and
+the SDK and inspect bindings, build output and logs. The final upload is the player's own step
+and sits outside this gate. Eval cases [P-01 to P-03](eval/cases.md#p--avatar-production) record
+these runs.
 
 ## N4: Recipe and multi-flow reproduction
 
-Owner: **AMF**. Save, share and reproduce Recipe declarations through AMF's production boundary;
-the host manages selection, prerequisites and lifecycle without taking over Recipe semantics.
+Owner: **AMF**. Players save, share and reproduce Recipes. The host manages selection,
+prerequisites and lifecycle; AMF owns Recipe semantics.
 
 | User task | Required behavior and observable acceptance |
 | --- | --- |
-| Save/reopen | Preserve material references, dependencies, and supported modifications across restart |
-| Reproduce | Build the declared relationships/settings in a second project using actual owned inputs |
-| Reapply | Avoid unintended duplicate objects, menus, parameters, and bindings |
-| Resolve conflicts | Explain conflicting inputs and the effect of the four choices in the product boundary; apply the chosen behavior |
-| Share | Export declarations without paid material bodies; supplement missing sources only for referenced materials and remember confirmed correlations |
-| Retry after completion | Identify missing material/dependencies and execute after they are supplied |
+| Save/reopen | Material references, dependencies and supported modifications survive a restart |
+| Reproduce | The declared relationships and settings are built in a second project from actual owned inputs |
+| Reapply | Applying the same Recipe again leaves one copy of each object, menu, parameter and binding |
+| Resolve conflicts | VUA explains conflicting inputs and the effect of the four choices in the product boundary, then applies the chosen behavior |
+| Share | Exported declarations carry references and settings; paid material files stay with their owners. Sources are supplemented only for referenced materials, and confirmed correlations are remembered |
+| Retry after completion | VUA names missing materials or dependencies and runs once they are supplied |
 
-Use N3's complex case for new-project reproduction, repeated application, changed Recipe
-application, missing-then-supplied inputs, and conflict cases. Validate relationships/settings,
-not byte equality of all Unity-generated metadata. Exercise original-package intake and the
-experimental local VPM (VRChat Package Manager) route separately; neither proves the other.
+Use N3's complex case for new-project reproduction, repeated application, changed-Recipe
+application, missing-then-supplied inputs and conflicts. Compare relationships and settings;
+Unity-generated metadata may differ. Exercise original-package intake and the experimental local
+VPM route separately. Eval case [P-04](eval/cases.md#p-04-reproduce-a-recipe) records these runs.
 
 ## N5: audit and redo material management
 
@@ -499,53 +475,19 @@ Observe repository asset/privacy rules for published illustrations. Human UI/gui
 the instructions can be followed. Missing user references block only final reference-dependent
 presentation, not other N7 work; do not invent what the references contain.
 
-## Execution roles (six roles)
+## Ownership roles
 
-Roles express ownership, not mandatory standing sessions or separate branches. An ordinary session
-may wear several hats. Collab is retired and preserved under docs/archive/2026-09-29/. A future
-collaboration mechanism needs a new design and acceptance; these hats do not dispatch agents.
+Roles name who owns a responsibility. One session can cover several roles.
 
 | Role | Ownership |
 | --- | --- |
-| Integration | N-gate evidence, versions, docs/registry, cross-module integration evidence, CI, plan review |
-| Desktop | Electron/Main/preload, React UI, typed TS Gateway, actual UI acceptance and guide capture |
-| Core | Application use cases, durable tasks/recovery, domain ports, Provider, application contracts |
+| Integration | N-stage and Eval evidence, versions, documentation, cross-module integration, CI |
+| Desktop | Electron Main/preload, React UI, typed TS Gateway, UI acceptance and guide screenshots |
+| Core | Application use cases, durable tasks and recovery, domain ports, Provider, application contracts, MCP tools |
 | Production | Unity Bridge, production execution, Unity packages, SDK handoff and real production evidence |
-| Data | BDL, acquisition, Warehouse/material inspection, catalog and download contracts |
-| Environment | Project/package managers, environment/install adapters, external-tool deployment |
+| Data | BDL, acquisition, Warehouse and material inspection, catalog and download contracts |
+| Environment | Project and package managers, environment and install adapters, external-tool delivery, SOPs |
 
-Domain owners own schema changes; Desktop registers the TS/Gateway face. Keep input/output/error
-contracts sufficient for cross-module work. Use existing core-owned ports for adapter placement;
-do not move vendor behavior into views or the application core merely to deliver faster.
-
-## Agent-plan handoff and subsequent review
-
-The user will notify agents to revise their own plans. This document does not dispatch messages,
-create roles, or replace their plans on their behalf. Once revised plans are available, review:
-
-- Every task maps to an N gate/version and a concrete user action/result, with prerequisites,
-  evidence method, current code to reuse, and deferred gaps.
-- Neither old M closure nor old post-v1 scheduling overrides the new sequence. Preserve the existing N5 audit, implementation and review before further changes.
-- N1 host isolation precedes scenario prerequisites/deployment/SOP; Steam/PICO/Unity are reusable host capabilities. N2 covers selected modules and source-specific external connections; individual setup/hardware guides remain focused on tracking tools.
-- N3 has the full 1 + 2 + 6 simultaneous case, not a single outfit or simulated substitute.
-- N3/N4 belong to AMF and N5 to AMF + BDL, with both BOOTH acquisition workflows retained. N6 accompanies each scenario; N7 records host/module compatibility and the actual release's screenshot guide separately.
-- Local reinstall permission, OS claim limits, human UI review and automated non-UI acceptance
-  are preserved. Partial work is not presented as completed acceptance.
-
-Prioritize the first real blocker, repair and rerun it, then expand. Record bounded compromises;
-do not turn documentation completeness, speculative coverage, or idle agent activity into goals.
-
-## Document changelog
-
-- 3.27.1 (2026-10-13): record official immutable hosting and controlled future-client source fallback without closing physical, material, clean-machine or human acceptance.
-- 3.27.0 (2026-10-13): record controlled NSIS/runtime/AMF update evidence for the selected v0.6.7 delivery while retaining clean-machine, source-hosting, physical and human acceptance gaps.
-
-- 3.26.0 (2026-10-12): Align N5 relationship management with the explicit card-menu link filter without claiming real-account or human acceptance.
-- 3.25.0 (2026-10-12): route the separate migration design and delivered origin/card/picker refinements while retaining real-library and human-review outcomes.
-
-- 3.24.1 (2026-10-12): clarify native file/folder drops and explicit AMF enablement alongside the existing local picker; pending N-stage outcomes stay unchanged.
-- 3.24.0 (2026-10-12): incorporate public BOOTH provenance lookup, fact-based corner controls and direct local intake into N5 without changing pending account/material and human acceptance.
-- 3.23.0 (2026-10-11): record current-state v0.6.6 Ibis ZIP publication before the NSIS/AMF-update slices without closing N1/N5 or their pending real-machine/human outcomes.
-- 3.22.0 (2026-10-11): add NSIS/mirrored-runtime distribution and independent incremental AMF update/recovery acceptance under the new user ruling; retain ZIP evidence and separate pending N-stage outcomes.
-- 3.21.1 (2026-10-11): clarify that public material-browser shortcuts and the host Wiki do not expand catalog/search integration or replace independent N5 acquisition acceptance; stage outcomes are unchanged.
-- 3.21.0 (2026-10-11): accept approximate regional references for Ibis and defer exact Photon/room measurement, retaining independent website observations and physical play acceptance.
+Domain owners own their schema changes; Desktop registers the TS/Gateway face. Contracts carry
+the inputs, outputs and errors other modules need. Vendor behavior lives in adapters behind
+core-owned ports.

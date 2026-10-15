@@ -1,10 +1,7 @@
 # Unity editor compatibility
 
-> Document version: 2.0.1
-> Status: Accepted
 > Scope: Unity detection, deployment, project intake, AMF and Unity Bridge
 > Updated: 2026-10-02
-> Normative effect: Defines the development support matrix
 
 ## Current development decision
 
@@ -62,18 +59,3 @@ including SDK recognition and upload preparation, rather than blocking N1 instal
 - Build Records retain the complete Editor version actually used.
 - Real project results identify which edition was tested. Installation and SDK workflow results
   are separate observations.
-
-## Document changelog
-
-- 2.0.1 (2026-10-02): align official-first acquisition and actual downloaded-version checks with the latest user ruling.
-- 2.0.0 (2026-10-02): accept the author's development f1/c1 pair, prefer global with China fallback,
-  and separate N1 admission from frozen inspection/project contracts.
-- 1.1.1 (2026-10-02): align the Installation route section with the owning deployment document
-  (the original installer installs the Editor; the official CLI registers it) and fix the
-  production-target direction reference; no matrix change.
-- 1.1.0 (2026-09-30): link Hub-independent official CLI installation without changing Editor eligibility.
-- 1.0.2 (2026-10-01): move the credential-ownership sentence out of the version-classification
-  section into the general support-matrix text and refresh the stale header date; no matrix change.
-- 1.0.1 (2026-09-28): erratum — the "M0 enforcement requirements" section is renamed
-  "Enforcement requirements" and its closure bullet drops the M0 label following the 2026-09-28
-  sequence change; no rule change.

@@ -1,253 +1,104 @@
-# VUA documentation governance
+# Documentation governance
 
+> Updated: 2026-10-16
 
-> Document version: 2.5.1
-> Status: Accepted
-> Source: formalization of §2 of the 2026-09 "VUA documentation and collaboration repair plan",
-> a local working plan that was never tracked in git; provenance is preserved in this document's
-> git history (initial version 1.0.0, 2026-09-06). The plan itself carries no normative effect;
-> from acceptance onward this document is the sole authority for document version management.
+## 1. Document types
 
-## 1. Layers and version rules
+| Type | Location | Versioning |
+| --- | --- | --- |
+| Entry and goal | README editions, `AGENTS.md`, `CONTRIBUTING.md`, `docs/README.md`, `docs/north-star.md` | Git history |
+| Product scope | `docs/product-boundary.md`, `docs/compatibility/` | Git history |
+| Plans and measurement | `docs/development-outline.md`, `docs/development/`, `docs/eval/` | Git history |
+| Architecture and design | `docs/architecture/`, `docs/design/` | Git history |
+| Contracts | `docs/protocols/`, `schemas/` | Own version per contract (§2) |
+| Decisions | `docs/decisions/` | Immutable; replaced by a new decision |
+| Release notes | `docs/release/` | One set per product release, kept as published |
+| Archive | `docs/archive/` | Historical records, kept unchanged |
 
-| Layer | Content | Storage | Version rule | Change gate |
-| --- | --- | --- | --- | --- |
-| T0 Governance | AGENTS.md, this document | Tracked in git | Internal SemVer | Major requires user ruling |
-| T1 Product boundary | product-boundary, compatibility policy | Tracked in git | Internal SemVer | Major requires user ruling |
-| T2 Contracts/protocols/Schemas | docs/protocols, schemas/ | Tracked in git | Independent versions per contract | After freeze, bump version only; never edit in place |
-| T3 Decisions | docs/decisions (ADR) | Tracked in git | Immutable numbering | Can only be superseded by a new ADR |
-| T4 Architecture/design | docs/architecture, docs/design | All tracked in git | Internal SemVer | Implementation-conformance review at every N gate |
-| T5 Plans/history | development-outline; frozen collab history | Tracked in git | outline uses internal SemVer; collab is unmaintained | User rules N direction; no collab bookkeeping |
+[AGENTS.md](../../AGENTS.md) defines the order of authority between these documents.
 
-## 2. Internal document SemVer
+## 2. Contracts
 
-- **Major**: major structural rewrite, section reorganization, change of content direction;
-- **Minor**: new sections or substantial additions that do not disturb the existing structure;
-- **Patch**: typo fixes, data updates, minor wording adjustments.
+A contract document defines wire or storage behavior and carries its protocol or format version
+and status:
 
-### 2.1 Header format
+- **Draft:** being written.
+- **Candidate:** exercised by code; freeze prerequisites still being completed.
+- **Implementation baseline:** the version current code is built and verified against.
+- **Accepted:** in force; used for decisions and contracts that predate the freeze record.
+- **Frozen:** stable. A normative change creates a new version; the previous version stays
+  available with its consumers.
+- **Superseded:** replaced by a named successor and kept for reference.
 
-Every managed document uses this uniform header:
+A contract is frozen once the repository contains its machine-readable schema (or a recorded
+exemption), positive and negative test vectors, and at least one consumer test. Contract
+documents keep their own changelog.
 
-```
-> Document version: x.y.z
-> Status: Draft / Candidate / Accepted / Frozen / Superseded (→ successor path) / Implementation baseline
-> Last conformance review: YYYY-MM-DD (T4 only)
-```
+## 3. Other documents
 
-Status vocabulary:
+Every other document describes the current state, and Git keeps its history. Its header may
+carry `> Updated: YYYY-MM-DD`, a one-line `> Scope:` and, until the document is accepted, a
+`> Status:` such as Draft or Backlog. Version numbers and changelog sections belong to
+contracts only.
 
-- **Draft**: work in progress; carries no normative effect until accepted.
-- **Candidate**: a T2 contract/protocol proposed for adoption whose freeze prerequisites (§2.5)
-  are not yet all met; it may be exercised, but it is not yet a frozen face.
-- **Accepted**: current and normative for what it describes.
-- **Frozen**: a lifecycle state per §2.4 — normative content changes require a Major bump and an
-  explicit unfreeze ruling; T2 contracts are never edited in place.
-- **Superseded**: replaced by a named successor (→ successor path); retained for reference.
-- **Implementation baseline**: the version the current implementation is built and verified
-  against; normative for current behavior, while the document as a whole has not completed the
-  §2.5 freeze prerequisites (individual faces inside it may still be frozen). Current examples:
-  `docs/protocols/material-intake-v0.1.md`, `docs/protocols/provider-process-v0.1.md`.
+## 4. Registry
 
-Single-language canonical documents omit any "authoritative language" line (see §2.3).
+[REGISTRY.md](../REGISTRY.md) lists contracts, schema directories and decisions with their
+version, status, owner and last review date. A registry row changes in the same commit as the
+contract it describes.
 
-T2 contract documents keep their existing protocol/format-version status block; the document
-version line is placed near the status block without altering the status wording.
+Release notes name the released commit and the contract versions the release serves.
 
-### 2.2 Changelog section
+## 5. Language
 
-Every document ends with a fixed `Document changelog` section, one line per version
-(version, date, one sentence), keeping only the latest 10 entries; earlier history lives in
-git. Patch changes may ride along with any commit; Minor/Major changes must name the document
-and the version action in the commit message.
+- **Documentation, contracts, schemas, source code, comments, commit messages and pull
+  requests** are written in English. Literal UI strings, source-language examples and official
+  license texts keep their original language.
+- **README and release notes** are written natively in English, Simplified Chinese, Japanese and
+  Korean: `README.md`, `README_ZH.md`, `README_JA.md`, `README_KO.md`, and release notes
+  `vX.Y.Z.md`, `vX.Y.Z_ZH.md`, `vX.Y.Z_JA.md`, `vX.Y.Z_KO.md`. Each edition is written for its own
+  readers. An edition drafted with machine assistance carries the note "awaiting native review"
+  until a native speaker reviews it. Release notes up to v0.6.7 stay in Chinese as published.
+- **Desktop UI** text uses the i18n system in English, Simplified Chinese, Japanese and Korean,
+  with one shared terminology table. Each language is written natively for its players. More
+  languages can be added.
+- **SOP** player-facing text follows the UI languages; its structured fields are English.
 
-### 2.3 Language policy (user ruling 2026-09-25)
+The local `docs-zh/` mirror is retired.
 
-Tracked documentation is **single-language English**: each document exists once, without a
-language suffix, and the tracked English file is the sole authority. Three standing exceptions:
+## 6. Writing style
 
-- **Changelogs** (`docs/release/v*.md` release notes) are single-language **Chinese**;
-- **README** is maintained in four languages: English (`README.md`), Chinese (`README_ZH.md`),
-  Japanese (`README_JA.md`), Korean (`README_KO.md`); more editions may be added;
-- Schemas, wire formats, source code, generated files, and official license texts remain
-  single-source as before.
+- Describe what the product, component or process does and how to use it.
+- State verified facts with their environment and date, for example "Verified on Windows 11 with
+  Unity 2022.3.22f1 on 2026-10-20".
+- Collect limitations and pending work in one place: the release notes' known issues, the N
+  sequence status table or the acceptance record.
+- Link to the document that owns a rule instead of restating it.
+- Player-facing text uses the player's vocabulary. Section numbers, proposal numbers, ruling dates
+  and internal component names belong in developer documents and code.
+- Developer documents cite contract and schema versions, product versions and decision documents.
+  Identifiers from the retired collaboration process stay in the archive.
+- Code comments explain intent and constraints; history belongs in Git.
+- A commit message is a subject line and a short body. Test evidence goes in the pull request.
 
-Desktop application copy uses the i18n system, initially supporting English, Simplified Chinese,
-Japanese and Korean, with further languages allowed. UI translation resources are not duplicated
-developer documentation. Literal UI terminology, source-language examples and official license text
-may retain their original language within an English document. Archived records preserve their
-historical wording and carry no current implementation authority; new instructions belong in
-English current documents. Internal document-version changelog sections follow their document's
-language; the Chinese changelog exception above refers to product release notes.
+## 7. Local environment and evidence
 
-Chinese mirrors of the English documentation are maintained **locally** under the gitignored
-`docs-zh/` directory (same relative paths). They are not tracked, are never registered, carry no
-normative force, and are synced by the local workspace as English documents evolve. New tracked
-documents are English-only from creation.
+Machine inventories live in the gitignored `_local_environment/` directory, raw real-machine runs
+in `_local_real_machine/`, and Eval runs in `_local_eval/`. Each record states the observation
+date, software versions, evidence source, and whether the entry was reported, detected or
+exercised. Paths, accounts, device identifiers, raw logs and private material stay local; public
+documents record the scenario, versions, procedure and sanitized result.
 
-### 2.4 Status separated from version
+## 8. Archive and retirement
 
-- "Frozen" is a lifecycle state, not a promise of immutable content; Patch changes remain
-  allowed after freeze;
-- A **normative content** change to a frozen document = Major + an explicit unfreeze ruling
-  record (who, when, why), with the old version section preserved;
-- T2 contracts keep the stricter rule: any normative change bumps the version number only and
-  is never edited in place.
+Move a document to `docs/archive/` when it no longer describes current work, together with a
+pointer to its replacement. Before retiring a contract version, check its schema, test and
+runtime consumers; older contract versions can still be served. Archived content keeps its
+original wording.
 
-### 2.5 Hard prerequisites for freezing
+## 9. One owner per rule
 
-Before any contract/protocol may be marked "Frozen", the repository must already contain: a
-machine-readable Schema (or a justified exemption record), positive and negative test vectors,
-and at least one consumer-side test. If any of the three is missing, the status can only be
-"Candidate".
-
-### 2.6 Registry
-
-`docs/REGISTRY.md` is the machine-readable table of all managed documents (path, document
-version, status, maintainer, last review date). The format is one explanatory line plus one
-markdown table:
-
-```
-| Path | Document version | Status | Maintainer | Last review |
-```
-
-Paths refer to the canonical file (single-language per §2.3). Update rules are in §3.
-
-Coverage edges: managed documents are every tracked document under `docs/` **except**
-`docs/archive/` (historical), the immutable Chinese release notes (`docs/release/v0.*.md`), and
-gitignored local scratch (`docs/plans/`, `docs-zh/`). This explicitly includes
-`docs/release/versioning.md`, `docs/tool-catalog/`, and `docs/research/`. At the repository root
-only `AGENTS.md` and `CONTRIBUTING.md` are managed; the other root files (README editions,
-SECURITY.md, TRADEMARKS.md, THIRD_PARTY_NOTICES.md, NOTICE, LICENSE) are versioned by git history
-and deliberately unmanaged. Registered `schemas/` directories are managed through their T2
-versioned paths, not document headers. A managed document added before it carries a full §2.1
-header is registered with its current status and harmonized at its next version bump.
-
-### 2.7 Traceability
-
-Each product release records its accepted document version matrix (a REGISTRY snapshot) in the
-release notes. N-gate acceptance records cite the document versions reviewed and the release or
-commit actually tested. A gate may span several releases; release numbering and gate completion
-remain independent. The release-notes matrix rule applies from the next release after
-2026-10-01; existing release notes predate it and, as immutable historical records, are not
-retrofitted.
-
-## 3. REGISTRY update cadence (event-driven, not per collaboration count)
-
-- **Update triggers** (exactly four): ① a managed document changes Minor/Major version;
-  ② a document changes status (Draft → Candidate → Accepted → Frozen → Superseded); ③ a new managed
-  document is added; ④ review dates are refreshed after an N-gate conformance review.
-  **Patch-level edits never touch the REGISTRY**.
-- **Same-batch commits**: a REGISTRY row edit rides along with the document commit that caused
-  it — no extra commits, no extra collaboration round trips.
-- **Expected frequency**: at the current pace, roughly 0–3 single-line edits per day; status
-  files, proposal discussions, and similar collaboration actions **never touch** the REGISTRY
-  (historical coordination records are no longer maintained).
-- **Drift is limited by low-frequency rules, not machine checks**: versions are compared at
-  major.minor granularity when a row is updated, tolerating patch drift per the update triggers
-  above. The collab-era checker (`collab:brief` script and report-only CI) was removed with the
-  mechanism's full retirement (2026-10-02); REGISTRY consistency rests on these update rules and
-  review at registration time. A human writes one line only when an event occurs.
-
-## 4. Reference whitelist for managed-document bodies (2026-09-23, proposal 031-E4)
-
-When the normative body text of a managed document (T0–T5) references a collaboration work
-item, only the following forms are allowed:
-
-- `proposal NNN` (an archived proposal number, `docs/archive/2026-09-29/collab/proposals/`);
-- `U#` (a BOARD "pending user ruling" row number, only when citing an issued ruling);
-- managed-document versions (internal SemVer), protocol/schema versions, product versions.
-
-The following identifiers **must not enter managed documents**: integration batch numbers
-("batch N"), worktree numbers (wt-N/VUA-N), and **bare** facet letters from inside proposals
-(cross-document references must use the `NNN-facet` form, e.g. 026-A3).
-
-Disposition of existing residue: the G13 references currently present in the
-`docs/protocols/bdl-queries-*` protocol documents and `docs/architecture/bdl_*` are listed
-as a **ride-along cleanup item for the next version bump of those documents**; no freeze face
-is re-versioned just for this. The same ride-along rule covers every other retired-vocabulary
-residue. An **active** (non-frozen) managed document must not carry live collab vocabulary —
-integration batch numbers ("batch N"), worktree numbers (wt-N), BOARD row references
-("BOARD #N"), tick references, week windows used as scheduling state (W25 and the like), or
-bare facet letters (e.g. "029 A4") — and removes such markers at its next version bump; dated
-historical changelog entries may keep them. A **frozen** protocol whose residue acts as a live
-marker (for example "stays with W25 (O-2)" used as a pending state) receives a non-normative
-erratum entry in its changelog instead of a re-version, per the `provider-process-v0.1` 0.2
-erratum precedent; normative content and protocol version stay unchanged. Old identifiers in
-historical files are never rewritten retroactively; retired namespaces are preserved as-is
-under [`docs/archive/2026-09-29/`](../archive/2026-09-29/).
-
-## 5. Current routes, proposals and archives (2026-09-28)
-
-Keep one short docs/README route by user task. Architecture distinguishes current implementation
-from Draft evolution; a proposal does not change a frozen interface. Update the smallest owning
-document with its implementation slice. Do not make exhaustive documentation cleanup a dependency
-of a working N feature.
-
-Before retirement, check runtime/schema/test consumers, inherited definitions, and accepted
-constraints. Older version numbers can be concurrently served faces. Move only demonstrated
-historical material into docs/archive with a reason and current-route pointer; preserve original
-content, adjust links, and record the disposition. Existing protocols/superseded paths may remain.
-Archived embedded status headers are historical, not current authority. Registry tracks current
-owners, not copied archive snapshots. Research with implementation consumers needs domain review
-before its constraints are discarded.
-
-Collab is retired and physically archived. The
-[protected-main policy](protected-main.md) continues in force. The collab-era registry checker
-was removed with the full retirement; registry hygiene follows §3's update rules. Current decisions
-land in owning documents/PRs, not mandatory BOARD updates.
-
-## 6. Local environment and reproducible evidence
-
-Keep the workstation inventory in the gitignored `_local_environment/` directory. The ignore
-file contains exclusion patterns, not machine facts. Record the observation date, software and
-version where known, evidence source, and whether each entry is user-reported, detected, or
-actually exercised. Unknown is distinct from absent. Refresh observations before deployment
-and after installation/removal; a stale inventory is not an execution prerequisite or proof.
-
-Keep paths, accounts, device identifiers, raw logs and private artifacts local. Public documents
-record the target scenario, required versions, procedure and sanitized result/scope. A tracked
-acceptance recipe can name PICO PCVR without claiming any developer's current runtime is working.
-Real runs keep dated before/after snapshots under `_local_real_machine/`; the current inventory
-is only a convenience index. Local reinstall is not a clean OS, and one machine is not evidence
-of compatibility with other Windows versions. A synthetic CI fixture contains no real inventory.
-
-## 7. One owner per rule
-
-Current entry points link to the owning document instead of restating complete policies.
-Product boundaries define scope; the N sequence defines outcomes and acceptance; release policy
-defines versions; architecture defines responsibilities; protocols define wire/storage behavior;
-engineering rules define implementation/evidence safeguards. REGISTRY contains concise metadata,
-not implementation histories. Keep historical claims in archives and Git history.
-
-Collab and old role prompts live under `docs/archive/2026-09-29/`; the two legacy root `collab/`
-entry stubs were removed on 2026-10-01 and their content is preserved in that archive. No
-archived prompt is an active instruction.
-
-## Document changelog
-
-- 2.5.1 (2026-10-02): remove the collab-era registry checker (script, CI workflow and the
-  `collab:brief` command) with the mechanism's full retirement; §3 drift control now rests on
-  the update rules and registration-time review.
-- 2.5.0 (2026-10-01): define the Candidate and Implementation baseline statuses (§2.1); define
-  REGISTRY coverage edges (§2.6); state the release-notes matrix rule applies from the next
-  release (§2.7); correct the collab:brief/report-only CI description (§3); extend the §4
-  collab-identifier disposition beyond the bdl residue; repair the repair-plan provenance and
-  the archive pointer; record the removal of the root collab entry stubs.
-- 2.4.1 (2026-09-30): separate release document matrices from N-gate acceptance traceability.
-- 2.4.0 (2026-09-30): clarify UI i18n, expandable README languages, English current documentation and preserved source-language examples/history.
-- 2.3.0 (2026-09-29): define one-rule-one-owner routes and physical collab archival.
-- 2.2.0 (2026-09-28): define local inventory versus public test evidence; repair misplaced section insertion.
-- 2.1.0 (2026-09-28): add task routes, current/proposed distinction and evidence-based archival under the collab freeze.
-- 2.0.1 (2026-09-28): erratum — M-gate references replaced by N gates following the 2026-09-28
-  sequence change (T4 change gate, §2.7 traceability, §3 trigger ④); no rule change.
-- 2.0.0 (2026-09-25): user ruling — language policy flip. Tracked documentation becomes
-  single-language English (this file, formerly the EN mirror, becomes the canonical document);
-  changelogs become single-language Chinese; README stays four-language; Chinese mirrors move to
-  the local gitignored `docs-zh/`. §2.3 rewritten, §2.1 header template and §2.6 registry path
-  rule updated; authoritative language changes to English.
-- 1.1.0 (2026-09-23): added §4 "Reference whitelist for managed-document bodies" (landing
-  of proposal 031-E4) — normative bodies cite only proposal NNN / U# / managed-document
-  versions / protocol and schema versions / product versions; batch numbers, wt-N, and bare
-  facet letters are barred from managed documents; the G13 residue becomes a ride-along
-  cleanup item at the next version bump.
+The product boundary owns scope, the N sequence owns delivery outcomes and acceptance, the Eval
+owns measurement, release policy owns versions, architecture owns responsibilities, protocols own
+wire and storage behavior, and engineering rules own implementation and evidence safeguards.
+Other documents link to these owners.

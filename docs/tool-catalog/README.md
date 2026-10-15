@@ -1,10 +1,7 @@
 # VUA Tool Catalog
 
-> Document version: 1.0.0  
-> Status: Accepted catalog format  
-> Catalog schema: `vua.tool-entry/v3`  
+> Catalog schema: `vua.tool-entry/v3`
 > Updated: 2026-10-02
-> Normative effect: Trust classification, entry metadata, and contribution rules only
 
 This community-maintainable catalog classifies entries by contact with VUA data and authority.
 Each entry explains its purpose in natural language. The physical structure is one category directory
@@ -58,12 +55,9 @@ is required.
 Schema v3 is a pre-release normalization: v2 `built-in.*` IDs became `core.*`, and `vua-plugin.*`
 became `plugin.*`. No v2 entry reached `supported`; the old prefixes are reserved and cannot be reused.
 
-Entry files are data records versioned by the catalog format (`vua.tool-entry/v3` frontmatter),
-not [§2.1 documents](../meta/documentation-governance.md); they carry no Document version header
-or document changelog. The category READMEs are plain index pages of the catalog.
-
-Entry files are single-language English (language policy, user ruling 2026-09-25; see
-[documentation governance](../meta/documentation-governance.md)).
+Entry files are data records versioned by the catalog format (`vua.tool-entry/v3` frontmatter).
+The category READMEs are plain index pages of the catalog. Entries are written in English, as set
+by [documentation governance](../meta/documentation-governance.md#5-language).
 
 ## Release risk gate
 
@@ -78,10 +72,3 @@ A catalog entry records classification and evidence. Product boundary, architect
 review, distribution review, and release gates respectively authorize scope, implementation,
 execution, bundling, and publication. Built-in Core behavior and the community plugin host retain
 separate trust boundaries.
-
-## Document changelog
-
-- 1.0.0 (2026-10-02): add the managed-document header; state that entry files are data records
-  versioned by the catalog format rather than §2.1 documents; record that the risk gate is
-  policy text whose enforcing check is not yet implemented (entries are reviewed by hand);
-  make the governance reference a proper link.

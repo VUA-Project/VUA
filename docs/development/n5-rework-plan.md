@@ -1,12 +1,7 @@
 # N5 rework plan — unified library and acquisition producers
 
-> Document version: 1.13.0
-> Status: Accepted
 > Scope: Implementation direction for the N5 material-management rework, within the accepted N5 scope
 > Updated: 2026-10-09
-> Authority: User direction of 2026-10-02 approving this plan's approach after the capability audit, with migration reconciliation and N5 closure refinements of 2026-10-08 through 2026-10-09;
-> acceptance remains owned by the [N sequence](../development-outline.md), scope by the
-> [product boundary](../product-boundary.md). Input evidence: [capability audit](n5-capability-audit.md).
 
 ## Reading context
 
@@ -423,21 +418,3 @@ files, failed reference reads, cancellation finality, recovered operations, stal
 same-request receipt recovery and native Escape/focus restoration. It uses only a synthetic Gateway;
 real BOOTH/Unity runs and human UI acceptance remain unrun for this takeover implementation.
 D6 parser relocation remains later cleanup, not a prerequisite for usable maintenance.
-
-## Document changelog
-
-- 1.13.0 (2026-10-09): implement default-off dependency clues and paginated full-name reverse lookup, explain coverage limits and refresh implemented maintenance/intake rows.
-
-- 1.12.0 (2026-10-09): complete explicit interrupted-removal inspection/closure and include ZIP members and verified local files in product deletion previews.
-
-- 1.11.0 (2026-10-09): implement local-only import-record removal with durable receipts and retained files/references/account ownership.
-
-- 1.10.0 (2026-10-09): add minimal official/manual local source editing with atomic metadata receipts, private thumbnail caching and source-constrained content grouping.
-
-- 1.9.0 (2026-10-09): implement ordinary-file intake and ZIP expansion, retain archive/member lineage and extraction issues, and use current official member fingerprints in migration reconciliation. Synthetic verification is separate from real-material/human acceptance.
-
-- 1.8.0 (2026-10-09): record the reduced first-closure intake/provenance/dependency scope and third-party-search deferral, with implementation gaps kept explicit.
-- 1.7.0 (2026-10-08): apply the reduced N5 scope, persist bounded dependency clues and add verified migration reconciliation with independent cards and background checks.
-- 1.6.0 (2026-10-08): apply missing-file/source user refinements and record concrete VPM regeneration, dependency evidence, record-removal and production-integration discussion proposals.
-- 1.5.0 (2026-10-08): implement selected-file removal and retained generated-version facts, record remaining regeneration/Recipe choices and reconcile PR #61.
-- 1.4.0 (2026-10-08): record the sequential takeover baseline, replacement/retention and draft rulings, independent library facts and remaining acceptance gaps.

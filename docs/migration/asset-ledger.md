@@ -1,8 +1,6 @@
 # Legacy asset migration ledger
 
-> Document version: 1.0.0
 > Status: Historical reference; no current implementation authority
-> Original record: 2026-09-02
 > Updated: 2026-10-02
 
 The original migration record from `VRC_Ultra_assistant` and `VUA_BDB` is preserved
@@ -16,7 +14,3 @@ Paid materials, user projects, credentials, raw logs and production databases we
 
 These are historical decisions and evidence claims, not new test results or current acceptance.
 Use the [documentation guide](../README.md) and [N sequence](../development-outline.md) for current work.
-
-## Document changelog
-
-- 1.0.0 (2026-10-02): register as a managed historical-reference document; content unchanged.

@@ -1,7 +1,5 @@
 # VRCFaceTracking connection slice
 
-> Document version: 1.1.0
-> Status: Accepted
 > Scope: Small N2 connection checkpoint; physical tracking acceptance remains pending
 > Updated: 2026-10-10
 
@@ -85,8 +83,3 @@ Do not add automatic Avatar conversion, a general plugin SDK, private database i
 VRChat injection, a built-in Agent, or a UDP listener that competes with VRChat's OSC port.
 Actual tracking is verified in the upstream UI and VRChat with hardware, rather than inferred
 from a successful process launch.
-
-## Document changelog
-
-- 1.1.0 (2026-10-10): replace PICO-only guidance with device/connection selection and matching upstream module instructions; record the Candidate Steam connection and controlled recovery evidence, retaining physical acceptance.
-- 1.0.0 (2026-10-10): define the short host-owned discovery, Steam handoff, launch, PICO SOP and recovery sequence, retaining real tracking acceptance and upstream lifecycle boundaries.

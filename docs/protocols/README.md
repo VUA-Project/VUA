@@ -1,7 +1,5 @@
 # Protocol reading guide
 
-> Document version: 1.10.1
-> Status: Accepted
 > Updated: 2026-10-12
 > Scope: Navigation and retention guidance; no wire-format changes
 
@@ -75,22 +73,3 @@ For upstream-driven changes, follow the [third-party compatibility and licensing
 face for host-owned selection/readiness. It does not replace or edit frozen Provider frames, task
 rows, Recipe/BDL families or Unity Bridge contracts. [Module architecture](../architecture/modules.md)
 owns routing and legacy-data migration.
-
-## Document changelog
-
-- 1.10.1 (2026-10-12): route mixed native file/folder intake v0.2 alongside retained folder-only and frozen material faces.
-- 1.10.0 (2026-10-11): index the Candidate fixed-site desktop browser and bounded shell geometry, independent of retained account/catalog/download and Provider faces.
-- 1.9.0 (2026-10-10): index the Candidate external-tool face and VRCFT producer/consumer routes, separating hardware/module guidance from pending real acceptance.
-- 1.8.0 (2026-10-10): index Candidate desktop-window v0.2 for main Help navigation while retaining the V1 window face.
-- 1.7.0 (2026-10-09): index the Candidate host-owned AMF lifecycle face separately from frozen AMF/Provider contracts.
-
-- 1.6.0 (2026-10-08): index selected-file maintenance and reference-presence reads, retaining the merged N1 protocol routes.
-- 1.5.0 (2026-10-08): index the whole-run sync, managed download, unified library and separate selection-draft baselines.
-- 1.4.0 (2026-10-03): add the implemented first-play network query and its code routes.
-
-- 1.3.1 (2026-10-02): index inspection-queries/inspection-evidence in the Materials/production row; disambiguate the packages-repos-catalog / packages-repo-catalog / packages-repos labels (v0.1 combined base spec vs per-repository inventory vs v0.2 increment).
-- 1.3.0 (2026-09-30): route the executable Candidate N1 deployment family separately from pending account guidance.
-
-- 1.2.0 (2026-09-30): add direct family links, scoped delivery-status guidance and contract-to-code reading routes.
-
-Earlier entries remain in Git history.

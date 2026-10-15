@@ -1,9 +1,6 @@
 # Guidance architecture: app tour, knowledge encyclopedia and game guide
 
-> Document version: 1.11.0
-> Status: Accepted
 > Updated: 2026-10-13
-> Last conformance review: 2026-10-10 (controlled first-use greeting, real feature anchors, skip/finish/resume, locale and legacy-bookmark checks; author and four-language human review pending)
 > Scope: First play release guidance in Electron and React
 
 For people: VUA teaches three different activities in three appropriate places: using VUA,
@@ -229,19 +226,3 @@ runtime setting. VUA does not silently write the system's OpenXR selection.
 Source: [VIVE's official SteamVR/OpenXR setup instructions](https://developer.vive.com/resources/openxr/unity/tutorials/direct-preview/).
 Static section/target and i18n consistency were checked; actual SteamVR UI and physical-route
 acceptance remain separate from reading the instructions.
-
-## Document changelog
-
-- 1.11.0 (2026-10-13): place manual SteamVR/OpenXR default-runtime guidance in the embedded encyclopedia, link PICO preparation and SteamVR help to the section, and retain user-owned settings and verification.
-- 1.10.0 (2026-10-12): anchor task guidance to the header notification bell and relocate raw queue diagnostics to Experimental.
-
-- 1.9.0 (2026-10-11): add an AMF-independent official Wiki entry in the encyclopedia, preserving local reading and targeted-chapter return through the Candidate desktop browser.
-- 1.8.1 (2026-10-10): align the tour's Avatar-editing wording with fresh-default AMF activation without giving guidance any module-lifecycle authority.
-- 1.8.0 (2026-10-10): add the author's four-language first-use welcome and automatic feature tour before the independent wizard, preserving existing profiles, manual replay and legacy active-step identity.
-- 1.7.1 (2026-10-10): align encyclopedia presentation with the retired big-screen mode; desktop architecture and the design standard own layout retirement, and guidance progress/window semantics remain intact.
-- 1.7.0 (2026-10-10): make all four Help entries child pages, retain explicit tour/game-window start and add native page/chapter/wizard history while preserving separate progress and fresh preparation checks.
-- 1.6.0 (2026-10-10): move Help into the environment directory, embed the knowledge encyclopedia with hardware introductions, and add a versioned Main-navigation face while retaining V1 reader compatibility.
-- 1.5.0 (2026-10-09): fix background-only guide opacity and define persisted relative drag placement across focus, window and session changes without retaining machine identifiers.
-- 1.4.0 (2026-10-09): separate the daily Tasks entry from guidance and route account-help return through the independent settings area; retain legacy guide-call compatibility.
-
-Earlier entries remain in Git history.

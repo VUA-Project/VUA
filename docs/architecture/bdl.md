@@ -1,12 +1,7 @@
 # BDL architecture boundary
 
-
-> Document version: 1.5.0
-> Status: Accepted
 > Scope: AMF-owned BDL module
 > Updated: 2026-10-12
-> Last conformance review: 2026-10-12 (controlled migrations and description-link filtering; real account/material acceptance pending)
-> Normative effect: Yes
 
 BDL base storage is always available **inside an enabled AMF**, independently of its experimental
 forensics switch. AMF itself is optional; the VUA host never opens BDL, and stores module selection
@@ -173,30 +168,3 @@ The additive [library view](../protocols/library-view-v0.1.md) filters by these 
 and pagination. Older formats migrate transactionally to 0.10/user_version 11; future fences
 and foreign metadata remain rejected. Recorded variant counts are a private read of the existing
 product-page subproducts, separate from frozen catalog summaries and account ownership.
-
-## Document changelog
-
-- 1.5.0 (2026-10-12): Add format 0.10 description-link snapshots, retained legacy evidence and private recorded-variant counts.
-- 1.4.0 (2026-10-12): add persistent format 0.9 card tombstones and replay receipts, preserving original/catalog/reference identities.
-
-- 1.3.0 (2026-10-09): scope base BDL storage to an enabled AMF; keep host module selection and task authority independent.
-
-- 1.2.5 (2026-10-01): point the wire-semantics citations at the current frozen bdl-queries
-  v0.4/v0.5 faces instead of the superseded v0.2/v0.3 and refresh header dates; no behavior change.
-- 1.2.4 (2026-09-30): use English for explanatory prose.
-- 1.2.3 (2026-09-28): correct storage version and replace old M4 completion claims with N5 audit scope.
-- 1.2.2 (2026-09-28): remove obsolete mirror metadata and clarify current ownership where needed during the N documentation audit.
-- 1.2.1 (2026-09-23): structure aligned with the authoritative ZH edition — the acquisition/BDL
-  ownership paragraph moved back to the end of "Responsibilities"; the layering diagram regained
-  its own "Layering" section; the condensed adapter paragraph unfolded into a full "External tool
-  data" section mirroring the ZH six-bullet list. The authoritative ZH text is unchanged.
-- 1.2.0 (2026-09-22): user ruling of 2026-09-22 landed — "Responsibilities" split into base
-  storage/asset identity/source correlation/catalog capabilities retained unconditionally, and
-  experimental automatic compatibility forensics off by default; new "Evidence semantics and human
-  correction" section (no evidence = unknown, correction direction retained but not frozen,
-  degradation path undecided); the merge does not change the frozen faces of `schemas/bdl/` and
-  `schemas/bdl-queries/`. Mirrors the ZH edition.
-- 1.1.0 (2026-09-08): added the "Observation write face" section (W17: upsert + bookkeeping
-  counter + write-face closed sets + read-face consumption of the observed columns + scope
-  statement); landing status re-reviewed with the corrected implementation location
-  (`crates/bdl-store`).
