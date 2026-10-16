@@ -655,6 +655,36 @@ fn orc_env_unity_hub_candidates_cover_machine_wide_installs() {
 }
 
 #[test]
+fn orc_env_unity_hub_packaged_install_is_detected() {
+    const REPOSITORY: &str = "Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\Repository\\Packages";
+    let base = unique_dir("hub-package");
+    let current = "UnityTechnologies.UnityHub_3.22.3.65535_x64__2vrhnee42bhxm";
+    let stale = "UnityTechnologies.UnityHub_3.20.0.0_x64__2vrhnee42bhxm";
+    let package_root = base.join("WindowsApps").join(current);
+    let exe = package_root.join("app").join("Unity Hub.exe");
+    fs::create_dir_all(exe.parent().unwrap()).unwrap();
+    fs::write(&exe, "hub").unwrap();
+    let registry = FakeRegistrySource::new()
+        .with_subkey(RegistryHive::CurrentUser, REPOSITORY, "Microsoft.WindowsCalculator_11.0.0.0_x64__8wekyb3d8bbwe")
+        .with_subkey(RegistryHive::CurrentUser, REPOSITORY, stale)
+        .with_subkey(RegistryHive::CurrentUser, REPOSITORY, current)
+        .with(RegistryHive::CurrentUser, &format!("{REPOSITORY}\\{stale}"), "PackageRootFolder", &base.join("absent").to_string_lossy())
+        .with(RegistryHive::CurrentUser, &format!("{REPOSITORY}\\{current}"), "PackageRootFolder", &package_root.to_string_lossy());
+    let roots = EnvironmentRoots {
+        unity_hub_exe_candidates: vec![base.join("absent/Unity Hub.exe")],
+        unity_hub_registry_display_icon_keys: vec![],
+        registry: Arc::new(registry),
+        ..synthetic_roots(&base)
+    };
+    let hub = find(&engine_with(roots, default_runner()).inspect_zone(Zone::Create), "unity_hub").clone();
+    assert_eq!(hub.presence, EnvironmentPresence::Detected);
+    assert_eq!(hub.facts["exe"].as_str(), Some(exe.to_string_lossy().as_ref()));
+    assert_eq!(hub.facts["via"], "package");
+    assert_eq!(hub.facts["package"], current);
+    fs::remove_dir_all(&base).unwrap();
+}
+
+#[test]
 fn orc_env_unity_hub_registry_display_icon_fallback() {
     let base = unique_dir("hub-registry");
     let exe = base.join("Hub Elsewhere/Unity Hub.exe");

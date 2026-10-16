@@ -177,6 +177,11 @@ const UNITY_HUB_UNINSTALL_SUBKEY: &str =
 /// cheap extra candidate.
 const UNITY_HUB_UNINSTALL_WOW64_SUBKEY: &str =
     "SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Unity Technologies - Hub";
+/// Per-user registry of installed MSIX packages; each child is a package full name with a
+/// `PackageRootFolder` value.
+const UNITY_HUB_PACKAGE_REPOSITORY_SUBKEY: &str =
+    "Software\\Classes\\Local Settings\\Software\\Microsoft\\Windows\\CurrentVersion\\AppModel\\Repository\\Packages";
+const UNITY_HUB_PACKAGE_PREFIX: &str = "UnityTechnologies.UnityHub_";
 
 /// Parses an Uninstall-registry `DisplayIcon` value into an executable
 /// path candidate. Handles the documented shapes — quoted
@@ -998,7 +1003,35 @@ impl EnvironmentEngine {
                 );
             }
         }
-        // 3. Nothing hit: record what was probed, deterministically.
+        // 3. Packaged (MSIX) Hub, as installed by winget since Hub 3.22: the per-user package
+        //    repository names its install root under Program Files\WindowsApps.
+        let mut packages = self
+            .roots
+            .registry
+            .subkeys(RegistryHive::CurrentUser, UNITY_HUB_PACKAGE_REPOSITORY_SUBKEY);
+        packages.retain(|name| name.starts_with(UNITY_HUB_PACKAGE_PREFIX));
+        packages.sort();
+        for package in packages.iter().rev() {
+            let subkey = format!("{UNITY_HUB_PACKAGE_REPOSITORY_SUBKEY}\\{package}");
+            let Some(root) =
+                self.roots
+                    .registry
+                    .get_string(RegistryHive::CurrentUser, &subkey, "PackageRootFolder")
+            else {
+                continue;
+            };
+            let exe = PathBuf::from(root).join("app").join("Unity Hub.exe");
+            if exe.is_file() {
+                return item(
+                    "unity_hub",
+                    Zone::Create,
+                    EnvironmentPresence::Detected,
+                    None,
+                    json!({ "exe": exe.to_string_lossy(), "via": "package", "package": package }),
+                );
+            }
+        }
+        // 4. Nothing hit: record what was probed, deterministically.
         item(
             "unity_hub",
             Zone::Create,

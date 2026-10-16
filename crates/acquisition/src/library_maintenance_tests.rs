@@ -54,7 +54,7 @@ fn wait(s: &LibraryMaintenance, drafts: &RecipeSelectionDrafts, name: &str) -> V
             return value;
         }
         assert!(
-            start.elapsed() < std::time::Duration::from_secs(5),
+            start.elapsed() < crate::test_support::SETTLE_LIMIT,
             "removal stuck: {value}"
         );
         std::thread::sleep(std::time::Duration::from_millis(5));
