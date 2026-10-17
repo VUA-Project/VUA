@@ -2,8 +2,8 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import "./browser-frame.css";
 
-type Frame = { x: number; y: number; width: number; height: number; visible: boolean };
-const empty: Frame = { x: 0, y: 0, width: 0, height: 0, visible: false };
+type Frame = { x: number; y: number; width: number; height: number; visible: boolean; covered: boolean };
+const empty: Frame = { x: 0, y: 0, width: 0, height: 0, visible: false, covered: false };
 
 /** Only the local shell measures layout; the native view receives bounded geometry. */
 export function BrowserFrame({ viewId, children, modalOwner, status, hideContent = false }: {
@@ -20,7 +20,10 @@ export function BrowserFrame({ viewId, children, modalOwner, status, hideContent
     const measure = () => {
       const rect = bounds.getBoundingClientRect();
       const visible = owner.current?.getClientRects().length !== 0 && !owner.current?.closest("[hidden], [inert]") && !portal.current?.inert;
-      const next = { x: rect.x, y: rect.y, width: rect.width, height: rect.height, visible: Boolean(visible) };
+      // Native child views paint above every DOM z-index. Temporarily yield
+      // their content to shell popovers without closing or reloading the page.
+      const covered = document.querySelector("[data-vua-native-occluder]") !== null;
+      const next = { x: rect.x, y: rect.y, width: rect.width, height: rect.height, visible: Boolean(visible), covered };
       setFrame(previous => Object.keys(next).every(key => previous[key as keyof Frame] === next[key as keyof Frame]) ? previous : next);
     };
     const schedule = () => {
@@ -31,7 +34,7 @@ export function BrowserFrame({ viewId, children, modalOwner, status, hideContent
     resize.observe(bounds);
     if (owner.current) resize.observe(owner.current);
     const observer = new MutationObserver(schedule);
-    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden", "inert"] });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden", "inert", "data-vua-native-occluder"] });
     window.addEventListener("resize", schedule);
     measure();
     return () => { resize.disconnect(); observer.disconnect(); window.removeEventListener("resize", schedule); cancelAnimationFrame(scheduled); };
@@ -43,7 +46,7 @@ export function BrowserFrame({ viewId, children, modalOwner, status, hideContent
     let previous = "";
     const measure = () => {
       const rect = viewport.current?.getBoundingClientRect();
-      const value = frame.visible && !hideContent && rect && rect.width > 0 && rect.height > 0
+      const value = frame.visible && !frame.covered && !hideContent && rect && rect.width > 0 && rect.height > 0
         ? { x: Math.max(0, rect.x), y: Math.max(0, rect.y), width: rect.width, height: rect.height } : null;
       const key = JSON.stringify(value);
       if (key === previous) return;

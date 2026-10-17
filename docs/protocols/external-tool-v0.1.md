@@ -1,6 +1,11 @@
 # External tool connection v0.1
 
-> Document version: 0.1
+> **⚠️ Superseded by [external tool connection v0.2](external-tool-v0.2.md)**: v0.2 (Candidate
+> 2026-10-14) is the current face of this protocol, and this v0.1 document is kept as history.
+> The `Status` line below is retained from the pre-v0.2 era; the formal status transition is
+> recorded in the managed-document registry.
+
+> Document version: 0.1.1
 > Status: Candidate
 > Owner: Environment
 > Updated: 2026-10-10
@@ -50,4 +55,5 @@ The Rust wire test and TypeScript guards consume the same positive and negative 
 
 ## Document changelog
 
+- 0.1.1 (2026-10-14): non-normative status-quo correction — add the superseded-by banner pointing to external-tool v0.2; the wire definition is unchanged.
 - 0.1 (2026-10-10): add fixed VRCFT inspection, Steam handoff and bounded owned-instance lifecycle, independently of AMF and upstream hardware modules.

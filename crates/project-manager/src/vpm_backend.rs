@@ -51,6 +51,7 @@ pub struct VrcGetLibBackend {
     /// When true, repository listings are read from the local cache only
     /// (no network refresh) -- offline degradation path (ORC-ADP-006).
     offline: bool,
+    cached_metadata: bool,
 }
 
 impl VrcGetLibBackend {
@@ -71,6 +72,7 @@ impl VrcGetLibBackend {
             http: reqwest::Client::new(),
             environment_root: default_environment_root(),
             offline,
+            cached_metadata: false,
         })
     }
 
@@ -83,6 +85,62 @@ impl VrcGetLibBackend {
             environment_root,
             ..backend
         })
+    }
+
+    /// N3 private cache bootstrap using VRChat's alternate official feed.
+    /// Publisher identity, package URLs and checksums are kept intact.
+    /// Frozen public repository operations retain their existing guards.
+    pub fn ensure_official_sdk_cache(&self) -> Result<(), AppErrorV1> {
+        let target = self.environment_root.join("Repos/vrc-official.json");
+        if let Ok(bytes) = fs::read(&target) {
+            if let Ok(cached) = serde_json::from_slice::<vrc_get_vpm::repository::LocalCachedRepository>(&bytes) {
+                if cached.id() == Some("com.vrchat.repos.official") && cached.get_versions_of("com.vrchat.avatars").next().is_some() { return Ok(()); }
+            }
+        }
+        const SOURCE: &str = "https://vrchat.github.io/packages/index.json";
+        let bytes = self.download_repository_metadata(SOURCE)?;
+        let repo: vrc_get_vpm::repository::RemoteRepository = serde_json::from_slice(&bytes).map_err(|e| repo_fetch_failed(e.to_string()))?;
+        if repo.id() != Some("com.vrchat.repos.official") || repo.get_versions_of("com.vrchat.avatars").next().is_none() {
+            return Err(repo_fetch_failed("official SDK feed identity/package set does not match".into()));
+        }
+        let cached = vrc_get_vpm::repository::LocalCachedRepository::new(repo, Default::default());
+        fs::create_dir_all(target.parent().expect("repository cache parent")).map_err(|e| repo_fetch_failed(e.to_string()))?;
+        let pending = target.with_extension("pending");
+        fs::write(&pending, serde_json::to_vec_pretty(&cached).map_err(|e| repo_fetch_failed(e.to_string()))?).map_err(|e| repo_fetch_failed(e.to_string()))?;
+        fs::rename(pending, target).map_err(|e| repo_fetch_failed(e.to_string()))?;
+        fs::write(self.environment_root.join("vua-sdk-source.json"), serde_json::to_vec(&json!({"schemaVersion":"0.1","fetchedFrom":SOURCE,"repositoryId":"com.vrchat.repos.official"})).expect("SDK source serialization"))
+            .map_err(|e| repo_fetch_failed(e.to_string()))?;
+        Ok(())
+    }
+
+    fn download_repository_metadata(&self, url: &str) -> Result<Vec<u8>, AppErrorV1> {
+        // reqwest constructs Tokio timers during send(), so construct the
+        // request inside the runtime too. Calling block_on(send()) evaluates
+        // send outside that runtime and panics on a synchronous worker.
+        self.runtime.block_on(async {
+            let mut response = self.http.get(url)
+                .timeout(std::time::Duration::from_secs(30)).send().await
+                .map_err(|e| repo_fetch_failed(format!("loading SDK metadata: {e}")))?
+                .error_for_status().map_err(|e| repo_fetch_failed(e.to_string()))?;
+            const LIMIT: usize = 2 * 1024 * 1024;
+            let mut bytes = Vec::new();
+            while let Some(chunk) = response.chunk().await.map_err(|e| repo_fetch_failed(e.to_string()))? {
+                if bytes.len() + chunk.len() > LIMIT {
+                    return Err(repo_fetch_failed("official SDK feed exceeds the metadata budget".into()));
+                }
+                bytes.extend_from_slice(&chunk);
+            }
+            Ok(bytes)
+        })
+    }
+
+    /// N3 explicitly refreshes its SDK/MA feeds, then resolves their cached
+    /// metadata. Package bodies still download online; offline mode is separate.
+    pub fn with_cached_metadata(mut self) -> Result<Self, AppErrorV1> {
+        self.cached_metadata = true;
+        self.http = reqwest::Client::builder().connect_timeout(std::time::Duration::from_secs(20))
+            .timeout(std::time::Duration::from_secs(600)).build().map_err(|e| repo_fetch_failed(e.to_string()))?;
+        Ok(self)
     }
 
     /// Registers one generated local package in this backend's environment.
@@ -1662,6 +1720,7 @@ impl VpmBackend for VrcGetLibBackend {
     ) -> Result<ChangePreviewV1, AppErrorV1> {
         let environment_root = self.environment_root.clone();
         let offline = self.offline;
+        let cached_metadata = self.cached_metadata;
         let project_root = project.root.clone();
         let packages = packages.to_vec();
         let http = self.http.clone();
@@ -1679,7 +1738,7 @@ impl VpmBackend for VrcGetLibBackend {
             let (world, _disabled) =
                 collection_world(&environment_root, &settings).map_err(backend_unavailable_state)?;
             // 在线刷新仓库清单失败时降级到缓存（ORC-ADP-006）。
-            let collection = if offline {
+            let collection = if offline || cached_metadata {
                 vrc_get_vpm::environment::PackageCollection::load_cache(&world, &io)
                     .await
                     .map_err(map_io("loading package cache"))?
@@ -1923,7 +1982,7 @@ impl VpmBackend for VrcGetLibBackend {
             // 与 preview 同一装载入口，双摘要重算见不得未过滤世界）。
             let (world, _disabled) =
                 collection_world(&environment_root, &settings).map_err(backend_unavailable_state)?;
-            let collection = if self.offline {
+            let collection = if self.offline || self.cached_metadata {
                 vrc_get_vpm::environment::PackageCollection::load_cache(&world, &io)
                     .await
                     .map_err(map_io("loading package cache"))?
@@ -2868,4 +2927,48 @@ pub fn backends_summary(backends: &[&dyn VpmBackend]) -> BTreeMap<String, VpmCap
         .iter()
         .map(|backend| (backend.name().to_owned(), backend.capabilities()))
         .collect()
+}
+
+#[cfg(test)]
+mod sdk_bootstrap_tests {
+    use super::*;
+    use std::io::{Read, Write};
+
+    fn serve(body: Vec<u8>) -> (String, std::thread::JoinHandle<()>) {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/sdk.json", listener.local_addr().unwrap());
+        let thread = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream.set_read_timeout(Some(std::time::Duration::from_secs(5))).unwrap();
+            let mut request = [0u8; 4096];
+            let mut received = 0;
+            while received < request.len() {
+                let read = stream.read(&mut request[received..]).unwrap();
+                if read == 0 { break; }
+                received += read;
+                if request[..received].windows(4).any(|part| part == b"\r\n\r\n") { break; }
+            }
+            assert!(received > 0);
+            write!(stream, "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", body.len()).unwrap();
+            let _ = stream.write_all(&body); // Bounded consumer may close early.
+        });
+        (url, thread)
+    }
+
+    #[test]
+    fn sdk_request_can_start_on_a_synchronous_worker_with_timeouts() {
+        let backend = VrcGetLibBackend::new(false).unwrap();
+        let (url, server) = serve(b"{\"repository\":\"test\"}".to_vec());
+        assert_eq!(backend.download_repository_metadata(&url).unwrap(), b"{\"repository\":\"test\"}");
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn sdk_metadata_is_bounded_while_streaming() {
+        let backend = VrcGetLibBackend::new(false).unwrap();
+        let (url, server) = serve(vec![b'x'; 2 * 1024 * 1024 + 1]);
+        let error = backend.download_repository_metadata(&url).unwrap_err();
+        assert!(format!("{:?}", error.params).contains("metadata budget"));
+        server.join().unwrap();
+    }
 }

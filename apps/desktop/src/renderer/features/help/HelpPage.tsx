@@ -8,9 +8,10 @@ import { OnboardingPage } from "../onboarding/OnboardingPage.tsx";
 import "../overlay/overlay.css";
 import "./help.css";
 import { SiteBrowser } from "../../components/SiteBrowser.tsx";
+import { AiToolsPage } from "./AiToolsPage.tsx";
 
 export function HelpPage({ page, navigate, onAccounts, startTour, guideRequest, acknowledgeGuide }: {
-  page: "help" | "help-wizard" | "help-tour" | "help-game-assistant" | "help-encyclopedia";
+  page: "help" | "help-wizard" | "help-tour" | "help-game-assistant" | "help-encyclopedia" | "help-ai";
   navigate: (page: PageId) => void;
   onAccounts: () => void;
   startTour: () => void;
@@ -22,6 +23,10 @@ export function HelpPage({ page, navigate, onAccounts, startTour, guideRequest, 
   const [wikiOpen, setWikiOpen] = useState(false);
   useEffect(() => { setWikiOpen(false); }, [guideRequest?.nonce]);
   const back = <Button variant="subtle" data-back data-nav-id="help-child-back" onClick={() => navigate("help")}>{copy.backToHelp}</Button>;
+  if (page === "help-ai") return <div className="vua-page vua-help-child" data-focus-scope>
+    <header className="vua-page__hero vua-environment-heading"><h1 className="vua-title">{strings.aiTools.title}</h1>{back}</header>
+    <AiToolsPage navigate={navigate} />
+  </div>;
   if (page === "help-encyclopedia") return <div className="vua-page vua-knowledge" data-focus-scope>
     <header className="vua-page__hero vua-environment-heading">
       <h1 className="vua-title">{copy.guide}</h1>
@@ -60,6 +65,7 @@ export function HelpPage({ page, navigate, onAccounts, startTour, guideRequest, 
       <RouteTile title={strings.tour.paletteEntry} icon="question" onClick={() => navigate("help-tour")} id="help-tour" />
       <RouteTile title={copy.guide} icon="folder" onClick={() => navigate("help-encyclopedia")} id="help-encyclopedia" />
       <RouteTile title={copy.gameGuide} icon="anim" onClick={() => navigate("help-game-assistant")} id="help-game-assistant" />
+      <RouteTile title={strings.aiTools.title} icon="computer" onClick={() => navigate("help-ai")} id="help-ai" />
     </div>
   </div>;
 }

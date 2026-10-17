@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 5,
+  "commandId": "n3-vector-command",
+  "projectId": "n3-vector",
+  "operation": "install_outfit",
+  "dryRun": false,
+  "expectedProjectFingerprint": "scene-before",
+  "payload": {
+    "planRef": ".vua/bridge/n3-vector-command.amf-plan.json",
+    "planHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+}

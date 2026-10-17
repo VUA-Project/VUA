@@ -20,6 +20,7 @@ export type PageId =
   | "help-tour"
   | "help-game-assistant"
   | "help-encyclopedia"
+  | "help-ai"
   | "env-play"
   | "env-create"
   | "warehouse"
@@ -152,7 +153,7 @@ const pageModule = new Map<PageId, AppSectionId>(
   modules.flatMap((m) => m.groups.flatMap((g) => g.pages.map((p) => [p.id, m.id] as const))),
 );
 
-for (const [page, section] of [["home", "settings"], ["help", "env"], ["help-wizard", "env"], ["help-tour", "env"], ["help-game-assistant", "env"], ["help-encyclopedia", "env"], ["environment-hub", "env"], ["avatar-hub", "production"]] as const) pageModule.set(page, section);
+for (const [page, section] of [["home", "settings"], ["help", "env"], ["help-wizard", "env"], ["help-tour", "env"], ["help-game-assistant", "env"], ["help-encyclopedia", "env"], ["help-ai", "env"], ["environment-hub", "env"], ["avatar-hub", "production"]] as const) pageModule.set(page, section);
 
 const pageIds = new Set<string>(pageModule.keys());
 

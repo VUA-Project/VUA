@@ -810,7 +810,7 @@ mod safety_tests {
                 assert_eq!(snapshot.state, TaskState::Cancelled);
                 break;
             }
-            assert!(started.elapsed() < std::time::Duration::from_secs(5));
+            assert!(started.elapsed() < crate::test_support::SETTLE_LIMIT);
             std::thread::sleep(std::time::Duration::from_millis(5));
         }
         assert_eq!(std::fs::read(&file).unwrap(), b"owned bytes");

@@ -1,7 +1,7 @@
 /** N1 presentation only. The Gateway owns plans, execution and task facts. Changing intent
  * invalidates displayed consent; an opened official page never changes readiness locally. */
 import { useEffect, useRef, useState } from "react";
-import { DEPLOYMENT_PURPOSES, UNITY_HUB_INSTALL_LINK, isTerminalTaskStateV01, readDeploymentProgress, type DeploymentIntent, type DeploymentPlan, type DeploymentProgress, type DeploymentPurpose, type PicoInstallRegion, type TaskSnapshotV01 } from "@vua/contracts";
+import { DEPLOYMENT_PURPOSES, UNITY_HUB_INSTALL_LINK, isTerminalTaskStateV01, readDeploymentProgress, type DeploymentIntent, type DeploymentPlan, type DeploymentProgress, type DeploymentPurpose, type PicoInstallRegion, type TaskSnapshotV01, type ScenarioEnvironmentCheck } from "@vua/contracts";
 import { useGateway } from "../../gateway/index.ts";
 import { strings } from "../../i18n/index.ts";
 import { format } from "../../i18n/format.ts";
@@ -16,6 +16,7 @@ import { Card } from "../../components/primitives/Card.tsx";
 import { GuideEntryButton } from "../guide/GuideEntryButton.tsx";
 import { GUIDE_TARGETS, guideTargetForComponent } from "../guide/guide-target.ts";
 import type { CheckZone } from "./deployer-model.ts";
+import { ScenarioPreparation } from "./ScenarioPreparation.tsx";
 
 const copy = strings.deployment;
 export interface DeploymentCardState { busy: boolean; error: boolean; ready: boolean }
@@ -49,6 +50,7 @@ export function DeploymentPanel({ zone, purpose, onReadyChange, onStateChange, a
   });
   const [editorRoot, setEditorRoot] = useState(restored?.intent.editorRoot ?? "C:\\Program Files\\Unity\\Hub\\Editor");
   const [plan, setPlan] = useState<DeploymentPlan | null>(null);
+  const [softwareCheck, setSoftwareCheck] = useState<ScenarioEnvironmentCheck | null>(null);
   const [task, setTask] = useState<TaskSnapshotV01 | null>(null);
   const [taskId, setTaskId] = useState<string | null>(restored?.taskId ?? null);
   const [acceptedIntent, setAcceptedIntent] = useState<DeploymentIntent | null>(restored?.intent ?? null);
@@ -72,6 +74,11 @@ export function DeploymentPanel({ zone, purpose, onReadyChange, onStateChange, a
   }, [active]);
 
   useEffect(() => { setPlan(null); command.current = null; }, [useMirrors]);
+  const intent: DeploymentIntent = { purposes, editorRoot, useMirrors, ...(purposes.includes("pico_pcvr") && picoRegion ? { picoRegion } : {}) };
+  const checkedIntentMatches = softwareCheck !== null && softwareCheck.intent.editorRoot === intent.editorRoot
+    && (softwareCheck.intent.useMirrors ?? true) === (intent.useMirrors ?? true) && softwareCheck.intent.picoRegion === intent.picoRegion
+    && softwareCheck.intent.purposes.length === intent.purposes.length && intent.purposes.every(value => softwareCheck.intent.purposes.includes(value));
+  const softwareReady = checkedIntentMatches && softwareCheck!.softwareReady;
 
   useEffect(() => {
     let alive = true;
@@ -99,6 +106,7 @@ export function DeploymentPanel({ zone, purpose, onReadyChange, onStateChange, a
   }, [port, taskId, gateway, zone]);
 
   const routeReady = available && !active && (
+    softwareReady ||
     (plan !== null && plan.prerequisitesReady && plan.steps.length > 0 && plan.steps.every(s => s.action === "retain" && s.reason === "verified")) ||
     (executedHere && task?.recoveryDisposition !== "inspect_required" && task?.result?.outcome === "prerequisites_verified"
       && acceptedIntent !== null && (!purpose || acceptedIntent.purposes.includes(purpose))
@@ -168,12 +176,14 @@ export function DeploymentPanel({ zone, purpose, onReadyChange, onStateChange, a
   useEffect(() => {
     // A fresh entry may inspect automatically. A saved receipt remains visible
     // and waits for an explicit recheck, including interrupted/recovered work.
-    if (autoPlan && restored === null && available && !autoPlanned.current && !active && (!purposes.includes("pico_pcvr") || picoRegion !== "")) {
+    if (!gateway.environment.scenarios && autoPlan && restored === null && available && !autoPlanned.current && !active && (!purposes.includes("pico_pcvr") || picoRegion !== "")) {
       autoPlanned.current = true; void replan();
     }
   }, [autoPlan, restored, available, active, picoRegion]);
-  if (port === undefined || !available) return purpose ? <Card><p role="status">{strings.journey.unavailable}</p>
-    <GuideEntryButton target={zone === "play" ? GUIDE_TARGETS.vrchatInstall : { topic: "guide-vua" }} label={strings.journey.guide} /></Card> : null;
+  const preparation = <ScenarioPreparation intent={intent} checked={checkedIntentMatches ? softwareCheck : null}
+    onChecked={setSoftwareCheck} autoCheck={autoPlan && restored === null} disabled={active} />;
+  if (port === undefined || !available) return purpose ? <Card>{preparation}<p role="status">{strings.journey.unavailable}</p>
+    <GuideEntryButton target={zone === "play" ? GUIDE_TARGETS.vrchatInstall : { topic: "guide-vua" }} label={strings.journey.guide} /></Card> : preparation;
   return <Card className="vua-deployment">
     {!purpose ? <><h2 className="vua-title">{copy.title}</h2><p>{copy.description}</p></> : null}
     {!purpose ? <fieldset disabled={disabled}><legend>{copy.purpose}</legend>
@@ -196,7 +206,8 @@ export function DeploymentPanel({ zone, purpose, onReadyChange, onStateChange, a
         onChange={e => { setEditorRoot(e.target.value); setPlan(null); command.current = null; }} /></label>
       <p className="vua-caption">{copy.locationHint}</p>
     </> : null}
-    <Button disabled={disabled || purposes.length === 0 || (purposes.includes("pico_pcvr") && picoRegion === "")} onClick={() => { void replan(); }}>{busy ? copy.working : copy.plan}</Button>
+    {preparation}
+    <Button disabled={disabled || purposes.length === 0 || (purposes.includes("pico_pcvr") && picoRegion === "")} onClick={() => { void replan(); }}>{busy ? copy.working : gateway.environment.scenarios ? strings.scenarioEnvironment.plan : copy.plan}</Button>
     {plan !== null ? <>
       {plan.downloadPolicy !== undefined ? <p className="vua-caption">
         {copy.downloadRegion}{": "}{copy.downloadRegions[plan.downloadPolicy.region]}<br />

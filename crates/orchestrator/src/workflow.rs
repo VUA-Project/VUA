@@ -258,5 +258,9 @@ fn label(operation: UnityOperation) -> &'static str {
         UnityOperation::InspectLighting => "检查场景光照事实",
         UnityOperation::InspectUploadReadiness => "检查上传准备度前置项",
         UnityOperation::BuildPreview => "烘焙 Release 预览转盘",
+        UnityOperation::AmfPrepare => "Prepare AMF work scene",
+        UnityOperation::AmfInspect => "Inspect AMF material candidates",
+        UnityOperation::AmfAssemble => "Assemble AMF Avatar",
+        UnityOperation::AmfTurntable => "Bake the AMF Avatar turntable",
     }
 }

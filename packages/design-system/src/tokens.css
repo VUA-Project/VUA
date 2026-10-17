@@ -114,6 +114,43 @@
 
   /* ---- 控件尺寸 ---- */
   --vua-control-height: 36px;
+
+  /* ---- Factory rooms: each AMF room's own color, separate from status colors; skins may change them ---- */
+  --vua-room-control: #a78bfa;
+  --vua-room-materials: #94a3ff;
+  --vua-room-workshop: #ff7a45;
+  --vua-room-release: #5eead4;
+
+  /* ---- Shapes: named clip-path presets; skins swap the shape language here ---- */
+  --vua-shape-cut-sm: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+  --vua-shape-cut-md: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+  --vua-shape-cut-lg: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px));
+  --vua-shape-step: polygon(0 0, calc(100% - 10px) 0, 100% 50%, calc(100% - 10px) 100%, 0 100%);
+
+  /* ---- Motion: durations and easing; scripted motion reads the same values ---- */
+  --vua-motion-fast: 140ms;
+  --vua-motion-base: 300ms;
+  --vua-motion-slow: 560ms;
+  --vua-motion-camera: 650ms;
+  --vua-motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --vua-scene-fps: 30;
+  /* Factory scene figures */
+  --vua-scene-skin: #f4cdb0;
+
+  /* ---- Release room album: paper, its pattern, the binding and the shades of pages and prints; skins may change them ---- */
+  --vua-album-paper: color-mix(in srgb, var(--vua-room-release) 4%, var(--vua-bg-panel));
+  --vua-album-pattern: radial-gradient(color-mix(in srgb, var(--vua-room-release) 9%, transparent) 1px, transparent 1.2px) 0 0 / 18px 18px;
+  --vua-album-binding: color-mix(in srgb, var(--vua-room-release) 13%, var(--vua-bg-elevated));
+  --vua-album-rule: color-mix(in srgb, var(--vua-room-release) 24%, var(--vua-border));
+  --vua-album-shade: color-mix(in srgb, var(--vua-on-status) 42%, transparent);
+  --vua-album-print: var(--vua-bg-elevated);
+  --vua-album-backdrop: color-mix(in srgb, var(--vua-text-disabled) 50%, var(--vua-bg-elevated));
+  --vua-album-lift: 34px;
+  --vua-shadow-album: 0 18px 40px -18px var(--vua-album-shade);
+  --vua-shadow-album-spine-left: inset -30px 0 30px -28px var(--vua-album-shade);
+  --vua-shadow-album-spine-right: inset 30px 0 30px -28px var(--vua-album-shade);
+  --vua-shadow-print: 0 10px 24px -8px color-mix(in srgb, var(--vua-on-status) 18%, transparent);
+  --vua-shadow-release: 0 10px 24px -10px color-mix(in srgb, var(--vua-room-release) 70%, transparent);
 }
 
 /* ---- 颜色辖区:别名由 data-module 切换,组件只消费别名。
@@ -155,6 +192,12 @@
   --vua-orange-hover: #a03e0e; /* 等比顺移 */
   --vua-orange-pressed: #84330b; /* 等比顺移 */
   --vua-orange-tint: #fbeae0;
+
+  /* Factory room colors on light surfaces (text-safe on white) */
+  --vua-room-control: #6557d2;
+  --vua-room-materials: #4453c4;
+  --vua-room-workshop: #bb4a10;
+  --vua-room-release: #0f766e;
 
   /* 琥珀浅色变体:白底 4.29:1(不用 #9c6d00,避免与浅色 warning 撞值) */
   --vua-amber: #a86e00;
@@ -241,6 +284,10 @@
     --vua-amber: CanvasText;
     --vua-amber-text: CanvasText;
     --vua-info: CanvasText;
+    --vua-room-control: Highlight;
+    --vua-room-materials: Highlight;
+    --vua-room-workshop: Highlight;
+    --vua-room-release: Highlight;
     --vua-on-status: Canvas;
     --vua-shadow-elevated: none;
     --vua-glow-accent: none;
@@ -280,6 +327,10 @@
   --vua-amber-text: #ffd600;
   --vua-info: #ffffff;
   --vua-on-status: #000000;
+  --vua-room-control: #ffd600;
+  --vua-room-materials: #ffd600;
+  --vua-room-workshop: #ffd600;
+  --vua-room-release: #ffd600;
   --vua-shadow-elevated: none;
   --vua-glow-accent: none;
   --vua-glow-accent-soft: none;
@@ -287,6 +338,16 @@
   --vua-aurora-1: none;
   --vua-aurora-2: none;
   --vua-shine: none;
+  --vua-album-paper: #000000;
+  --vua-album-pattern: none;
+  --vua-album-binding: #000000;
+  --vua-album-rule: #ffffff;
+  --vua-album-print: #000000;
+  --vua-shadow-album: none;
+  --vua-shadow-album-spine-left: none;
+  --vua-shadow-album-spine-right: none;
+  --vua-shadow-print: none;
+  --vua-shadow-release: none;
 }
 
 /* ---- 特效总开关(S-VFX-5,VR/省资源地基):装饰 token 全部置 none。

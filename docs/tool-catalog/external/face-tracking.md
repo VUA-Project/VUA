@@ -20,7 +20,7 @@ as an independently installed external application. VUA guides official Steam in
 discovers and launches it, reports observed process status and explains hardware-module/OSC setup.
 VRCFT owns modules and tracking; VUA does not vendor, build or bundle its code or binaries.
 Unknown status is not a successful face-tracking result. N2 requires actual tracking/OSC evidence.
-The [Candidate connection](../../protocols/external-tool-v0.1.md) adds supported-device/app choices
+The [Candidate connection](../../protocols/external-tool-v0.2.md) adds supported-device/app choices
 and matching upstream module instructions. Its observed status describes installation and the
 application process only; VUA does not yet expose measured face/eye-tracking status. See the
 [source checkpoint](../../development/vrcft-integration-plan.md#source-checkpoint-and-pending-acceptance)

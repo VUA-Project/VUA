@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ph-r.com/vua/schemas/amf-production-flow/v0.1/status.schema.json",
+  "title": "AMF material-first run status v0.1 (Candidate)",
+  "description": "The status fields of an amf.production.get result: phase, steps with their times, usual step durations on this computer and the progress of the running step. The protocol describes the other fields of the result.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "runId",
+    "phase",
+    "taskId",
+    "steps",
+    "usualDurations",
+    "progress"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "0.1"
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9-]{1,100}$"
+    },
+    "phase": {
+      "enum": [
+        "preparing",
+        "inspecting",
+        "ready",
+        "assembling",
+        "restoring",
+        "succeeded",
+        "failed",
+        "cancelled",
+        "stopped",
+        "inspect_required"
+      ]
+    },
+    "taskId": {
+      "type": "string"
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "name",
+          "state",
+          "detail",
+          "startedAt",
+          "endedAt"
+        ],
+        "properties": {
+          "key": {
+            "$ref": "#/$defs/stepKey"
+          },
+          "name": {
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "running",
+              "succeeded",
+              "failed",
+              "stopped",
+              "interrupted"
+            ]
+          },
+          "detail": {
+            "type": "string"
+          },
+          "startedAt": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/timestamp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "endedAt": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/timestamp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "usualDurations": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/stepKey"
+      },
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "progress": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "step",
+            "name",
+            "startedAt",
+            "elapsedSeconds",
+            "usualSeconds"
+          ],
+          "properties": {
+            "step": {
+              "$ref": "#/$defs/stepKey"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1024
+            },
+            "startedAt": {
+              "$ref": "#/$defs/timestamp"
+            },
+            "elapsedSeconds": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "usualSeconds": {
+              "oneOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "unity": {
+              "$ref": "#/$defs/unity"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "stepKey": {
+      "enum": [
+        "project",
+        "materials",
+        "inspect",
+        "reinspect",
+        "snapshot",
+        "assembly",
+        "protect_current",
+        "restore",
+        "turntable",
+        "upload"
+      ]
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z$"
+    },
+    "unity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "lastActivityAt"
+      ],
+      "properties": {
+        "stage": {
+          "enum": [
+            "starting",
+            "license",
+            "packages",
+            "importing",
+            "compiling",
+            "bridge",
+            "previews",
+            "finishing",
+            "fingerprint"
+          ]
+        },
+        "current": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lastActivityAt": {
+          "$ref": "#/$defs/timestamp"
+        }
+      }
+    }
+  }
+}

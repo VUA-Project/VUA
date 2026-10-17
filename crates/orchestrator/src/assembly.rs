@@ -91,6 +91,8 @@ pub enum BridgeError {
     UnityFailed(Option<i32>),
     /// The Unity process hit its wall-clock budget and was killed.
     TimedOut,
+    /// The caller asked to stop, and the Unity process tree was ended.
+    Cancelled,
     MissingResult,
     InvalidResult(serde_json::Error),
 }
@@ -101,6 +103,7 @@ impl Display for BridgeError {
             Self::Io(_) => write!(formatter, "bridge file operation failed"),
             Self::UnityFailed(code) => write!(formatter, "Unity exited unsuccessfully ({code:?})"),
             Self::TimedOut => write!(formatter, "Unity did not finish within the budget"),
+            Self::Cancelled => write!(formatter, "Unity was stopped on request"),
             Self::MissingResult => write!(formatter, "Unity did not write a bridge result"),
             Self::InvalidResult(_) => write!(formatter, "Unity wrote an invalid bridge result"),
         }

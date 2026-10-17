@@ -62,3 +62,10 @@
   padding-top: var(--vua-space-2);
   border-top: 1px solid var(--vua-border);
 }
+
+/* SteamToolCard 详情区操作行(与 vua-vrcft-actions 同一布局,通用命名) */
+.vua-tool-connection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vua-space-2);
+}

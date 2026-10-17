@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ApplicationRequestV01, ApplicationResponseV01, AmfModuleSnapshotV01, TaskSnapshotV01 } from "@vua/contracts";
 import { MockOrchestratorProviderV01, type OrchestratorProviderV01, type ProviderStatusV01 } from "@vua/orchestrator-provider";
 import { ModuleProvider } from "./module-provider.js";
@@ -54,6 +54,26 @@ describe("host / optional AMF process boundary", () => {
     expect(host.shutdownCalls).toBe(0); expect(amf.shutdownCalls).toBe(0);
     busy = false; expect(await provider.prepareForUpdate()).toBe(true);
     expect(host.shutdownCalls).toBe(1); expect(amf.shutdownCalls).toBe(1); expect(saved).toEqual([true]);
+  });
+  it("waits for an AMF operation that reads the whole work project", async () => {
+    let finish: (response: ApplicationResponseV01) => void = () => undefined;
+    class SlowSave extends Port {
+      override async invoke(request: ApplicationRequestV01): Promise<ApplicationResponseV01> {
+        if (request.method !== "amf.production.saveRecipe") return super.invoke(request);
+        return new Promise(resolve => { finish = resolve; });
+      }
+    }
+    const slow = new SlowSave({ capabilities: [] });
+    const { provider } = setup({ enabled: true, factory: () => slow });
+    await provider.start();
+    vi.useFakeTimers();
+    try {
+      const pending = provider.invoke({ contractVersion: "0.1", requestId: "save", correlationId: "save", kind: "command", method: "amf.production.saveRecipe", commandId: "save", params: {} } as unknown as ApplicationRequestV01);
+      await vi.advanceTimersByTimeAsync(10_000);
+      finish({ contractVersion: "0.1", requestId: "save", ok: true, value: {} } as unknown as ApplicationResponseV01);
+      expect((await pending).ok).toBe(true);
+    } finally { vi.useRealTimers(); }
+    await provider.prepareShutdown({ timeoutMs: 100 });
   });
   it("keeps VRCFT queries and actions on the host while AMF is disabled", async () => {
     const { provider, host, amf, activations } = setup(); await provider.start();
@@ -116,6 +136,21 @@ describe("host / optional AMF process boundary", () => {
     const blocked = await provider.invoke({ contractVersion: "0.1", requestId: "recipe", correlationId: "recipe", kind: "query", method: "recipe.list", params: {} });
     expect(!blocked.ok && blocked.error.code).toBe("vua.amf.unavailable");
     expect(host.calls.every(call => !call.method.startsWith("recipe."))).toBe(true);
+    await provider.prepareShutdown({ timeoutMs: 100 });
+  });
+
+  it("waits for a failed AMF process to exit before starting AMF again", async () => {
+    const order: string[] = [];
+    class FailingStart extends Port {
+      override async start(): Promise<never> { this.failed = true; throw new Error("corrupt BDL"); }
+      async waitForExit(): Promise<boolean> { order.push("previous exited"); return true; }
+    }
+    const instances: OrchestratorProviderV01[] = [new FailingStart({ capabilities: [] }), new Port({ capabilities: [{ operationId: "production.recipes", availability: "available" }] })];
+    const { provider } = setup({ factory: () => { order.push("created"); return instances.shift()!; } });
+    await provider.start();
+    expect((await provider.setAmfEnabled(true)).outcome).toBe("failed");
+    expect((await provider.setAmfEnabled(true)).snapshot.state).toBe("ready");
+    expect(order).toEqual(["created", "previous exited", "created"]);
     await provider.prepareShutdown({ timeoutMs: 100 });
   });
 

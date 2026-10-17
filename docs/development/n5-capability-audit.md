@@ -1,10 +1,8 @@
 # N5 capability audit — material management
 
-> Document version: 1.0.0
 > Status: Draft
 > Scope: Mandatory N5 pre-rework audit of BDL, acquisition, warehouse, and BOOTH-facing code
 > Updated: 2026-10-02
-> Normative effect: Records observed state and feeds retain/complete/replace decisions; not feature acceptance
 
 ## Baseline and limits
 
@@ -112,8 +110,3 @@ session feeding `record_product_observation`, with multi-page dedup and honest p
 reporting; (2) E2 import correlation and duplicate decision on top of A2; (3) A3 inspection-gate
 wiring. Each keeps the existing contracts (bdl-queries v0.5, bdl-commands v0.4,
 download-events v0.1) unless a slice's needs say otherwise.
-
-## Document changelog
-
-- 1.0.0 (2026-10-02): initial N5 capability audit at revision 09706b0b; capability table, coverage
-  mapping, and retain/complete/replace decisions.

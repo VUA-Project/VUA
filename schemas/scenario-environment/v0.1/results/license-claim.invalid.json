@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "vua.scenario-environment/v0.1",
+  "intent": {
+    "purposes": [
+      "pc_avatar"
+    ],
+    "editorRoot": "C:\\Editors",
+    "useMirrors": true
+  },
+  "observations": [
+    {
+      "component": "unity_editor",
+      "presence": "verified",
+      "location": "C:\\Editors\\2022.3.22f1c1",
+      "version": "2022.3.22f1c1"
+    }
+  ],
+  "softwareReady": true,
+  "licenseState": "active",
+  "performed": "software_check_only",
+  "nextAction": "follow_sop",
+  "installationStarted": false
+}

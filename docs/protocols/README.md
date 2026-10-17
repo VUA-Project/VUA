@@ -1,8 +1,6 @@
 # Protocol reading guide
 
-> Document version: 1.10.1
-> Status: Accepted
-> Updated: 2026-10-12
+> Updated: 2026-10-16
 > Scope: Navigation and retention guidance; no wire-format changes
 
 **For people:** use this index when a contribution affects an API or stored format; read only
@@ -19,6 +17,8 @@ separate concurrently served operations, and some newer documents extend an earl
 | Area | Entry | Retention rule |
 | --- | --- | --- |
 | Gateway/tasks | [Application](application-contract-v0.1.md), [task store](task-store-v0.1.md), [Provider](provider-process-v0.1.md) | Current shared boundaries; document version and wire version may differ |
+| External Agent tools | [Local MCP v0.1](ai-tools-v0.1.md) | Candidate Main-owned loopback/control face; existing task/plan/module/Bridge authorities remain unchanged |
+| Independent scenario preparation | [SOP and software checks v0.1](scenario-environment-v0.1.md) | Candidate pure/software-only queries; deployment plan/execute stays separate |
 | Desktop windows | [Main Help navigation v0.2](desktop-window-v0.2.md) | Additive Candidate preload face; retained V1 reader/game/task window behavior is unchanged |
 | Desktop browser | [Public entries and shell geometry v0.1](desktop-browser-v0.1.md) | Optional Candidate face for host Wiki and AMF browsing; preserves V1 account/catalog/download faces |
 | Environment/projects | [Inspection](project-inspection-v0.2.md), [project operations](project-ops-v0.2.md), [editor verification](editor-verify-v0.1.md) | Preserve current guards and external-project read-only policy |
@@ -46,8 +46,9 @@ from the existence of one method. This is a navigation aid, not a second complet
 | First-play network | [Network v0.1](environment-network-v0.1.md), `environment.checkNetwork` | [Use case](../../crates/orchestrator/src/network.rs) → [HTTPS adapter](../../crates/project-manager/src/network_probe.rs) → [consumer](../../apps/desktop/src/renderer/gateway/live-network-port.ts) | Candidate implementation: explicit per-service HTTPS checks and correctable region; separate from game/PICO LAN acceptance |
 | Purpose-driven deployment | [Deployment v0.1](environment-deployment-v0.1.md), `environment.planDeployment` / `environment.executeDeployment` | [Core policy/use case](../../crates/orchestrator/src/deployment.rs) → [Windows adapter](../../crates/project-manager/src/deployment_adapter.rs) → [consumer tests](../../apps/desktop/src/renderer/gateway/electron-gateway.test.ts) | Candidate executable slice with synthetic tests; real installer/project/device and UI acceptance pending |
 | Account guide | [Accepted minimal state](../architecture/evolution.md#account-guidance-alongside-deployment) | Reuse the existing isolated desktop browser; define exact guide methods and consumer tests with its implementation | Contract to design; deployment does not imply account registration/verification |
-| N2 external tools | [External-tool v0.1](external-tool-v0.1.md), `tools.observeConnection` / `tools.actConnection` | [VRCFT use case](../../crates/orchestrator/src/external_tools.rs) → [Steam adapter](../../crates/project-manager/src/steam_tools.rs) → [frontend port](../../apps/desktop/src/renderer/gateway/live-tool-port.ts) | Candidate fixed VRCFT connection and device/module guidance; real installation/launch/tracking acceptance pending; other N2 tools remain planned |
+| N2 external tools | [External-tool v0.2](external-tool-v0.2.md), [v0.1 (superseded)](external-tool-v0.1.md), `tools.observeConnection` / `tools.actConnection` | [Shared tool use case](../../crates/orchestrator/src/external_tools.rs) → [Steam adapter](../../crates/project-manager/src/steam_tools.rs) → [frontend port](../../apps/desktop/src/renderer/gateway/live-tool-port.ts) | Candidate six-tool v0.2 producer/consumer with bounded real discovery/launch evidence; fresh installation, tracking/calibration and human UI acceptance remain open under N2 |
 | Material/Recipe production | [Intake](material-intake-v0.2.md), [production](production-use-case-v0.2.md), [Recipe export](recipe-export-v0.1.md), [SDK handoff](release-handoff-v0.2.md) | [Provider routes](../../crates/provider-host/src/provider_host.rs) → [frontend production adapter](../../apps/desktop/src/renderer/gateway/live-production-port.ts) and [tests](../../apps/desktop/src/renderer/gateway/live-production-port.test.ts); [Recipe export consumer](../../apps/desktop/src/renderer/gateway/recipe-export-port.test.ts) | Contracts and implementation entry points exist; inspect the exact operation/capability. N3/N4 real-flow acceptance remains separate |
+| N3 material-first production | [AMF v0.1](amf-production-v0.1.md), [separate Bridge v5](unity-bridge-v5.md), [production Recipe v0.4](amf-recipe-v0.4.md) | [Use case](../../crates/orchestrator/src/amf_production.rs) → [native adapter](../../crates/provider-host/src/amf_production_adapter.rs) → [desktop port](../../apps/desktop/src/renderer/gateway/amf-production-port.ts) | Candidate with material-first UI, retained records and Recipe save/share/import/preparation; complete N3/N4 acceptance remains separate |
 | BOOTH library/catalog/download | [BDL queries](bdl-queries-v0.5.md), [commands](bdl-commands-v0.4.md), [download events](download-events-v0.1.md) | [Acquisition](../../crates/acquisition/), [BDL store](../../crates/bdl-store/), [desktop session boundary](../architecture/desktop.md#remote-content-isolation) | Existing parts require the N5 capability audit; these contracts alone do not prove complete account-library retrieval |
 
 For any row: find the exact method in the [application registry](application-contract-v0.1.md),
@@ -75,22 +76,3 @@ For upstream-driven changes, follow the [third-party compatibility and licensing
 face for host-owned selection/readiness. It does not replace or edit frozen Provider frames, task
 rows, Recipe/BDL families or Unity Bridge contracts. [Module architecture](../architecture/modules.md)
 owns routing and legacy-data migration.
-
-## Document changelog
-
-- 1.10.1 (2026-10-12): route mixed native file/folder intake v0.2 alongside retained folder-only and frozen material faces.
-- 1.10.0 (2026-10-11): index the Candidate fixed-site desktop browser and bounded shell geometry, independent of retained account/catalog/download and Provider faces.
-- 1.9.0 (2026-10-10): index the Candidate external-tool face and VRCFT producer/consumer routes, separating hardware/module guidance from pending real acceptance.
-- 1.8.0 (2026-10-10): index Candidate desktop-window v0.2 for main Help navigation while retaining the V1 window face.
-- 1.7.0 (2026-10-09): index the Candidate host-owned AMF lifecycle face separately from frozen AMF/Provider contracts.
-
-- 1.6.0 (2026-10-08): index selected-file maintenance and reference-presence reads, retaining the merged N1 protocol routes.
-- 1.5.0 (2026-10-08): index the whole-run sync, managed download, unified library and separate selection-draft baselines.
-- 1.4.0 (2026-10-03): add the implemented first-play network query and its code routes.
-
-- 1.3.1 (2026-10-02): index inspection-queries/inspection-evidence in the Materials/production row; disambiguate the packages-repos-catalog / packages-repo-catalog / packages-repos labels (v0.1 combined base spec vs per-repository inventory vs v0.2 increment).
-- 1.3.0 (2026-09-30): route the executable Candidate N1 deployment family separately from pending account guidance.
-
-- 1.2.0 (2026-09-30): add direct family links, scoped delivery-status guidance and contract-to-code reading routes.
-
-Earlier entries remain in Git history.

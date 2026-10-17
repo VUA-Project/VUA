@@ -1,9 +1,19 @@
 import { faceTrackingCopy } from "./face-tracking-copy.ts";
+import { toolConnectionCopy } from "./tool-connection-copy.ts";
 import { browserCopy } from "./browser-copy.ts";
 import { fileDropCopy } from "./file-drop-copy.ts";
 import { helpCopy } from "./help-copy.ts";
 import { distributionCopy } from "./distribution-copy.ts";
 import { moduleCopy } from "./module-copy.ts";
+import { amfProductionCopy } from "./amf-production-copy.ts";
+import { factoryCopy } from "./factory-copy.ts";
+import { controlCenterCopy } from "./control-center-copy.ts";
+import { releaseRoomCopy } from "./release-room-copy.ts";
+import { sdkReviewCopy } from "./sdk-review-copy.ts";
+import { aiToolsCopy } from "./ai-tools-copy.ts";
+import { vrchatCopy } from "./vrchat-copy.ts";
+import { scenarioCopy } from "./scenario-copy.ts";
+import { unityLicenseCopy } from "./unity-license-copy.ts";
 import { hardwareCopy } from "./hardware-copy.ts";
 import { environmentCopy } from "./environment-copy.ts";
 import { journeyCopy } from "./journey-copy.ts";
@@ -22,11 +32,21 @@ import type { Strings } from "./strings.en.ts";
  */
 export const strings: Strings = {
   faceTracking: faceTrackingCopy["zh-CN"],
+  toolConnection: toolConnectionCopy["zh-CN"],
   browser: browserCopy["zh-CN"],
   fileDrop: fileDropCopy["zh-CN"],
   helpUi: helpCopy["zh-CN"],
   distribution: distributionCopy["zh-CN"],
   amfModule: moduleCopy["zh-CN"],
+  amfProduction: amfProductionCopy["zh-CN"],
+  factory: factoryCopy["zh-CN"],
+  controlCenter: controlCenterCopy["zh-CN"],
+  releaseRoom: releaseRoomCopy["zh-CN"],
+  sdkReview: sdkReviewCopy["zh-CN"],
+  aiTools: aiToolsCopy["zh-CN"],
+  vrchat: vrchatCopy["zh-CN"],
+  scenarioEnvironment: scenarioCopy["zh-CN"],
+  unityLicense: unityLicenseCopy["zh-CN"],
   environmentCards: environmentCopy["zh-CN"],
   journey: journeyCopy["zh-CN"],
   websiteTests: {

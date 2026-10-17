@@ -31,6 +31,7 @@ export function desktopProviderProcessFactory(endpoint: Omit<DesktopProviderEndp
           VUA_PROVIDER_DATA: endpoint.providerDataRoot,
           VUA_WAREHOUSE_ROOT: endpoint.warehouseRoot,
           VUA_PROJECT_ROOT: endpoint.projectRoot,
+          VUA_AMF_HANDOFF_FROM_DESKTOP: "1",
           ...(endpoint.unityEditorPath ? { VUA_UNITY_EDITOR: endpoint.unityEditorPath } : {}),
         } : {}),
       },

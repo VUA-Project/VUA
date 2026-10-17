@@ -52,9 +52,24 @@ async function main() {
       window = BrowserWindow.getAllWindows().find(candidate => candidate.webContents.getURL().startsWith("file:") && !candidate.webContents.getURL().includes("surface="));
       return window && !window.webContents.isLoading();
     }, "production renderer");
-    const js = source => window.webContents.executeJavaScript(source, true);
+    // A failing script names itself, so a CI failure points at its step.
+    const js = source => window.webContents.executeJavaScript(source, true)
+      .catch(error => { throw new Error(`VUA page script failed: ${source.slice(0, 100)}`, { cause: error }); });
     const remoteViews = () => window.contentView.children.filter(view => view.webContents && view.webContents !== window.webContents);
     const activeView = () => remoteViews().find(view => view.getVisible());
+    const inView = source => activeView().webContents.executeJavaScript(source, true)
+      .catch(error => { throw new Error(`Website script failed: ${source.slice(0, 100)}`, { cause: error }); });
+    const viewHas = selector => waitFor(() => activeView()?.webContents.executeJavaScript(`!!document.querySelector(${JSON.stringify(selector)})`), selector);
+    // VUA controls re-render around navigation; a control is clicked once it is present again.
+    const clickShell = async selector => {
+      await waitFor(() => js(`!!document.querySelector(${JSON.stringify(selector)})`), selector);
+      await js(`document.querySelector(${JSON.stringify(selector)}).click()`);
+    };
+    // A website link is clicked once its page has rendered it; the URL changes before the DOM is ready.
+    const clickInPage = async selector => {
+      await waitFor(() => activeView()?.webContents.executeJavaScript(`!!document.querySelector(${JSON.stringify(selector)})`), selector);
+      await activeView().webContents.executeJavaScript(`document.querySelector(${JSON.stringify(selector)}).click()`, true);
+    };
     const click = async id => {
       await waitFor(() => js(`!!document.querySelector('[data-nav-id="${id}"]')`), id);
       await js(`document.querySelector('[data-nav-id="${id}"]').click()`);
@@ -69,19 +84,19 @@ async function main() {
         && ["x", "y", "width", "height"].every(key => Math.abs(rect[key] - layout[key] * zoom) <= 1.5);
     };
     await waitFor(() => js('document.querySelector(".vua-tour")?.dataset.tourStep==="welcome"'), "welcome");
-    await js('document.querySelector(".vua-tour__actions button").click()');
+    await clickShell(".vua-tour__actions button");
     await waitFor(() => js('!!document.querySelector(".vua-onboarding") && !document.querySelector(".vua-boot-splash")'), "first use");
-    await js('document.querySelector(".vua-journey-top button").click()');
+    await clickShell(".vua-journey-top button");
     await click("shell-help"); await click("help-encyclopedia"); await click("knowledge-wiki");
     await waitFor(() => activeView()?.webContents.getURL() === "https://wiki.vrchat.com/", "Wiki native page");
     await waitFor(frameFits, "Wiki fits content");
     assert(await frameFits(), "Wiki opens with AMF off and leaves header/sidebar interactive");
     assert(!fs.existsSync(path.join(profile, "modules", "amf", "data")), "Host Wiki does not initialize material storage");
     assert(Object.values(await activeView().webContents.executeJavaScript('({vua:typeof window.vua,node:typeof require,process:typeof process})')).every(value => value === "undefined"), "Remote Wiki has no VUA, Node or process capability");
-    await activeView().webContents.executeJavaScript('document.querySelector("#outside").click()');
+    await clickInPage("#outside");
     await waitFor(() => js('!!document.querySelector(".vua-nav-confirm__backdrop")'), "navigation prompt");
     assert(remoteViews().every(view => !view.getVisible()), "Native pages yield to local navigation confirmation");
-    await js('document.querySelector(".vua-nav-confirm__actions button").click()');
+    await clickShell(".vua-nav-confirm__actions button");
     await waitFor(frameFits, "Wiki after cancellation");
     assert(activeView().webContents.getURL() === "https://wiki.vrchat.com/", "Cancel preserves the current Wiki page");
     await click("shell-settings");
@@ -89,28 +104,28 @@ async function main() {
     assert(true, "Settings temporarily hides Wiki without leaving an uncontrollable native view");
     await click("shell-back"); await waitFor(frameFits, "Wiki returns from Settings");
     const wikiContents = activeView().webContents.id;
-    await activeView().webContents.executeJavaScript('document.querySelector("#next").click()', true);
+    await clickInPage("#next");
     await waitFor(() => activeView()?.webContents.getURL().endsWith("/second"), "Wiki child page");
     await click("shell-help"); await waitFor(() => remoteViews().every(view => !view.getVisible()), "Wiki hidden after leaving knowledge");
     assert(remoteViews().length === 1, "Leaving knowledge retains its hidden native page");
     await click("help-encyclopedia"); await click("knowledge-wiki"); await waitFor(frameFits, "Wiki session return");
     assert(activeView().webContents.id === wikiContents && activeView().webContents.getURL().endsWith("/second"), "Wiki returns to the same page and native history");
     const closedWikiId = await js('document.body.dataset.vuaBrowserView');
-    await js('document.querySelector(".vua-browser-frame__bar button:last-child").click()');
+    await clickShell(".vua-browser-frame__bar button:last-child");
     await waitFor(() => remoteViews().length === 0, "explicit Wiki close");
     await js(`window.vua.desktopBrowser.setViewport(${JSON.stringify(closedWikiId)},{x:180,y:100,width:800,height:600})`);
     assert(remoteViews().length === 0, "Late layout receipts do not revive a disposed browser");
     const reject = await js(`Promise.all([window.vua.desktopBrowser.open('booth'),window.vua.desktopBrowser.open('https://booth.pm/')].map(p=>p.then(()=>false,()=>true)))`);
     assert(reject.every(Boolean), "AMF-off assets and arbitrary site strings are rejected by Main");
     await click("nav-enable-amf"); await click("toggle-amf");
-    await waitFor(() => js('!!document.querySelector("[data-nav-id=nav-asset-browser]") && document.querySelector("[data-nav-id=toggle-amf]")?.disabled===false'), "AMF mounted");
-    await click("nav-asset-browser");
+    await waitFor(() => js('!!document.querySelector("[data-nav-id=nav-warehouse]") && document.querySelector("[data-nav-id=toggle-amf]")?.disabled===false'), "AMF mounted");
+    await click("nav-warehouse"); await waitFor(() => js('!!document.querySelector("[data-nav-id=tab-asset-browser]")'), "materials room tabs"); await click("tab-asset-browser");
     await waitFor(() => activeView()?.webContents.getURL() === "https://booth.pm/", "default BOOTH");
     await waitFor(frameFits, "BOOTH fits");
     assert(await js('document.querySelectorAll("[data-browser-site]").length===9'), "AMF material browser includes all nine requested shortcuts");
     const sites = await js('[...document.querySelectorAll("[data-browser-site]")].map(e=>({id:e.dataset.browserSite,url:e.title}))');
     for (const site of sites.filter(site => site.id !== "vrc-style")) {
-      await js(`document.querySelector('[data-browser-site="${site.id}"]').click()`);
+      await clickShell(`[data-browser-site="${site.id}"]`);
       await waitFor(() => activeView()?.webContents.getURL() === site.url && !activeView()?.webContents.isLoading(), site.id);
       assert(true, `${site.id} loads in the same isolated view`);
     }
@@ -119,63 +134,68 @@ async function main() {
     await waitFor(() => js('document.querySelector(".vua-browser-frame__bar .vua-import__browse-url")?.title==="https://accounts.booth.pm/login"'), "display-only URL");
     assert(true, "Candidate browser metadata omits account URL query and fragment secrets");
     assert(await js('document.querySelector("[data-browser-site=booth]")?.getAttribute("aria-current")==="true"'), "Account navigation selects BOOTH rather than the previous shortcut");
-    await js('document.querySelector("[data-browser-site=vrc-db]").click()');
+    await clickShell("[data-browser-site=vrc-db]");
     await waitFor(() => activeView()?.webContents.getURL() === "https://vrc-db.com/", "history site reset");
-    await activeView().webContents.executeJavaScript('document.querySelector("#next").click()', true);
+    await clickInPage("#next");
     await waitFor(() => activeView()?.webContents.getURL().endsWith("/second"), "site history");
     await waitFor(() => js('document.querySelector(".vua-browser-frame__bar button:nth-child(1)")?.disabled===false'), "Back enabled");
-    await js('document.querySelector(".vua-browser-frame__bar button:nth-child(1)").click()');
+    await clickShell(".vua-browser-frame__bar button:nth-child(1)");
     await waitFor(() => activeView()?.webContents.getURL() === "https://vrc-db.com/", "browser Back");
-    await js('document.querySelector(".vua-browser-frame__bar button:nth-child(2)").click()');
+    await clickShell(".vua-browser-frame__bar button:nth-child(2)");
     await waitFor(() => activeView()?.webContents.getURL().endsWith("/second"), "browser Forward");
     assert(true, "Browser Back and Forward use website history");
-    await js('document.querySelector("[data-browser-site=vrc-style]").click()');
-    await waitFor(() => js('!!document.querySelector(".vua-browser-frame__error")') && remoteViews().every(view => !view.getVisible()), "honest load failure");
+    await clickShell("[data-browser-site=vrc-style]");
+    await waitFor(async () => (await js('!!document.querySelector(".vua-browser-frame__error")')) && remoteViews().every(view => !view.getVisible()), "honest load failure");
     assert(true, "Failed site shows a reachable retry instead of a blank native page");
-    await js('document.querySelector("[data-browser-site=booth]").click()');
+    await clickShell("[data-browser-site=booth]");
     await waitFor(() => activeView()?.webContents.getURL() === "https://booth.pm/", "recover using another site");
-    await activeView().webContents.executeJavaScript('document.querySelector("#next").click()', true);
+    await clickInPage("#next");
     await waitFor(() => activeView()?.webContents.getURL().endsWith("/second"), "material child page");
     const originalContents = activeView().webContents.id;
-    const originalTab = await js('document.querySelector("[role=tab][aria-selected=true]").dataset.browserTab');
-    await activeView().webContents.executeJavaScript('document.querySelector("#note").value="retained draft";window.scrollTo(0,420);true', true);
+    await waitFor(() => js('!!document.querySelector("[data-browser-tab][aria-selected=true]")'), "selected material tab");
+    const originalTab = await js('document.querySelector("[data-browser-tab][aria-selected=true]").dataset.browserTab');
+    await viewHas("#note");
+    await inView('document.querySelector("#note").value="retained draft";window.scrollTo(0,420);true');
     await click("nav-env-play"); await waitFor(() => remoteViews().every(view => !view.getVisible()), "material browser hidden on another route");
     assert(remoteViews().length === 1, "Another shell route retains the material native view");
-    await click("nav-asset-browser"); await waitFor(frameFits, "material route return");
-    const remembered = await activeView().webContents.executeJavaScript('({note:document.querySelector("#note").value,scroll:window.scrollY})');
+    await click("nav-warehouse"); await waitFor(() => js('!!document.querySelector("[data-nav-id=tab-asset-browser]")'), "materials room tabs"); await click("tab-asset-browser"); await waitFor(frameFits, "material route return");
+    await viewHas("#note");
+    const remembered = await inView('({note:document.querySelector("#note").value,scroll:window.scrollY})');
     assert(activeView().webContents.id === originalContents && activeView().webContents.getURL().endsWith("/second") && remembered.note === "retained draft" && remembered.scroll === 420,
       "Returning retains URL, history, form draft and scroll without reloading BOOTH");
-    await js('document.querySelector("[data-browser-new-tab]").click()');
+    await clickShell("[data-browser-new-tab]");
     await waitFor(() => remoteViews().length === 2 && activeView()?.webContents.getURL() === "https://booth.pm/", "new material tab");
     await waitFor(frameFits, "new tab geometry");
     assert(activeView().webContents.id !== originalContents && remoteViews().filter(view => view.getVisible()).length === 1, "Each tab has an independent native page and only one is visible");
-    await activeView().webContents.executeJavaScript('document.querySelector("#new-tab").click()', true);
+    await clickInPage("#new-tab");
     await waitFor(() => remoteViews().length === 3 && activeView()?.webContents.getURL().endsWith("/child"), "website link opens local child tab");
-    assert(await js('document.querySelectorAll("[role=tab]").length===3'), "Allowed website popup becomes a VUA tab");
+    assert(await js('document.querySelectorAll("[data-browser-tab]").length===3'), "Allowed website popup becomes a VUA tab");
+    await waitFor(() => js('!!document.querySelector("[data-browser-site=vrcfinder]")'), "vrcfinder shortcut");
     await js('document.querySelector("[data-browser-site=vrcfinder]").dispatchEvent(new MouseEvent("click",{bubbles:true,ctrlKey:true}))');
     await waitFor(() => remoteViews().length === 4 && activeView()?.webContents.getURL() === "https://vrcfinder.net/", "shortcut opens new tab");
     assert(true, "Ctrl shortcut opens a separate tab without replacing the previous page");
-    await js(`document.querySelector('[data-browser-tab="${originalTab}"]').click()`);
+    await clickShell(`[data-browser-tab="${originalTab}"]`);
     await waitFor(() => activeView()?.webContents.id === originalContents, "original tab activation");
-    assert((await activeView().webContents.executeJavaScript('document.querySelector("#note").value')) === "retained draft", "Tab switching preserves the original form");
-    while (await js('document.querySelectorAll("[role=tab]").length<8')) {
+    await viewHas("#note");
+    assert((await inView('document.querySelector("#note").value')) === "retained draft", "Tab switching preserves the original form");
+    while (await js('document.querySelectorAll("[data-browser-tab]").length<8')) {
       const count = remoteViews().length;
-      await js('document.querySelector("[data-browser-new-tab]").click()');
+      await clickShell("[data-browser-new-tab]");
       await waitFor(() => remoteViews().length === count + 1 && activeView()?.webContents.getURL() === "https://booth.pm/", "tab limit preparation");
     }
     await waitFor(() => js('document.querySelector("[data-browser-new-tab]").disabled'), "tab limit visible");
     await waitFor(frameFits, "eight tabs geometry");
-    await activeView().webContents.executeJavaScript('document.querySelector("#new-tab").click()', true);
+    await clickInPage("#new-tab");
     await delay(150);
-    assert(remoteViews().length === 8 && (await js('document.querySelectorAll("[role=tab]").length')) === 8, "Both Main and Renderer cap retained tabs at eight");
+    assert(remoteViews().length === 8 && (await js('document.querySelectorAll("[data-browser-tab]").length')) === 8, "Both Main and Renderer cap retained tabs at eight");
     const extraTabs = await js(`[...document.querySelectorAll('[data-browser-close-tab]')].map(button=>button.dataset.browserCloseTab).filter(id=>id!==${JSON.stringify(originalTab)})`);
-    for (const id of extraTabs) await js(`document.querySelector('[data-browser-close-tab="${id}"]').click()`);
+    for (const id of extraTabs) await clickShell(`[data-browser-close-tab="${id}"]`);
     await waitFor(() => remoteViews().length === 1 && activeView()?.webContents.id === originalContents, "extra tabs closed");
     assert(true, "Closing other tabs leaves the original page and history intact");
     for (const locale of ["en", "zh-CN", "ja", "ko"]) {
       await js(`localStorage.setItem('vua-locale','${locale}');location.reload()`);
-      await waitFor(() => js(`document.documentElement.lang==='${locale}' && !!document.querySelector('[data-nav-id=nav-asset-browser]') && !document.querySelector('.vua-boot-splash')`), locale);
-      await click("nav-asset-browser"); await waitFor(frameFits, `${locale} viewport`);
+      await waitFor(() => js(`document.documentElement.lang==='${locale}' && !!document.querySelector('[data-nav-id=nav-warehouse]') && !document.querySelector('.vua-boot-splash')`), locale);
+      await click("nav-warehouse"); await waitFor(() => js('!!document.querySelector("[data-nav-id=tab-asset-browser]")'), "materials room tabs"); await click("tab-asset-browser"); await waitFor(frameFits, `${locale} viewport`);
       for (const [width, height, zoom] of [[1280, 850, 1], [960, 600, 1.25], [760, 560, 1]]) {
         window.setSize(width, height); window.webContents.setZoomFactor(zoom);
         await waitFor(frameFits, `${locale} at ${width} / ${zoom}`);
@@ -196,7 +216,7 @@ async function main() {
     await waitFor(() => remoteViews().every(view => !view.getVisible()), "asset hide");
     await click("shell-back"); await waitFor(frameFits, "asset return");
     assert(true, "Settings return restores the material browser and its shortcuts");
-    await js('document.querySelector(".vua-browser-frame__bar button:last-child").click()');
+    await clickShell(".vua-browser-frame__bar button:last-child");
     await waitFor(() => remoteViews().length === 0, "browser close");
     assert(await js('!!document.querySelector("main .vua-button")'), "Closing material browser offers reopening BOOTH");
 
@@ -211,11 +231,11 @@ async function main() {
     await waitFor(() => js('!!document.querySelector(".vua-folder-picker")'), "direct local folder picker");
     assert(await js('!document.querySelector("[data-nav-id=import-cloud]")') && remoteViews().length === 0,
       "Local import opens its folder picker directly without the retired source choice or a remote page");
-    await js('document.querySelector(".vua-folder-picker__close").click()');
+    await clickShell(".vua-folder-picker__close");
     await waitFor(() => js('!document.querySelector(".vua-content-dialog") && !document.querySelector(".vua-folder-picker")'), "initial folder selection cancelled");
     assert(true, "Cancelling the initial folder selection closes the local import dialog");
     await click("shell-settings");
-    await waitFor(() => js('!document.querySelector(".vua-content-dialog")') && remoteViews().length === 0, "import leave");
+    await waitFor(async () => (await js('!document.querySelector(".vua-content-dialog")')) && remoteViews().length === 0, "import leave");
     assert(true, "Settings remains available after cancelling local import");
     await click("shell-back");
     assert(await js('!document.querySelector(".vua-content-dialog")'), "Returning to the library does not reopen a stale import modal");

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DESKTOP_GATEWAY_MAX_REQUEST_BYTES,
+  DESKTOP_GATEWAY_METHOD_KINDS,
   isDesktopGatewayRequestV1,
   requestByteLength,
   type DesktopFsApiV1,
@@ -627,12 +628,46 @@ describe("gateway guard covers every declared method (regression: silent guard g
       packages: [{ packageId: "com.a.b", version: null }],
       confirmedDigest: "fnv-1a-abc",
     },
+    "vrchat.status": {},
+    "vrchat.setExperimental": { enabled: true, commandId: "cmd-v1" },
+    "vrchat.signIn": { username: "me@example.com", password: "secret", rememberPassword: false, commandId: "cmd-v2" },
+    "vrchat.relogin": { commandId: "cmd-v3" },
+    "vrchat.verifyCode": { method: "emailotp", code: "123456", commandId: "cmd-v4" },
+    "vrchat.resendEmailCode": { commandId: "cmd-v5" },
+    "vrchat.signOut": { commandId: "cmd-v6" },
+    "vrchat.forget": { commandId: "cmd-v7" },
+    "vrchat.avatarCheck": { blueprintId: "avtr_7ce0e209-6069-40c2-8b23-4e6c2dad389a" },
   };
 
   it("admits a minimal well-formed request for every method in the kind table", () => {
     for (const [method, params] of Object.entries(minimalValidParams)) {
       expect(isDesktopGatewayRequestV1({ ...base, method, params }), method).toBe(true);
     }
+  });
+
+  it("covers the vrchat methods with minimal vectors", () => {
+    const vrchat = Object.keys(DESKTOP_GATEWAY_METHOD_KINDS).filter(method => method.startsWith("vrchat.")).sort();
+    expect(vrchat).toEqual(["vrchat.avatarCheck", "vrchat.forget", "vrchat.relogin", "vrchat.resendEmailCode",
+      "vrchat.setExperimental", "vrchat.signIn", "vrchat.signOut", "vrchat.status", "vrchat.verifyCode"]);
+    expect(vrchat.every(method => method in minimalValidParams)).toBe(true);
+  });
+
+  it("vrchat methods: closed params; secrets stay shape-only (no echo in values)", () => {
+    const base = { schemaVersion: 1 as const, requestId: "request-vr" };
+    expect(isDesktopGatewayRequestV1({ ...base, method: "vrchat.status", params: {} })).toBe(true);
+    expect(isDesktopGatewayRequestV1({ ...base, method: "vrchat.status", params: { extra: true } })).toBe(false);
+    expect(isDesktopGatewayRequestV1({ ...base, method: "vrchat.setExperimental", params: { enabled: true, commandId: "cmd-v" } })).toBe(true);
+    expect(isDesktopGatewayRequestV1({ ...base, method: "vrchat.setExperimental", params: { enabled: "yes", commandId: "cmd-v" } })).toBe(false);
+    expect(isDesktopGatewayRequestV1({ ...base, method: "vrchat.signIn", params: { username: "me", password: "pw", rememberPassword: false, commandId: "cmd-v" } })).toBe(true);
+    expect(isDesktopGatewayRequestV1({ ...base, method: "vrchat.signIn", params: { username: "me", password: "", rememberPassword: false, commandId: "cmd-v" } })).toBe(false);
+    expect(isDesktopGatewayRequestV1({ ...base, method: "vrchat.verifyCode", params: { method: "emailotp", code: "123456", commandId: "cmd-v" } })).toBe(true);
+    expect(isDesktopGatewayRequestV1({ ...base, method: "vrchat.verifyCode", params: { method: "sms", code: "123456", commandId: "cmd-v" } })).toBe(false);
+    expect(isDesktopGatewayRequestV1({ ...base, method: "vrchat.signOut", params: { commandId: "cmd-v" } })).toBe(true);
+    expect(isDesktopGatewayRequestV1({ ...base, method: "vrchat.forget", params: { commandId: "cmd-v", password: "x" } })).toBe(false);
+    const avatar = "avtr_7ce0e209-6069-40c2-8b23-4e6c2dad389a";
+    expect(isDesktopGatewayRequestV1({ ...base, method: "vrchat.avatarCheck", params: { blueprintId: avatar } })).toBe(true);
+    expect(isDesktopGatewayRequestV1({ ...base, method: "vrchat.avatarCheck", params: { blueprintId: avatar, refresh: true } })).toBe(true);
+    expect(isDesktopGatewayRequestV1({ ...base, method: "vrchat.avatarCheck", params: { blueprintId: "avtr_no" } })).toBe(false);
   });
 
   it("environment.verifyEditor: params closed single-key {path} minLength 1 (021 ruling 3)", () => {

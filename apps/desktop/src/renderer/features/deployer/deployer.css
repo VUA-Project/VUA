@@ -265,4 +265,7 @@
 .vua-deployment__choice { display: inline-flex; align-items: center; gap: 8px; margin: 8px 16px 8px 0; }
 .vua-deployment__location { display: block; width: min(100%, 36rem); margin-block: 8px; }
 .vua-deployment code { overflow-wrap: anywhere; }
+.vua-scenario-preparation__controls { display: flex; gap: 12px; flex-wrap: wrap; margin-block: 16px; }
+.vua-scenario-preparation select { margin: 8px 16px 8px 8px; }
+.vua-unity-license-guide > div { display: flex; gap: 12px; flex-wrap: wrap; }
 .vua-deployment li { margin-block: 12px; }

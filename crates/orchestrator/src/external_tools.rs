@@ -21,6 +21,65 @@ pub struct ToolInstallation {
     pub executable: Option<PathBuf>,
     pub build_id: Option<String>,
 }
+/// One fixed Steam connection: contract identity plus the Steam/on-disk facts
+/// the platform adapter checks. `exe_name` is relative to the installdir and
+/// may carry a fixed subdirectory. `process_name` is lowercase because the OS
+/// process matcher lowercases image names before comparing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SteamToolSpec {
+    pub tool_id: &'static str,
+    pub app_id: &'static str,
+    pub install_dir: &'static str,
+    pub exe_name: &'static str,
+    pub process_name: &'static str,
+}
+pub const STEAM_TOOLS: &[SteamToolSpec] = &[
+    SteamToolSpec {
+        tool_id: "vrcft",
+        app_id: "3329480",
+        install_dir: "VRCFaceTracking",
+        exe_name: "VRCFaceTracking.exe",
+        process_name: "vrcfacetracking.exe",
+    },
+    SteamToolSpec {
+        tool_id: "space",
+        app_id: "3368750",
+        install_dir: "01spacecalibrator",
+        exe_name: "SpaceCalibrator.exe",
+        process_name: "spacecalibrator.exe",
+    },
+    SteamToolSpec {
+        tool_id: "advanced",
+        app_id: "1009850",
+        install_dir: "OVR_AdvancedSettings",
+        exe_name: "AdvancedSettings.exe",
+        process_name: "advancedsettings.exe",
+    },
+    SteamToolSpec {
+        tool_id: "toolkit",
+        app_id: "1068820",
+        install_dir: "OVR Toolkit",
+        exe_name: "Launcher/OVR Toolkit Launcher.exe",
+        process_name: "ovr toolkit launcher.exe",
+    },
+    SteamToolSpec {
+        tool_id: "oyasumi",
+        app_id: "2538150",
+        install_dir: "OyasumiVR",
+        exe_name: "OyasumiVR.exe",
+        process_name: "oyasumivr.exe",
+    },
+    SteamToolSpec {
+        tool_id: "translator",
+        app_id: "4304620",
+        install_dir: "OVR Overlay Translator",
+        exe_name: "OVR-Overlay-Translator.exe",
+        process_name: "ovr-overlay-translator.exe",
+    },
+];
+pub fn steam_tool_spec(tool_id: &str) -> Option<&'static SteamToolSpec> {
+    STEAM_TOOLS.iter().find(|spec| spec.tool_id == tool_id)
+}
 
 #[cfg(test)]
 mod tests {
@@ -85,6 +144,7 @@ mod tests {
         let service = ToolService::new(
             fake.clone(),
             Arc::new(crate::FixedClock::new(&["2026-10-10T00:00:00Z"])),
+            "vrcft",
         );
         (fake, service)
     }
@@ -182,7 +242,7 @@ mod tests {
         assert!(!existing.can_stop);
         service.act(ToolAction::Stop, "close").unwrap();
         assert!(fake.0.lock().unwrap().closes.is_empty());
-        let restarted = ToolService::new(fake.clone(), Arc::new(crate::SystemClock));
+        let restarted = ToolService::new(fake.clone(), Arc::new(crate::SystemClock), "vrcft");
         assert!(!restarted.observe().unwrap().can_stop);
     }
     #[test]
@@ -242,6 +302,83 @@ mod tests {
         fake.0.lock().unwrap().processes.clear();
         assert_eq!(service.observe().unwrap().issue, None);
     }
+    #[test]
+    fn steam_tool_specs_pin_the_six_fixed_connections() {
+        let expected = [
+            SteamToolSpec {
+                tool_id: "vrcft",
+                app_id: "3329480",
+                install_dir: "VRCFaceTracking",
+                exe_name: "VRCFaceTracking.exe",
+                process_name: "vrcfacetracking.exe",
+            },
+            SteamToolSpec {
+                tool_id: "space",
+                app_id: "3368750",
+                install_dir: "01spacecalibrator",
+                exe_name: "SpaceCalibrator.exe",
+                process_name: "spacecalibrator.exe",
+            },
+            SteamToolSpec {
+                tool_id: "advanced",
+                app_id: "1009850",
+                install_dir: "OVR_AdvancedSettings",
+                exe_name: "AdvancedSettings.exe",
+                process_name: "advancedsettings.exe",
+            },
+            SteamToolSpec {
+                tool_id: "toolkit",
+                app_id: "1068820",
+                install_dir: "OVR Toolkit",
+                exe_name: "Launcher/OVR Toolkit Launcher.exe",
+                process_name: "ovr toolkit launcher.exe",
+            },
+            SteamToolSpec {
+                tool_id: "oyasumi",
+                app_id: "2538150",
+                install_dir: "OyasumiVR",
+                exe_name: "OyasumiVR.exe",
+                process_name: "oyasumivr.exe",
+            },
+            SteamToolSpec {
+                tool_id: "translator",
+                app_id: "4304620",
+                install_dir: "OVR Overlay Translator",
+                exe_name: "OVR-Overlay-Translator.exe",
+                process_name: "ovr-overlay-translator.exe",
+            },
+        ];
+        assert_eq!(STEAM_TOOLS, expected.as_slice());
+        for spec in expected {
+            assert_eq!(steam_tool_spec(spec.tool_id), Some(&spec));
+        }
+        assert!(steam_tool_spec("custom").is_none());
+        assert!(steam_tool_spec("liv").is_none());
+    }
+    #[test]
+    fn snapshot_carries_v02_schema_version_and_the_service_tool_id() {
+        let (fake, service) = fixture();
+        let snapshot = service.observe().unwrap();
+        assert_eq!(snapshot.schema_version, "vua.external-tool/v0.2");
+        assert_eq!(snapshot.tool_id, "vrcft");
+        let other = ToolService::new(fake, Arc::new(crate::SystemClock), "space");
+        assert_eq!(other.observe().unwrap().tool_id, "space");
+    }
+    #[test]
+    fn services_for_different_tools_keep_independent_state() {
+        let fake = Arc::new(Fake::default());
+        let clock: Arc<dyn Clock> = Arc::new(crate::SystemClock);
+        let first = ToolService::new(fake.clone(), clock.clone(), "vrcft");
+        let second = ToolService::new(fake.clone(), clock, "space");
+        first.act(ToolAction::Start, "1").unwrap();
+        assert_eq!(first.observe().unwrap().activity, "starting");
+        assert_eq!(second.observe().unwrap().activity, "idle");
+        // The command ledger is per service: the same id is not a replay there.
+        second.act(ToolAction::Start, "1").unwrap();
+        assert_eq!(fake.0.lock().unwrap().handoffs.len(), 2);
+        assert_eq!(second.observe().unwrap().activity, "starting");
+        assert_eq!(second.observe().unwrap().tool_id, "space");
+    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ToolAction {
@@ -298,6 +435,7 @@ struct State {
 pub struct ToolService {
     platform: Arc<dyn ToolPlatform>,
     clock: Arc<dyn Clock>,
+    tool_id: &'static str,
     state: Mutex<State>,
     start_wait: Duration,
     close_wait: Duration,
@@ -307,10 +445,11 @@ fn same_path(a: &std::path::Path, b: &std::path::Path) -> bool {
         .eq_ignore_ascii_case(&b.to_string_lossy())
 }
 impl ToolService {
-    pub fn new(platform: Arc<dyn ToolPlatform>, clock: Arc<dyn Clock>) -> Self {
+    pub fn new(platform: Arc<dyn ToolPlatform>, clock: Arc<dyn Clock>, tool_id: &'static str) -> Self {
         Self {
             platform,
             clock,
+            tool_id,
             state: Mutex::new(State::default()),
             start_wait: Duration::from_secs(60),
             close_wait: Duration::from_secs(8),
@@ -367,8 +506,8 @@ impl ToolService {
                 .is_some_and(|exe| same_path(exe, &p.path))
         }) || state.owned.is_some();
         ToolSnapshot {
-            schema_version: "vua.external-tool/v0.1",
-            tool_id: "vrcft",
+            schema_version: "vua.external-tool/v0.2",
+            tool_id: self.tool_id,
             captured_at: self.clock.now_rfc3339(),
             presence: install.presence,
             steam_ready: install.steam_ready,

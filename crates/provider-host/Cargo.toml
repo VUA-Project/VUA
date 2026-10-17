@@ -17,6 +17,7 @@ path = "src/bin/vua-orchestrator-provider.rs"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.11.0"
+zip = { version = "4.6", default-features = false, features = ["deflate"] }
 vua-acquisition = { path = "../acquisition" }
 vua-bdl-store = { path = "../bdl-store" }
 vua-orchestrator = { path = "../orchestrator" }

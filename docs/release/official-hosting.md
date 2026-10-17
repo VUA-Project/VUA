@@ -1,7 +1,5 @@
 # Official release hosting
 
-> Document version: 1.0.0
-> Status: Implementation baseline
 > Updated: 2026-10-13
 > Scope: Public PH-R.COM artifact hosting and static release information
 
@@ -104,7 +102,3 @@ check evidence, not a clean-machine install or a newer public AMF update. The ex
 installer's embedded helper and pack-source declarations remain GitHub-only. Users acquire
 dual-source behavior once through a subsequent host installer; do not repackage v0.6.7 under
 the same tag or replace its signed metadata to imply this change is already delivered.
-
-## Document changelog
-
-- 1.0.0 (2026-10-13): define static official publication, immutable artifact export, trust/range/caching/security requirements, transport/usability improvements and the explicit v0.6.7 mirror/client migration boundary.

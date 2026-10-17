@@ -38,8 +38,66 @@ fn invoke(request: Value) -> Value {
     response["payload"].clone()
 }
 #[test]
+fn all_six_fixed_tools_pass_the_gate_and_unknown_or_missing_ids_do_not() {
+    for tool_id in ["vrcft", "space", "advanced", "toolkit", "oyasumi", "translator"] {
+        let observe = invoke(json!({
+            "contractVersion": "0.1",
+            "requestId": "query",
+            "correlationId": "query",
+            "kind": "query",
+            "method": "tools.observeConnection",
+            "params": {"toolId": tool_id}
+        }));
+        assert_eq!(
+            observe["error"]["code"], "vua.external_tool.unavailable",
+            "{tool_id}: {observe}"
+        );
+        for action in ["install", "start", "stop", "cancel"] {
+            let response = invoke(json!({
+                "contractVersion": "0.1",
+                "requestId": "query",
+                "correlationId": "query",
+                "kind": "command",
+                "method": "tools.actConnection",
+                "params": {"toolId": tool_id, "action": action},
+                "commandId": "act-once"
+            }));
+            assert_eq!(
+                response["error"]["code"], "vua.external_tool.unavailable",
+                "{tool_id}:{action}: {response}"
+            );
+        }
+    }
+    for bad in ["liv", "vrcs", "custom"] {
+        let response = invoke(json!({
+            "contractVersion": "0.1",
+            "requestId": "query",
+            "correlationId": "query",
+            "kind": "query",
+            "method": "tools.observeConnection",
+            "params": {"toolId": bad}
+        }));
+        assert_eq!(
+            response["error"]["code"], "vua.external_tool.invalid_params",
+            "{bad}: {response}"
+        );
+    }
+    let missing = invoke(json!({
+        "contractVersion": "0.1",
+        "requestId": "query",
+        "correlationId": "query",
+        "kind": "query",
+        "method": "tools.observeConnection",
+        "params": {}
+    }));
+    assert_eq!(
+        missing["error"]["code"], "vua.external_tool.invalid_params",
+        "{missing}"
+    );
+}
+#[test]
 fn both_schema_faces_pin_the_shared_vectors_and_the_actual_request_gate() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/external-tool/v0.1");
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../schemas/external-tool/v0.2");
     let vectors: Value =
         serde_json::from_slice(&fs::read(root.join("vectors.json")).unwrap()).unwrap();
     for (face, file) in [

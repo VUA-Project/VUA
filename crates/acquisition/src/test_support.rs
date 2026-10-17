@@ -12,6 +12,10 @@
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+/// Upper bound for a background batch or task to settle. CI runners execute these tests in
+/// parallel with compilation, so a settle that takes milliseconds locally can take seconds there.
+pub(crate) const SETTLE_LIMIT: std::time::Duration = std::time::Duration::from_secs(60);
+
 /// Creates a uniquely named directory under the OS temp dir.
 ///
 /// Invariant: two calls in the same process never return the same path,

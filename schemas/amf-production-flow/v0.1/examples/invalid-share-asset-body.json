@@ -1,0 +1,11 @@
+{
+  "method": "amf.production.exportRecipe",
+  "kind": "command",
+  "params": {
+    "schemaVersion": "0.1",
+    "recipeId": "recipe-test",
+    "planDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "sources": {},
+    "assetBody": "not permitted"
+  }
+}

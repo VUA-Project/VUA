@@ -29,7 +29,7 @@ export function createVuaTray(actions: {
     ? nativeTheme.shouldUseDarkColorsForSystemIntegratedUI : nativeTheme.shouldUseDarkColors);
   const tray = new Tray(image());
   tray.setToolTip("VUA");
-  tray.on("double-click", actions.showMain);
+  tray.on("click", actions.showMain);
   const updateTheme = () => { if (!tray.isDestroyed()) tray.setImage(image()); };
   nativeTheme.on("updated", updateTheme);
   const setLocale = (locale: unknown) => {
@@ -41,9 +41,22 @@ export function createVuaTray(actions: {
     ]));
   };
   setLocale(actions.locale);
+  // Attention blinks the icon until the player returns to VUA.
+  let blink: ReturnType<typeof setInterval> | null = null;
+  const setAttention = (on: boolean) => {
+    if (tray.isDestroyed() || on === (blink !== null)) return;
+    if (on) {
+      let visible = true;
+      blink = setInterval(() => { visible = !visible; if (!tray.isDestroyed()) tray.setImage(visible ? image() : nativeImage.createEmpty()); }, 600);
+    } else {
+      clearInterval(blink!); blink = null; tray.setImage(image());
+    }
+  };
   return {
     setLocale,
+    setAttention,
     dispose: () => {
+      if (blink) clearInterval(blink);
       nativeTheme.removeListener("updated", updateTheme);
       if (!tray.isDestroyed()) tray.destroy();
     },

@@ -1,9 +1,10 @@
 //! Thin N2 wire adapter. Installation/module choices are not execution authority.
 use crate::provider_host::{application_error, application_success, FrameOutcome};
 use serde_json::{json, Value};
-use vua_orchestrator::external_tools::{ToolAction, ToolService};
+use std::collections::HashMap;
+use vua_orchestrator::external_tools::{steam_tool_spec, ToolAction, ToolService};
 pub(crate) fn request(
-    service: Option<&ToolService>,
+    services: Option<&HashMap<&'static str, ToolService>>,
     request: &Value,
     id: &str,
     correlation: &str,
@@ -44,7 +45,9 @@ pub(crate) fn request(
         && request["params"]
             .as_object()
             .is_some_and(|p| p.len() == if command { 2 } else { 1 })
-        && request["params"]["toolId"] == "vrcft"
+        && request["params"]["toolId"]
+            .as_str()
+            .is_some_and(|tool_id| steam_tool_spec(tool_id).is_some())
         && (!command
             || (action.is_some()
                 && !command_id.is_empty()
@@ -64,7 +67,14 @@ pub(crate) fn request(
     if !valid {
         return error("vua.external_tool.invalid_params", "validation");
     }
-    let Some(service) = service else {
+    let Some(services) = services else {
+        return error("vua.external_tool.unavailable", "unavailable");
+    };
+    // Unreachable while the host wires one service per fixed tool.
+    let Some(service) = request["params"]["toolId"]
+        .as_str()
+        .and_then(|tool_id| services.get(tool_id))
+    else {
         return error("vua.external_tool.unavailable", "unavailable");
     };
     let result = if command {

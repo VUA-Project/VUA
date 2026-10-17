@@ -1,12 +1,7 @@
 # ALCOM/VCC Project Compatibility Matrix
 
-
-> Document version: 1.3.3
-> Status: Accepted  
-> Scope: read-only compatibility detection and capability matrix for ALCOM/VCC-managed projects  
-> Updated: 2026-10-01  
-> Authority: `docs/product-boundary.md` 2.2.3 (user ruling U3, 2026-09-08; settings-face
-> exception U14, 2026-09-19 — the cited clauses read unchanged since product-boundary 2.0.0)
+> Scope: read-only compatibility detection and capability matrix for ALCOM/VCC-managed projects
+> Updated: 2026-10-01
 
 ## Authority and hard boundary
 
@@ -138,33 +133,3 @@ inspection face never writes.
   project-ops v0.2 (`project.import-copy`, whose shape is unchanged from the superseded
   v0.1, plus `project.setNote`) are both frozen and wired
   ([project-ops-v0.2](../protocols/project-ops-v0.2.md)).
-
-## Document changelog
-
-- 1.3.3 (2026-10-01): cite the current frozen project-ops v0.2 face instead of the superseded
-  v0.1, refresh the authority pin to product-boundary 2.2.3 (the U3/U14 clauses were verified
-  unchanged since 2.0.0), and reword the live BOARD B5② body reference as the dated 2026-09-12
-  walkthrough ruling; no rule change.
-- 1.3.2 (2026-09-28): erratum — authority pointers refreshed to product-boundary 2.0.0 (the U3/U14
-  clauses are retained verbatim there) and the "inside the `1.0.x` boundary" phrase replaced by
-  "under the current product boundary"; no rule change.
-- 1.3.1 (2026-09-23): authority pointer refreshed to product-boundary 1.5.0 — the U3/U14
-  clauses in the 1.5.0 "explicit boundary" section were verified word-identical to 1.4.0, so
-  this matrix's semantics are unchanged. Mirrors the ZH edition.
-- 1.3.0 (2026-09-20): the U14 settings-face exception landed in the matrix (proposal 028
-  item-5 routing, revision authored by Integration) — the "Authority and hard boundary"
-  section gains a "Settings-face exception" paragraph and the Forbidden list gains the
-  `settings.json` package-management-face exemption note (aligned with product-boundary
-  1.4.0 wording: the exemption covers only the repository-subscription and
-  local-package-registry faces; other storage faces such as `vcc.liteDb` and the
-  project-file face stay denied/read-only); authority line refreshed to 1.4.0.
-- 1.2.0 (2026-09-12): the "Source-finding principles and capability boundary"
-  section added (formal answer to BOARD B5①: project origin = manager registry
-  fact, package origin = VPM declared face; pins the "cannot assert real
-  provenance" capability boundary and the uncertainty presentation discipline;
-  factual basis for the B5② copy).
-- 1.1.0 (2026-09-10): the "VUA-native project finding" section added
-  (`.vua/project.json` tri-state; user rulings 7/9/12) + the detection-matrix
-  VUA-native identity row; machine-readable faces refreshed (project-inspection
-  v0.2, 013/014 frozen and wired, protocol-document links).
-- 1.0.0 (2026-09-09): initial version.

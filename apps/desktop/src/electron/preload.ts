@@ -12,7 +12,9 @@ import type {
   NavigationConfirmRequestV1,
   OverlayViewV1,
   RemoteContentEventV1,
-  VuaDesktopApiV3,
+  VuaDesktopApiV4,
+  AiConnectionLocale,
+  AiToolsSnapshotV01,
 } from "@vua/contracts";
 
 // 沙箱 preload 只允许 require electron 白名单模块:@vua/contracts 在此仅做
@@ -69,7 +71,20 @@ try {
   if (Array.isArray(decoded) && decoded.length <= 32 && decoded.every(language => typeof language === "string" && language.length <= 64)) systemLanguages = decoded;
 } catch { /* Missing OS languages use the source-language fallback. */ }
 
-const api: VuaDesktopApiV3 = Object.freeze({
+const api: VuaDesktopApiV4 = Object.freeze({
+  aiTools: Object.freeze({
+    snapshot: () => ipcRenderer.invoke("vua:ai-tools:snapshot"),
+    setEnabled: (enabled: boolean) => ipcRenderer.invoke("vua:ai-tools:set-enabled", enabled),
+    prompt: (locale: AiConnectionLocale) => ipcRenderer.invoke("vua:ai-tools:prompt", locale),
+    copyPrompt: (locale: AiConnectionLocale) => ipcRenderer.invoke("vua:ai-tools:copy-prompt", locale),
+    resolve: (id: string, decision: "approve" | "reject", confirmation?: { avatarName: string; rightsConfirmed: true }) => ipcRenderer.invoke("vua:ai-tools:resolve", id, decision, confirmation),
+    subscribe: (listener: (value: AiToolsSnapshotV01) => void) => {
+      const wrapped = (_event: IpcRendererEvent, value: AiToolsSnapshotV01) => listener(value);
+      ipcRenderer.on("vua:ai-tools:changed", wrapped);
+      return () => ipcRenderer.removeListener("vua:ai-tools:changed", wrapped);
+    },
+    attention: () => ipcRenderer.invoke("vua:ai-tools:attention"),
+  }),
   distribution: Object.freeze({
     snapshot: () => ipcRenderer.invoke("vua:distribution:snapshot"),
     check: () => ipcRenderer.invoke("vua:distribution:check"),
@@ -113,6 +128,8 @@ const api: VuaDesktopApiV3 = Object.freeze({
     invoke: (request: DesktopGatewayRequestV1) => ipcRenderer.invoke("vua:gateway:invoke", request),
   }),
   dialog: Object.freeze({
+    copyRecipeShare: (document: import("@vua/contracts").AmfSharedRecipe) => ipcRenderer.invoke("vua:recipe:copy-share", document),
+    saveRecipeShare: (document: import("@vua/contracts").AmfSharedRecipe) => ipcRenderer.invoke("vua:recipe:save-share", document),
     pickMaterialSource: (intake: "direct_unity_package" | "local_reusable_vpm") =>
       ipcRenderer.invoke("vua:dialog:pick-material-source", intake, document.documentElement.lang),
     pickWarehouseFolders: () => ipcRenderer.invoke("vua:dialog:pick-warehouse-folders", document.documentElement.lang),

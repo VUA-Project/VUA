@@ -1,6 +1,5 @@
 # Windows distribution and independent AMF updates
 
-> Document version: 1.2.0
 > Status: Draft
 > Updated: 2026-10-13
 > Scope: NSIS installation, mirrored Electron runtime acquisition and bundled AMF incremental updates
@@ -242,10 +241,3 @@ authorized by this planning request. The author can supply the later test enviro
 
 These describe available mechanisms, not a working VUA installer or updater. Validate behavior
 against the dependency version selected by the implementation slice.
-
-## Document changelog
-
-- 1.2.0 (2026-10-13): record official immutable v0.6.7 hosting and controlled dual-feed checks, route publication operations, and distinguish subsequent-client delivery from existing installer bytes.
-- 1.1.0 (2026-10-13): record the implemented first-party NSIS/runtime/AMF boundary and controlled evidence; retain clean-machine, alternative update hosting and human/physical acceptance gaps.
-
-- 1.0.0 (2026-10-11): plan NSIS with mirrored verified Electron acquisition, bundled AMF and independent file-based incremental updates, with compatibility, recovery and exact-build acceptance.

@@ -1,3 +1,6 @@
+import type { PageId } from "../../app/nav-model.ts";
+import { AmfRecipeLibrary } from "../amf/AmfRecipeLibrary.tsx";
+import { requestProductionRecipe } from "../amf/production-recipe-navigation.ts";
 import { useRecipeLibraryRevision } from "../../app/recipe-library-revision.ts";
 import { formatDateTime } from "../../i18n/index.ts";
 import {
@@ -715,7 +718,39 @@ function RecipeLibrarySection({
   }
 }
 
-export function RecipePage() {
+export function RecipePage({ onNavigate }: { onNavigate?: (page: PageId) => void } = {}) {
+  const gateway = useGateway();
+  const [workspaceOpen, setWorkspaceOpen] = useState(false);
+  if (!gateway.amfProduction) return <RecipeWorkspace />;
+  const productionCopy = strings.amfProduction;
+  return (
+    <div className="vua-page">
+      <section className="vua-page__hero">
+        <h1 className="vua-title">{termLabel("recipe")}</h1>
+        <p className="vua-text-secondary">{productionCopy.recipePageIntro}</p>
+        <div className="vua-page__actions">
+          <Button variant="primary" disabled={!onNavigate} onClick={() => onNavigate?.("workshop")}>
+            {productionCopy.recipeMakeAvatar}
+          </Button>
+        </div>
+      </section>
+      <AmfRecipeLibrary disabled={!onNavigate} onOpen={recipeId => {
+        requestProductionRecipe(recipeId);
+        onNavigate?.("workshop");
+      }}/>
+      <section className="vua-recipe-workspace">
+        <Button variant="subtle" aria-expanded={workspaceOpen} aria-controls="recipe-workspace" onClick={() => setWorkspaceOpen(value => !value)}>
+          {productionCopy.recipeWorkspace}
+        </Button>
+        <p className="vua-caption vua-text-secondary">{productionCopy.recipeWorkspaceHint}</p>
+        {workspaceOpen && <div id="recipe-workspace"><RecipeWorkspace /></div>}
+      </section>
+    </div>
+  );
+}
+
+/** Selection drafts and their graph remain available separately from saved production Recipes. */
+export function RecipeWorkspace() {
   const gateway = useGateway();
   const isFixture = useDataSource() === "fixture";
   const [graph, setGraph] = useState<RecipeGraphView | null>(null);

@@ -75,7 +75,7 @@ export function ResourceMonitor() {
       <span className="vua-shell__usage-value">{format(copy.headroom, { percent: view.headroomPct })}</span>
       {constrained ? <span className="vua-shell__usage-constrained"><Icon name="warning" size={16} /><span>{constrained}</span></span> : null}
     </button>
-    {open ? createPortal(<div ref={panelRef} className="vua-usage-panel" role="region" aria-label={copy.title} tabIndex={-1}>
+    {open ? createPortal(<div ref={panelRef} className="vua-usage-panel" data-vua-native-occluder role="region" aria-label={copy.title} tabIndex={-1}>
       <div className="vua-usage-panel__header">
         <span className="vua-usage-panel__title">{copy.title}</span>
         <button type="button" className="vua-usage-panel__close" aria-label={copy.closeAria} onClick={() => setOpen(false)}><Icon name="close" size={16} /></button>

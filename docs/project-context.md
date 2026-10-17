@@ -1,7 +1,5 @@
 # Project context — cold-start primer
 
-> Document version: 3.0.1
-> Status: Accepted
 > Scope: Cold-start pointer for fresh checkouts and worktrees; no independent policy or completion claims
 
 This file is the tracked cold-start primer: it gives a fresh checkout or worktree one obvious
@@ -14,8 +12,3 @@ policy and old status descriptions no longer form a second source of truth.
 
 Collab is retired. [Its archive](archive/2026-09-29/README.md) preserves decision provenance;
 ordinary work follows [CONTRIBUTING.md](../CONTRIBUTING.md).
-
-## Document changelog
-
-- 3.0.1 (2026-10-01): correct the title left over from the compatibility route, state the tracked cold-start primer purpose, and drop the remaining route restatements in favor of the documentation guide.
-- 3.0.0 (2026-09-29): replace duplicated policy/status with direct routes to current owners.

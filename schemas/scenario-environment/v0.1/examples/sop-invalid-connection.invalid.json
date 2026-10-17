@@ -1,0 +1,14 @@
+{
+  "contractVersion": "0.1",
+  "requestId": "scenario-test",
+  "correlationId": "scenario-test",
+  "kind": "query",
+  "method": "environment.getScenarioSop",
+  "params": {
+    "schemaVersion": "0.1",
+    "scenario": {
+      "scenario": "desktop_play",
+      "connection": "wifi"
+    }
+  }
+}

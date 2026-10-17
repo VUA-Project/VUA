@@ -1,13 +1,7 @@
-# VUA design standard v0.30.0
+# VUA design standard
 
-
-> Document version: 0.30.0
-> Status: Accepted
-> Scope: Electron desktop, desktop overlay, and VR overlay presentation  
+> Scope: Electron desktop, desktop overlay, and VR overlay presentation
 > Updated: 2026-10-12
-> Last conformance review: 2026-10-12 (four-language controlled columns/link filtering/popup, source association, bulk/removal/notification and intake checks; author account/material/device and human-language review pending)
-> Normative effect: Governs interaction, visual, and accessibility implementation;
-> does not expand product scope or replace versioned application contracts
 
 ## 0. Position of this version
 
@@ -886,17 +880,3 @@ Scrolling while holding a marquee expands/shrinks selection from its original co
 The main intake action reads **Import a local item**. A joined small arrow opens **Import multiple items (library migration)** below it on hover or click. The latter currently previews actual directory structure read-only and honestly marks boundaries unconfirmed; grouping proposals are owned by the [draft design](../development/library-migration-design.md).
 
 The in-app folder picker uses a permanently visible path text field and places Desktop, Documents, Downloads and This PC to the right of Up and Refresh. Up from a drive root returns to actual drive choices. Virtual This PC cannot itself be imported or receive a new directory.
-
-## 12. Document changelog
-
-- 0.30.0 (2026-10-12): Define library column dividers and source text, unclipped migration popup and inline adaptation-filter cancellation.
-- 0.29.0 (2026-10-12): define entry-level local cards, imported-origin filtering, scroll-aware marquee, card-removal confirmation and separate single/migration intake with a native-location picker.
-
-- 0.28.0 (2026-10-12): remove all notification row/hover fills at the shared style owner, move folder access into single-card menus and place view switching immediately left of search.
-- 0.27.0 (2026-10-12): add native file/folder drops and AMF prerequisite prompts, title/shop/variant ordering, transparent notification rows and in-place completion-corner recovery.
-- 0.26.0 (2026-10-12): define triangular media corners and actual pause/source actions, card-bottom menus, canonical BOOTH links and direct local folder intake.
-- 0.25.0 (2026-10-12): add scoped bulk-file confirmation, recorded native categories and measured download notifications; place raw task diagnostics in Experimental and retire obsolete demo/variant panels.
-- 0.24.0 (2026-10-11): add displayed-page selection for cloud/local cards and menus, keep product adaptation discoverable behind explicit clue enablement, and give detail close/title controls separate rows; normalize retired body references.
-- 0.23.0 (2026-10-11): unify the library's search/source/download-state controls, retire the three legacy selectors and add an explicit local-material folder action with narrow-window scroll recovery.
-- 0.22.0 (2026-10-11): retain Wiki/material pages across navigation and define compact bounded tabs with independent close/history, popup and shortcut behavior, preserving transient import presentation and shell themes.
-- 0.21.0 (2026-10-11): retire the pixel robot from environment conclusions, shared state messages and developer showcases; remove the About character-art placeholder and retain explanatory states and real actions.

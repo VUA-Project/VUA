@@ -8,6 +8,8 @@ import {
   type ApplicationSnapshotV01,
   type DesktopGatewayRequestV1,
   type DesktopGatewayResponseV1,
+  type VrchatGatewayRequestV1,
+  type VrchatGatewayValueV1,
 } from "@vua/contracts";
 import type { OrchestratorProviderV01 } from "@vua/orchestrator-provider";
 import { isAllowedLocalSender } from "./security.js";
@@ -33,7 +35,26 @@ export interface DesktopGatewayRouteContext {
    *  未知引用返回 undefined。四元组随 startInspection 一次性转交,此后路径
    *  不再出现在任何请求面 */
   readonly resolveMaterialSource: (refId: string) => ProductionContextV02 | undefined;
+  readonly launchAmfEditor?: ((runId: string) => Promise<void>) | undefined;
+  /** vrchat-session v0.1(实验性 VRChat 登录):Electron Main 持有的会话与
+   *  Gateway 面。机密不进 Provider;`vua_status` 只读两个布尔。 */
+  readonly vrchat?: {
+    handle(request: VrchatGatewayRequestV1): Promise<VrchatGatewayValueV1>;
+    /** MCP `vua_status` 的最大可见面:开关与登录态,各一布尔。 */
+    snapshot(): { experimentalEnabled: boolean; signedIn: boolean };
+    /** 托管上传分发前:玩家已登录时把会话一次性交到该 run 的工作工程。
+     *  尽力而为;失败时上传保持面板内登录的原路。 */
+    writeSdkHandoff(runId: string): Promise<void>;
+    /** 上传未被受理时立即删除已写出的交接文件。 */
+    discardSdkHandoff(): void;
+  } | undefined;
 }
+
+/** vrchat-session v0.1 的方法名集合(Kernel 分流,不进 Provider)。 */
+const VRCHAT_METHODS = new Set<string>([
+  "vrchat.status", "vrchat.setExperimental", "vrchat.signIn", "vrchat.relogin",
+  "vrchat.verifyCode", "vrchat.resendEmailCode", "vrchat.signOut", "vrchat.forget", "vrchat.avatarCheck",
+]);
 
 function requestIdFrom(value: unknown): string {
   return value !== null
@@ -81,6 +102,12 @@ function toApplicationRequest(
     correlationId: request.requestId,
   };
   switch (request.method) {
+    // vrchat-session v0.1:Electron Main 分流面;路由在 toApplicationRequest
+    // 之前已处理,这里仅为方法表穷尽性登记,不可达
+    case "vrchat.status": case "vrchat.setExperimental": case "vrchat.signIn": case "vrchat.relogin":
+    case "vrchat.verifyCode": case "vrchat.resendEmailCode": case "vrchat.signOut": case "vrchat.forget":
+    case "vrchat.avatarCheck":
+      throw new Error("vrchat methods are routed to Electron Main before provider dispatch");
     case "app.snapshot":
       return { ...base, kind: "query", method: "application.getSnapshot", params: {} };
     case "task.list":
@@ -545,6 +572,11 @@ function toApplicationRequest(
       return { ...base, kind: "command", method: "warehouse.importDownloads", commandId: request.params.commandId, params: { downloadIds: [...request.params.downloadIds] } };
 
     // production-use-case v0.2(W20 ten-method, W24 workbench): verbatim pass-through
+    case "environment.getScenarioSop": case "environment.checkScenarioEnvironment":
+    case "amf.production.list": case "amf.production.get": case "amf.production.plan": case "amf.production.rollbackPlan": case "amf.production.listRecipes": case "amf.production.getRecipe": case "amf.production.recipeSharePlan": case "amf.production.recipeApplyPlan": case "amf.production.previewRecipeShare": case "amf.production.previewImage": case "amf.production.releaseState": case "amf.production.turntableFrame":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "amf.production.prepare": case "amf.production.assemble": case "amf.production.reinspect": case "amf.production.open": case "amf.production.rollback": case "amf.production.saveRecipe": case "amf.production.prepareRecipe": case "amf.production.exportRecipe": case "amf.production.importRecipe": case "amf.production.applyRecipe": case "amf.production.bakeTurntable": case "amf.production.upload":
+      return { ...base, kind: "command", commandId: `amf-${request.requestId}`, method: request.method, params: request.params };
     case "recipe.save":
       return {
         ...base,
@@ -657,6 +689,23 @@ export async function routeDesktopGatewayInvoke(
   }
 
   try {
+    // vrchat-session v0.1:分流到 Electron Main;机密不进 Provider,返回不含机密
+    if (VRCHAT_METHODS.has(String(request.method))) {
+      if (context.vrchat === undefined) {
+        return failure(request.requestId, "unsupported_method", "errors.gateway.invalidRequest");
+      }
+      const value = await context.vrchat.handle(request as VrchatGatewayRequestV1);
+      return {
+        schemaVersion: DESKTOP_GATEWAY_VERSION,
+        requestId: request.requestId,
+        ok: true,
+        value,
+      };
+    }
+    // 托管上传开始前:玩家已在 VUA 登录时,把会话一次性交到工作工程的 Editor
+    if (request.method === "amf.production.upload" && context.vrchat !== undefined) {
+      try { await context.vrchat.writeSdkHandoff(request.params.runId); } catch { /* 面板内登录保持可用 */ }
+    }
     let applicationRequest: ApplicationRequestV01;
     try {
       applicationRequest = toApplicationRequest(request, context.resolveMaterialSource);
@@ -684,6 +733,7 @@ export async function routeDesktopGatewayInvoke(
       throw error;
     }
     const providerResponse = await context.provider.invoke(applicationRequest);
+    if (!providerResponse.ok && request.method === "amf.production.upload") context.vrchat?.discardSdkHandoff();
     if (!providerResponse.ok) {
       // 应用错误原样透传:本地化键、可重试与可恢复判定引用契约原值
       return {
@@ -692,6 +742,9 @@ export async function routeDesktopGatewayInvoke(
         ok: false,
         error: { code: "application", application: providerResponse.error },
       };
+    }
+    if ((request.method === "amf.production.open" || request.method === "amf.production.upload") && context.launchAmfEditor) {
+      await context.launchAmfEditor(request.params.runId);
     }
     if (request.method === "app.snapshot") {
       if (!isApplicationSnapshot(providerResponse.value)) {
@@ -722,6 +775,10 @@ export async function routeDesktopGatewayInvoke(
             // 功能决策,另行走登记(壳侧呈现随 preload 自报翻转)
             remoteBrowser: SHELL_CAPABILITIES.remoteBrowser,
           },
+          // vrchat-session v0.1:MCP `vua_status` 最多读到这两个布尔
+          vrchat: context.vrchat !== undefined
+            ? context.vrchat.snapshot()
+            : { experimentalEnabled: false, signedIn: false },
         },
       };
     }

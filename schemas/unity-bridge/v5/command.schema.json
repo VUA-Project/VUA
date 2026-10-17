@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ph-r.com/vua/schemas/unity-bridge/v5/command.schema.json",
+  "title": "Unity Bridge v5 AMF command (Candidate)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "commandId",
+    "projectId",
+    "operation",
+    "dryRun",
+    "payload"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 5
+    },
+    "commandId": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-]{1,100}$"
+    },
+    "projectId": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-]{1,100}$"
+    },
+    "operation": {
+      "enum": [
+        "amf_prepare",
+        "amf_inspect",
+        "amf_assemble",
+        "amf_turntable"
+      ]
+    },
+    "dryRun": {
+      "type": "boolean"
+    },
+    "expectedProjectFingerprint": {
+      "type": "string",
+      "minLength": 1
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "planRef",
+        "planHash"
+      ],
+      "properties": {
+        "avatarGlobalObjectId": {
+          "const": ""
+        },
+        "avatarArmatureGlobalObjectId": {
+          "const": ""
+        },
+        "outfitGlobalObjectId": {
+          "const": ""
+        },
+        "outfitArmatureGlobalObjectId": {
+          "const": ""
+        },
+        "toggleName": {
+          "const": ""
+        },
+        "planRef": {
+          "type": "string",
+          "pattern": "^\\.vua/bridge/[a-zA-Z0-9-]+\\.amf-plan\\.json$"
+        },
+        "planHash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "amf_inspect"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "dryRun": {
+            "const": true
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "dryRun": {
+            "const": false
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "amf_assemble"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "expectedProjectFingerprint"
+        ]
+      }
+    }
+  ]
+}

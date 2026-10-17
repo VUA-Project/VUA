@@ -6,7 +6,9 @@ licenses; the repository's Apache-2.0 license does not replace them.
 ## Current source dependencies
 
 The desktop runtime uses Electron (MIT, with separate Chromium/Node notices), React/React DOM
-(MIT) and Three.js (MIT). Windows previews retain the runtime's shipped license files and VUA's
+(MIT), Three.js (MIT) and the official MCP TypeScript SDK packages `@modelcontextprotocol/server`
+and `@modelcontextprotocol/node` (Apache-2.0) for the local agent adapter;
+`@modelcontextprotocol/client` (Apache-2.0) is used only by tests. Windows previews retain the runtime's shipped license files and VUA's
 license/notice summary. The lockfile pins their exact versions; a public build needs the complete
 transitive inventory under the distribution rule below.
 

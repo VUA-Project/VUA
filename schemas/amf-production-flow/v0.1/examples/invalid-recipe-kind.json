@@ -1,0 +1,9 @@
+{
+  "method": "amf.production.saveRecipe",
+  "kind": "query",
+  "params": {
+    "schemaVersion": "0.1",
+    "runId": "n3-test",
+    "title": "My Avatar"
+  }
+}

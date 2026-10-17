@@ -95,8 +95,8 @@ describe("desktop provider process factory environment injection", () => {
       ];
       // 环境键集 = 清洗层放行的系统变量(大小写随宿主环境块)+ 三个注入的
       // 运行时根,别无其它;凭据形与普通宿主变量一律剥离
-      const allowed = new Set(["systemroot", "windir", "temp", "tmp"]);
-      const injected = new Set(["VUA_PROVIDER_DATA", "VUA_WAREHOUSE_ROOT", "VUA_PROJECT_ROOT"]);
+      const allowed = new Set(["systemroot", "windir", "temp", "tmp", "programdata", "allusersprofile"]);
+      const injected = new Set(["VUA_PROVIDER_DATA", "VUA_WAREHOUSE_ROOT", "VUA_PROJECT_ROOT", "VUA_AMF_HANDOFF_FROM_DESKTOP"]);
       for (const key of Object.keys(options.env)) {
         expect(
           allowed.has(key.toLowerCase()) || injected.has(key),
@@ -104,6 +104,7 @@ describe("desktop provider process factory environment injection", () => {
         ).toBe(true);
       }
       expect(options.env.TEMP).toBe("C:\\Temp");
+      expect(options.env.VUA_AMF_HANDOFF_FROM_DESKTOP).toBe("1");
       expect(options.env.PATH).toBeUndefined();
       expect(options.env.VUA_TOKEN).toBeUndefined();
       expect(options.env.GITHUB_TOKEN).toBeUndefined();

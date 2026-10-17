@@ -1,16 +1,23 @@
 import { useAmfModule } from "../../gateway/index.ts";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import type { AiActionRequestV01 } from "@vua/contracts";
 import { Icon } from "@vua/design-system";
 import { format, strings, TERMS } from "../../i18n/index.ts";
 import type { PageId } from "../../app/nav-model.ts";
 import type { TaskItem } from "../../gateway/index.ts";
+import { Button } from "../../components/primitives/Button.tsx";
 import { NotificationList } from "./NotificationList.tsx";
 import { scrollClosesPanel, taskRowOpenTarget } from "./notification-model.ts";
 import { useNotificationCenter } from "./use-notification-center.ts";
+import { requestClock, requestTitle } from "../ai-requests/AiRequestCard.tsx";
+import { requestPage } from "../ai-requests/ai-request-routing.ts";
+import { revealRequest } from "../ai-requests/ai-request-reveal.ts";
+import { useAiRequests } from "../ai-requests/use-ai-requests.ts";
 import "./notification-popover.css";
 
 const copy = strings.taskCenter;
+const aiCopy = strings.aiTools;
 
 /** 面板入场/退场动画窗(与 notification-popover.css 对齐) */
 const PANEL_EXIT_MS = 140;
@@ -26,13 +33,35 @@ const PANEL_EXIT_MS = 140;
  *
  * 入口显隐(§2.6):任务引擎 capability 非 ready 时整条不出现(而非禁用)。
  */
-export function NotificationPopover({ navigate }: { navigate: (target: PageId) => void }) {
+export function NotificationPopover({ navigate, page }: { navigate: (target: PageId) => void; page: PageId }) {
   const amf = useAmfModule();
   const center = useNotificationCenter();
+  const ai = useAiRequests();
   const [phase, setPhase] = useState<"closed" | "open" | "closing">("closed");
+  const [peek, setPeek] = useState<AiActionRequestV01 | null>(null);
   const toggleRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const wasOpenRef = useRef(false);
+  const announced = useRef(new Set<string>());
+
+  // AI requests wait on the page they change. Elsewhere the bell offers them; in the background
+  // the system is asked for attention (tray icon and taskbar button).
+  const requests = ai.snapshot?.requests ?? [];
+  const pending = requests.filter(request => request.state === "pending");
+  const taskOrigin = (taskId: string) => center.tasks.find(task => task.id === taskId)?.originPage;
+  const openRequest = (request: AiActionRequestV01) => { setPeek(null); revealRequest(request, navigate, taskOrigin); };
+  const pendingKey = pending.map(request => request.id).join("|");
+  useEffect(() => {
+    for (const request of pending) {
+      if (announced.current.has(request.id)) continue;
+      announced.current.add(request.id);
+      if (!document.hasFocus()) void ai.port?.attention?.();
+      if (requestPage(request, taskOrigin) !== page) setPeek(request);
+    }
+  }, [pendingKey]);
+  useEffect(() => {
+    if (peek && (requestPage(peek, taskOrigin) === page || !pending.some(request => request.id === peek.id))) setPeek(null);
+  }, [page, pendingKey, peek]);
 
   // 退场窗结束后卸载;动效压平时不空等动画窗
   useEffect(() => {
@@ -99,7 +128,8 @@ export function NotificationPopover({ navigate }: { navigate: (target: PageId) =
   // §2.6:任务引擎未接入时入口整条不出现(所有 hooks 之后)
   if (center.capability?.state !== "ready") return null;
 
-  const open = phase !== "closed";
+  const expanded = phase !== "closed";
+  const count = center.activeCount + pending.length;
 
   return (
     <>
@@ -108,18 +138,33 @@ export function NotificationPopover({ navigate }: { navigate: (target: PageId) =
         type="button"
         className="vua-shell__notify"
         data-nav-id="shell-notifications"
-        aria-expanded={open}
-        aria-label={format(copy.openAria, { count: center.activeCount })}
-        onClick={() => setPhase((p) => (p === "closed" ? "open" : "closing"))}
+        data-attention={pending.length > 0 || undefined}
+        aria-expanded={expanded}
+        aria-label={format(copy.openAria, { count })}
+        onClick={() => { setPeek(null); setPhase((p) => (p === "closed" ? "open" : "closing")); }}
       >
         <Icon name="bell" size={16} />
-        {center.activeCount > 0 ? (
+        {count > 0 ? (
           <span className="vua-shell__notify-badge" aria-hidden="true">
-            {center.activeCount}
+            {count}
           </span>
         ) : null}
       </button>
-      {open
+      {peek && !expanded
+        ? createPortal(
+            <div className="vua-notify-peek" role="alertdialog" aria-label={aiCopy.peekTitle}>
+              <p className="vua-caption vua-text-secondary">{aiCopy.peekTitle}</p>
+              <strong>{requestTitle(peek)}</strong>
+              <p className="vua-caption vua-text-secondary">{format(aiCopy.askedAt, { time: requestClock(peek.createdAt) })}</p>
+              <div className="vua-notify-peek__actions">
+                <Button variant="primary" onClick={() => openRequest(peek)}>{aiCopy.goConfirm}</Button>
+                <Button variant="subtle" onClick={() => setPeek(null)}>{aiCopy.later}</Button>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+      {expanded
         ? createPortal(
             <>
               <div
@@ -145,6 +190,14 @@ export function NotificationPopover({ navigate }: { navigate: (target: PageId) =
                   </button>
                 </div>
                 {amf.state === "failed" ? <p role="status">{format(strings.amfModule.failed, { amf: TERMS.amf })}</p> : null}
+                {pending.length > 0 ? <section className="vua-notify-ai" aria-label={aiCopy.requests}>
+                  <h3 className="vua-caption">{aiCopy.requests}</h3>
+                  <ul>{pending.map(request => <li key={request.id}>
+                    <span><strong>{requestTitle(request)}</strong><br />
+                      <span className="vua-caption vua-text-secondary">{format(aiCopy.askedAt, { time: requestClock(request.createdAt) })}</span></span>
+                    <Button variant="primary" onClick={() => { close(); openRequest(request); }}>{aiCopy.goConfirm}</Button>
+                  </li>)}</ul>
+                </section> : null}
                 <NotificationList
                   notifications={center.notifications}
                   rejectedId={center.rejectedId}

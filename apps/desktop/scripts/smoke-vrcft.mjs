@@ -18,7 +18,7 @@ process.env.VUA_AMF_EXECUTABLE = process.env.VUA_TEST_AMF_EXECUTABLE ?? path.res
 delete process.env.VUA_RENDERER_URL;
 BrowserWindow.prototype.show = function () {}; BrowserWindow.prototype.focus = function () {};
 let window, exitCode = 1, nativeRead = false, unavailable = false;
-let synthetic = { schemaVersion: "vua.external-tool/v0.1", toolId: "vrcft", capturedAt: "synthetic", presence: "missing", steamReady: true, buildId: null, running: false, canStop: false, activity: "idle", issue: null };
+let synthetic = { schemaVersion: "vua.external-tool/v0.2", toolId: "vrcft", capturedAt: "synthetic", presence: "missing", steamReady: true, buildId: null, running: false, canStop: false, activity: "idle", issue: null };
 const actions = [], errors = [], checks = [];
 const handle = ipcMain.handle.bind(ipcMain);
 ipcMain.handle = (channel, listener) => handle(channel, async (event, request, ...rest) => {
@@ -30,7 +30,7 @@ ipcMain.handle = (channel, listener) => handle(channel, async (event, request, .
     const action = request.params.action;
     synthetic = { ...synthetic, activity: action === "install" ? "install_requested" : action === "start" ? "starting" : action === "stop" ? "stopping" : "idle" };
   }
-  return { schemaVersion: 1, requestId: request.requestId, ok: true, value: { toolConnection: synthetic } };
+  return { schemaVersion: 1, requestId: request.requestId, ok: true, value: { toolConnection: { ...synthetic, toolId: request.params.toolId } } };
 });
 app.on("browser-window-created", (_event, created) => {
   created.webContents.setBackgroundThrottling(false);
@@ -60,7 +60,8 @@ async function run() {
     nativeRead = true;
     const observed = await js('window.vua.gateway.invoke({schemaVersion:1,requestId:"native-tool-read",method:"tools.observeConnection",params:{toolId:"vrcft"}})');
     // CI may have no vendor apps. Schema validation and the actual native gate must still work.
-    assert(observed.ok && observed.value.toolConnection.toolId === "vrcft" && observed.value.toolConnection.schemaVersion === "vua.external-tool/v0.1", "Native host returns VRCFT facts while AMF is disabled");
+    const nativeSchema = observed.value?.toolConnection?.schemaVersion;
+    assert(observed.ok && observed.value.toolConnection.toolId === "vrcft" && nativeSchema === "vua.external-tool/v0.2", "Native host returns VRCFT v0.2 facts while AMF is disabled");
     const nativePresence = observed.value.toolConnection.presence; nativeRead = false;
     await click('[data-nav-id=nav-tools-discover]'); await waitFor(() => js('!!document.querySelector("[data-nav-id=tool-vrcft-action]")'), "tool card"); await refresh();
     await click('[data-nav-id=tool-vrcft-action]'); await waitFor(() => js('!!document.querySelector("[role=dialog]")'), "picker");
@@ -120,8 +121,8 @@ async function run() {
     await waitFor(() => js('!!document.querySelector("[data-nav-id=nav-tools-discover]")'), "restart"); await click('[data-nav-id=nav-tools-discover]'); await click('[data-nav-id=tool-vrcft]');
     assert(await js('document.querySelector("[data-tracking-device=quest-pro]")?.dataset.trackingMethod==="vd"'), "Device and connection resume after reload");
     assert(errors.length === 0, `Renderer errors: ${errors.join('; ')}`);
-    fs.writeFileSync(path.join(output, 'checks.json'), JSON.stringify({ scope: 'Native read-only discovery + synthetic tool UI, not physical tracking or vendor install/launch acceptance', nativePresence, checks }, null, 2));
-    console.log(JSON.stringify({ passed: checks.length, nativePresence, evidence: output })); exitCode = 0;
+    fs.writeFileSync(path.join(output, 'checks.json'), JSON.stringify({ scope: 'Native read-only discovery + synthetic tool UI, not physical tracking or vendor install/launch acceptance', nativeSchema, nativePresence, checks }, null, 2));
+    console.log(JSON.stringify({ passed: checks.length, nativeSchema, nativePresence, evidence: output })); exitCode = 0;
   } catch (error) { console.error(error); console.error(JSON.stringify({ evidence: output, passed: checks.length, rendererErrors: errors })); if (window && !window.isDestroyed()) fs.writeFileSync(path.join(output, 'failure.png'), (await window.webContents.capturePage(undefined, { stayHidden: true })).toPNG()); }
   finally { clearTimeout(deadline); app.quit(); }
 }

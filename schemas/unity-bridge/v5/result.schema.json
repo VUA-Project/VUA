@@ -1,0 +1,289 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ph-r.com/vua/schemas/unity-bridge/v5/result.schema.json",
+  "title": "Unity Bridge v5 AMF result (Candidate)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "commandId",
+    "operation",
+    "status",
+    "changedPaths",
+    "diagnostics",
+    "data"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 5
+    },
+    "commandId": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-]{1,100}$"
+    },
+    "operation": {
+      "enum": [
+        "amf_prepare",
+        "amf_inspect",
+        "amf_assemble",
+        "amf_turntable"
+      ]
+    },
+    "status": {
+      "enum": [
+        "succeeded",
+        "failed"
+      ]
+    },
+    "changedPaths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096,
+        "pattern": "^[^\\u0000]+$"
+      },
+      "uniqueItems": true
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "severity",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096,
+            "pattern": "^[^\\u0000]+$"
+          },
+          "severity": {
+            "enum": [
+              "info",
+              "warning",
+              "error"
+            ]
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "editorVersion",
+        "projectFingerprint",
+        "avatarName",
+        "avatarGlobalObjectId",
+        "prefabs",
+        "instances",
+        "sdkDescriptorRecognized",
+        "officialSdkChecks",
+        "visualReview",
+        "missingReferences"
+      ],
+      "properties": {
+        "editorVersion": {
+          "type": "string"
+        },
+        "projectFingerprint": {
+          "type": "string"
+        },
+        "avatarName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "avatarGlobalObjectId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "prefabs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sourceId",
+              "path",
+              "name",
+              "isAvatar",
+              "hasSkinnedMesh",
+              "hasMergeArmature",
+              "hasMissingScripts",
+              "humanoidBones"
+            ],
+            "properties": {
+              "sourceId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^\\u0000]+$"
+              },
+              "path": {
+                "type": "string",
+                "pattern": "^(?!.*(?:^|/)\\.{1,2}(?:/|$))Assets/[^\\\\:\\u0000]+$"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096,
+                "pattern": "^[^\\u0000]+$"
+              },
+              "isAvatar": {
+                "type": "boolean"
+              },
+              "hasSkinnedMesh": {
+                "type": "boolean"
+              },
+              "hasMergeArmature": {
+                "type": "boolean"
+              },
+              "hasMissingScripts": {
+                "type": "boolean"
+              },
+              "humanoidBones": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096,
+                  "pattern": "^[^\\u0000]+$"
+                }
+              }
+            }
+          }
+        },
+        "instances": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sourceId",
+              "prefabPath",
+              "globalObjectId",
+              "binding",
+              "bindingVerified",
+              "menuVerified",
+              "menuModified"
+            ],
+            "properties": {
+              "sourceId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256,
+                "pattern": "^[^\\u0000]+$"
+              },
+              "prefabPath": {
+                "type": "string",
+                "pattern": "^(?!.*(?:^|/)\\.{1,2}(?:/|$))Assets/[^\\\\:\\u0000]+$"
+              },
+              "globalObjectId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 4096,
+                "pattern": "^[^\\u0000]+$"
+              },
+              "binding": {
+                "enum": [
+                  "merge_armature",
+                  "attach_to_bone"
+                ]
+              },
+              "bindingVerified": {
+                "type": "boolean"
+              },
+              "menuVerified": {
+                "type": "boolean"
+              },
+              "menuModified": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "sdkDescriptorRecognized": {
+          "type": "boolean"
+        },
+        "officialSdkChecks": {
+          "const": "not_run"
+        },
+        "visualReview": {
+          "const": "pending"
+        },
+        "missingReferences": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "turntable": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "folder",
+            "frames",
+            "size"
+          ],
+          "properties": {
+            "folder": {
+              "type": "string",
+              "pattern": "^(|\\.vua/turntables/[A-Za-z0-9][A-Za-z0-9_-]{0,159})$"
+            },
+            "frames": {
+              "enum": [
+                0,
+                60
+              ]
+            },
+            "size": {
+              "enum": [
+                0,
+                512
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "succeeded"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "properties": {
+              "editorVersion": {
+                "enum": [
+                  "2022.3.22f1",
+                  "2022.3.22f1c1"
+                ]
+              },
+              "projectFingerprint": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

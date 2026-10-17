@@ -1,0 +1,8 @@
+{
+  "method": "amf.production.importRecipe",
+  "kind": "query",
+  "params": {
+    "schemaVersion": "0.1",
+    "text": "{}"
+  }
+}

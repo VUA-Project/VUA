@@ -1,0 +1,9 @@
+{
+  "kind": "command",
+  "method": "amf.production.recipeApplyPlan",
+  "params": {
+    "schemaVersion": "0.1",
+    "runId": "n3-example",
+    "recipeId": "recipe-example"
+  }
+}

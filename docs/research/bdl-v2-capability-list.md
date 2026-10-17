@@ -1,7 +1,5 @@
 # BDL v2 Capability List: Compatibility / Dependency Analysis
 
-
-> Document version: 1.0.0
 > Status: Draft — awaiting product-owner ruling; no normative effect until accepted
 > Scope: The future capability layer above the BDL v1 boundary research ([`bdl-v1-boundary`](bdl-v1-boundary.md))
 > Precondition: All of v1's IN/OUT, schema admission rules, and crawl discipline remain in
@@ -109,11 +107,3 @@ clearly-marked synthetic relationship rows (same verification discipline as v1).
      open item in V2-4);
   3. The Recipe v0.3 dependency-declaration interface for consuming BDL evidence
      (the Recipe v0.3 suite froze on 2026-09-08).
-
-## Document changelog
-
-- 1.0.0 (2026-10-02): add the managed-document header and replace collab-era stage
-  labels with dated plain descriptions ("B3 ruling" → ruling recorded 2026-09-05;
-  "v1/B4" → the v1 schema landing of 2026-09-06 with the current `schemas/bdl/v0.2`
-  pointer; "the B5 line" → the Recipe v0.3 freeze of 2026-09-08). Content otherwise
-  unchanged; the document remains a Draft with no normative effect.

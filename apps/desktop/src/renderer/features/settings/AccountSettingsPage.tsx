@@ -7,6 +7,7 @@ import { openLoginBrowser, useLoginBrowserRequest } from "../../app/login-browse
 import { BOOTH_SIGN_IN_URL } from "../import/import-model.ts";
 import { openExternalUrl } from "../../app/open-external.ts";
 import { AccountGuide } from "./AccountGuide.tsx";
+import { consumeUnityLicenseGuide } from "./account-guide-navigation.ts";
 import { strings } from "../../i18n/index.ts";
 
 const copy = strings.settings.accounts;
@@ -24,7 +25,7 @@ export function AccountSettingsPage() {
   const [auth, setAuth] = useState<
     { authOk: boolean; accountName: string | null } | null
   >(null);
-  const [guide, setGuide] = useState<"steam" | "vrchat" | "unity" | "booth" | "linking" | null>(null);
+  const [guide, setGuide] = useState<"steam" | "vrchat" | "unity" | "booth" | "linking" | null>(consumeUnityLicenseGuide);
   const [signingOut, setSigningOut] = useState(false);
   const loginBrowserOpen = useLoginBrowserRequest() !== null;
 
@@ -120,7 +121,7 @@ export function AccountSettingsPage() {
                 <Button variant="default" disabled>
                   {copy.signIn}
                 </Button>
-                <Button data-nav-id={`register-${placeholder.id}`} onClick={() => setGuide(placeholder.id)}>{strings.journey.registration}</Button>
+                <Button data-nav-id={`register-${placeholder.id}`} onClick={() => setGuide(placeholder.id)}>{placeholder.id === "unity" ? strings.unityLicense.open : strings.journey.registration}</Button>
                 {placeholder.id === "vrchat" ? <Button data-nav-id="register-linking" onClick={() => setGuide("linking")}>{strings.journey.linking}</Button> : null}
                 {placeholder.id === "steam" ? <Button onClick={() => void openExternalUrl("steam://nav/games/details/438100")}>{strings.journey.openSteam}</Button> : null}
 

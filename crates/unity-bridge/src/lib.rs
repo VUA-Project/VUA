@@ -17,8 +17,10 @@ pub mod material_task;
 pub mod production_documents;
 pub mod production_job;
 pub mod staging_scaffold;
+pub mod unity_log;
 
 pub use bridge::UnityBatchBridge;
+pub use unity_log::{UnityLogReader, UnityLogTail};
 pub use handoff::{
     handshake_path, DefaultEditorHandoff, DefaultProcessLiveness, DetachedEditorSpawner,
     EditorHandoffPort, EditorHandshake, EditorLaunched, EditorOpenState, FocusOutcome,

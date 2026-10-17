@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ph-r.com/vua/schemas/unity-bridge/v5/plan.schema.json",
+  "title": "AMF Bridge v5 request document (Candidate)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "runId",
+    "sources",
+    "selection"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "0.1"
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9-]{1,100}$"
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sourceId",
+          "role",
+          "assetPaths"
+        ],
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\u0000]+$"
+          },
+          "role": {
+            "enum": [
+              "auto",
+              "avatar",
+              "outfit",
+              "dependency"
+            ]
+          },
+          "assetPaths": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "pattern": "^(?!.*(?:^|/)\\.{1,2}(?:/|$))Assets/[^\\\\:\\u0000]+$"
+            },
+            "uniqueItems": true
+          }
+        }
+      }
+    },
+    "selection": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "avatarPrefab",
+            "outfits"
+          ],
+          "properties": {
+            "avatarPrefab": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096,
+              "pattern": "^[^\\u0000]+$"
+            },
+            "outfits": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 64,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "sourceId",
+                  "prefabPath",
+                  "mode",
+                  "bone",
+                  "toggleName",
+                  "active"
+                ],
+                "properties": {
+                  "sourceId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256,
+                    "pattern": "^[^\\u0000]+$"
+                  },
+                  "prefabPath": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096,
+                    "pattern": "^[^\\u0000]+$"
+                  },
+                  "mode": {
+                    "enum": [
+                      "merge_armature",
+                      "attach_to_bone"
+                    ]
+                  },
+                  "bone": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "toggleName": {
+                    "type": "string",
+                    "maxLength": 80,
+                    "pattern": "^[^\\u0000-\\u001f]*$"
+                  },
+                  "active": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "applyTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "avatarGlobalObjectId",
+        "newAvatarKey",
+        "writeSourceIds"
+      ],
+      "properties": {
+        "avatarGlobalObjectId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "pattern": "^[^\\u0000]+$"
+        },
+        "newAvatarKey": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^recipe-[a-f0-9]{24}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "writeSourceIds": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[^\\u0000]+$"
+          }
+        }
+      }
+    }
+  }
+}

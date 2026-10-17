@@ -1,9 +1,5 @@
 # Unity Editor deployment
 
-> Document version: 2.3.1
-> Status: Accepted
-> Last conformance review: 2026-10-10 (read-only C1 identity and initial plan; the native installation trial below remains dated 2026-10-02)
-
 For people: choose Avatar editing, review the version, download order and destination, and let VUA
 download and install Unity Editor. The official Unity CLI looks up the fixed release, and VUA
 downloads from Unity's official entry first in every region. The received file is identified as
@@ -208,15 +204,3 @@ rerun of the timed-out installer or an SDK/MA project test.
 Next complete the native installer/.NET activity and recovery path, user licensing, a real
 SDK/MA project and an Android-module attempt. Follow N1's remaining
 play, account-guide, update/removal, configuration and UI scenarios in small increments.
-
-## Document changelog
-
-- 2.3.1 (2026-10-10): clarify automatic read-only fresh-entry planning and C1 reuse before CLI acquisition while preserving saved-task reinspection.
-- 2.3.0 (2026-10-02): use CLI-led official-first acquisition, classify the actual f1/c1 payload after redirects and record the native-install/Sentinel trial.
-- 2.2.0 (2026-10-02): accept global/China edition fallback, separate artifact/destination identity,
-  and version installation failures and successful task results.
-
-- 2.1.0 (2026-10-02): follow the actual mirror button, report stage/byte activity and source-specific failures, and make invalid managed caches retryable.
-- 2.0.0 (2026-10-01): select region-aware official/NoUnityCN priority, an enabled-by-default mirror setting and Unity Hub handoff; implement the original-installer/official-CLI path and a debug local-file option.
-- 1.1.0 (2026-10-01): identify the regional artifact mismatch and require structured CLI installation results.
-- 1.0.0 (2026-09-30): define official standalone CLI acquisition and separate licensing and functional checks.

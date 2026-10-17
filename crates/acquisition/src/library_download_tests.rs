@@ -1,5 +1,5 @@
 use super::*;
-use crate::test_support::unique_dir;
+use crate::test_support::{unique_dir, SETTLE_LIMIT};
 use vua_bdl_store::{ArtifactMode, DownloadEventKind, DownloadEventV01};
 use vua_orchestrator::NanosTaskIdGenerator;
 
@@ -589,7 +589,7 @@ impl World {
     fn wait_task(&self, id: &str) {
         let started = std::time::Instant::now();
         while !self.store.task(id).unwrap().unwrap().state.is_terminal() {
-            assert!(started.elapsed() < std::time::Duration::from_secs(5));
+            assert!(started.elapsed() < SETTLE_LIMIT);
             std::thread::sleep(std::time::Duration::from_millis(5));
         }
     }
@@ -684,7 +684,7 @@ impl World {
                 return value;
             }
             assert!(
-                start.elapsed() < std::time::Duration::from_secs(5),
+                start.elapsed() < SETTLE_LIMIT,
                 "batch stuck: {value}"
             );
             std::thread::sleep(std::time::Duration::from_millis(5));

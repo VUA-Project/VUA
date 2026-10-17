@@ -1,0 +1,9 @@
+{
+  "method": "amf.production.previewImage",
+  "kind": "query",
+  "params": {
+    "schemaVersion": "0.1",
+    "runId": "n3-example",
+    "path": ".vua/previews/n3-example-0190a4d2/front.png"
+  }
+}

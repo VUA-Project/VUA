@@ -103,8 +103,9 @@ pub use environment::{
     EMBEDDED_VRC_GET_VPM_VERSION,
 };
 pub use filesystem::{
-    project_tree_fingerprint, FileSystemProjectStore, FileSystemSnapshotStore,
-    SnapshotManifestEntry, SnapshotManifestV1, VerifiedSnapshot,
+    project_tree_fingerprint, project_tree_fingerprint_cached, FileSystemProjectStore,
+    FileSystemSnapshotStore, SnapshotManifestEntry, SnapshotManifestV1, VerifiedSnapshot,
+    FINGERPRINT_V1_PREFIX, FINGERPRINT_V2_PREFIX,
 };
 pub use journal::{
     recover_from_journal, JournalEntryKind, JournalEntryV1, JournalError, JournalPayload,
@@ -146,7 +147,8 @@ pub use state_file::{
     StateFile, StateFileError, StateLoad, StateRecoveryReason, STATE_FILE_SCHEMA_VERSION,
 };
 pub use time::{
-    Clock, FixedClock, FixedIdGenerator, NanosTaskIdGenerator, SystemClock, TaskIdGenerator,
+    rfc3339, rfc3339_millis, Clock, FixedClock, FixedIdGenerator, NanosTaskIdGenerator,
+    SystemClock, TaskIdGenerator,
 };
 pub use tools::{
     registry_ids, ProbeRoot, ToolCardV1, ToolProbe, ToolRegistration, ToolsEngine, ToolsRoots,
@@ -168,3 +170,8 @@ pub use win_registry::{FakeRegistrySource, RegistryHive, RegistrySource, Windows
 
 /// N1 deployment decisions and adapter port; independent of vendor/process types.
 pub mod deployment;
+pub mod amf_production;
+pub mod amf_recipe;
+pub mod amf_recipe_share;
+pub mod amf_recipe_apply;
+pub mod scenario_environment;

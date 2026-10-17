@@ -75,4 +75,6 @@ export interface OrchestratorProviderV01 {
   subscribeStatus?(listener: (status: ProviderStatusV01) => void): ProviderUnsubscribe;
   prepareShutdown(request: { readonly timeoutMs: number }): Promise<ProviderShutdownResultV01>;
   continueShutdown(request: ContinueShutdownRequestV01): Promise<ProviderShutdownResultV01>;
+  /** Resolves true once no process of this provider remains, or false after `timeoutMs`. */
+  waitForExit?(timeoutMs: number): Promise<boolean>;
 }

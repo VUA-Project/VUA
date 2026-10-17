@@ -157,3 +157,30 @@
     -webkit-backdrop-filter: none;
   }
 }
+
+/* An AI request arrived while the player is elsewhere: a small prompt under the bell, no backdrop. */
+.vua-notify-peek {
+  position: fixed;
+  top: 52px;
+  right: 12px;
+  z-index: 701;
+  display: grid;
+  gap: var(--vua-space-1);
+  width: min(340px, calc(100vw - 24px));
+  box-sizing: border-box;
+  padding: var(--vua-space-3);
+  background: var(--vua-bg-elevated);
+  border: 1px solid var(--vua-accent);
+  border-radius: var(--vua-radius-overlay);
+  box-shadow: var(--vua-shadow-elevated);
+  transform-origin: top right;
+  animation: vua-notify-panel-in 180ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.vua-notify-peek p { margin: 0; }
+.vua-notify-peek__actions { display: flex; gap: var(--vua-space-2); margin-block-start: var(--vua-space-2); }
+.vua-notify-ai { margin-block-end: var(--vua-space-3); }
+.vua-notify-ai h3 { margin: 0 0 var(--vua-space-2); }
+.vua-notify-ai ul { display: grid; gap: var(--vua-space-2); margin: 0; padding: 0; list-style: none; }
+.vua-notify-ai li { display: flex; align-items: center; justify-content: space-between; gap: var(--vua-space-3); padding: var(--vua-space-2); border: 1px solid var(--vua-accent); border-radius: var(--vua-radius-control); }
+[data-effects="off"] .vua-notify-peek { animation: none; }
+@media (prefers-reduced-motion: reduce) { .vua-notify-peek { animation: none; } }

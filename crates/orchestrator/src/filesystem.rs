@@ -4,6 +4,7 @@ use std::fs;
 use std::io;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 
 const SNAPSHOT_SCOPES: [&str; 3] = ["Assets", "Packages", "ProjectSettings"];
 
@@ -119,6 +120,210 @@ pub fn project_tree_fingerprint(
         write!(&mut encoded, "{byte:02x}").expect("writing to String");
     }
     Ok(Some(format!("sha256:{encoded}")))
+}
+
+/// The cached fingerprint algorithm (AMF work projects). Each file's content hash is
+/// remembered by path, size and nanosecond modification time, so an unchanged tree is
+/// fingerprinted from metadata alone. The cache lives in `.vua/fingerprint-cache.json`,
+/// outside the fingerprinted scopes.
+const FINGERPRINT_CACHE_VERSION: u8 = 2;
+const FINGERPRINT_CACHE_FILE: &str = "fingerprint-cache.json";
+/// A cache larger than this is treated as absent and not rewritten: the file grows with
+/// the project, and a corrupt or foreign file must not be read into memory unbounded.
+const FINGERPRINT_CACHE_MAX_BYTES: usize = 16 * 1024 * 1024;
+/// Values produced before this algorithm carry the plain `sha256:` prefix.
+pub const FINGERPRINT_V1_PREFIX: &str = "sha256:";
+/// The prefix every value of this algorithm carries, so records name their algorithm.
+pub const FINGERPRINT_V2_PREFIX: &str = "vua-project-tree-v2:";
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+struct FingerprintCacheEntry {
+    size: u64,
+    /// Modification time split into seconds and nanoseconds since the UNIX epoch;
+    /// JSON numbers cannot carry the combined nanosecond count.
+    modified_secs: u64,
+    modified_nanos: u32,
+    sha256: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct FingerprintCacheDocument {
+    version: u8,
+    files: std::collections::BTreeMap<String, FingerprintCacheEntry>,
+}
+
+/// One file the fingerprint walks: its normalized project-relative path and the
+/// metadata the cache is keyed by.
+struct FingerprintFile {
+    normalized: String,
+    size: u64,
+    modified: SystemTime,
+}
+
+/// Content fingerprint for the project scopes with a per-file hash cache. Symlinks are
+/// rejected like `project_tree_fingerprint`; the total combines each file's sorted path,
+/// length and content hash under the `vua-project-tree-v2` domain, so values name their
+/// algorithm and never collide with the uncached v1 value.
+pub fn project_tree_fingerprint_cached(
+    project_root: &Path,
+    scopes: &[&str],
+) -> io::Result<Option<String>> {
+    use sha2::{Digest, Sha256};
+    if !project_root.exists() {
+        return Ok(None);
+    }
+    let mut relatives = Vec::new();
+    for scope in scopes {
+        validate_scope(scope)?;
+        let path = project_root.join(scope);
+        if path.exists() {
+            collect_fingerprint_files(project_root, &path, &mut relatives)?;
+        }
+    }
+    let mut files: Vec<FingerprintFile> = relatives
+        .into_iter()
+        .map(|relative| {
+            let metadata = fs::symlink_metadata(project_root.join(&relative))?;
+            Ok(FingerprintFile {
+                normalized: relative.to_string_lossy().replace('\\', "/"),
+                size: metadata.len(),
+                modified: metadata.modified()?,
+            })
+        })
+        .collect::<io::Result<Vec<_>>>()?;
+    // Sort by the normalized path so the digest does not depend on directory order.
+    files.sort_by(|a, b| a.normalized.cmp(&b.normalized));
+
+    let cache_path = project_root.join(".vua").join(FINGERPRINT_CACHE_FILE);
+    let cache = read_fingerprint_cache(&cache_path);
+    let mut updated = std::collections::BTreeMap::new();
+    let mut digest = Sha256::new();
+    digest.update(b"vua-project-tree-v2\0");
+    for file in &files {
+        let walk_time = modified_secs(file.modified);
+        let entry = match cache.files.get(&file.normalized).filter(|cached| {
+            cacheable(cached)
+                && cached.size == file.size
+                && (cached.modified_secs, cached.modified_nanos) == walk_time
+        }) {
+            Some(cached) => cached.clone(),
+            None => {
+                // Hash the file as it is now and record the metadata read from the open
+                // file: a file that changes between walk and hash rehashes next run.
+                let mut open = fs::File::open(project_root.join(&file.normalized))?;
+                let metadata = open.metadata()?;
+                let mut hasher = Sha256::new();
+                let mut buffer = [0_u8; 64 * 1024];
+                loop {
+                    let read = open.read(&mut buffer)?;
+                    if read == 0 {
+                        break;
+                    }
+                    hasher.update(&buffer[..read]);
+                }
+                let content: [u8; 32] = hasher.finalize().into();
+                let (secs, nanos) = modified_secs(metadata.modified()?);
+                FingerprintCacheEntry {
+                    size: metadata.len(),
+                    modified_secs: secs,
+                    modified_nanos: nanos,
+                    sha256: content.iter().map(|b| format!("{b:02x}")).collect(),
+                }
+            }
+        };
+        let hash = hash_bytes(&entry.sha256)?;
+        digest.update((file.normalized.len() as u64).to_le_bytes());
+        digest.update(file.normalized.as_bytes());
+        digest.update(entry.size.to_le_bytes());
+        digest.update(hash);
+        updated.insert(file.normalized.clone(), entry);
+    }
+    // The cache only speeds the fingerprint up, so a project that cannot be written to
+    // still fingerprints.
+    let _ = write_fingerprint_cache(&cache_path, &updated);
+    let mut encoded = String::with_capacity(80);
+    for byte in digest.finalize() {
+        use std::fmt::Write as _;
+        write!(&mut encoded, "{byte:02x}").expect("writing to String");
+    }
+    Ok(Some(format!("{FINGERPRINT_V2_PREFIX}{encoded}")))
+}
+
+/// Seconds and nanoseconds since the UNIX epoch; a time before it stores as the epoch.
+fn modified_secs(modified: SystemTime) -> (u64, u32) {
+    modified
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|since| (since.as_secs(), since.subsec_nanos()))
+        .unwrap_or((0, 0))
+}
+
+/// A cached hash is reusable only when its stored form is a plain lowercase digest;
+/// anything else in the file's slot counts as no cache for that file.
+fn cacheable(entry: &FingerprintCacheEntry) -> bool {
+    entry.sha256.len() == 64
+        && entry
+            .sha256
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || matches!(byte, b'a'..=b'f'))
+}
+
+fn hash_bytes(hex: &str) -> io::Result<[u8; 32]> {
+    let invalid = || io::Error::new(io::ErrorKind::InvalidData, "fingerprint cache hash is not hex");
+    let mut bytes = [0_u8; 32];
+    for (index, pair) in hex.as_bytes().chunks(2).enumerate() {
+        if pair.len() != 2 {
+            return Err(invalid());
+        }
+        let mut value = 0_u8;
+        for character in pair {
+            let digit = (*character as char).to_digit(16).ok_or_else(invalid)? as u8;
+            value = value * 16 + digit;
+        }
+        bytes[index] = value;
+    }
+    Ok(bytes)
+}
+
+/// A cache that is missing, damaged, a future version or oversized counts as absent.
+fn read_fingerprint_cache(path: &Path) -> FingerprintCacheDocument {
+    let empty = || FingerprintCacheDocument {
+        version: FINGERPRINT_CACHE_VERSION,
+        files: std::collections::BTreeMap::new(),
+    };
+    let Ok(metadata) = fs::metadata(path) else {
+        return empty();
+    };
+    if !metadata.is_file() || metadata.len() as usize > FINGERPRINT_CACHE_MAX_BYTES {
+        return empty();
+    }
+    match serde_json::from_slice::<FingerprintCacheDocument>(&fs::read(path).unwrap_or_default()) {
+        Ok(cache) if cache.version == FINGERPRINT_CACHE_VERSION => cache,
+        _ => empty(),
+    }
+}
+
+/// Writes the cache atomically (`.pending`, then rename) and bounded in size.
+fn write_fingerprint_cache(
+    path: &Path,
+    files: &std::collections::BTreeMap<String, FingerprintCacheEntry>,
+) -> io::Result<()> {
+    let document = FingerprintCacheDocument {
+        version: FINGERPRINT_CACHE_VERSION,
+        files: files.clone(),
+    };
+    let encoded = serde_json::to_vec_pretty(&document).map_err(io::Error::other)?;
+    if encoded.len() > FINGERPRINT_CACHE_MAX_BYTES {
+        return Ok(());
+    }
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let pending = path.with_extension("pending");
+    fs::write(&pending, &encoded)?;
+    fs::rename(&pending, path)?;
+    Ok(())
 }
 
 fn collect_fingerprint_files(

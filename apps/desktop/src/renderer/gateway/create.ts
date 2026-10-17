@@ -38,6 +38,7 @@ function assembleDevGateway(
   return {
     amfModule: anyFixturePort(selection.targets) ? fixture.amfModule : live.amfModule,
     distribution: live.distribution,
+    aiTools: live.aiTools,
     environment: selection.targets.environment === "fixture" ? fixture.environment : live.environment,
     tutorial: selection.targets.tutorial === "fixture" ? fixture.tutorial : live.tutorial,
     modelProduction:
@@ -58,6 +59,9 @@ function assembleDevGateway(
     // 019 批 C:生产链无 fixture 目标(禁模拟替代未完成接口)——恒 live
     // 基线(无宿主时为 not-run 诚实不可用),开发切档不产生演示生产数据
     productionChain: live.productionChain,
+    amfProduction: live.amfProduction,
+    amfRelease: live.amfRelease,
+    vrchat: live.vrchat,
     // 029 B 面环 4:配方导出同观察事实纪律(草稿不模拟)——恒 live 基线,
     // 无宿主时诚实缺席;转正走既有保存链,开发切档不产生演示草稿
     recipeExport: live.recipeExport,

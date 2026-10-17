@@ -1,11 +1,7 @@
 # N-sequence architecture evolution
 
-> Document version: 1.8.0
-> Status: Accepted
-> Updated: 2026-10-10
-> Last conformance review: 2026-10-05 (first-play source/evidence checkpoint; remaining paths tracked separately)
+> Updated: 2026-10-13
 > Scope: Incremental software and documentation structure for N1-N7
-> Normative effect: Accepted incremental direction; existing wire/storage contracts remain authoritative
 
 ## Accepted direction
 
@@ -37,29 +33,23 @@ when a measured dependency, build, packaging, or independent lifecycle problem j
 
 ## Existing Agents as tool consumers
 
-The author's 2026-10-10 direction is for VUA to supply stable tools to an Agent already available
-on the user's computer. The external Agent owns conversation, model selection and planning;
-VUA owns observed facts, bounded operations, task state and verification. Do not make a VUA-owned
-Agent harness, chat runtime or model-service/API-key configuration a prerequisite. This is a future
-increment, not an implemented API or an additional Ibis release requirement.
+VUA supplies tools to the AI agent the player already uses. The agent owns conversation, model
+choice and planning; VUA owns observed facts, bounded operations, task state and verification.
 
-MCP is a candidate adapter, alongside another narrow local interface. The
-[MCP tools specification](https://modelcontextprotocol.io/specification/2025-11-25/server/tools)
-supports named tools with input schemas and optional structured output schemas. Transport choice
-does not establish reproducibility: VUA must retain concrete inputs, relevant versions, plan or
-task identities, actual inspection results and existing production records. Model suggestions
-remain suggestions until the normal execution and verification path succeeds.
+The [Candidate MCP adapter](../protocols/ai-tools-v0.1.md) lives in Electron Main and serves
+authenticated loopback Streamable HTTP through the official MCP SDK. Its desktop control face
+belongs to the typed Gateway, and host tools work whether or not AMF is enabled. Read tools return
+facts and plans directly. Each change request becomes a concrete draft in VUA that the player
+confirms; acceptance means the task was dispatched, and the agent reads the task for its outcome.
+[SOP, software checks and installation](../protocols/scenario-environment-v0.1.md) are separate
+calls, and Unity installation stays separate from licensed Editor execution.
 
-Start a future slice with read-only facts and a bounded plan for one already supported scenario.
-Mutation entry points must reuse the existing task authority, idempotency, project leases,
-confirmation and recovery discipline. Route host work to the host and AMF work to a ready AMF;
-deterministic Unity changes still cross the versioned Bridge. Do not introduce an Agent shortcut
-around module readiness or expose arbitrary shell commands, scripts or filesystem access.
-
-Tool responses should contain the minimum normalized facts needed by the operation. Existing
-local-data and credential boundaries continue to apply; opening tool access is not authorization
-to disclose material contents, account sessions or screenshots. Define concrete tool schemas and
-acceptance from the first executable scenario, rather than a speculative general plugin framework.
+Change requests reuse the existing task authority, idempotency, project leases, confirmation and
+recovery. Host work goes to the host and AMF work to a ready AMF; deterministic Unity changes
+cross the versioned Bridge. The tool catalog is a fixed set of typed tools. Responses carry the
+normalized facts the operation needs plus the inputs, versions, plan or task identities and
+inspection results that make a run reproducible; material contents, account sessions and
+screenshots stay local. New tools grow from Eval cases.
 
 ## User-facing capabilities and implementation owners
 
@@ -223,23 +213,3 @@ order belong to the current slice. Universal version switching and OS snapshots 
 The user confirmed on 2026-09-28: keep Electron + Rust + Unity Bridge and progressively adjust
 responsibilities while reorganizing docs. This direction is accepted. Illustrative DTO names and
 installer choices above are not frozen interfaces; define them from the first executable N1 slice.
-
-## Document changelog
-
-- 1.8.0 (2026-10-10): accept future external-Agent tool access through a narrow adapter and existing execution authorities, without adding an Agent harness or widening Ibis.
-- 1.7.0 (2026-10-09): place the concrete host/AMF lifecycle extraction before scenario integrations and route current network rulings.
-- 1.6.0 (2026-10-05): prioritize three guidance contexts on the completed first-play foundation and link the current delivery checkpoint.
-- 1.5.2 (2026-10-03): route the expanded N2 inventory to the shared Steam adapter and include the first-play PICO eye-tracking slice.
-- 1.5.1 (2026-10-03): route the implemented network slice to its owning architecture.
-
-- 1.5.0 (2026-10-03): prioritize packaged desktop/PICO play and retain creator work as subsequent delivery.
-- 1.4.0 (2026-10-02): route model-first play, observable silent installation and account/network
-  guidance through existing owners; align the current Unity installer/source policy.
-
-- 1.3.1 (2026-10-02): align the implemented N1 increment with the owning deployment document
-  (Unity's original installer installs the Editor; the official CLI registers it and owns Android
-  modules), name the real onboarding/guide renderer features instead of a nonexistent Wizard
-  module, and clarify that this accepted direction governs proposed implementation changes.
-- 1.3.0 (2026-09-30): prefer official standalone Unity CLI deployment; retain existing Hub only as optional fallback.
-- 1.2.0 (2026-09-30): link the implemented purpose-plan/confirmation slice and distinguish remaining N1 functional acceptance.
-Earlier entries remain in Git history.

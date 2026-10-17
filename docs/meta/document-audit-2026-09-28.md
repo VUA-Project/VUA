@@ -1,9 +1,6 @@
 # Documentation audit and disposition - 2026-09-28
 
-> Document version: 1.0.2
-> Status: Accepted
 > Scope: Source/document audit for the N-sequence reorganization
-> Normative effect: Records observed state and document disposition, not feature acceptance
 
 ## Baseline and limits
 
@@ -76,13 +73,3 @@ governance section and recorded local-inventory and third-party change policies.
 migration ledger's missing screenshot remains explicitly unavailable, not reconstructed evidence.
 Protocol behavior, design usability, upstream licensing and N5 capability acceptance still require
 their implementation-specific reviews; a link/registry pass does not complete those reviews.
-
-## Document changelog
-
-- 1.0.2 (2026-10-02): note that this snapshot's disposition to retain the collab:brief checker and
-  the report-only CI was superseded by the full collab retirement on 2026-10-02 (checker script,
-  workflow and command removed); the audit's other dispositions are unaffected.
-- 1.0.1 (2026-09-28): record follow-up consistency fixes and keep host facts local.
-
-
-- 1.0.0 (2026-09-28): record incoming changes, source-backed findings, retention/archive decisions and review limits.

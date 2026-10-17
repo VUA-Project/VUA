@@ -30,10 +30,9 @@ export class AmfRegistry {
       }
     } else {
       const legacy = fs.existsSync(path.join(userData, "bdl", "bdl.db"));
-      const existingProfile = legacy || fs.existsSync(path.join(userData, "host", "tasks.db"))
-        || fs.existsSync(path.join(userData, "orchestrator", "provider.db"))
-        || fs.existsSync(path.join(userData, "modules", "amf", "data"));
-      this.registration = { schemaVersion: "0.1", enabled: !existingProfile, dataLayout: legacy ? "legacy" : "isolated" };
+      // Data presence identifies the layout, not a user's opt-out. A missing
+      // registration gets the bundled default, including a first upgraded launch.
+      this.registration = { schemaVersion: "0.1", enabled: true, dataLayout: legacy ? "legacy" : "isolated" };
     }
   }
 

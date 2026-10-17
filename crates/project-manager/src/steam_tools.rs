@@ -4,16 +4,17 @@ use std::{
     sync::Arc,
 };
 use vua_orchestrator::{
-    external_tools::{ToolAction, ToolInstallation, ToolPlatform, ToolProcess},
+    external_tools::{SteamToolSpec, ToolAction, ToolInstallation, ToolPlatform, ToolProcess},
     EnvironmentEngine, EnvironmentRoots, SystemClock,
 };
 
 pub struct SteamToolPlatform {
     engine: EnvironmentEngine,
     fallback: Vec<PathBuf>,
+    spec: &'static SteamToolSpec,
 }
 impl SteamToolPlatform {
-    pub fn new(roots: EnvironmentRoots) -> Self {
+    pub fn new(roots: EnvironmentRoots, spec: &'static SteamToolSpec) -> Self {
         let fallback = roots.steam_common.clone();
         Self {
             engine: EnvironmentEngine::new(
@@ -23,6 +24,7 @@ impl SteamToolPlatform {
                 Arc::new(crate::VccSettingsFileReader),
             ),
             fallback,
+            spec,
         }
     }
 }
@@ -65,6 +67,7 @@ pub fn inspect_libraries(
     common: &[PathBuf],
     steam_ready: bool,
     metadata_unreadable: bool,
+    spec: &'static SteamToolSpec,
 ) -> ToolInstallation {
     let mut presence = if metadata_unreadable {
         "unknown"
@@ -75,12 +78,12 @@ pub fn inspect_libraries(
         let Some(apps) = root.parent() else {
             continue;
         };
-        let manifest = apps.join("appmanifest_3329480.acf");
+        let manifest = apps.join(format!("appmanifest_{}.acf", spec.app_id));
         let text = match small_text(&manifest) {
             Ok(text) => text,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
                 // A leftover directory is not a completed Steam installation.
-                if root.join("VRCFaceTracking").exists() && presence != "unknown" {
+                if root.join(spec.install_dir).exists() && presence != "unknown" {
                     presence = "incomplete";
                 }
                 continue;
@@ -96,11 +99,11 @@ pub fn inspect_libraries(
             presence = "unknown";
             continue;
         };
-        if field(&text, "appid").as_deref() != Some("3329480") {
+        if field(&text, "appid").as_deref() != Some(spec.app_id) {
             presence = "unknown";
             continue;
         }
-        let exe = root.join(directory).join("VRCFaceTracking.exe");
+        let exe = root.join(directory).join(spec.exe_name);
         let present = match executable_present(&exe) {
             Ok(value) => value,
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
@@ -143,10 +146,10 @@ impl ToolPlatform for SteamToolPlatform {
         let common = discovery
             .map(|(_, roots)| roots)
             .unwrap_or_else(|| self.fallback.clone());
-        Ok(inspect_libraries(&common, steam_ready, unreadable))
+        Ok(inspect_libraries(&common, steam_ready, unreadable, self.spec))
     }
     fn processes(&self) -> Result<Vec<ToolProcess>, &'static str> {
-        crate::play_session::os::processes_matching(|name| name == "vrcfacetracking.exe")
+        crate::play_session::os::processes_matching(|name| name == self.spec.process_name)
             .map(|processes| {
                 processes
                     .into_iter()
@@ -177,10 +180,12 @@ impl ToolPlatform for SteamToolPlatform {
         }
         match action {
             ToolAction::Install => {
-                command.args(["-url", "steam://install/3329480"]);
+                let url = format!("steam://install/{}", self.spec.app_id);
+                command.args(["-url", url.as_str()]);
             }
             ToolAction::Start => {
-                command.args(["-applaunch", "3329480"]);
+                let url = format!("steam://run/{}", self.spec.app_id);
+                command.args(["-url", url.as_str()]);
             }
             _ => return Err("unavailable"),
         }

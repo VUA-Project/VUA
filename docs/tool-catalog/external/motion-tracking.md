@@ -2,7 +2,7 @@
 catalog_schema: "vua.tool-entry/v3"
 id: "external.motion-tracking"
 boundary: "external"
-status: "planned"
+status: "experimental"
 risk: "medium"
 risk_rule: "vua.risk-gate/v1"
 delivery: "unscheduled"
@@ -20,6 +20,8 @@ as an independently installed upstream application. VUA guides Steam installatio
 launches it and explains SteamVR prerequisites, device selection and calibration in its own UI.
 Users add the application to their Steam library and install it there. VUA invokes the independent
 upstream application externally; internal overlay/driver IPC is not a VUA API.
+The [Candidate connection](../../protocols/external-tool-v0.2.md) covers discovery, Steam install
+handoff, launch and observed process status.
 Process existence is distinct from actual mixed-space calibration; N2 requires real measured
 calibration and disconnect/reconnect evidence. No VRChat injection, graphics/OpenXR hooks or EAC
 modification. Later documented log/configuration diagnostics remain separate from first delivery.

@@ -38,13 +38,8 @@ function LoginBrowserSurface({ url }: { url: string }) {
   const viewIdRef = useRef<string | null>(null);
   viewIdRef.current = viewId;
   const closeViewRef = useRef<() => void>(() => {});
-  closeViewRef.current = () => {
-    const current = viewIdRef.current;
-    if (current !== null) {
-      void window.vua?.remoteContent?.close(current).catch(() => {});
-    }
-    closeLoginBrowser();
-  };
+  // Unmount owns closing the native view; closing here as well races its cleanup.
+  closeViewRef.current = closeLoginBrowser;
 
   // 开视图 + 订阅事件;卸载即关视图(#25:组件是视图唯一控制面)
   useEffect(() => {
@@ -61,6 +56,7 @@ function LoginBrowserSurface({ url }: { url: string }) {
           void remote.close(state.viewId).catch(() => {});
           return;
         }
+        viewIdRef.current = state.viewId;
         setViewId(state.viewId);
         setNav({ canGoBack: state.canGoBack, canGoForward: state.canGoForward, url: state.url });
       })
@@ -73,6 +69,7 @@ function LoginBrowserSurface({ url }: { url: string }) {
         setNav({ canGoBack: event.canGoBack, canGoForward: event.canGoForward, url: event.url });
       }
       if (event.kind === "view-closed" && event.viewId === viewIdRef.current) {
+        viewIdRef.current = null;
         setViewId(null);
         closeLoginBrowser();
       }
@@ -81,6 +78,7 @@ function LoginBrowserSurface({ url }: { url: string }) {
       disposed = true;
       unsubscribe();
       const current = viewIdRef.current;
+      viewIdRef.current = null;
       if (current !== null) {
         void remote.close(current).catch(() => {});
       }
@@ -91,21 +89,33 @@ function LoginBrowserSurface({ url }: { url: string }) {
   // 登录成功检测:轮询真实判据,首次通过即武装 6 秒自动关闭(取消后不再武装)
   useEffect(() => {
     if (viewId === null) return;
+    const remote = window.vua?.remoteContent;
+    if (remote === undefined) return;
     let cancelled = false;
     let armed = false;
-    const poll = window.setInterval(() => {
-      if (armed) return;
-      void window.vua?.remoteContent
-        ?.authProbe()
+    let pending = false;
+    const probe = () => {
+      if (cancelled || armed || pending) return;
+      pending = true;
+      void remote.authProbe()
         .then((probe) => {
           if (cancelled || armed || !probe.authOk) return;
           armed = true;
           setCountdown(AUTO_CLOSE_SECONDS);
         })
-        .catch(() => {});
-    }, AUTH_POLL_INTERVAL_MS);
+        .catch(() => {})
+        .finally(() => { pending = false; });
+    };
+    // Check after redirects as well as polling: an already signed-in session
+    // should not wait for the next timer, and slow probes must not overlap.
+    const unsubscribe = remote.events.subscribe(event => {
+      if (event.kind === "navigated" && event.viewId === viewId) probe();
+    });
+    probe();
+    const poll = window.setInterval(probe, AUTH_POLL_INTERVAL_MS);
     return () => {
       cancelled = true;
+      unsubscribe();
       window.clearInterval(poll);
     };
   }, [viewId]);

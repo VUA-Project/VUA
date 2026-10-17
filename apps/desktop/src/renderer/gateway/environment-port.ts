@@ -2,7 +2,7 @@ import type { DeploymentIntent, DeploymentPlan, DeploymentProgress, TaskSnapshot
 import type { NetworkIntent, NetworkReport } from "@vua/contracts";
 import type { WebsiteObservation } from "@vua/contracts";
 import type { PlayRoute, PlaySession } from "@vua/contracts";
-import type { ExternalToolAction, ExternalToolSnapshot } from "@vua/contracts";
+import type { ExternalToolAction, ExternalToolId, ExternalToolSnapshot } from "@vua/contracts";
 import type { CreatorManagers } from "./creator-inventory-port.ts";
 import type { CheckZone, DeployerView, VersionTrack } from "../features/deployer/deployer-model.ts";
 import type { FixPlanV1 } from "../features/deployer/fix-plan-model.ts";
@@ -38,7 +38,8 @@ export interface DeploymentPort {
 }
 
 export interface EnvironmentPort {
-  readonly tools?: { observe(): Promise<ExternalToolSnapshot>; act(action: ExternalToolAction, commandId: string): Promise<ExternalToolSnapshot> };
+  readonly scenarios?: import("./scenario-environment-port.ts").ScenarioEnvironmentPort;
+  readonly tools?: { observe(toolId: ExternalToolId): Promise<ExternalToolSnapshot>; act(toolId: ExternalToolId, action: ExternalToolAction, commandId: string): Promise<ExternalToolSnapshot> };
   readonly play?: PlayPort;
   readonly managers?: { inspect(): Promise<CreatorManagers> };
   readonly network?: NetworkPort;

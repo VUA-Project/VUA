@@ -1,9 +1,11 @@
 import { isDeploymentCommandId, isDeploymentParams, type DeploymentPlanParams, type DeploymentExecuteParams, type DeploymentPlanResult, type DeploymentAccepted } from "./environment-deployment.js";
+import { isAmfProductionParams } from "./amf-production-v01.js";
+import { isScenarioEnvironmentParams } from "./scenario-environment.js";
 import { isNetworkParams, type NetworkIntent, type NetworkResult } from "./environment-network.js";
 import { isWebsiteTestParams, type WebsiteTestParams, type WebsiteTestResult } from "./website-test.js";
 import { type GameWindowObservationResultV1 } from "./game-window.js";
 import { isPlayCommandId, isPlayParams, type PlayRoute, type PlaySessionResult } from "./play-session.js";
-import { isExternalToolParams, type ExternalToolAction, type ExternalToolResult } from "./external-tool.js";
+import { isExternalToolParams, type ExternalToolAction, type ExternalToolId, type ExternalToolResult } from "./external-tool.js";
 import type { ManagerAppsResult } from "./manager-apps.js";
 import { isDownloadEventV01 } from "./download-events.js";
 import { isCatalogSyncPageRequestV01, type CatalogSyncPageRequestV01 } from "./catalog-sync.js";
@@ -2837,10 +2839,13 @@ export interface DeploymentPlanQuery extends ApplicationRequestBaseV01 { readonl
 export interface DeploymentExecuteCommand extends ApplicationRequestBaseV01 { readonly kind: "command"; readonly method: "environment.executeDeployment"; readonly commandId: string; readonly params: DeploymentExecuteParams }
 
 export type ApplicationRequestV01 =
+  | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.getScenarioSop" | "environment.checkScenarioEnvironment"; readonly params: Readonly<Record<string, unknown>> })
+  | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "amf.production.list" | "amf.production.get" | "amf.production.plan" | "amf.production.rollbackPlan" | "amf.production.listRecipes" | "amf.production.getRecipe" | "amf.production.recipeSharePlan" | "amf.production.recipeApplyPlan" | "amf.production.previewRecipeShare" | "amf.production.previewImage" | "amf.production.releaseState" | "amf.production.turntableFrame"; readonly params: Readonly<Record<string, unknown>> })
+  | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly commandId: string; readonly method: "amf.production.prepare" | "amf.production.assemble" | "amf.production.reinspect" | "amf.production.open" | "amf.production.rollback" | "amf.production.saveRecipe" | "amf.production.prepareRecipe" | "amf.production.exportRecipe" | "amf.production.importRecipe" | "amf.production.applyRecipe" | "amf.production.bakeTurntable" | "amf.production.upload"; readonly params: Readonly<Record<string, unknown>> })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.inspectManagerApps"; readonly params: Readonly<Record<string, never>> })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.observePlay"; readonly params: { readonly route: PlayRoute } })
-  | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "tools.observeConnection"; readonly params: { readonly toolId: "vrcft" } })
-  | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly method: "tools.actConnection"; readonly commandId: string; readonly params: { readonly toolId: "vrcft"; readonly action: ExternalToolAction } })
+  | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "tools.observeConnection"; readonly params: { readonly toolId: ExternalToolId } })
+  | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly method: "tools.actConnection"; readonly commandId: string; readonly params: { readonly toolId: ExternalToolId; readonly action: ExternalToolAction } })
   | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly method: "environment.startPlay" | "environment.stopPlay"; readonly commandId: string; readonly params: { readonly route: PlayRoute } })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.checkNetwork"; readonly params: { readonly intent: NetworkIntent } })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.testWebsites"; readonly params: WebsiteTestParams })
@@ -3210,6 +3215,18 @@ function isProductionRiskChoice(value: unknown): boolean {
 export function isApplicationRequestV01(value: unknown): value is ApplicationRequestV01 {
   if (!isRecord(value) || value.contractVersion !== APPLICATION_CONTRACT_VERSION) return false;
   if (!isIdentifier(value.requestId) || !isIdentifier(value.correlationId) || !isRecord(value.params)) return false;
+
+  if (value.method === "environment.getScenarioSop" || value.method === "environment.checkScenarioEnvironment") {
+    return value.kind === "query" && hasExactKeys(value,["contractVersion","requestId","correlationId","kind","method","params"])
+      && isScenarioEnvironmentParams(value.method,value.params);
+  }
+  if (typeof value.method === "string" && value.method.startsWith("amf.production.")) {
+    const query = ["amf.production.list", "amf.production.get", "amf.production.plan", "amf.production.rollbackPlan", "amf.production.listRecipes", "amf.production.getRecipe", "amf.production.recipeSharePlan", "amf.production.recipeApplyPlan", "amf.production.previewRecipeShare", "amf.production.previewImage", "amf.production.releaseState", "amf.production.turntableFrame"].includes(value.method);
+    const command = ["amf.production.prepare", "amf.production.assemble", "amf.production.reinspect", "amf.production.open", "amf.production.rollback", "amf.production.saveRecipe", "amf.production.prepareRecipe", "amf.production.exportRecipe", "amf.production.importRecipe", "amf.production.applyRecipe", "amf.production.bakeTurntable", "amf.production.upload"].includes(value.method);
+    return ((query && value.kind === "query" && hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"]))
+      || (command && value.kind === "command" && isIdentifier(value.commandId) && hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params", "commandId"])))
+      && isAmfProductionParams(value.method, value.params);
+  }
 
   if (value.kind === "query" && value.method === "application.getSnapshot") {
     return hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])

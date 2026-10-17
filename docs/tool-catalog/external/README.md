@@ -21,6 +21,9 @@ or capability-bounded VUA plugin.
 
 The [N2 acceptance table](../../development-outline.md#n2-external-gameplay-tools) owns the
 selected applications and Steam App IDs, including OVR Overlay Translator, OVR Advanced Settings,
-OVR Toolkit, OyasumiVR and LIV. These five use shared installation discovery, official
-purchase/install handoff and launch/status checks; individual usage tutorials are not required.
-The tracking entries above retain their additional setup and real-hardware acceptance.
+OVR Toolkit, OyasumiVR and LIV. The six fixed Steam entries — the two tracking tools above plus
+the four utility entries — share the [Candidate connection](../../protocols/external-tool-v0.2.md):
+installation discovery, official purchase/install handoff and launch/status observation.
+Individual usage tutorials are not required. LIV remains a planned entry without a VUA
+connection. The tracking entries above retain their additional setup and real-hardware
+acceptance.

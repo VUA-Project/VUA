@@ -1,7 +1,5 @@
 # Steam/PICO acquisition: installation and return checklist
 
-> Document version: 1.0.0
-> Status: Accepted
 > Updated: 2026-10-08
 > Scope: `slice/steam-pico-acquisition`; Windows Steam and PICO Connect installation/reuse
 
@@ -114,9 +112,3 @@ selection, official source wording, Windows handoff, failure details, cancellati
 Check keyboard focus, a narrow/resized window and supported DPI. The PICO choice follows the
 user's selected region, independently of interface language. The Unity location appears only
 when a creator purpose is selected. Automated key/table checks do not complete human review.
-
-## Document changelog
-
-- 1.0.0 (2026-10-08): prepare concrete missing-software/reuse, regional artifact, failure,
-  cancellation, page-return and UI checks; record the local reuse/ZIP checks and prepare
-  isolated Sandbox installation inputs without claiming missing-software acceptance.

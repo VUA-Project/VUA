@@ -135,6 +135,48 @@ pub fn rfc3339(time: SystemTime) -> String {
     )
 }
 
+/// Reads a UTC timestamp in the form [`rfc3339`] writes (`YYYY-MM-DDTHH:MM:SS[.fff]Z`) as
+/// milliseconds since the Unix epoch.
+pub fn rfc3339_millis(text: &str) -> Option<i64> {
+    let bytes = text.as_bytes();
+    let number = |range: std::ops::Range<usize>| -> Option<i64> {
+        let part = text.get(range)?;
+        part.bytes().all(|b| b.is_ascii_digit()).then(|| part.parse().ok())?
+    };
+    if bytes.len() < 20 || bytes[4] != b'-' || bytes[7] != b'-' || bytes[10] != b'T' || bytes[13] != b':'
+        || bytes[16] != b':' || bytes[bytes.len() - 1] != b'Z'
+    {
+        return None;
+    }
+    let (year, month, day) = (number(0..4)?, number(5..7)?, number(8..10)?);
+    let (hour, minute, second) = (number(11..13)?, number(14..16)?, number(17..19)?);
+    let millis = match &text[19..text.len() - 1] {
+        "" => 0,
+        fraction if fraction.len() >= 2 && fraction.starts_with('.') && fraction.len() <= 10 => {
+            let digits = &fraction[1..];
+            let value: i64 = digits.bytes().all(|b| b.is_ascii_digit()).then(|| digits.parse().ok())??;
+            value * 1000 / 10_i64.pow(digits.len() as u32)
+        }
+        _ => return None,
+    };
+    if !(1..=12).contains(&month) || !(1..=31).contains(&day) || hour > 23 || minute > 59 || second > 60 {
+        return None;
+    }
+    let days = days_from_civil(year, month as u32, day as u32);
+    Some(((days * 86_400 + hour * 3_600 + minute * 60 + second) * 1000) + millis)
+}
+
+/// Howard Hinnant's `days_from_civil`, the inverse of [`civil_from_days`].
+fn days_from_civil(year: i64, month: u32, day: u32) -> i64 {
+    let year = if month <= 2 { year - 1 } else { year };
+    let era = if year >= 0 { year } else { year - 399 } / 400;
+    let year_of_era = (year - era * 400) as u64;
+    let month_pointer = if month > 2 { month - 3 } else { month + 9 } as u64;
+    let day_of_year = (153 * month_pointer + 2) / 5 + day as u64 - 1;
+    let day_of_era = year_of_era * 365 + year_of_era / 4 - year_of_era / 100 + day_of_year;
+    era * 146_097 + day_of_era as i64 - 719_468
+}
+
 /// Howard Hinnant's `civil_from_days`: days since 1970-01-01 to (y, m, d).
 ///
 /// 算法要点：先把天偏移到"虚拟纪元"0000-03-01（把 2 月挪到年尾，闰日变成
@@ -218,6 +260,19 @@ mod tests {
             rfc3339(UNIX_EPOCH + Duration::from_millis(1_789_849_019_770)),
             "2026-09-19T20:16:59.770Z"
         );
+    }
+
+    #[test]
+    fn reads_back_the_timestamps_it_writes() {
+        for millis in [0_i64, 951_782_400_000, 1_709_164_800_123, 1_767_225_599_999, 4_107_542_400_000] {
+            let text = rfc3339(UNIX_EPOCH + Duration::from_millis(millis as u64));
+            assert_eq!(rfc3339_millis(&text), Some(millis), "{text}");
+        }
+        assert_eq!(rfc3339_millis("2026-10-17T08:00:00Z"), Some(1_792_224_000_000));
+        assert_eq!(rfc3339_millis("2026-10-17T08:00:00.5Z"), Some(1_792_224_000_500));
+        for invalid in ["", "2026-10-17", "2026-13-01T00:00:00.000Z", "2026-10-17T08:00:00.000+09:00", "2026-10-17T08:00:00.Z", "x026-10-17T08:00:00.000Z"] {
+            assert_eq!(rfc3339_millis(invalid), None, "{invalid}");
+        }
     }
 
     #[test]

@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ph-r.com/vua/schemas/amf-production-flow/v0.1/progress.schema.json",
+  "title": "AMF material-first task progress v0.1 (Candidate)",
+  "description": "Payload of a task progress event of an amf.production task. It names the running step and, inside Unity, the Unity stage read from the Editor log; the stage `fingerprint` names VUA's project-file check after the Editor exits. It carries no log text and no paths.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "operation",
+    "runId",
+    "step",
+    "name",
+    "startedAt"
+  ],
+  "properties": {
+    "operation": {
+      "const": "amf.production"
+    },
+    "runId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9-]{1,100}$"
+    },
+    "step": {
+      "$ref": "#/$defs/stepKey"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "startedAt": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "unity": {
+      "$ref": "#/$defs/unity"
+    }
+  },
+  "$defs": {
+    "stepKey": {
+      "enum": [
+        "project",
+        "materials",
+        "inspect",
+        "reinspect",
+        "snapshot",
+        "assembly",
+        "protect_current",
+        "restore",
+        "turntable",
+        "upload",
+        "open"
+      ]
+    },
+    "timestamp": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,9})?Z$"
+    },
+    "unity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "lastActivityAt"
+      ],
+      "properties": {
+        "stage": {
+          "enum": [
+            "starting",
+            "license",
+            "packages",
+            "importing",
+            "compiling",
+            "bridge",
+            "previews",
+            "finishing",
+            "fingerprint"
+          ]
+        },
+        "current": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lastActivityAt": {
+          "$ref": "#/$defs/timestamp"
+        }
+      }
+    }
+  }
+}

@@ -1,28 +1,33 @@
 # VUA product boundary
 
 
-> Document version: 2.30.0
-> Status: Accepted
-> Scope: Entire VUA product
-> Updated: 2026-10-13
-> Normative effect: Yes
+> Updated: 2026-10-16
 
 ## Product definition
 
-VUA is a Windows-first, local-first VRChat **scenario** host (the author's term: “情景”).
-It installs, manages and launches the capabilities a scenario needs, with a SOP list for preparation,
-use and recovery. The core audience includes players unfamiliar with Unity or the required software.
-PC screen play and PICO streaming are play scenarios; self-built AMF supplies the Avatar-editing
-scenario. Under the latest 2026-10-10 user ruling, Ibis installs AMF with VUA and enables it
-for new users. Existing enable/disable choices are remembered; existing profiles without a
-choice retain the old disabled default, and finding legacy BDL data alone does not enable AMF.
-External Avatar-editing modules are deferred beyond Ibis. BDL stays private inside AMF.
+VUA is a Windows-first, local-first VRChat **scenario** host (the author's term: “情景”). A
+scenario is a player goal with its SOP for preparation, use and recovery. VUA observes the local
+environment; installs, manages and launches what each scenario needs; and gives players, and the
+AI agents they direct, the same facts, SOPs and permissioned operations. The
+[north star](north-star.md) states the goal and how progress is measured. The core audience
+includes players new to Unity and to the software VRChat relies on.
 
-Recipe-first production and reproducible production records belong to AMF. The VUA host remains
-usable without AMF/BDL, and the Wizard chooses a path by goal, device and current facts. Wizard goal
-preferences do not determine which installed modules appear in the main directory. Concrete
-ownership, local payload activation, migration and lifecycle are owned by
-[host/module architecture](architecture/modules.md).
+Desktop play and PICO streaming are play scenarios. The first-party AMF module supplies the
+Avatar-production scenario. VUA installs AMF and enables it by default, and keeps a player's
+saved enable/disable choice (user correction, 2026-10-14). External Avatar-editing modules are
+scheduled after Ibis. BDL is private to AMF.
+
+AMF owns Recipe-first production and reproducible production records. The VUA host works with or
+without AMF and BDL. The Wizard chooses a path by goal, device and current facts, and installed
+modules decide what appears in the main directory.
+[Host/module architecture](architecture/modules.md) owns activation, migration and lifecycle.
+
+**Material-first production (user ruling, 2026-10-13).** The player starts by selecting
+materials. VUA prepares an independent managed project and chooses the Avatar, materials and
+assembly relationships automatically when the observed facts determine them; the player chooses
+where a target is ambiguous or unsupported. Existing projects stay as they are. The player reviews
+menu options and changes, then VUA executes, reports the result and hands off to the SDK.
+Portable Recipes belong to N4, and N3 closes with its real-material acceptance rows.
 
 ## Accepted product areas
 
@@ -77,6 +82,12 @@ ownership, local payload activation, migration and lifecycle are owned by
    The tools named in the active delivery policy enter N2; other integrations remain unscheduled.
 9. **Community plugin interface:** a versioned protocol for optional enhancements and customization,
    with declared capabilities, lifecycle, tasks, permissions, and compatibility rules.
+10. **SOPs and agent access (user ruling, 2026-10-16):** versioned SOPs that take a goal or a
+    symptom to verified steps, covering settings, diagnosis, tools and Avatar production; an MCP
+    server that gives the player's own AI agent observation, planning and permissioned execution
+    through VUA's existing task authority; and external-tool delivery chosen by each tool's
+    license. The [north star](north-star.md) defines the permission levels, SOP fields and license
+    policy.
 
 ## Production scope and product rulings (user ruling, 2026-09-22)
 
@@ -490,13 +501,16 @@ Unity/BOOTH registration is optional for players; purchases and SDK upload remai
 BOOTH library acquisition remains the separate N5 requirement, not an N1 account-system expansion.
 
 After the first usable delivery, attempt VRChat web-information reading as a separate slice.
-The author's intended local sign-in persistence is a deferred experimental option, off by default:
-before the first experimental login, explain conflict with the written platform credential/session
-policy and possible account sanctions up to a ban, and let the user decline persistence. Put the
-switch in Experimental settings. This is recorded product intent, not an implemented feature or
-platform permission. Its implementation must define browser-owned local storage, expiry/clearing,
-logout and consent behavior without exposing secrets to application or Agent data paths. Consent
-does not change platform terms. It is not an N1 prerequisite or permission for cloud account control.
+Experimental VRChat sign-in in VUA (user ruling, 2026-10-18): an Experimental setting, off by
+default. Before the first sign-in VUA explains the conflict with VRChat's written credential and
+session policy and possible account action up to a ban, and the player accepts or leaves it off.
+The player signs in in VUA with username, password and the two-factor code VRChat asks for; VUA
+keeps the session and, only when the player also chooses "Remember my password", the password, both
+encrypted per Windows user, outside application state, the Gateway, task records, logs and the MCP
+adapter. Sign-out and forgetting clear them. VUA uses the session to sign the official SDK in before
+a managed upload and to read the player's own Avatar list to check uploads; requests identify VUA,
+stay few and back off. Consent does not change platform terms. The design lives in
+[VRChat sign-in](development/vrchat-account.md).
 
 Sources checked 2026-09-30: [SDK upload prerequisites](https://creators.vrchat.com/avatars/creating-your-first-avatar/)
 and [VRChat Creator Guidelines](https://hello.vrchat.com/creator-guidelines).
@@ -510,16 +524,15 @@ User-adopted implementation boundary (2026-09-29), informed by the
 - Use supported external surfaces, OSC, launch options, necessary local logs and documented
   configuration fields. Never inject, hook or patch the VRChat client or bypass EAC. Hidden
   configuration and undocumented client behavior are not authorized by an existing third-party tool.
-- VUA application features do not collect or extract VRChat login credentials, including passwords,
-  tokens, cookies and session data. Users type into official pages, not VUA-owned credential forms;
-  temporary browser state is confined to the isolated browser. Do not import another application's
-  session. The account-onboarding section supersedes the previous blanket ban only for this guided
-  browser flow and records the separate, deferred experimental persistence direction. BOOTH's N5
+- Outside the experimental VRChat sign-in above, VUA does not collect or extract VRChat login
+  credentials, including passwords, tokens, cookies and session data; temporary browser state is
+  confined to the isolated browser. Do not import another application's session. BOOTH's N5
   acquisition session remains a distinct, authorized local boundary.
 - User initiation is necessary for account changes, but is not sufficient authorization for an
   undocumented operation or credential access. Unsupported operations stay unavailable; direct
-  the user to the official flow. No cloud account control and no automatic upload on a user's
-  behalf, including from their device; final Avatar login/upload stays in the official SDK.
+  the user to the official flow. No cloud account control. Avatar uploads run through the official
+  SDK builder on the player's device after the player's own confirmation of the content rights for
+  each upload (managed upload, user ruling 2026-10-17).
 - Store only necessary data locally by default; no unnecessary friend-activity tracking, profiling
   or cross-user database. Sanitize logs and retain purchased files locally.
 - Any future allowed API adapter needs bounded request rates, backoff and accurate identification,
@@ -600,8 +613,8 @@ User-adopted implementation boundary (2026-09-29), informed by the
   bypasses anti-cheat.
 - The first delivery phase supplies the capability protocol and security model; marketplace
   governance follows a later release decision.
-- Final VRChat Avatar login and upload remain a user action in the official SDK flow; VUA prepares
-  and validates. A technical check passing does not guarantee appearance and behavior match player
+- VRChat Avatar uploads run through the official SDK, started by the player and confirmed per upload
+  (managed upload, user ruling 2026-10-17); VUA prepares, validates and reports the SDK's result. A technical check passing does not guarantee appearance and behavior match player
   expectations (this must be stated clearly to the user), and a check that did not run must never
   display as passed (user ruling, 2026-09-22).
 
@@ -656,19 +669,14 @@ Current development is continuing Beta under the N sequence. The historical v0.6
 unchanged; this ruling is not a new product release. Runtime-tool deployment is active. Community
 plugin execution and a marketplace still require their separately accepted security decisions.
 
+**External Agent access (user ruling, 2026-10-13).** VUA runs a local MCP server for the
+player's own AI tool through the [Candidate adapter](protocols/ai-tools-v0.1.md). The player turns
+the connection on and gives the pairing prompt, with its local token, to their AI tool; VUA stores
+the token encrypted and keeps it out of snapshots and logs. The tools reuse the typed Gateway,
+module readiness, the versioned Bridge and the existing task and recovery authorities, and reach
+only VUA's own facts and operations. Every change an agent requests waits for the player's
+confirmation in VUA. [SOP, checks and installation](protocols/scenario-environment-v0.1.md) are
+separate calls, and VUA shows [registration and activation guidance](compatibility/unity-editor.md)
+before the Unity Editor runs.
+
 **Library presentation and intake (user ruling, 2026-10-12).** The visible local source means user-imported material, rather than every downloaded local file. The separate [card-removal face](protocols/library-records-v0.2.md) extends the initial local-record removal to complete entry and account-product card presentations, with files/references retained and no automatic restoration by sync. **Import a local item** keeps explicit per-path copy-in; its adjacent arrow opens **Import multiple items (library migration)**. Material boundaries must not be silently guessed. The current migration preview is read-only; its [grouping design](development/library-migration-design.md) is a draft and does not grant a new writer or declare N5 accepted.
-
-## Document changelog
-
-- 2.30.0 (2026-10-13): authorize official-site immutable installer hosting and parallel website/GitHub version discovery, with local signing and explicit current/planned AMF presentation.
-- 2.29.0 (2026-10-13): require multiple automatically selected runtime mirrors for mainland-China availability and route the implemented NSIS/AMF boundary without declaring acceptance complete.
-
-- 2.28.0 (2026-10-12): Replace dependency-name dialogs with cancellable author-description link filtering and define resizable plain-source library columns.
-- 2.27.0 (2026-10-12): record origin-specific local imports, full card presentation removal and the author-selected single-item/migration intake split without changing acceptance.
-
-- 2.26.0 (2026-10-12): authorize bounded public BOOTH keyword lookup for local provenance independently of account membership; preserve content, ambiguity and entitlement boundaries.
-- 2.25.0 (2026-10-11): authorize current-state v0.6.6 Ibis ZIP publication before subsequent NSIS/runtime and AMF-update work, retaining continuing Beta and pending acceptance.
-- 2.24.0 (2026-10-11): accept NSIS, automatic mirrored Electron acquisition/reuse and bundled AMF independent incremental updates, superseding ZIP-first deferral without changing existing evidence or user-data boundaries.
-- 2.23.0 (2026-10-10): enable bundled AMF for new users while retaining existing choices, legacy opt-in behavior and host/BDL isolation.
-- 2.22.0 (2026-10-10): align scenario-host/AMF/BDL stage ownership, selected N2 module/software sources and separate release acceptance with the author's revised N sequence; preserve open N1/N5 outcomes.
-- 2.21.1 (2026-10-10): align preparation-reading wording with the main Help encyclopedia ruling without changing guidance scope or acceptance.

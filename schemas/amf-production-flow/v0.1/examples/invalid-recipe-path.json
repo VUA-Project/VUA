@@ -1,0 +1,8 @@
+{
+  "method": "amf.production.getRecipe",
+  "kind": "query",
+  "params": {
+    "schemaVersion": "0.1",
+    "recipeId": "../private"
+  }
+}

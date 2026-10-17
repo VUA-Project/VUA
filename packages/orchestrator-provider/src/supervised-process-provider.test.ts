@@ -188,6 +188,20 @@ describe("supervised process Provider v0.1", () => {
     expect(provider.status()).toMatchObject({ state: "failed", acceptingCalls: false });
   });
 
+  it("waits for a failed handshake's process to exit before reporting it gone", async () => {
+    const { provider, processes } = harness({ contractVersion: "unknown" });
+    await expect(provider.start()).rejects.toThrow("invalid handshake");
+    await expect(provider.waitForExit(1_000)).resolves.toBe(true);
+    expect(processes[0]?.killed).toBe(true);
+  });
+
+  it("reports a timeout while the Provider process is still running", async () => {
+    const { provider } = harness();
+    await provider.start();
+    await expect(provider.waitForExit(20)).resolves.toBe(false);
+    await provider.prepareShutdown({ timeoutMs: 1_000 });
+  });
+
   it("does not pass credential-like environment variables to the Provider", () => {
     expect(providerEnvironment({
       SystemRoot: "C:\\Windows",
@@ -196,5 +210,13 @@ describe("supervised process Provider v0.1", () => {
       GITHUB_TOKEN: "secret",
       PATH: "unneeded",
     })).toEqual({ SystemRoot: "C:\\Windows", TEMP: "C:\\Temp" });
+  });
+
+  it("passes the machine folders Unity's Package Manager needs", () => {
+    expect(providerEnvironment({
+      ProgramData: "C:\\ProgramData",
+      ALLUSERSPROFILE: "C:\\ProgramData",
+      USERNAME: "player",
+    })).toEqual({ ProgramData: "C:\\ProgramData", ALLUSERSPROFILE: "C:\\ProgramData" });
   });
 });

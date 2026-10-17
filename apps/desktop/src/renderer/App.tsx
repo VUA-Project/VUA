@@ -52,6 +52,7 @@ import { LoginBrowserOverlay } from "./app/LoginBrowserOverlay.tsx";
 import { closeLoginBrowser } from "./app/login-browser-store.ts";
 import { closeBrowserModal } from "./components/primitives/modal-layer.tsx";
 import { NotificationPopover } from "./features/task-center/NotificationPopover.tsx";
+import { AiRequestsHere } from "./features/ai-requests/AiRequestsHere.tsx";
 import { ResourceMonitor } from "./features/resource-monitor/ResourceMonitor.tsx";
 import { BootGate, BootSplash } from "./components/splash/BootSplash.tsx";
 import { bootProgress } from "./app/boot-progress.ts";
@@ -65,6 +66,7 @@ import {
   downloadDiagnostics,
 } from "./features/settings/diagnostics.ts";
 import { ExperimentalCommands } from "./features/settings/experimental-commands.tsx";
+import { VrchatSignInSection } from "./features/settings/vrchat-sign-in.tsx";
 import { AccountSettingsPage } from "./features/settings/AccountSettingsPage.tsx";
 import { EnvironmentSettingsPage } from "./features/settings/environment-page.tsx";
 import { useAutoDeleteOriginals } from "./app/delete-originals-auto.ts";
@@ -90,6 +92,7 @@ import {
   useAmfModule,
   useEnvironmentView,
   useSettingsView,
+  useGateway,
   type VuaGateway,
 } from "./gateway/index.ts";
 import { ModulesPage } from "./features/modules/ModulesPage.tsx";
@@ -196,6 +199,7 @@ function ExperimentalSettingsPage() {
   return <div className="vua-page">
     <section className="vua-page__hero"><h1 className="vua-title">{strings.nav.pages.settingsExperimental}</h1></section>
     <AmfExperimentalCommands />
+    <Card><VrchatSignInSection /></Card>
     <Card><div className="vua-page__stack">
       <h3>{copy.taskDiagnosticsTitle}</h3><p className="vua-text-secondary">{copy.taskDiagnosticsDesc}</p>
       <Button disabled={window.vua?.window === undefined} onClick={() => void window.vua?.window.showOverlay("status")} data-nav-id="experimental-task-diagnostics">{copy.taskDiagnosticsOpen}</Button>
@@ -528,9 +532,12 @@ function renderPage(
 ) {
   if (isAmfPage(page) && amf.state !== "ready") return <ModulesPage onOpen={() => actions.navigate("warehouse")} />;
   switch (page) {
-    case "home": case "environment-hub": case "avatar-hub":
+    case "avatar-hub":
+      if (amf.installed && amf.state === "ready") return <AmfBoundary key={page} manage={() => actions.navigate("settings-modules")}><Suspense fallback={<p role="status">{format(strings.amfModule.loading, { amf: TERMS.amf })}</p>}><AmfPages page={page} creatorReady={creatorReady} navigate={actions.navigate} prepareEnv={actions.prepareEnv} /></Suspense></AmfBoundary>;
       return <HomePage page={page} navigate={actions.navigate} amfInstalled={amf.installed} />;
-    case "help": case "help-wizard": case "help-tour": case "help-game-assistant": case "help-encyclopedia":
+    case "home": case "environment-hub":
+      return <HomePage page={page} navigate={actions.navigate} amfInstalled={amf.installed} />;
+    case "help": case "help-wizard": case "help-tour": case "help-game-assistant": case "help-encyclopedia": case "help-ai":
       return <HelpPage page={page} navigate={actions.navigate} onAccounts={actions.openAccounts} startTour={actions.startTour} guideRequest={encyclopedia.request} acknowledgeGuide={encyclopedia.acknowledge} />;
     case "env-play": case "env-create":
       return <RouteEnvironmentPage zone={page === "env-play" ? "play" : "create"} onAccounts={actions.openAccounts} onOpenAmf={() => actions.navigate("warehouse")} />;
@@ -589,6 +596,7 @@ function AppShell({
   const guideRequestNonce = useRef(0);
   const acknowledgeGuide = (nonce: number) => setGuideRequest(current => shouldClearGuideRequest(current, nonce) ? null : current);
   useAutoDeleteOriginals();
+  const aiPort = useGateway().aiTools;
   // 启动里程碑 paint:AppShell 首帧提交(Phase A 开屏牵线)
   useEffect(() => {
     bootProgress.report("paint");
@@ -920,7 +928,7 @@ function AppShell({
         </button>
         {/* 通知中心顶栏入口(对标 Comfy 铃铛,自绘):保留任务与通知投影;
          *  capability 非 ready 时组件自身不渲染 */}
-        <NotificationPopover navigate={navigate} />
+        <NotificationPopover navigate={navigate} page={contentPage ?? page} />
         {inShell ? (
           <div className="vua-shell__window-controls">
             <button
@@ -956,7 +964,7 @@ function AppShell({
             {moduleDef("settings").groups.flatMap(g => g.pages).map(p => <button type="button" key={p.id} className="vua-shell__sidebar-item" aria-current={page === p.id ? "page" : undefined} onClick={() => navigate(p.id)} data-nav-id={`nav-${p.id}`}>{pageLabel(p)}</button>)}
           </div> : (["env", "production"] as const).filter(group => group !== "production" || amf.installed).map(group => <div className="vua-shell__sidebar-group" key={group} data-module={group}>
             <button type="button" className="vua-shell__sidebar-label" onClick={() => navigate(group === "env" ? "environment-hub" : "avatar-hub")}>{group === "env" ? strings.journey.environment : TERMS.amf}</button>
-            {directory[group].map(item => <button type="button" key={item.id} className="vua-shell__sidebar-item" aria-current={page === item.id ? "page" : undefined} onClick={() => navigate(item.id)} data-nav-id={`nav-${item.id}`}>{item.title}</button>)}
+            {directory[group].map(item => <button type="button" key={item.id} className="vua-shell__sidebar-item" aria-current={page === item.id || ("pages" in item && (item.pages as readonly string[]).includes(page)) ? "page" : undefined} onClick={() => navigate(item.id)} data-nav-id={`nav-${item.id}`}>{item.title}</button>)}
           </div>)}
           {!settingsOpen && !amf.installed ? <div className="vua-shell__sidebar-group" data-module="amf-enablement">
             <span className="vua-shell__sidebar-label">{TERMS.amf}</span>
@@ -981,6 +989,7 @@ function AppShell({
         </aside>
         <main className="vua-shell__main">
           {contentPage !== null ? <div hidden={showOnboarding || settingsOpen} key={contentPage} className="vua-page-enter">
+            {aiPort ? <AiRequestsHere page={contentPage} /> : null}
             {renderPage(contentPage, creatorReady, pageActions, pagePrefs, amf, { request: guideRequest, acknowledge: acknowledgeGuide })}
           </div> : null}
           {showOnboarding ? <div key="first-run" hidden={settingsOpen}><OnboardingPage onComplete={onOnboardingComplete} onAccounts={pageActions.openAccounts} /></div> : null}

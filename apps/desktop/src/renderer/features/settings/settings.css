@@ -129,3 +129,142 @@
   display: flex;
   gap: var(--vua-space-2);
 }
+
+/* ---- 实验性 VRChat 登录(vrchat-session v0.1):开关行 + 登录/验证码面板 + 账号卡 ---- */
+
+.vua-vrchat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-3);
+}
+
+.vua-vrchat__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--vua-space-3);
+}
+
+.vua-vrchat__head p {
+  margin: 0;
+}
+
+.vua-vrchat__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-2);
+  padding: var(--vua-space-3);
+  border: 1px solid var(--vua-border);
+  border-radius: var(--vua-radius-control);
+  background: var(--vua-bg-panel);
+}
+
+.vua-vrchat__form,
+.vua-vrchat__code {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-2);
+  max-width: 420px;
+}
+
+.vua-vrchat__form label,
+.vua-vrchat__code label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-1);
+  font: var(--vua-font-body);
+  color: var(--vua-text-secondary);
+}
+
+.vua-vrchat__form input:not([type="checkbox"]),
+.vua-vrchat__code input {
+  height: var(--vua-control-height);
+  padding: 0 var(--vua-space-2);
+  border: 1px solid var(--vua-border);
+  border-radius: var(--vua-radius-control);
+  background: var(--vua-bg);
+  color: var(--vua-text-strong);
+}
+
+.vua-vrchat__form .vua-vrchat__remember {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--vua-space-2);
+  color: var(--vua-text-strong);
+}
+
+.vua-vrchat__remember input {
+  accent-color: var(--vua-accent);
+}
+
+.vua-vrchat__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vua-space-2);
+}
+
+.vua-vrchat__relogin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vua-space-2);
+}
+
+.vua-vrchat__methods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--vua-space-2);
+  margin: 0;
+}
+
+.vua-vrchat__method {
+  padding: var(--vua-space-1) var(--vua-space-2);
+  border: 1px solid var(--vua-border);
+  border-radius: var(--vua-radius-control);
+  background: transparent;
+  color: var(--vua-text-secondary);
+  font: var(--vua-font-body);
+  cursor: pointer;
+}
+
+.vua-vrchat__method[data-active="true"] {
+  border-color: var(--vua-accent);
+  color: var(--vua-accent-text);
+  background: var(--vua-accent-tint);
+}
+
+.vua-vrchat__account {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--vua-space-3);
+  padding: var(--vua-space-3);
+  border: 1px solid var(--vua-border);
+  border-radius: var(--vua-radius-control);
+  background: var(--vua-bg-panel);
+}
+
+.vua-vrchat__thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: calc(var(--vua-radius-control) - 2px);
+  object-fit: cover;
+}
+
+.vua-vrchat__thumb--empty {
+  border: 1px solid var(--vua-border);
+  background: var(--vua-accent-tint);
+}
+
+.vua-vrchat__who {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--vua-space-2);
+  min-width: 0;
+  flex: 1;
+}
+
+@media (forced-colors: active) {
+  .vua-vrchat__method[data-active="true"] { border-color: Highlight; }
+  .vua-vrchat__thumb--empty { border-color: CanvasText; }
+}

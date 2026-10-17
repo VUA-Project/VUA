@@ -1,0 +1,170 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "contractVersion": {
+      "const": "0.1"
+    },
+    "requestId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "correlationId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "kind": {
+      "const": "query"
+    },
+    "method": {
+      "enum": [
+        "environment.getScenarioSop",
+        "environment.checkScenarioEnvironment"
+      ]
+    },
+    "params": {}
+  },
+  "required": [
+    "contractVersion",
+    "requestId",
+    "correlationId",
+    "kind",
+    "method",
+    "params"
+  ],
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ph-r.com/schemas/scenario-environment/v0.1/request.schema.json",
+  "$defs": {
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "scenario": {
+          "enum": [
+            "desktop_play",
+            "pico_pcvr",
+            "pc_avatar",
+            "quest_avatar"
+          ]
+        },
+        "connection": {
+          "enum": [
+            "usb",
+            "wifi",
+            null
+          ]
+        }
+      },
+      "required": [
+        "scenario"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "scenario": {
+                "not": {
+                  "const": "pico_pcvr"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "connection": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "intent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "purposes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "desktop_play",
+              "pico_pcvr",
+              "pc_avatar",
+              "quest_avatar"
+            ]
+          }
+        },
+        "editorRoot": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 240,
+          "pattern": "^[A-Za-z]:\\\\[^\\u0000-\\u001f]*$"
+        },
+        "useMirrors": {
+          "type": "boolean"
+        },
+        "picoRegion": {
+          "enum": [
+            "china_mainland",
+            "other"
+          ]
+        }
+      },
+      "required": [
+        "purposes",
+        "editorRoot"
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "method": {
+          "const": "environment.getScenarioSop"
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "schemaVersion": {
+              "const": "0.1"
+            },
+            "scenario": {
+              "$ref": "#/$defs/scenario"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "scenario"
+          ]
+        }
+      }
+    },
+    {
+      "properties": {
+        "method": {
+          "const": "environment.checkScenarioEnvironment"
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "schemaVersion": {
+              "const": "0.1"
+            },
+            "intent": {
+              "$ref": "#/$defs/intent"
+            }
+          },
+          "required": [
+            "schemaVersion",
+            "intent"
+          ]
+        }
+      }
+    }
+  ]
+}

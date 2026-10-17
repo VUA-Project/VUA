@@ -1,0 +1,7 @@
+.vua-ai-tools { display: grid; gap: 20px; min-width: 0; max-width: 1100px; }
+.vua-ai-tools h2, .vua-ai-tools h3 { margin-top: 0; }
+.vua-ai-tools__controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.vua-ai-tools__prompt { display: block; box-sizing: border-box; width: 100%; resize: vertical; min-height: 190px; max-height: 60dvh; margin-block: 16px; padding: 16px; font: inherit; font-size: 14px; line-height: 1.6; color: var(--vua-text-strong); background: var(--vua-bg-panel); border: 1px solid var(--vua-border); border-radius: 12px; }
+.vua-ai-tools__prompt:focus-visible { outline: 2px solid var(--vua-accent); outline-offset: 3px; }
+.vua-ai-tools__requests { display: grid; gap: 16px; }
+.vua-ai-tools__requests > h2, .vua-ai-tools__requests > p { margin: 0; }

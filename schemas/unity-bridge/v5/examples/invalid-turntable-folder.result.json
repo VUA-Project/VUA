@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 5,
+  "commandId": "n3-vector-turntable-out",
+  "operation": "amf_turntable",
+  "status": "succeeded",
+  "changedPaths": [
+    ".vua/turntables/n3-vector-turntable"
+  ],
+  "diagnostics": [],
+  "data": {
+    "editorVersion": "2022.3.22f1c1",
+    "projectFingerprint": "scene-after",
+    "avatarName": "Synthetic Avatar",
+    "avatarGlobalObjectId": "GlobalObjectId_V1-vector",
+    "prefabs": [],
+    "instances": [
+      {
+        "sourceId": "copy-outfit",
+        "prefabPath": "Assets/Outfit.prefab",
+        "globalObjectId": "GlobalObjectId_V1-outfit",
+        "binding": "merge_armature",
+        "bindingVerified": true,
+        "menuVerified": true,
+        "menuModified": true
+      }
+    ],
+    "sdkDescriptorRecognized": true,
+    "officialSdkChecks": "not_run",
+    "visualReview": "pending",
+    "missingReferences": 0,
+    "turntable": {
+      "folder": ".vua/turntables/../previews",
+      "frames": 60,
+      "size": 512
+    }
+  }
+}

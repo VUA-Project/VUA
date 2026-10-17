@@ -1,0 +1,7 @@
+{
+  "method": "amf.production.listRecipes",
+  "kind": "query",
+  "params": {
+    "schemaVersion": "0.1"
+  }
+}

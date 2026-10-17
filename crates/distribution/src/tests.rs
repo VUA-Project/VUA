@@ -346,7 +346,9 @@ async fn cancellation_interrupts_a_waiting_network_body_without_activating_it() 
         .await
         .unwrap_err();
     assert_eq!(error.0, "cancelled");
-    assert!(start.elapsed() < std::time::Duration::from_millis(400));
+    // Below the loopback client's 2 s read timeout, so the waiting body was interrupted rather
+    // than timed out; the margin absorbs scheduling on shared CI runners.
+    assert!(start.elapsed() < std::time::Duration::from_millis(1_500));
     stop.store(true, Ordering::Relaxed);
     server.join().unwrap();
 }

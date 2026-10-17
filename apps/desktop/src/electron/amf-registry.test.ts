@@ -25,19 +25,19 @@ describe("host-owned AMF selection and data layout", () => {
     expect(new AmfRegistry(directory).registration.enabled).toBe(true);
   });
 
-  it("an existing host profile without a saved module choice keeps the old disabled default", () => {
+  it("an existing host database is not mistaken for a saved opt-out", () => {
     const directory = profile();
     fs.mkdirSync(path.join(directory, "host"));
     fs.writeFileSync(path.join(directory, "host", "tasks.db"), "host");
-    expect(new AmfRegistry(directory).registration.enabled).toBe(false);
+    expect(new AmfRegistry(directory).registration.enabled).toBe(true);
   });
 
-  it("legacy data waits for explicit enable and keeps its layout even if BDL cannot be read", () => {
+  it("an unconfigured legacy profile uses the enabled default and retains its unread BDL", () => {
     const directory = profile();
     fs.mkdirSync(path.join(directory, "bdl"));
     fs.writeFileSync(path.join(directory, "bdl", "bdl.db"), "not a readable BDL");
     const registry = new AmfRegistry(directory);
-    expect(registry.registration).toEqual({ schemaVersion: "0.1", enabled: false, dataLayout: "legacy" });
+    expect(registry.registration).toEqual({ schemaVersion: "0.1", enabled: true, dataLayout: "legacy" });
     expect(registry.dataRoot()).toBe(directory);
     expect(fs.existsSync(registry.file)).toBe(false);
     registry.save(true);

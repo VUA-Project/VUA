@@ -183,6 +183,90 @@ namespace Vua.Editor.Bridge
             }
         }
 
+        /// <summary>
+        /// Renders still PNG images of one scene object or prefab asset (Bridge v5 AMF previews).
+        /// Each view is a camera yaw around the object, 0 facing its front. The copy lives in its
+        /// own preview scene with the same white three-light rig as the turntable, on an opaque
+        /// neutral grey background, so the user's scene and lighting settings stay untouched.
+        /// </summary>
+        internal static void RenderStills(GameObject source, int size, (string path, float yaw)[] views)
+        {
+            var previewScene = EditorSceneManager.NewPreviewScene();
+            var previousActive = RenderTexture.active;
+            RenderTexture rt = null;
+            Texture2D tex = null;
+            try
+            {
+                var copy = EditorUtility.IsPersistent(source)
+                    ? PrefabUtility.InstantiatePrefab(source, previewScene) as GameObject
+                    : UnityEngine.Object.Instantiate(source);
+                if (copy == null) throw new InvalidOperationException("Could not copy " + source.name + " for its preview.");
+                if (copy.scene != previewScene) SceneManager.MoveGameObjectToScene(copy, previewScene);
+                copy.SetActive(true);
+                copy.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+
+                var bounds = ComputeBounds(copy);
+                if (bounds.size.sqrMagnitude < 1e-6f) bounds = new Bounds(Vector3.up, Vector3.one);
+
+                var rig = new GameObject("VUA Preview Rig");
+                SceneManager.MoveGameObjectToScene(rig, previewScene);
+                var camera = rig.AddComponent<Camera>();
+                camera.scene = previewScene;
+                camera.clearFlags = CameraClearFlags.SolidColor;
+                camera.backgroundColor = new Color(0.62f, 0.62f, 0.62f, 1f);
+                camera.fieldOfView = 28f;
+                camera.nearClipPlane = 0.01f;
+                camera.farClipPlane = 100f;
+                camera.enabled = false;
+                AddLight(rig, "Key", 30f, 35f, 1.35f);
+                AddLight(rig, "Fill", -145f, 12f, 0.65f);
+                AddLight(rig, "Rim", 95f, 20f, 0.4f);
+
+                var center = bounds.center;
+                var fit = Mathf.Max(bounds.extents.y, Mathf.Max(bounds.extents.x, bounds.extents.z));
+                var distance = Mathf.Max(fit, 0.05f) / Mathf.Tan(camera.fieldOfView * 0.5f * Mathf.Deg2Rad) * 1.18f;
+
+                rt = new RenderTexture(size, size, 24, RenderTextureFormat.ARGB32);
+                tex = new Texture2D(size, size, TextureFormat.RGB24, false);
+                foreach (var view in views)
+                {
+                    var rad = view.yaw * Mathf.Deg2Rad;
+                    camera.transform.position = center + new Vector3(Mathf.Sin(rad), 0f, Mathf.Cos(rad)) * distance
+                        + Vector3.up * (bounds.extents.y * 0.12f);
+                    camera.transform.LookAt(center);
+                    camera.targetTexture = rt;
+                    camera.Render();
+                    RenderTexture.active = rt;
+                    tex.ReadPixels(new Rect(0f, 0f, size, size), 0, 0);
+                    tex.Apply();
+                    RenderTexture.active = previousActive;
+                    camera.targetTexture = null;
+
+                    var pending = view.path + ".pending";
+                    File.WriteAllBytes(pending, tex.EncodeToPNG());
+                    if (File.Exists(view.path)) File.Delete(view.path);
+                    File.Move(pending, view.path);
+                }
+            }
+            finally
+            {
+                RenderTexture.active = previousActive;
+                if (rt != null) { rt.Release(); UnityEngine.Object.DestroyImmediate(rt); }
+                if (tex != null) UnityEngine.Object.DestroyImmediate(tex);
+                if (previewScene.IsValid()) EditorSceneManager.ClosePreviewScene(previewScene);
+            }
+        }
+
+        /// <summary>
+        /// Renders the 60-frame turntable of an AMF result (Bridge v5 amf_turntable): the same camera
+        /// orbit as Bake, yaw 0° (the Avatar's front) and then 360°/frames per frame, rendered with the
+        /// RenderStills rig so the turntable matches the front, side and back views.
+        /// </summary>
+        internal static void RenderTurntable(GameObject source, int size, int frames, Func<int, string> pathFor)
+        {
+            RenderStills(source, size, Enumerable.Range(0, frames).Select(i => (pathFor(i), i * (360f / frames))).ToArray());
+        }
+
         /// 收据版本回显命令协议版本(execute_production_job 先例,proposal 016):
         /// v4 命令的 build_preview 收据标 v4,绝不用默认标签冒充。
         private static BridgeResult Labeled(BridgeCommand command, BridgeResult result)

@@ -1,0 +1,9 @@
+{
+  "method": "amf.production.prepareRecipe",
+  "kind": "command",
+  "params": {
+    "schemaVersion": "0.1",
+    "recipeId": "recipe-example",
+    "editorPath": "C:/Unity/Unity.exe"
+  }
+}

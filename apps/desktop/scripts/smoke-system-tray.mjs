@@ -32,7 +32,10 @@ try {
   const checks = [];
   assert.equal(tray.isDestroyed(), false); checks.push("native VUA tray is created");
   assert.deepEqual(menu.items.map(item => item.label), ["检查更新", "退出"]); checks.push("right-click menu has only updates and Exit; retired big screen entry is absent");
-  tray.emit("double-click"); assert.equal(opened, 1); checks.push("double-click routes to the main-window restore action");
+  tray.emit("click"); assert.equal(opened, 1); checks.push("a click routes to the main-window restore action");
+  handle.setAttention(true); await new Promise(resolve => setTimeout(resolve, 700));
+  assert.equal(refreshedImage.isEmpty(), true); checks.push("attention blinks the tray icon");
+  handle.setAttention(false); assert.equal(refreshedImage.isEmpty(), false); checks.push("attention ends with the normal icon");
   menu.items[0].click();
   assert.deepEqual(commands, ["check-updates"]); checks.push("menu emits only the closed update gesture");
   menu.items[1].click(); assert.equal(exited, 1); checks.push("Exit uses the application quit path");

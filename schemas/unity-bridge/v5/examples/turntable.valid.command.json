@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 5,
+  "commandId": "n3-vector-turntable",
+  "projectId": "n3-vector",
+  "operation": "amf_turntable",
+  "dryRun": false,
+  "payload": {
+    "avatarGlobalObjectId": "",
+    "avatarArmatureGlobalObjectId": "",
+    "outfitGlobalObjectId": "",
+    "outfitArmatureGlobalObjectId": "",
+    "toggleName": "",
+    "planRef": ".vua/bridge/n3-vector-turntable.amf-plan.json",
+    "planHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+}

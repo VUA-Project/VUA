@@ -1,7 +1,6 @@
 # Contributing to VUA
 
-> Document version: 2.1.4
-> Status: Accepted
+> Updated: 2026-10-16
 
 ## For human contributors — localization welcome
 
@@ -13,7 +12,7 @@ languages to contribute. Preserve placeholders, formatting and translation keys,
 context, and mark machine-assisted text that has not had human review. For additional languages,
 open an Issue to agree on coverage and maintenance. UI i18n scope, README editions and
 documentation languages are owned by the
-[language policy](docs/meta/documentation-governance.md#23-language-policy-user-ruling-2026-09-25).
+[language policy](docs/meta/documentation-governance.md#5-language).
 
 ## If you are an Agent
 
@@ -73,12 +72,3 @@ policy may change only through an explicit, documented governance decision.
 
 Use of the VUA name and visual identity is governed separately by the
 [trademark guidance](TRADEMARKS.md).
-
-## Document changelog
-
-- 2.1.4 (2026-10-01): reconstruct the 2.1.1 changelog entry, link language-policy specifics to governance §2.3, and normalize changelog formatting.
-- 2.1.3 (2026-09-30): link directly to local setup, app launch and scoped checks.
-- 2.1.2 (2026-09-30): clarify expandable UI/README localization and Chinese release changelogs.
-- 2.1.1 (2026-09-29): point Issues at VUA-Project/VUA and welcome Issues in any language (templates stay English).
-- 2.1.0 (2026-09-29): add human localization invitation and a distinct Agent reading/authorization context.
-- 2.0.0 (2026-09-29): consolidate the ordinary contribution path and replace duplicated policy with owning-document links. Earlier versions remain in Git history.

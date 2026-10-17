@@ -1,0 +1,17 @@
+{
+  "contractVersion": "0.1",
+  "requestId": "scenario-test",
+  "correlationId": "scenario-test",
+  "kind": "command",
+  "method": "environment.checkScenarioEnvironment",
+  "params": {
+    "schemaVersion": "0.1",
+    "intent": {
+      "purposes": [
+        "pc_avatar"
+      ],
+      "editorRoot": "C:\\Editors",
+      "useMirrors": true
+    }
+  }
+}

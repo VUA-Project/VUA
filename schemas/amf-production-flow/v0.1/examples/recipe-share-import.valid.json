@@ -1,0 +1,8 @@
+{
+  "method": "amf.production.importRecipe",
+  "kind": "command",
+  "params": {
+    "schemaVersion": "0.1",
+    "text": "{\"formatVersion\":\"0.4\",\"recipe\":{\"formatVersion\":\"0.4\",\"recipeId\":\"recipe-example\",\"title\":\"Two-piece Avatar\",\"editorVersion\":\"2022.3.22f1c1\",\"materials\":[{\"id\":\"m-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"packageName\":\"Avatar.unitypackage\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},{\"id\":\"m-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"packageName\":\"Coat.unitypackage\",\"sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}],\"avatar\":{\"materialId\":\"m-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"prefabPath\":\"Assets/Avatar.prefab\"},\"outfits\":[{\"materialId\":\"m-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"prefabPath\":\"Assets/Coat.prefab\",\"mode\":\"merge_armature\",\"bone\":\"\",\"toggleName\":\"Coat\",\"active\":true}],\"packages\":{\"com.vrchat.avatars\":\"3.10.5\",\"nadena.dev.modular-avatar\":\"1.18.7\"}},\"sources\":{\"m-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\":\"1000000\",\"m-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\":\"1000001\"}}"
+  }
+}

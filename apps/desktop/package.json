@@ -27,10 +27,15 @@
     "smoke:remote-permissions": "pnpm build && electron scripts/smoke-remote-permissions.mjs",
     "smoke:m2-deliverables": "pnpm build && electron scripts/smoke-m2-deliverables.mjs",
     "preview:overlay": "electron scripts/preview-overlay.mjs",
+    "preview:factory": "electron scripts/preview-factory.mjs",
     "smoke:remote-content": "pnpm build && electron scripts/smoke-remote-content.mjs",
     "smoke:download-port": "pnpm build && electron scripts/smoke-download-port.mjs",
     "smoke:f4-deliverables": "pnpm build && node scripts/smoke-f4-deliverables.mjs",
     "smoke:production-review": "electron scripts/smoke-production-review.mjs",
+    "smoke:amf-production": "pnpm --filter @vua/contracts build && electron scripts/smoke-amf-production.mjs",
+    "smoke:ai-native": "node scripts/smoke-ai-native.mjs",
+    "smoke:ai-ui": "electron scripts/smoke-ai-ui.mjs",
+    "smoke:ai-bundle": "node scripts/smoke-ai-bundle.mjs",
     "smoke:first-run-ui": "electron scripts/smoke-first-run-ui.mjs",
     "smoke:amf-module": "electron scripts/smoke-amf-module.mjs",
     "smoke:help-navigation": "electron scripts/smoke-help-navigation.mjs",
@@ -51,6 +56,8 @@
     "package:nsis": "pnpm --filter @vua/orchestrator-provider build && node scripts/build-windows-provider.mjs && tsc -p tsconfig.electron.json --noEmit && node scripts/build-electron.mjs && node --experimental-strip-types scripts/build-components.mjs && install-electron && node scripts/generate-release-notices.mjs && node scripts/prepare-distribution.mjs && node scripts/package-nsis.mjs"
   },
   "dependencies": {
+    "@modelcontextprotocol/node": "2.1.1",
+    "@modelcontextprotocol/server": "2.3.1",
     "@vua/contracts": "workspace:*",
     "@vua/design-system": "workspace:*",
     "@vua/orchestrator-provider": "workspace:*",
@@ -59,6 +66,7 @@
     "three": "0.185.1"
   },
   "devDependencies": {
+    "@modelcontextprotocol/client": "2.3.1",
     "@types/node": "24.10.1",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",

@@ -336,3 +336,5 @@
   transform: translate(-50%, -50%) translateZ(calc(var(--layer-depth, 0) * 56px));
   cursor: pointer;
 }
+.vua-recipe-workspace { padding-block: 8px; border-top: 1px solid var(--vua-border); }
+.vua-recipe-workspace > p { margin: 8px 0 20px; }

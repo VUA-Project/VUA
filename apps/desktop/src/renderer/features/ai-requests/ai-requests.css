@@ -1,0 +1,13 @@
+/* Above the page body: stays in view while the page scrolls, and never takes over the page. */
+.vua-ai-requests-here { flex: none; display: grid; gap: 12px; box-sizing: border-box; width: 100%; max-width: 960px; max-height: 50%; margin: 0 auto var(--vua-space-4); overflow-y: auto; }
+.vua-ai-requests-here > h2 { margin: 0; }
+.vua-ai-request__header { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 12px; }
+.vua-ai-request__header h3 { margin: 0; }
+.vua-ai-request__controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.vua-ai-review { overflow-wrap: anywhere; }
+.vua-ai-review pre { max-height: 220px; overflow: auto; font-size: 13px; white-space: pre-wrap; }
+.vua-ai-review li { margin-block: 8px; }
+.vua-ai-review summary { cursor: pointer; }
+.vua-ai-review h4 { margin: 12px 0 4px; }
+.vua-ai-review ul { margin-block: 0; padding-inline-start: 20px; }
+[data-ai-request][data-revealed] { outline: 2px solid var(--vua-accent); outline-offset: 2px; }

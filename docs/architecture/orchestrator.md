@@ -1,12 +1,7 @@
 # Orchestrator architecture
 
-
-> Document version: 1.0.2
-> Status: Accepted
 > Scope: Orchestrator application core and local adapters
 > Updated: 2026-10-01
-> Last conformance review: 2026-09-06
-> Normative effect: Yes
 
 ## Responsibility
 
@@ -76,13 +71,3 @@ boundaries and add operation-specific behavior; historical B labels do not presc
 Adapters pass argument arrays, filter inherited secrets, declare minimal environment/workdir/timeout/
 cancellation/exit semantics per tool, execute allowlisted programs from trusted installation sources,
 supervise Windows process trees, and redact and truncate logs.
-
-## Document changelog
-
-- 1.0.2 (2026-10-01): mark the Gateway v1 freeze reference as historical under the retired M
-  schedule and align Provider hosting with the supervised separate-process implementation; no
-  behavior change.
-- 1.0.1 (2026-09-28): remove obsolete mirror metadata and clarify current ownership where needed during the N documentation audit.
-- 1.0.0 (2026-09-06): entered version management; header normalized, conformance-review date added,
-  and a duplicated contract-reference sentence removed. Content otherwise reviewed against reality
-  with no change.

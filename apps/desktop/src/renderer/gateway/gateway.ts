@@ -22,6 +22,11 @@ import type { DataSource } from "./types.ts";
  * (fixture / not-run / 未来 Tauri live),页面零重写。
  */
 export interface VuaGateway {
+  readonly aiTools?: import("@vua/contracts").DesktopAiToolsApiV01 | undefined;
+  readonly amfProduction?: import("./amf-production-port.ts").AmfProductionPort | undefined;
+  readonly amfRelease?: import("./amf-release-port.ts").AmfReleasePort | undefined;
+  /** vrchat-session v0.1(实验性 VRChat 登录):恒 live 基线,无宿主时诚实缺席 */
+  readonly vrchat?: import("./vrchat-port.ts").VrchatPort | undefined;
   readonly distribution?: import("@vua/contracts").DesktopDistributionApiV01 | undefined;
   readonly amfModule: import("@vua/contracts").AmfModuleApiV01;
   readonly environment: EnvironmentPort;

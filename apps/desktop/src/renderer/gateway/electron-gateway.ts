@@ -1,4 +1,5 @@
 import { createLiveDeploymentPort } from "./live-deployment-port.ts";
+import { createScenarioEnvironmentPort } from "./scenario-environment-port.ts";
 import { createAmfModulePort } from "./amf-module-port.ts";
 import { createDistributionPort } from "./distribution-port.ts";
 import { createLivePlayPort } from "./live-play-port.ts";
@@ -159,6 +160,7 @@ function createLiveEnvironmentPort(client: GatewayClient): EnvironmentPort {
   };
   return {
     deployment: createLiveDeploymentPort(client),
+    scenarios: createScenarioEnvironmentPort(client),
     play: createLivePlayPort(client),
     tools: createLiveToolPort(client),
     managers: createCreatorInventoryPort(client),
@@ -224,6 +226,10 @@ export function createElectronGateway(
   const liveWarehouseCommands = createWarehouseCommands(client);
   return {
     amfModule: createAmfModulePort(host?.amfModule),
+    aiTools: host?.aiTools,
+    amfProduction: createAmfProductionPort(client),
+    amfRelease: createAmfReleasePort(client),
+    vrchat: createVrchatPort(client),
     distribution: createDistributionPort(host?.distribution),
     environment: createLiveEnvironmentPort(client),
     task: createLiveTaskPort(client),
@@ -263,3 +269,6 @@ export function createElectronGateway(
     dataSource: (): DataSource => "live",
   };
 }
+import { createAmfProductionPort } from "./amf-production-port.ts";
+import { createAmfReleasePort } from "./amf-release-port.ts";
+import { createVrchatPort } from "./vrchat-port.ts";

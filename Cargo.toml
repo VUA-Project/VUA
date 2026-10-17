@@ -10,3 +10,8 @@ members = [
     "crates/provider-host",
     "crates/unity-bridge",
 ]
+
+# Test builds inherit these development settings.
+[profile.dev]
+debug = "line-tables-only"
+incremental = false

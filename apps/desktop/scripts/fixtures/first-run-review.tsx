@@ -1,5 +1,5 @@
 import { createRoot, type Root } from "react-dom/client";
-import type { DesktopShellCommandV1, VuaDesktopApiV2 } from "@vua/contracts";
+import { scenarioRequiredComponents, type DeploymentPurpose, type DesktopShellCommandV1, type VuaDesktopApiV2 } from "@vua/contracts";
 import { App } from "../../src/renderer/App.tsx";
 import { strings } from "../../src/renderer/i18n/index.ts";
 import { storageKeys } from "../../src/renderer/app/storage-keys.ts";
@@ -28,7 +28,7 @@ function syntheticPlay(route: string) {
 const check = (name: string, value: unknown) => { if (!value) throw new Error(name); checks.push(name); };
 const wait = async (predicate: () => unknown, label = "") => {
   const start = Date.now();
-  while (!predicate()) { if (Date.now() - start > 10000) throw new Error(`UI condition timed out: ${label}; wizard=${document.querySelector("[data-wizard-step]")?.getAttribute("data-wizard-step")}`); await new Promise(r => setTimeout(r, 25)); }
+  while (!predicate()) { if (Date.now() - start > 10000) throw new Error(`UI condition timed out: ${label || predicate.toString().slice(0, 160)}; wizard=${document.querySelector("[data-wizard-step]")?.getAttribute("data-wizard-step")}`); await new Promise(r => setTimeout(r, 25)); }
 };
 const visible = (el: Element) => el.getClientRects().length > 0 && !el.closest("[hidden]");
 const detailsBelowCard = (control: Element) => {
@@ -70,6 +70,12 @@ window.vua = {
         steps: ["steam", "vrchat"].map(component => ({ component, action: scenario === "installed" ? "retain" : "manual_install", reason: scenario === "installed" ? "verified" : "missing", location: null, version: null,
           officialUrl: component === "steam" ? "https://store.steampowered.com/about/" : "https://store.steampowered.com/app/438100/" })) } };
     }
+    if (req.method === "environment.checkScenarioEnvironment") {
+      const intent = req.params!.intent!, ready = scenario === "installed";
+      value = { schemaVersion: "vua.scenario-environment/v0.1", intent, softwareReady: ready, licenseState: "not_checked", performed: "software_check_only",
+        nextAction: ready ? "follow_sop" : "plan_installation", installationStarted: false,
+        observations: scenarioRequiredComponents(intent.purposes as DeploymentPurpose[]).map(component => ({ component, presence: ready ? "verified" : "missing", location: null, version: null })) };
+    }
     if (req.method === "environment.executeDeployment") value = { schemaVersion: "vua.environment-deployment/v0.1", operation: req.method, taskId: "synthetic-deployment", correlationId: "synthetic" };
     if (req.method === "task.get") value = { contractVersion: "0.1", taskId: "synthetic-deployment", correlationId: "synthetic", revision: 1, state: installationRunning ? "running" : "succeeded_with_warnings", recoveryDisposition: "none", cancellationRequested: false, updatedAt: new Date().toISOString(),
       result: scenario === "restored" ? { outcome: "prerequisites_verified" } : { outcome: "manual_required", nextStep: { component: "vrchat", action: "manual_install", officialUrl: "https://store.steampowered.com/app/438100/" } } };
@@ -101,7 +107,7 @@ async function mount(mode: typeof scenario = "installed", legacyMode = "desktop"
 }
 async function prepare() {
   await click(copy.playGoal); await step("play-mode"); await click(copy.desktop); await step("network");
-  await click(copy.networkContinue); await step("prepare"); await click(strings.deployment.plan);
+  await click(copy.networkContinue); await step("prepare"); await click(strings.scenarioEnvironment.plan);
 }
 const review = {
   async run() {
@@ -186,11 +192,11 @@ const review = {
     check("missing software cannot continue", !button(copy.preparedNext));
     await click(strings.deployment.execute); await wait(() => document.body.textContent?.includes(strings.deployment.manualRequired));
     check("manual handoff cannot imply ready", !button(copy.preparedNext));
-    scenario = "installed"; await click(strings.deployment.plan); await wait(() => button(copy.preparedNext));
+    scenario = "installed"; await click(strings.scenarioEnvironment.plan); await wait(() => button(copy.preparedNext));
     check("fresh detection enables continuation", !!button(copy.preparedNext));
-    await mount("restored"); await step("prepare"); await wait(() => button(strings.deployment.plan) && !button(strings.deployment.plan)!.disabled);
+    await mount("restored"); await step("prepare"); await wait(() => button(strings.scenarioEnvironment.plan) && !button(strings.scenarioEnvironment.plan)!.disabled);
     check("old terminal receipt alone does not authorize continuation", !button(copy.preparedNext));
-    scenario = "installed"; await click(strings.deployment.plan); await wait(() => button(copy.preparedNext));
+    scenario = "installed"; await click(strings.scenarioEnvironment.plan); await wait(() => button(copy.preparedNext));
     check("restored work can continue after reinspection", !!button(copy.preparedNext));
     await mount("installed", "bigscreen"); await step("goal");
     document.querySelector<HTMLButtonElement>('[data-nav-id="logo-home"]')!.click();
@@ -216,7 +222,7 @@ const review = {
     await mount("installed", "desktop"); await step("goal"); document.querySelector<HTMLButtonElement>('[data-nav-id="logo-home"]')!.click(); await wait(() => !document.querySelector("[data-wizard-step]"));
     check("Software & connections is absent from the fixed directory", !document.querySelector('[data-nav-id="nav-software"]') && !document.querySelector('[data-nav-id="home-software"]'));
     await click(copy.play); const card = () => document.querySelector<HTMLElement>('[data-card="route-desktop"]')!;
-    await wait(() => card()?.dataset.action === "start");
+    await wait(() => card()?.dataset.action === "start", "desktop card ready to start");
     const halves = card().querySelectorAll<HTMLButtonElement>(":scope > button"); const network = document.querySelector<HTMLElement>(".vua-network-tile")!;
     const separatorWidth = parseFloat(getComputedStyle(halves[1]!).borderLeftWidth);
     check("play card has two independent halves and a thin separator", halves.length === 2 && !halves[0]!.disabled && separatorWidth > 0 && separatorWidth <= 1);
@@ -234,20 +240,20 @@ const review = {
     check("pending start offers scoped close rather than a second start", card().querySelector(".vua-environment-card__action")!.getAttribute("aria-label")?.includes("Close this session"));
     await wait(() => card().textContent?.includes(strings.environmentCards.close));
     check("observed running software identifies pre-existing Steam as retained", document.querySelector(".vua-environment-software")!.textContent?.includes(strings.environmentCards.borrowed));
-    document.querySelector<HTMLButtonElement>('[data-nav-id="route-desktop-action"]')!.click(); await wait(() => card().dataset.action === "start");
+    document.querySelector<HTMLButtonElement>('[data-nav-id="route-desktop-action"]')!.click(); await wait(() => card().dataset.action === "start", "close returns the card to start");
     check("close returns the environment to play after observation", playCalls.join() === "environment.startPlay:desktop_play,environment.stopPlay:desktop_play");
     borrowedSteam = false;
-    document.querySelector<HTMLButtonElement>('[data-nav-id="route-desktop-action"]')!.click(); await wait(() => playStates.desktop_play === "running");
+    document.querySelector<HTMLButtonElement>('[data-nav-id="route-desktop-action"]')!.click(); await wait(() => playStates.desktop_play === "running", "owned session running");
     playStates.desktop_play = "finished";
     await click(strings.environmentCards.inspect);
     await wait(() => card().textContent?.includes(strings.environmentCards.close) && document.querySelector(".vua-environment-software li")!.textContent?.includes(strings.environmentCards.owned)
       && document.querySelectorAll(".vua-environment-software li")[1]!.querySelectorAll("span").length === 1, "finished session observed with only owned Steam still running");
     check("normal game exit keeps Close for owned Steam without a warning or failure", card().dataset.action === "stop" && card().textContent?.includes(strings.environmentCards.close) && !card().querySelector(".vua-environment-card__warning") && !document.querySelector(".vua-play-page [role=alert]"));
     playStates.desktop_play = "idle";
-    await click(strings.environmentCards.inspect); await wait(() => card().dataset.action === "start");
+    await click(strings.environmentCards.inspect); await wait(() => card().dataset.action === "start", "all owned software exited");
     check("exit of all owned software restores Play without an extra close request", playCalls.filter(call => call.startsWith("environment.stopPlay:")).length === 1);
     check("Quest, Vive and Index remain development peers", ["quest", "vive", "index"].every(id => document.querySelector(`[data-card="route-${id}"] .vua-route-tile__tag`)?.textContent === copy.developing));
-    playUnavailable = true; await click(strings.environmentCards.inspect); await wait(() => card().dataset.action === "unknown");
+    playUnavailable = true; await click(strings.environmentCards.inspect); await wait(() => card().dataset.action === "unknown", "provider failure shown as unknown");
     check("provider failure is unknown instead of missing or ready", card().textContent?.includes(strings.environmentCards.unknown));
     await click(copy.create); await wait(() => document.querySelector('[data-nav-id="editor-2019.4.31f1"]'));
     check("creator lists complete discovered versions beside the fixed Unity entries", document.querySelector('[data-nav-id="route-unity2022"]') && document.querySelector('[data-nav-id="editor-2021.3.45f1"]') && document.querySelector('[data-nav-id="route-unity6"] .vua-route-tile__tag')?.textContent === copy.developing);
@@ -263,8 +269,11 @@ const review = {
       await wait(() => control.getAttribute('aria-expanded') === 'false');
     }
     await mount("missing", "desktop"); await step("goal"); document.querySelector<HTMLButtonElement>('[data-nav-id="logo-home"]')!.click(); await wait(() => !document.querySelector("[data-wizard-step]")); await click(copy.play);
-    await wait(() => card()?.dataset.action === "prepare"); document.querySelector<HTMLButtonElement>('[data-nav-id="route-desktop-action"]')!.click(); await wait(() => button(strings.deployment.execute));
-    check("plus opens the reviewed installation plan without launching software", playCalls.length === 0 && !!button(strings.deployment.execute));
+    await wait(() => card()?.dataset.action === "prepare"); document.querySelector<HTMLButtonElement>('[data-nav-id="route-desktop-action"]')!.click();
+    await wait(() => document.querySelector(".vua-play-page .vua-scenario-preparation [role=status]"), "plus shows the software check");
+    check("plus checks software without planning, installing or launching", playCalls.length === 0 && !button(strings.deployment.execute));
+    await click(strings.scenarioEnvironment.plan); await wait(() => button(strings.deployment.execute), "installation plan after an explicit request");
+    check("the installation plan follows an explicit request without launching software", playCalls.length === 0 && !!button(strings.deployment.execute));
     installationRunning = true; await click(strings.deployment.execute); await wait(() => card().dataset.action === "busy");
     check("accepted installation shows a spinner and cannot launch", card().querySelector(".vua-environment-card__spin") && card().textContent?.includes(strings.environmentCards.installing) && document.querySelector<HTMLButtonElement>(".vua-play-page .vua-environment-detail:not([hidden]) .vua-route-platform > button")!.disabled);
     check("details remain available while installation is running", !card().querySelector<HTMLButtonElement>(".vua-environment-card__details")!.disabled);

@@ -1,4 +1,6 @@
 export * from "./application-contract.js";
+export * from "./amf-production-v01.js";
+export * from "./amf-recipe-v04.js";
 export * from "./catalog-sync.js";
 export * from "./catalog-sync-v03.js";
 export * from "./library-download-v01.js";
@@ -26,3 +28,5 @@ export * from "./external-tool.js";
 export * from "./manager-apps.js";
 export * from "./amf-module.js";
 export * from "./desktop-distribution.js";
+export * from "./scenario-environment.js";
+export * from "./desktop-ai-tools.js";

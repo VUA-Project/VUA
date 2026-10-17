@@ -1,6 +1,5 @@
 # Play environment sessions
 
-> Document version: 1.1.0
 > Status: Candidate
 > Updated: 2026-10-09
 > Scope: Desktop/PICO software launch and card-scoped close; play-session v0.2
@@ -87,9 +86,3 @@ OS/launch references: [VRChat launch options](https://docs.vrchat.com/docs/launc
 [Steam command-line options](https://developer.valvesoftware.com/wiki/Command_line_options),
 [WM_CLOSE](https://learn.microsoft.com/en-us/windows/win32/winmsg/wm-close),
 [GetProcessTimes](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getprocesstimes).
-
-## Document changelog
-
-- 1.1.0 (2026-10-09): add Candidate v0.2 with finished for normal game exit, owned-survivor cleanup and automatic session release without closing pre-existing software; retain v0.1 unchanged.
-
-- 1.0.0 (2026-10-09): define the Candidate play-session scope, observed readiness, session-specific workers, borrowed-process retention, bounded normal close and separate creator executable inventory.

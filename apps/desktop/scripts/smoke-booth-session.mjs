@@ -84,6 +84,13 @@ async function run(){try{
   await click("shell-settings");await click("nav-settings-accounts");await click("accounts-booth-login");
   await waitFor(()=>views().some(view=>view.webContents.getURL()==="https://accounts.booth.pm/users/sign_in"),"embedded login");
   const login=views().find(view=>view.webContents.getURL()==="https://accounts.booth.pm/users/sign_in");
+  await waitFor(()=>login.getVisible(),"login viewport");
+  await click("system-resources");
+  await waitFor(async()=>!login.getVisible()&&await js('!!document.querySelector(".vua-usage-panel")'),"resource panel above native browser");
+  assert(await js('(()=>{const p=document.querySelector(".vua-usage-panel"),r=p.getBoundingClientRect();return p.contains(document.elementFromPoint(r.left+20,r.top+20));})()'),"Resource details receive pointer hits above browser controls");
+  await js('document.querySelector(".vua-usage-panel__close").click()');
+  await waitFor(()=>login.getVisible(),"login viewport restored after resource panel closes");
+  assert(views().includes(login)&&login.webContents.getURL()==="https://accounts.booth.pm/users/sign_in","Closing resource details restores the same live login page without navigation");
   await login.webContents.executeJavaScript('document.querySelector("#finish").click()');
   await waitFor(()=>login.webContents.getURL().startsWith("https://accounts.booth.pm/library"),"completed synthetic login");
   assert((await remote.cookies.get({url:"https://accounts.booth.pm/library"})).some(cookie=>cookie.domain===".booth.pm"),"Library-URL matching recognizes parent-domain login storage without guessing cookie names");
@@ -91,9 +98,9 @@ async function run(){try{
   assert(fetchResponse.status===200&&fetchResponse.url==="","Pinned Electron reproduces the empty fetch Response.url defect");
   await fetchResponse.text();
   assert((await js('window.vua.remoteContent.authProbe()')).authOk===true,"Main authenticates an actual session read even though fetch Response.url is empty");
-  await js('document.querySelector(".vua-login-browser__bar .vua-import__browse-button--close").click()');
+  await waitFor(()=>js('!document.querySelector(".vua-login-browser__bar")'),"automatic return after successful login",15000);
   await waitFor(()=>js('!document.querySelector("[data-nav-id=accounts-booth-login]")&&document.querySelector(".vua-settings-account__head")?.textContent.includes("Synthetic account")'),"account refresh after close");
-  assert(true,"Closing embedded login refreshes Settings → Accounts to signed in");
+  assert(true,"Successful login automatically returns and refreshes Settings → Accounts to signed in");
   await click("logo-home");await click("nav-warehouse");
   await waitFor(()=>js('document.querySelector("[data-nav-id=warehouse-sync]")?.textContent.includes("同步 BOOTH")'),"signed-in library");
   assert(true,"Returning to the asset library offers sync instead of another login");

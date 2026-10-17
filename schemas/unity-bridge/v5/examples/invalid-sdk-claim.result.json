@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 5,
+  "commandId": "n3-vector-command",
+  "operation": "amf_assemble",
+  "status": "succeeded",
+  "changedPaths": [
+    "Assets/VUA/Production.unity",
+    "Assets/VUA/Ownership.json"
+  ],
+  "diagnostics": [],
+  "data": {
+    "editorVersion": "2022.3.22f1c1",
+    "projectFingerprint": "scene-after",
+    "avatarName": "Synthetic Avatar",
+    "avatarGlobalObjectId": "GlobalObjectId_V1-vector",
+    "prefabs": [],
+    "instances": [
+      {
+        "sourceId": "copy-outfit",
+        "prefabPath": "Assets/Outfit.prefab",
+        "globalObjectId": "GlobalObjectId_V1-outfit",
+        "binding": "merge_armature",
+        "bindingVerified": true,
+        "menuVerified": true,
+        "menuModified": true
+      }
+    ],
+    "sdkDescriptorRecognized": true,
+    "officialSdkChecks": "passed",
+    "visualReview": "pending",
+    "missingReferences": 0
+  }
+}

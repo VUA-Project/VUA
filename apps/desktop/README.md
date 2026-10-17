@@ -25,6 +25,14 @@ checks below; documentation-only edits need document/link checks rather than a l
 The existing remote PR workflow still determines its own required checks.
 The development launcher does not rebuild the Rust Provider; repeat the build after backend changes.
 
+Rust development and test builds use the [workspace profile](../../Cargo.toml) to prioritize disk
+space: it keeps only file/line debug information and disables incremental compilation. Rebuilds
+can take longer; backtraces retain source locations, but inspecting variables in a debugger
+requires enabling full debug information.
+After stopping builds, use `cargo clean --profile dev` from the repository root to remove old
+development/test artifacts. This cleans `target/debug`; local databases and evidence elsewhere
+under `target` stay in place. Avoid a bare `cargo clean` when that directory contains local data.
+
 | Command | Purpose |
 | --- | --- |
 | `pnpm dev:desktop` | Joint Main + Renderer development launch |
@@ -49,6 +57,19 @@ The development launcher does not rebuild the Rust Provider; repeat the build af
 Quality gates: `check:boundary` (Gateway only via the barrel; renderer must not import `electron`/`node:`/`@tauri-apps`),
 `check:i18n` (no CJK literals; locale tables aligned, including table validation), `check:contrast` (WCAG AA in 5 contexts),
 `check:leak` and `check:forest-leak` (production leakage checks).
+
+## External AI tools (Candidate)
+
+Open **Help → Connect external AI tools**, enable the local connection, and copy the generated
+instructions to a desktop AI tool with local Streamable HTTP MCP support. VUA stays open; no AI
+account or model service is configured inside VUA. SOP reads, software-only checks and installation
+plans are independent. Proposed writes wait for a concrete confirmation in VUA, then use the
+normal Gateway/task/Bridge authority. AMF can remain disabled while host tools work.
+
+[Protocol and lifetime](../../docs/protocols/ai-tools-v0.1.md) describe pairing, tool schemas,
+result/dispatch semantics and evidence limits. `pnpm --filter @vua/desktop smoke:ai-native` runs
+the official MCP client against an isolated real host and only reads facts; local output is under
+ignored `docs/plans/_agent-local/`. It never runs an installer or launches Unity.
 
 ## Development data and parallel checkouts
 

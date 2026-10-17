@@ -16,7 +16,7 @@ import "./turntable.css";
 export type TurntableStatus = "loading" | "ready" | "failed";
 
 /** BridgePreviewBake PreviewManifest(schemaVersion 1)字段镜像 */
-interface BakeManifest {
+export interface BakeManifest {
   schemaVersion: number;
   commandId: string;
   avatarName: string;
@@ -62,11 +62,14 @@ export function TurntablePlayer({
   manifestPath,
   urlFor,
   onStatus,
+  manifest: given,
 }: {
   /** 相对 urlFor 基座的 manifest.json 路径 */
   manifestPath: string;
   urlFor: (rel: string) => string;
   onStatus: (status: TurntableStatus) => void;
+  /** A manifest the caller already holds, e.g. frames read through the Gateway as data URLs. */
+  manifest?: BakeManifest;
 }) {
   const mode = useSceneMode();
   const [phase, setPhase] = useState<Phase>({ state: "manifest" });
@@ -103,11 +106,12 @@ export function TurntablePlayer({
     statusRef.current("loading");
     setPhase({ state: "manifest" });
     framesRef.current = [];
-    fetch(urlFor(manifestPath))
-      .then((response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json() as Promise<BakeManifest>;
-      })
+    (given !== undefined
+      ? Promise.resolve(given)
+      : fetch(urlFor(manifestPath)).then((response) => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.json() as Promise<BakeManifest>;
+        }))
       .then((manifest) => {
         if (cancelled) return;
         const base = manifestPath.slice(0, manifestPath.lastIndexOf("/") + 1);
@@ -153,7 +157,7 @@ export function TurntablePlayer({
     return () => {
       cancelled = true;
     };
-  }, [manifestPath, urlFor]);
+  }, [manifestPath, urlFor, given]);
 
   // ready 后:画首帧;animated 模式下时间驱动自动旋转(static/off 只留拖拽)
   useEffect(() => {

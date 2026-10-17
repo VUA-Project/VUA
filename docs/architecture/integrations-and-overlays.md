@@ -1,12 +1,7 @@
 # Core, plugin, external integration, and overlay architecture
 
-
-> Document version: 1.7.0
-> Status: Accepted
 > Scope: Environment deployment, project management, integrated runtimes, plugin host, desktop/VR overlays
 > Updated: 2026-10-10
-> Last conformance review: 2026-10-10 (VRCFT connection/source review; physical tracking pending)
-> Normative effect: Yes
 
 ## Trust classes
 
@@ -159,20 +154,3 @@ process supervision. Unsupported runtime falls back to desktop.
 Overlays never inject into VRChat, hook graphics/OpenXR, install VRChat-affecting API layers, inspect
 VRChat process memory, modify EAC, or confirm account, safety, or upload UI. Public OSC input is
 untrusted and cannot authorize local mutation.
-
-## Document changelog
-
-- 1.7.0 (2026-10-10): connect the fixed Candidate VRCFT adapter, supported-device/module selection and scoped normal close; link the versioned host-only external lifetime exception and pending physical acceptance.
-- 1.6.0 (2026-10-08): record the implemented read-only game-window observation (game-window-observe v0.1) that backs Main's game-guide following.
-- 1.5.0 (2026-10-05): separate local guide progress from task snapshots and route three first-play guidance contexts to their owning architecture.
-- 1.4.0 (2026-10-03): define the shared Steam adapter for the expanded N2 inventory, local installation semantics and limited upstream-app lifecycle responsibilities.
-- 1.3.0 (2026-10-03): include lightweight desktop guidance and headset desktop-view validation in the first play release; retain native VR overlay as later work.
-- 1.2.1 (2026-09-30): state Steam library/install guidance and external invocation directly.
-
-- 1.2.0 (2026-09-30): define thin N2 external connectors and upstream-owned lifecycle.
-
-- 1.1.0 (2026-09-28): align external tool scheduling with the real-machine-first product ruling.
-
-- 1.0.0 (2026-09-06): entered version management; added the scope-ruling note to the overlay
-  boundary section (VR overlay removed from `1.0.0`, pointing to product boundary item 7 and the
-  development outline v1.1 outlook); header normalized.

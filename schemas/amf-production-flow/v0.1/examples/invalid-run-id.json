@@ -1,0 +1,8 @@
+{
+  "method": "amf.production.get",
+  "kind": "query",
+  "params": {
+    "schemaVersion": "0.1",
+    "runId": "../other"
+  }
+}

@@ -25,6 +25,8 @@ fn staged_project_bundles_the_bridge_scaffold_by_default() {
     let stub: String =
         std::fs::read_to_string(packages.join("nadena.dev.modular-avatar.core/package.json")).unwrap();
     assert!(stub.contains("0.0.0-stub"));
+    // Real production entry points must not compile against synthetic MA stubs.
+    assert!(!packages.join("com.ph-r.vua/Editor/Amf/AmfProductionEntryPoint.cs").exists());
 
     // Every Bridge source and GUID must reach staging, including helper files
     // referenced by the entry point/processor. A partial package cannot compile.

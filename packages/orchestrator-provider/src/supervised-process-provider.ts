@@ -54,6 +54,7 @@ export class SupervisedProcessProviderV01 implements OrchestratorProviderV01 {
   #state: ProviderStatusV01["state"] = "stopped";
   #acceptingCalls = false;
   #child: ChildProcessWithoutNullStreams | undefined;
+  #childExit: Promise<void> | undefined;
   #frameSequence = 0;
   #stdoutBuffer = Buffer.alloc(0);
   #stderr = "";
@@ -96,6 +97,7 @@ export class SupervisedProcessProviderV01 implements OrchestratorProviderV01 {
     child.stderr.on("data", (chunk: Buffer) => this.#receiveStderr(chunk));
     child.once("error", (error) => this.#fail(error));
     child.once("exit", (code, signal) => this.#handleExit(code, signal));
+    this.#childExit = new Promise<void>((resolve) => { child.once("exit", () => resolve()); });
 
     try {
       const handshake = await this.#withTimeout(
@@ -172,6 +174,21 @@ export class SupervisedProcessProviderV01 implements OrchestratorProviderV01 {
     if (!isShutdownResult(response)) throw new Error("Provider returned an invalid shutdown result");
     if (response.outcome !== "needs_user_choice") this.#expectedExit = true;
     return response;
+  }
+
+  async waitForExit(timeoutMs: number): Promise<boolean> {
+    requirePositiveInteger(timeoutMs, "exit timeout");
+    const exit = this.#childExit;
+    if (this.#child === undefined || exit === undefined) return true;
+    let timer: NodeJS.Timeout | undefined;
+    try {
+      return await Promise.race([
+        exit.then(() => true),
+        new Promise<boolean>((resolve) => { timer = setTimeout(() => resolve(false), timeoutMs); }),
+      ]);
+    } finally {
+      if (timer !== undefined) clearTimeout(timer);
+    }
   }
 
   #send(kind: string, payload: unknown): Promise<unknown> {
@@ -308,7 +325,9 @@ function spawnProviderProcess(executablePath: string, databasePath: string): Chi
 }
 
 export function providerEnvironment(source: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
-  const allowed = new Set(["systemroot", "windir", "temp", "tmp"]);
+  // ProgramData/ALLUSERSPROFILE are machine folder paths; Unity's Package Manager
+  // server needs both to start and resolve packages inside a batch-mode Editor.
+  const allowed = new Set(["systemroot", "windir", "temp", "tmp", "programdata", "allusersprofile"]);
   return Object.fromEntries(
     Object.entries(source).filter(([key, value]) => value !== undefined && allowed.has(key.toLowerCase())),
   );

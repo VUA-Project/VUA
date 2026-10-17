@@ -1,9 +1,19 @@
 import { faceTrackingCopy } from "./face-tracking-copy.ts";
+import { toolConnectionCopy } from "./tool-connection-copy.ts";
 import { browserCopy } from "./browser-copy.ts";
 import { fileDropCopy } from "./file-drop-copy.ts";
 import { helpCopy } from "./help-copy.ts";
 import { distributionCopy } from "./distribution-copy.ts";
 import { moduleCopy } from "./module-copy.ts";
+import { amfProductionCopy } from "./amf-production-copy.ts";
+import { factoryCopy } from "./factory-copy.ts";
+import { controlCenterCopy } from "./control-center-copy.ts";
+import { releaseRoomCopy } from "./release-room-copy.ts";
+import { sdkReviewCopy } from "./sdk-review-copy.ts";
+import { aiToolsCopy } from "./ai-tools-copy.ts";
+import { vrchatCopy } from "./vrchat-copy.ts";
+import { scenarioCopy } from "./scenario-copy.ts";
+import { unityLicenseCopy } from "./unity-license-copy.ts";
 import { hardwareCopy } from "./hardware-copy.ts";
 import { environmentCopy } from "./environment-copy.ts";
 import { journeyCopy } from "./journey-copy.ts";
@@ -18,11 +28,21 @@ import type { Strings } from "./strings.en.ts";
  */
 export const strings: Strings = {
   faceTracking: faceTrackingCopy["ko"],
+  toolConnection: toolConnectionCopy["ko"],
   browser: browserCopy["ko"],
   fileDrop: fileDropCopy["ko"],
   helpUi: helpCopy["ko"],
   distribution: distributionCopy["ko"],
   amfModule: moduleCopy["ko"],
+  amfProduction: amfProductionCopy.ko,
+  factory: factoryCopy.ko,
+  controlCenter: controlCenterCopy.ko,
+  releaseRoom: releaseRoomCopy.ko,
+  sdkReview: sdkReviewCopy.ko,
+  aiTools: aiToolsCopy.ko,
+  vrchat: vrchatCopy.ko,
+  scenarioEnvironment: scenarioCopy.ko,
+  unityLicense: unityLicenseCopy.ko,
   environmentCards: environmentCopy["ko"],
   journey: journeyCopy["ko"],
   websiteTests: {

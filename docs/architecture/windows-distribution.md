@@ -1,7 +1,5 @@
 # Component-based Windows distribution
 
-> Document version: 1.1.0
-> Status: Implementation baseline
 > Updated: 2026-10-13
 > Scope: First-party Windows x64 installation, launch and AMF updates
 
@@ -143,8 +141,3 @@ AMF builds on one unchanged host and compatible rollback. Synthetic loopback tes
 changed-only file range requests, full-package fallback, interruption, digest/signature/path rejection
 and busy admission. These are not clean-machine, physical PICO/VRChat, real-material or four-language
 human acceptance. The [delivery plan](../development/windows-distribution-plan.md) retains those gaps.
-
-## Document changelog
-
-- 1.1.0 (2026-10-13): add immutable official hosting, authenticated dual-feed discovery, compatible canonical envelope URLs, future signed pack sources and explicit v0.6.7 client migration limits.
-- 1.0.0 (2026-10-13): describe NSIS, complete mirrored runtime identity, independent AMF UI/native payloads, signed file updates, activation/rollback and controlled evidence limits.

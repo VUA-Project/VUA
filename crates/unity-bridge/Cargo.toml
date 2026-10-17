@@ -28,3 +28,8 @@ windows-sys = { version = "=0.61.2", features = [
 [dev-dependencies]
 jsonschema = "0.52.1"
 vua-project-manager = { path = "../project-manager" }
+
+# Its own fake Unity: the binary decides its role before any test harness parses arguments.
+[[test]]
+name = "unity_stop"
+harness = false

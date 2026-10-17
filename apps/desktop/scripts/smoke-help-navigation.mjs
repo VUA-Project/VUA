@@ -101,7 +101,7 @@ async function run() {
     assert(await js('!!document.querySelector(".vua-shell__sidebar [data-nav-id=nav-tools-discover]")'), "Tools remains in the Environment sidebar");
     await js('document.querySelector("[data-nav-id=nav-tools-discover]").click()');
     await waitFor(() => js('!!document.querySelector(".vua-tools-hub")'), "tool directory");
-    assert(await js('document.querySelector(".vua-tools-hub").textContent.includes("VRCFaceTracking") && document.querySelector(".vua-tools-hub").textContent.includes("VRCS") && document.querySelector(".vua-tools-hub").textContent.includes("OVR Overlay Translator") && !document.querySelector("[data-nav-id=tool-vrcft-action]").disabled && [...document.querySelectorAll(".vua-tools-hub .vua-environment-card:not([data-card=tool-vrcft]) .vua-environment-card__action")].every(b=>b.disabled)'), "VRCFT offers device selection; other tool actions remain honest development placeholders");
+    assert(await js('document.querySelector(".vua-tools-hub").textContent.includes("VRCFaceTracking") && document.querySelector(".vua-tools-hub").textContent.includes("VRCS") && document.querySelector(".vua-tools-hub").textContent.includes("OVR Overlay Translator") && !document.querySelector("[data-nav-id=tool-vrcft-action]").disabled && ["space","translator","advanced","toolkit","oyasumi"].every(id=>document.querySelector(`[data-card=tool-${id}] .vua-environment-card__action`)) && ["vrcs","liv"].every(id=>document.querySelector(`[data-nav-id=tool-${id}-action]`).disabled)'), "VRCFT and the five Steam tools have connection cards; VRCS and LIV remain development placeholders");
     assert(await js('[...document.querySelectorAll(".vua-tools-hub .vua-environment-card")].every(c=>Math.abs(c.getBoundingClientRect().height-88)<1) && [...document.querySelectorAll(".vua-shell__sidebar [data-nav-id]")].map(c=>c.dataset.navId).indexOf("nav-tools-discover") < [...document.querySelectorAll(".vua-shell__sidebar [data-nav-id]")].map(c=>c.dataset.navId).indexOf("nav-env-create")'), "Tools share Play card dimensions and precede Avatar editing");
     for (const button of await js('[...document.querySelectorAll(".vua-tools-hub .vua-environment-card__details")].map(b=>b.dataset.navId)')) {
       await js(`document.querySelector('[data-nav-id="${button}"]').click()`);
@@ -152,11 +152,13 @@ async function run() {
       assert(await js(`document.querySelector('[data-nav-id="${button}"]').getAttribute('aria-expanded')==='true'`), `${button} expands inline`);
       assert(await inlineDetailFits(button), `${button} details stay below their own editor or manager card`);
       if (button === 'route-unity2022') {
-        await waitFor(() => js('!!document.querySelector("#route-unity2022-details .vua-deployment ol li")'), "Automatic Unity entry inspection");
-        assert(await js('!!document.querySelector("#route-unity2022-details .vua-deployment ol li")'), "Unity preparation inspects on first entry before any install command");
+        const softwareChecked = 'document.querySelector("#route-unity2022-details .vua-scenario-preparation [role=status] li") && !document.querySelector("#route-unity2022-details .vua-deployment ol li")';
+        try { await waitFor(() => js(`!!(${softwareChecked})`), "Automatic Unity software check"); }
+        catch (error) { console.error(JSON.stringify({ unityDetails: await js('document.querySelector("#route-unity2022-details")?.innerText.slice(0, 1200)') })); throw error; }
+        assert(await js(`!!(${softwareChecked})`), "Unity preparation checks software on first entry without planning or installing");
         if (process.env.VUA_TEST_EXPECT_EDITOR_VERSION) {
           const expected = process.env.VUA_TEST_EXPECT_EDITOR_VERSION;
-          assert(await js(`[...document.querySelectorAll('#route-unity2022-details .vua-deployment ol li')].some(item=>item.textContent.includes(${JSON.stringify(expected)}) && item.textContent.includes('保留'))`), "The existing Editor's full version is reused on first entry without installation");
+          assert(await js(`[...document.querySelectorAll('#route-unity2022-details .vua-scenario-preparation [role=status] li')].some(item=>item.textContent.includes(${JSON.stringify(expected)}))`), "The existing Editor's full version is reported on first entry without installation");
           await capture('unity-first-entry');
         }
       }
@@ -246,14 +248,17 @@ async function run() {
     assert(await js('document.querySelector("[data-nav-id=toggle-amf]").checked && !document.querySelector("[data-nav-id=nav-enable-amf]")'), "AMF activation exposes its own sidebar without navigating away");
     await js('document.querySelector("[data-nav-id=logo-home]").click()');
     await waitFor(() => js('!!document.querySelector("[data-nav-id=home-release]")'), "AMF Home directory");
-    assert(await js('!document.querySelector("[data-nav-id=home-inspection]") && document.querySelector("[data-nav-id=home-release]").textContent.includes("成品") && document.querySelector("[data-nav-id=home-packages]").textContent.includes("包管理器")'), "Finished Avatars and Package Manager replace the Inspection Home card");
+    // The factory rooms (2026-10-17 author ruling): Materials, Workshop (with checks), Office (Recipes and packages), Release.
+    assert(await js('["warehouse","workshop","recipe","release"].every(id => !!document.querySelector(`[data-nav-id=home-${id}]`)) && !document.querySelector("[data-nav-id=home-inspection]") && !document.querySelector("[data-nav-id=home-packages]")'), "AMF Home lists the four factory rooms; checks and packages live inside them");
     await js('document.querySelector("[data-nav-id=home-release]").click()');
     await waitFor(() => js('location.hash==="#release" && !!document.querySelector("main h1")'), "Finished Avatars destination");
     await js('document.querySelector("[data-nav-id=logo-home]").click()');
-    await waitFor(() => js('!!document.querySelector("[data-nav-id=home-packages]")'), "AMF Home return");
-    await js('document.querySelector("[data-nav-id=home-packages]").click()');
+    await waitFor(() => js('!!document.querySelector("[data-nav-id=home-recipe]")'), "AMF Home return");
+    await js('document.querySelector("[data-nav-id=home-recipe]").click()');
+    await waitFor(() => js('location.hash==="#recipe" && !!document.querySelector("[data-nav-id=tab-packages]")'), "Office room with its package tab");
+    await js('document.querySelector("[data-nav-id=tab-packages]").click()');
     await waitFor(() => js('location.hash==="#packages" && !!document.querySelector("main h1")'), "Package Manager destination");
-    assert(true, "Both new AMF Home cards open their existing functional pages");
+    assert(true, "Release and the Office package tab open their functional pages");
     // Synthetic authentication replies exercise the real renderer/Main IPC
     // handoff without contacting BOOTH, loading login pages or syncing accounts.
     let resolveAccountProbe;

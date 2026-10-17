@@ -1,0 +1,11 @@
+{
+  "kind": "command",
+  "method": "amf.production.applyRecipe",
+  "params": {
+    "schemaVersion": "0.1",
+    "runId": "n3-example",
+    "recipeId": "recipe-example",
+    "planDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "choice": "new_avatar"
+  }
+}

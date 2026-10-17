@@ -1,0 +1,18 @@
+{
+  "method": "amf.production.prepare",
+  "kind": "command",
+  "params": {
+    "schemaVersion": "0.1",
+    "sources": [
+      {
+        "sourceId": "copy-avatar",
+        "role": "auto"
+      },
+      {
+        "sourceId": "copy-outfit",
+        "role": "auto"
+      }
+    ],
+    "editorPath": "C:/Unity/Editor/Unity.exe"
+  }
+}
