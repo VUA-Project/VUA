@@ -18,6 +18,15 @@ export function desktopBrowserSite(value: unknown): typeof DESKTOP_BROWSER_SITES
   return DESKTOP_BROWSER_SITES_V1.find(site => site.id === value) ?? null;
 }
 
+export function isDesktopBrowserBoothItemIdV1(value: unknown): value is string {
+  return typeof value === "string" && /^booth:[1-9][0-9]{0,19}$/.test(value);
+}
+
+export function desktopBrowserBoothItemUrl(productId: unknown): string | null {
+  if (!isDesktopBrowserBoothItemIdV1(productId)) return null;
+  return `https://booth.pm/ja/items/${productId.slice("booth:".length)}`;
+}
+
 /** Display metadata only: account handoff query/fragment/authority secrets stay in Main. */
 export function desktopBrowserDisplayUrl(value: string): string {
   try {
@@ -50,9 +59,19 @@ export type DesktopBrowserTabEventV1 =
   | { readonly kind: "tab-opened"; readonly viewId: string; readonly parentViewId: string; readonly url: string }
   | { readonly kind: "title-updated"; readonly viewId: string; readonly title: string }
   | { readonly kind: "tab-limit"; readonly viewId: string };
-export type DesktopBrowserEventV1 = RemoteContentEventV1 | DesktopBrowserLoadEventV1 | DesktopBrowserTabEventV1;
+export type DesktopBrowserDownloadEventV1 = {
+  readonly kind: "download-completed";
+  readonly downloadId: string;
+  readonly suggestedFileName: string | null;
+};
+export type DesktopBrowserEventV1 =
+  | RemoteContentEventV1
+  | DesktopBrowserLoadEventV1
+  | DesktopBrowserTabEventV1
+  | DesktopBrowserDownloadEventV1;
 export interface DesktopBrowserApiV1 {
   open(site: DesktopBrowserSiteIdV1): Promise<RemoteContentViewStateV1>;
+  openBoothItem?(productId: string): Promise<RemoteContentViewStateV1>;
   navigate(viewId: string, site: DesktopBrowserSiteIdV1): Promise<RemoteContentViewStateV1>;
   goBack(viewId: string): Promise<RemoteContentViewStateV1>;
   goForward(viewId: string): Promise<RemoteContentViewStateV1>;

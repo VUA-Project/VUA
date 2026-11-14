@@ -1,6 +1,6 @@
 # Contract and decision registry
 
-> Updated: 2026-11-13
+> Updated: 2026-11-14
 
 Contracts, schema directories and decisions with their version, status, owner and last review date. [Documentation governance](meta/documentation-governance.md) defines the statuses and when a row changes. Earlier registry contents, including other document versions, remain in Git history and [the archive](archive/2026-09-29/registry-before-simplification.md).
 
@@ -26,13 +26,14 @@ Contracts, schema directories and decisions with their version, status, owner an
 | docs/protocols/bdl-queries-v0.5.md | 0.5 | Frozen | Data | 2026-09-22 |
 | docs/protocols/bdl-queries-v0.6.md | 0.6 | Frozen | Data | 2026-10-02 |
 | docs/protocols/terms-v0.1.md | 0.3.1 | Candidate | AMF | 2026-11-06 |
+| docs/protocols/booth-free-assets-v0.1.md | 0.1 | Implementation baseline | AMF | 2026-11-14 |
 | docs/protocols/booth-search-v0.1.md | 0.1 | Implementation baseline | AMF | 2026-10-12 |
 | docs/protocols/catalog-sync-v0.1.md | 0.1 | Frozen | Data | 2026-10-02 |
 | docs/protocols/catalog-sync-v0.2.md | 0.2 | Frozen | Data | 2026-10-02 |
 | docs/protocols/catalog-sync-v0.3.md | 0.3 | Implementation baseline | AMF | 2026-10-07 |
 | docs/protocols/catalog-enrichment-v0.1.md | 0.1 | Implementation baseline | AMF | 2026-11-11 |
 | docs/protocols/catalog-orders-v0.1.md | 0.1 | Implementation baseline | AMF | 2026-11-07 |
-| docs/protocols/desktop-browser-v0.1.md | 1.1.0 | Candidate | Desktop | 2026-10-11 |
+| docs/protocols/desktop-browser-v0.1.md | 1.2.0 | Candidate | Desktop | 2026-11-14 |
 | docs/protocols/desktop-library-v0.1.md | 1.4.0 | Candidate | Desktop | 2026-10-12 |
 | docs/protocols/desktop-resource-v0.2.md | 1.0.0 | Candidate | Desktop | 2026-10-10 |
 | docs/protocols/desktop-startup-v0.1.md | 1.0.0 | Candidate | Desktop | 2026-10-10 |
@@ -131,6 +132,7 @@ Contracts, schema directories and decisions with their version, status, owner an
 | schemas/bdl-commands/v0.5 | 0.5 | Frozen | Data | 2026-10-03 |
 | schemas/bdl-queries/v0.6 | 0.6 | Frozen | Data | 2026-10-02 |
 | schemas/terms/v0.1 | 0.1 | Candidate | AMF | 2026-10-19 |
+| schemas/booth-free-assets/v0.1 | 0.1 | Implementation baseline | AMF | 2026-11-14 |
 | schemas/booth-search/v0.1 | 0.1 | Implementation baseline | AMF | 2026-10-12 |
 | schemas/catalog-sync/v0.1 | 0.1 | Frozen | Data | 2026-10-02 |
 | schemas/catalog-sync/v0.2 | 0.2 | Frozen | Data | 2026-10-02 |

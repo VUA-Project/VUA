@@ -181,4 +181,54 @@ impl BdlStore {
         let connection = self.connection.lock().expect("SQLite connection poisoned");
         Ok(connection.query_row("SELECT EXISTS(SELECT 1 FROM artifact_copies c JOIN superseded_generated_copies s ON s.copy_id=c.copy_id WHERE c.warehouse_item_id=?1 AND c.artifact_sha256=?2)", params![entry_id, sha], |row| row.get(0))?)
     }
+
+    /// Record library-agnostic downloadable evidence (`library_type = NULL`) and
+    /// `managed_library_files` binding when a user-adopted browser download came
+    /// from `https://booth.pm/downloadables/{id}` for an observed product. Never
+    /// writes `product_library_memberships` and returns `Ok(false)` when the
+    /// product has not been observed yet or another copy already claims the
+    /// downloadable.
+    pub fn record_adopted_download_evidence(
+        &self,
+        downloadable_id: i64,
+        product_id: &str,
+        anchor_text: &str,
+        copy_id: &str,
+        download_id: &str,
+        now: &str,
+    ) -> Result<bool, BdlStoreError> {
+        let mut connection = self.connection.lock().expect("SQLite connection poisoned");
+        let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let exists: bool = tx.query_row(
+            "SELECT EXISTS(SELECT 1 FROM products WHERE product_id = ?1)",
+            [product_id],
+            |row| row.get(0),
+        )?;
+        if !exists {
+            return Ok(false);
+        }
+        tx.execute(
+            "INSERT INTO product_downloadables(downloadable_id, product_id, anchor_text, first_seen_at, last_seen_at, last_seen_run_id, library_type)
+             VALUES (?1, ?2, ?3, ?4, ?4, NULL, NULL)
+             ON CONFLICT(downloadable_id) DO NOTHING",
+            params![downloadable_id, product_id, anchor_text, now],
+        )?;
+        let owner: String = tx.query_row(
+            "SELECT product_id FROM product_downloadables WHERE downloadable_id = ?1",
+            [downloadable_id],
+            |row| row.get(0),
+        )?;
+        if owner != product_id {
+            return Ok(false);
+        }
+        let changed = tx.execute(
+            "INSERT INTO managed_library_files(downloadable_id, copy_id, download_id, bound_at)
+             VALUES (?1, ?2, ?3, ?4)
+             ON CONFLICT(downloadable_id) DO NOTHING
+             ON CONFLICT(copy_id) DO NOTHING",
+            params![downloadable_id, copy_id, download_id, now],
+        )?;
+        tx.commit()?;
+        Ok(changed == 1)
+    }
 }

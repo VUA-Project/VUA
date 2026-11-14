@@ -278,4 +278,44 @@ impl BdlStore {
         }
         Ok(copies)
     }
+
+    /// Four-way union of BOOTH product identities already owned, mapped, or
+    /// explicitly removed from the library view (`product_library_memberships`,
+    /// `library_entry_metadata.product_id`, `artifact_mappings.product_id`, and
+    /// `removed_library_cards` where `kind = 'product'`).
+    pub fn free_assets_owned_product_ids(
+        &self,
+    ) -> Result<std::collections::HashSet<String>, BdlStoreError> {
+        let connection = self.connection.lock().expect("SQLite connection poisoned");
+        let mut statement = connection.prepare(
+            "SELECT product_id FROM product_library_memberships
+             UNION
+             SELECT product_id FROM library_entry_metadata WHERE product_id IS NOT NULL
+             UNION
+             SELECT product_id FROM artifact_mappings
+             UNION
+             SELECT target_id FROM removed_library_cards WHERE kind = 'product'",
+        )?;
+        let rows = statement.query_map([], |row| row.get::<_, String>(0))?;
+        Ok(rows.collect::<Result<_, _>>()?)
+    }
+
+    /// Base-avatar product titles observed in BDL (including partially synced library
+    /// cards whose title names an original 3D model before enrichment completes), ordered
+    /// deterministically for extracting literal Avatar Base keyword suggestions.
+    pub fn character_product_titles(&self) -> Result<Vec<String>, BdlStoreError> {
+        let connection = self.connection.lock().expect("SQLite connection poisoned");
+        let mut statement = connection.prepare(
+            "SELECT title FROM products
+             WHERE title IS NOT NULL
+               AND (
+                 source_category = '3Dキャラクター'
+                 OR title LIKE '%オリジナル3Dモデル%'
+                 OR title LIKE '%Original 3D Model%'
+               )
+             ORDER BY CASE WHEN source_category = '3Dキャラクター' THEN 0 ELSE 1 END, product_id",
+        )?;
+        let rows = statement.query_map([], |row| row.get::<_, String>(0))?;
+        Ok(rows.collect::<Result<_, _>>()?)
+    }
 }

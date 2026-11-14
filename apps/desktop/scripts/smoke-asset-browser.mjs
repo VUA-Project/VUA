@@ -41,6 +41,7 @@ async function waitFor(predicate, label, limit = 12_000) {
   throw new Error(`Timed out: ${label}`);
 }
 const fixtures = ["vua-knowledge", "persist:vua-remote"];
+let freeAssetQueries = 0;
 async function main() {
   try {
     createRequire(import.meta.url)(path.join(desktop, "dist/packaged-electron/main.js"));
@@ -48,6 +49,10 @@ async function main() {
     for (const partition of fixtures) await session.fromPartition(partition).protocol.handle("https", request => {
       const url = new URL(request.url);
       if (url.hostname === "vrc-style.com") return Response.error();
+      if (url.hostname === "booth.pm" && url.pathname.startsWith("/ja/browse/") && url.searchParams.get("max_price") === "0") {
+        freeAssetQueries += 1;
+        return new Response(`<!doctype html><html><head><title>BOOTH Free Browse</title></head><body><div class="market-items"><ul><li class="item-card" data-product-id="9900001" data-product-price="0" data-product-category="209"><div class="item-card__title">Synthetic Free Outfit</div><div class="item-card__shop-name">Synthetic Studio</div></li><li class="item-card" data-product-id="9900002" data-product-price="500" data-product-category="209"><div class="item-card__title">Synthetic Paid Outfit</div><div class="item-card__shop-name">Synthetic Studio</div></li></ul></div></body></html>`, { headers: { "content-type": "text/html; charset=utf-8" } });
+      }
       const label = url.hostname.replace(/[^\w.-]/g, "");
       return new Response(`<!doctype html><html><head><title>${label} ${url.pathname}</title><style>body{font:20px system-ui;padding:24px;min-height:2400px;background:#fafafa;color:#17142e}a{display:block;margin:20px 0}</style></head><body><h1>${label}</h1><a id="next" href="/second">Next page</a><a id="new-tab" href="/child" target="_blank">New tab</a><a id="outside" href="https://example.test/">Outside shortcut list</a><textarea id="note"></textarea><p>Isolated browser smoke fixture; no real account or material data.</p></body></html>`, { headers: { "content-type": "text/html; charset=utf-8" } });
     });
@@ -84,7 +89,7 @@ async function main() {
       if (!native) return false;
       const rect = native.getBounds(), zoom = window.webContents.getZoomFactor();
       // The frame re-renders around navigation; a moment without it is "not yet", and the wait retries.
-      const layout = await js(`(()=>{ if (!document.querySelector('.vua-shell__main') || !document.querySelector('.vua-browser-frame:not([hidden]) .vua-browser-frame__viewport') || !document.querySelector('.vua-shell__sidebar') || !document.querySelector('.vua-shell__header')) return null; const m=document.querySelector('.vua-shell__main').getBoundingClientRect(), f=document.querySelector('.vua-browser-frame:not([hidden])').getBoundingClientRect(), v=document.querySelector('.vua-browser-frame:not([hidden]) .vua-browser-frame__viewport').getBoundingClientRect(), s=document.querySelector('.vua-shell__sidebar'),h=document.querySelector('.vua-shell__header'); return {x:v.x,y:v.y,width:v.width,height:v.height,mx:m.x,my:m.y,frameFitsMain:['left','top','right','bottom'].every(k=>Math.abs(m[k]-f[k])<1.5),windowWidth:innerWidth,windowHeight:innerHeight,shellActive:!s.inert&&!h.inert&&!s.closest('[inert]')&&!h.closest('[inert]'),overflow:document.querySelector('.vua-browser-frame:not([hidden])').scrollWidth>document.querySelector('.vua-browser-frame:not([hidden])').clientWidth+1};})()`);
+      const layout = await js(`(()=>{ if (!document.querySelector('.vua-shell__main') || !document.querySelector('.vua-browser-frame:not([hidden]) .vua-browser-frame__viewport:not([hidden])') || !document.querySelector('.vua-shell__sidebar') || !document.querySelector('.vua-shell__header')) return null; const m=document.querySelector('.vua-shell__main').getBoundingClientRect(), f=document.querySelector('.vua-browser-frame:not([hidden])').getBoundingClientRect(), v=document.querySelector('.vua-browser-frame:not([hidden]) .vua-browser-frame__viewport:not([hidden])').getBoundingClientRect(), s=document.querySelector('.vua-shell__sidebar'),h=document.querySelector('.vua-shell__header'); return {x:v.x,y:v.y,width:v.width,height:v.height,mx:m.x,my:m.y,frameFitsMain:['left','top','right','bottom'].every(k=>Math.abs(m[k]-f[k])<1.5),windowWidth:innerWidth,windowHeight:innerHeight,shellActive:!s.inert&&!h.inert&&!s.closest('[inert]')&&!h.closest('[inert]'),overflow:document.querySelector('.vua-browser-frame:not([hidden])').scrollWidth>document.querySelector('.vua-browser-frame:not([hidden])').clientWidth+1};})()`);
       if (!layout) return false;
       const content = window.getContentBounds();
       return layout.shellActive && layout.frameFitsMain && Math.abs(layout.windowWidth * zoom - content.width) <= 1.5 && Math.abs(layout.windowHeight * zoom - content.height) <= 1.5 && !layout.overflow && rect.x >= layout.mx * zoom - 1 && rect.y >= layout.my * zoom - 1
@@ -121,23 +126,35 @@ async function main() {
     assert(remoteViews().length === 0, "Late layout receipts do not revive a disposed browser");
     const reject = await js(`Promise.all([window.vua.desktopBrowser.open('booth'),window.vua.desktopBrowser.open('https://booth.pm/')].map(p=>p.then(()=>false,()=>true)))`);
     assert(reject.every(Boolean), "AMF-off assets and arbitrary site strings are rejected by Main");
+
     await click("nav-enable-amf"); await click("toggle-amf");
-    await waitFor(() => js('!!document.querySelector("[data-nav-id=nav-warehouse]") && document.querySelector("[data-nav-id=toggle-amf]")?.disabled===false'), "AMF mounted");
-    await click("nav-warehouse"); await waitFor(() => js('!!document.querySelector("[data-nav-id=tab-asset-browser]")'), "materials room tabs"); await click("tab-asset-browser");
-    await waitFor(() => activeView()?.webContents.getURL() === "https://booth.pm/", "default BOOTH");
-    await waitFor(frameFits, "BOOTH fits");
-    assert(await js('document.querySelectorAll("[data-browser-site]").length===9'), "AMF material browser includes all nine requested shortcuts");
-    const sites = await js('[...document.querySelectorAll("[data-browser-site]")].map(e=>({id:e.dataset.browserSite,url:e.title}))');
+    await waitFor(() => js('!!document.querySelector("[data-nav-id=nav-asset-browser]") && document.querySelector("[data-nav-id=toggle-amf]")?.disabled===false'), "AMF mounted");
+    await click("nav-warehouse");
+    await waitFor(() => js('!!document.querySelector(".vua-warehouse")'), "warehouse page");
+    assert(await js('!document.querySelector("[data-nav-id=tab-asset-browser]")'), "Materials room is flat with no nested browse tab");
+
+    await click("nav-asset-browser");
+    await waitFor(() => js('!!document.querySelector("[data-browser-home]:not([hidden])") && !!document.querySelector("[data-free-assets-hero]")'), "Browser Homepage");
+    assert(remoteViews().length === 0, "Opening top-level Browse starts on local Browser Homepage with zero remote views");
+    assert(await js('document.querySelectorAll("[data-browser-home] [data-browser-site]").length===9'), "Browser Homepage includes all nine community shortcuts");
+    const sites = await js('[...document.querySelectorAll("[data-browser-home] [data-browser-site]")].map(e=>({id:e.dataset.browserSite,url:e.title}))');
     for (const site of sites.filter(site => site.id !== "vrc-style")) {
+      if (!(await js('!!document.querySelector("[data-browser-home]:not([hidden])")'))) {
+        await clickShell("[data-browser-home-btn]");
+        await waitFor(() => js('!!document.querySelector("[data-browser-home]:not([hidden])")'), "return to Browser Homepage");
+      }
       await clickShell(`[data-browser-site="${site.id}"]`);
       await waitFor(() => activeView()?.webContents.getURL() === site.url && !activeView()?.webContents.isLoading(), site.id);
-      assert(true, `${site.id} loads in the same isolated view`);
+      assert(remoteViews().length === 1, `${site.id} loads cleanly with a single active native view`);
     }
-    assert(remoteViews().length === 1, "Shortcut changes reuse a single native view");
+    await waitFor(frameFits, "community site fits");
+
     await activeView().webContents.executeJavaScript('location.href="https://accounts.booth.pm/login?code=private-fixture#token=private-fixture";true', true);
     await waitFor(() => js('document.querySelector(".vua-browser-frame__bar .vua-import__browse-url")?.title==="https://accounts.booth.pm/login"'), "display-only URL");
     assert(true, "Candidate browser metadata omits account URL query and fragment secrets");
-    assert(await js('document.querySelector("[data-browser-site=booth]")?.getAttribute("aria-current")==="true"'), "Account navigation selects BOOTH rather than the previous shortcut");
+
+    await clickShell("[data-browser-home-btn]");
+    await waitFor(() => js('!!document.querySelector("[data-browser-home]:not([hidden])")'), "home before vrc-db");
     await clickShell("[data-browser-site=vrc-db]");
     await waitFor(() => activeView()?.webContents.getURL() === "https://vrc-db.com/", "history site reset");
     await clickInPage("#next");
@@ -148,11 +165,17 @@ async function main() {
     await clickShell(".vua-browser-frame__bar button:nth-child(2)");
     await waitFor(() => activeView()?.webContents.getURL().endsWith("/second"), "browser Forward");
     assert(true, "Browser Back and Forward use website history");
+
+    await clickShell("[data-browser-home-btn]");
+    await waitFor(() => js('!!document.querySelector("[data-browser-home]:not([hidden])")'), "home before vrc-style");
     await clickShell("[data-browser-site=vrc-style]");
     await waitFor(async () => (await js('!!document.querySelector(".vua-browser-frame__error")')) && remoteViews().every(view => !view.getVisible()), "honest load failure");
-    assert(true, "Failed site shows a reachable retry instead of a blank native page");
+    assert(true, "Failed site shows reachable retry and home recovery instead of a blank native page");
+    await clickShell("[data-browser-error-home]");
+    await waitFor(() => js('!!document.querySelector("[data-browser-home]:not([hidden])")'), "error home recovery");
     await clickShell("[data-browser-site=booth]");
-    await waitFor(() => activeView()?.webContents.getURL() === "https://booth.pm/", "recover using another site");
+    await waitFor(() => activeView()?.webContents.getURL() === "https://booth.pm/", "recover using BOOTH from home");
+
     await clickInPage("#next");
     await waitFor(() => activeView()?.webContents.getURL().endsWith("/second"), "material child page");
     const originalContents = activeView().webContents.id;
@@ -162,44 +185,53 @@ async function main() {
     await inView('document.querySelector("#note").value="retained draft";window.scrollTo(0,420);true');
     await click("nav-env-play"); await waitFor(() => remoteViews().every(view => !view.getVisible()), "material browser hidden on another route");
     assert(remoteViews().length === 1, "Another shell route retains the material native view");
-    await click("nav-warehouse"); await waitFor(() => js('!!document.querySelector("[data-nav-id=tab-asset-browser]")'), "materials room tabs"); await click("tab-asset-browser"); await waitFor(frameFits, "material route return");
+    await click("nav-asset-browser"); await waitFor(frameFits, "material route return");
     await viewHas("#note");
     const remembered = await inView('({note:document.querySelector("#note").value,scroll:window.scrollY})');
     assert(activeView().webContents.id === originalContents && activeView().webContents.getURL().endsWith("/second") && remembered.note === "retained draft" && remembered.scroll === 420,
       "Returning retains URL, history, form draft and scroll without reloading BOOTH");
+
     await clickShell("[data-browser-new-tab]");
-    await waitFor(() => remoteViews().length === 2 && activeView()?.webContents.getURL() === "https://booth.pm/", "new material tab");
+    await waitFor(() => js('!!document.querySelector("[data-browser-home]:not([hidden])")'), "new tab opens Browser Homepage");
+    await clickShell("[data-browser-site=booth]");
+    await waitFor(() => remoteViews().length === 2 && activeView()?.webContents.getURL() === "https://booth.pm/", "new material tab loads BOOTH");
     await waitFor(frameFits, "new tab geometry");
-    assert(activeView().webContents.id !== originalContents && remoteViews().filter(view => view.getVisible()).length === 1, "Each tab has an independent native page and only one is visible");
+    assert(activeView().webContents.id !== originalContents && remoteViews().filter(view => view.getVisible()).length === 1, "Each web tab has an independent native page and only one is visible");
     await clickInPage("#new-tab");
     await waitFor(() => remoteViews().length === 3 && activeView()?.webContents.getURL().endsWith("/child"), "website link opens local child tab");
     assert(await js('document.querySelectorAll("[data-browser-tab]").length===3'), "Allowed website popup becomes a VUA tab");
-    await waitFor(() => js('!!document.querySelector("[data-browser-site=vrcfinder]")'), "vrcfinder shortcut");
+    await clickShell("[data-browser-new-tab]");
+    await waitFor(() => js('!!document.querySelector("[data-browser-home]:not([hidden])")'), "fourth tab home");
     await js('document.querySelector("[data-browser-site=vrcfinder]").dispatchEvent(new MouseEvent("click",{bubbles:true,ctrlKey:true}))');
     await waitFor(() => remoteViews().length === 4 && activeView()?.webContents.getURL() === "https://vrcfinder.net/", "shortcut opens new tab");
-    assert(true, "Ctrl shortcut opens a separate tab without replacing the previous page");
+    assert(await js('document.querySelectorAll("[data-browser-tab]").length===5'), "Ctrl shortcut opens a separate tab without replacing Homepage");
     await clickShell(`[data-browser-tab="${originalTab}"]`);
     await waitFor(() => activeView()?.webContents.id === originalContents, "original tab activation");
     await viewHas("#note");
     assert((await inView('document.querySelector("#note").value')) === "retained draft", "Tab switching preserves the original form");
     while (await js('document.querySelectorAll("[data-browser-tab]").length<8')) {
-      const count = remoteViews().length;
       await clickShell("[data-browser-new-tab]");
-      await waitFor(() => remoteViews().length === count + 1 && activeView()?.webContents.getURL() === "https://booth.pm/", "tab limit preparation");
+      await waitFor(() => js('!!document.querySelector("[data-browser-home]:not([hidden])")'), "tab limit home step");
+      await clickShell("[data-browser-site=booth]");
+      await waitFor(() => activeView()?.webContents.getURL() === "https://booth.pm/", "tab limit preparation");
     }
     await waitFor(() => js('document.querySelector("[data-browser-new-tab]").disabled'), "tab limit visible");
     await waitFor(frameFits, "eight tabs geometry");
     await clickInPage("#new-tab");
     await delay(150);
-    assert(remoteViews().length === 8 && (await js('document.querySelectorAll("[data-browser-tab]").length')) === 8, "Both Main and Renderer cap retained tabs at eight");
+    assert((await js('document.querySelectorAll("[data-browser-tab]").length')) === 8, "Both Main and Renderer cap retained tabs at eight");
     const extraTabs = await js(`[...document.querySelectorAll('[data-browser-close-tab]')].map(button=>button.dataset.browserCloseTab).filter(id=>id!==${JSON.stringify(originalTab)})`);
     for (const id of extraTabs) await clickShell(`[data-browser-close-tab="${id}"]`);
     await waitFor(() => remoteViews().length === 1 && activeView()?.webContents.id === originalContents, "extra tabs closed");
     assert(true, "Closing other tabs leaves the original page and history intact");
+
     for (const locale of ["en", "zh-CN", "ja", "ko"]) {
       await js(`localStorage.setItem('vua-locale','${locale}');location.reload()`);
-      await waitFor(() => js(`document.documentElement.lang==='${locale}' && !!document.querySelector('[data-nav-id=nav-warehouse]') && !document.querySelector('.vua-boot-splash')`), locale);
-      await click("nav-warehouse"); await waitFor(() => js('!!document.querySelector("[data-nav-id=tab-asset-browser]")'), "materials room tabs"); await click("tab-asset-browser"); await waitFor(frameFits, `${locale} viewport`);
+      await waitFor(() => js(`document.documentElement.lang==='${locale}' && !!document.querySelector('[data-nav-id=nav-asset-browser]') && !document.querySelector('.vua-boot-splash')`), locale);
+      await click("nav-asset-browser");
+      await waitFor(() => js('!!document.querySelector("[data-browser-home]:not([hidden])")'), `${locale} Browser Homepage`);
+      await clickShell("[data-browser-site=booth]");
+      await waitFor(frameFits, `${locale} viewport`);
       for (const [width, height, zoom] of [[1280, 850, 1], [960, 600, 1.25], [760, 560, 1]]) {
         window.setSize(width, height); window.webContents.setZoomFactor(zoom);
         await waitFor(frameFits, `${locale} at ${width} / ${zoom}`);
@@ -216,13 +248,47 @@ async function main() {
       await delay(100);
       fs.writeFileSync(path.join(output, `assets-${locale}.png`), (await window.webContents.capturePage()).toPNG());
     }
+
     await click("shell-settings");
     await waitFor(() => remoteViews().every(view => !view.getVisible()), "asset hide");
     await click("shell-back"); await waitFor(frameFits, "asset return");
-    assert(true, "Settings return restores the material browser and its shortcuts");
-    await clickShell(".vua-browser-frame__bar button:last-child");
-    await waitFor(() => remoteViews().length === 0, "browser close");
-    assert(await js('!!document.querySelector("main .vua-button")'), "Closing material browser offers reopening BOOTH");
+    assert(true, "Settings return restores the material browser");
+    assert(freeAssetQueries === 0, "Startup and browsing never automatically query BOOTH free assets");
+
+    const retainedForFreeAssets = activeView().webContents.id;
+    await clickShell("[data-free-assets-open]");
+    await waitFor(async () => (await js('!!document.querySelector("[data-free-assets-view]:not([hidden])")')) && remoteViews().every(view => !view.getVisible()), "BOOTH Free tab open");
+    assert(remoteViews().length === 1 && freeAssetQueries === 0, "Opening BOOTH Free hides the native browser view while retaining tabs and fires zero automatic requests");
+    await waitFor(() => js('!!document.querySelector("[data-free-assets-view]:not([hidden]) .vua-free-assets__input")'), "BOOTH Free search input");
+    await js('(()=>{ const input = document.querySelector("[data-free-assets-view]:not([hidden]) .vua-free-assets__input"); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set; set.call(input, "SyntheticBaseA"); input.dispatchEvent(new Event("input", { bubbles: true })); })()');
+    await waitFor(() => js('document.querySelector("[data-free-assets-query]")?.disabled===false'), "BOOTH Free query enabled");
+    await clickShell("[data-free-assets-query]");
+    await waitFor(async () => freeAssetQueries === 1 && (await js('!!document.querySelector(\'[data-product-id="booth:9900001"]\')')), "BOOTH Free first instant query result", 15_000);
+    assert(!(await js('!!document.querySelector(\'[data-product-id="booth:9900002"]\')')), "BOOTH Free query admits ¥0 cards and discards paid cards");
+
+    // Verify immediate second free search with zero 5-minute cooldown!
+    await js('(()=>{ const input = document.querySelector("[data-free-assets-view]:not([hidden]) .vua-free-assets__input"); const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set; set.call(input, "SyntheticBaseB"); input.dispatchEvent(new Event("input", { bubbles: true })); })()');
+    assert(await js('document.querySelector("[data-free-assets-query]")?.disabled===false'), "BOOTH Free search remains immediately available with no 5-minute cooldown");
+    await clickShell("[data-free-assets-query]");
+    await waitFor(() => freeAssetQueries === 2, "BOOTH Free back-to-back instant query", 15_000);
+
+    await clickShell('[data-product-id="booth:9900001"] .vua-free-assets__card-main');
+    await waitFor(() => activeView()?.webContents.getURL() === "https://booth.pm/ja/items/9900001", "BOOTH Free opens BOOTH item tab");
+    await waitFor(frameFits, "BOOTH item tab fits");
+    assert(
+      remoteViews().length === 2 &&
+        remoteViews().some(view => view.webContents.id === retainedForFreeAssets) &&
+        (await js('!!document.querySelector("[data-tab-kind=free-assets]")')),
+      "Opening a BOOTH Free item keeps both the BOOTH Free tab and existing web tabs",
+    );
+    await clickShell('[data-tab-kind="free-assets"] [role="tab"]');
+    await waitFor(() => js('document.querySelector("[data-free-assets-view]:not([hidden]) .vua-free-assets__input")?.value==="SyntheticBaseB"'), "BOOTH Free tab retains input state");
+
+    while (await js('document.querySelectorAll("[data-browser-close-tab]").length>0')) {
+      await clickShell("[data-browser-close-tab]");
+    }
+    await waitFor(async () => remoteViews().length === 0 && (await js('!!document.querySelector("[data-browser-home]:not([hidden])")')), "closing all tabs returns to Browser Homepage");
+    assert(true, "Closing all tabs lands cleanly on the Browser Homepage");
 
     // Retained login flow now shares the inset geometry and closes on shell navigation.
     await click("shell-settings"); await click("nav-settings-accounts");

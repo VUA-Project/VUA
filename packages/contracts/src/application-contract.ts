@@ -35,6 +35,13 @@ import type {
 } from "./recipe-selection-draft-v01.js";
 
 import { isBoothSearchParamsV01, type BoothSearchParamsV01, type BoothSearchResultV01 } from "./booth-search-v01.js";
+import {
+  isFreeAssetsParamsV01,
+  type FreeAssetsStateParamsV01,
+  type FreeAssetsUpdatePreferencesParamsV01,
+  type FreeAssetsIngestSearchPageParamsV01,
+  type FreeAssetsStateV01,
+} from "./booth-free-assets-v01.js";
 import { isCatalogEnrichmentParamsV01, type CatalogEnrichmentQueueV01, type CatalogEnrichmentBeginV01, type CatalogProductObservationV01, type CatalogEnrichmentResultV01 } from "./catalog-enrichment-v01.js";
 export const APPLICATION_CONTRACT_VERSION = "0.1" as const;
 
@@ -2868,6 +2875,11 @@ export interface ProjectImportCopyCommandV01 extends ApplicationRequestBaseV01 {
 export interface DeploymentPlanQuery extends ApplicationRequestBaseV01 { readonly kind: "query"; readonly method: "environment.planDeployment"; readonly params: DeploymentPlanParams }
 export interface DeploymentExecuteCommand extends ApplicationRequestBaseV01 { readonly kind: "command"; readonly method: "environment.executeDeployment"; readonly commandId: string; readonly params: DeploymentExecuteParams }
 
+export type FreeAssetsRequestV01 =
+  | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "freeAssets.state"; readonly params: FreeAssetsStateParamsV01 })
+  | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly commandId: string; readonly method: "freeAssets.updatePreferences"; readonly params: FreeAssetsUpdatePreferencesParamsV01 })
+  | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly commandId: string; readonly method: "freeAssets.ingestSearchPage"; readonly params: FreeAssetsIngestSearchPageParamsV01 });
+
 export type ApplicationRequestV01 =
   | (ApplicationRequestBaseV01 & {readonly kind:"query";readonly method:"amf.production.readShareImage";readonly params:Readonly<Record<string,unknown>>})
   | (ApplicationRequestBaseV01 & {readonly kind:"command";readonly commandId:string;readonly method:"amf.production.exportShareImage";readonly params:Readonly<Record<string,unknown>>})
@@ -2913,6 +2925,7 @@ export type ApplicationRequestV01 =
   | CatalogSyncControlCommandV03
   | CatalogSyncStatusQueryV03
   | BoothSearchQueryV01
+  | FreeAssetsRequestV01
   | CatalogEnrichmentRequestV01
   | LibraryDownloadCommandV01
   | LibraryDownloadQueryV01
@@ -3088,6 +3101,7 @@ export type ApplicationSuccessValueV01 =
   | CatalogDetailResultV03
   | CatalogStatusResultV03
   | BoothSearchResultV01
+  | FreeAssetsStateV01
   | CatalogEnrichmentResultV01
   | WarehouseListEntriesResultV03
   | WarehouseEntryDetailResultV03
@@ -3855,6 +3869,15 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
   if (value.method === "catalog.searchProducts") {
     return value.kind === "query" && hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
       && isBoothSearchParamsV01(value.params);
+  }
+  if (value.method === "freeAssets.state" || value.method === "freeAssets.updatePreferences" || value.method === "freeAssets.ingestSearchPage") {
+    const query = value.method === "freeAssets.state";
+    return value.kind === (query ? "query" : "command")
+      && hasExactKeys(value, query
+        ? ["contractVersion", "requestId", "correlationId", "kind", "method", "params"]
+        : ["contractVersion", "requestId", "correlationId", "kind", "method", "commandId", "params"])
+      && (query || isIdentifier(value.commandId))
+      && isFreeAssetsParamsV01(value.method, value.params);
   }
   if (value.method === "library.beginDownload" || value.method === "library.observeDownload" || value.method === "library.downloadStatus") {
     const query = value.method === "library.downloadStatus";

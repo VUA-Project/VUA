@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ApplicationRequestV01, ApplicationResponseV01, AmfModuleSnapshotV01, TaskSnapshotV01 } from "@vua/contracts";
 import { MockOrchestratorProviderV01, type OrchestratorProviderV01, type ProviderStatusV01 } from "@vua/orchestrator-provider";
-import { ModuleProvider } from "./module-provider.js";
+import { isAmfOperation, ModuleProvider } from "./module-provider.js";
 
 const query = (method: "task.list" | "application.getSnapshot"): ApplicationRequestV01 => ({ contractVersion: "0.1", requestId: method, correlationId: method, kind: "query", method, params: {} });
 const task = (id: string, state: TaskSnapshotV01["state"] = "succeeded"): TaskSnapshotV01 => ({ contractVersion: "0.1", taskId: id, state, revision: 1, correlationId: id, cancellationRequested: false, recoveryDisposition: "none", updatedAt: "2026-10-09T00:00:00Z" });
@@ -347,5 +347,11 @@ describe("host / optional AMF process boundary", () => {
     expect(provider.status().state).toBe("ready");
     expect((await provider.invoke(query("task.list"))).ok).toBe(true);
     await provider.setAmfEnabled(false); await provider.prepareShutdown({ timeoutMs: 100 });
+  });
+
+  it("routes freeAssets operations to the AMF module boundary", () => {
+    expect(isAmfOperation("freeAssets.state")).toBe(true);
+    expect(isAmfOperation("freeAssets.updatePreferences")).toBe(true);
+    expect(isAmfOperation("freeAssets.ingestSearchPage")).toBe(true);
   });
 });

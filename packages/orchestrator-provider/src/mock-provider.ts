@@ -183,6 +183,8 @@ export class MockOrchestratorProviderV01 implements OrchestratorProviderV01 {
       }
       case "terms.refreshProduct": case "terms.refreshLibrary":
         return this.#failure(request, this.#error("vua.terms.unavailable", "unavailable", "errors.terms.failed", request.correlationId, true, false));
+      case "freeAssets.state": case "freeAssets.updatePreferences": case "freeAssets.ingestSearchPage":
+        return this.#failure(request, this.#error("vua.free_assets.unavailable", "unavailable", "errors.freeAssets.unavailable", request.correlationId, true, false));
       case "environment.unityLicense": case "environment.checkUnityLicense":
         return this.#failure(request, this.#error("vua.unity_license.unavailable", "unavailable", "errors.unityLicense.failed", request.correlationId, false, false));
       case "environment.listPlaySetups": case "environment.getScenarioSop": case "environment.checkScenarioEnvironment":

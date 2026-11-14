@@ -1,8 +1,8 @@
 # Desktop-browser v0.1: public entries and shell-sized views
 
-> Document version: 1.1.0
+> Document version: 1.2.0
 > Status: Candidate
-> Updated: 2026-10-11
+> Updated: 2026-11-14
 > Scope: Optional local preload face; no Provider, task, account or catalog wire change
 
 For people: the encyclopedia opens the official VRChat Wiki; AMF offers BOOTH and the requested
@@ -20,11 +20,12 @@ no VUA preload capability, Node or local Gateway.
 | Operation | Input/output | Behavior |
 | --- | --- | --- |
 | `open(site)` | Closed site ID → `RemoteContentViewStateV1` | Wiki needs only the host; material sites require ready AMF and mounted browser services; a new tab starts hidden until its owner supplies geometry |
+| `openBoothItem(productId)` | `booth:<digits>` → `RemoteContentViewStateV1` | Requires ready AMF and mounted material browser services; Main derives `https://booth.pm/ja/items/<digits>` from a validated BOOTH product ID without accepting arbitrary URLs |
 | `navigate(viewId, site)` | View/site IDs → state | Reuses a view; site and view must have the same knowledge/material purpose |
 | `goBack` / `goForward` / `reload` | Owned view ID → state | Website history/reload with existing Main navigation security |
 | `close(viewId)` | View ID → void | Disposes the view; already-closed IDs are safe during teardown |
 | `setViewport(viewId, viewport)` | Four CSS-pixel coordinates or null → void | Main applies page zoom and clamps to its own content bounds; null/zero area hides the view |
-| `events.subscribe(listener)` | Listener → unsubscribe | Existing opened/navigated/closed/blocked events plus `loading`, `load-failed`, `tab-opened`, `title-updated` and `tab-limit` |
+| `events.subscribe(listener)` | Listener → unsubscribe | Existing opened/navigated/closed/blocked events plus `loading`, `load-failed`, `tab-opened`, `title-updated`, `tab-limit`, and `download-completed` |
 
 Closed IDs are `vrchat-wiki`, `booth`, `vrcfinder`, `boothplorer`, `yorimichi`, `polyseek`,
 `vrc-style`, `avatar-network`, `avatar-catalog`, and `vrc-db`. Only the first is knowledge;
@@ -43,13 +44,20 @@ credentials removed. Full navigation targets remain in Main. Retained V1 event s
 `tab-opened` carries its parent view ID and the new owned view's ID/display URL; `title-updated`
 carries an untrusted text title, stripped of control characters and limited to 120 characters.
 Titles are displayed as text, not markup. `tab-limit` names the requesting owned view.
+`download-completed` carries `{ downloadId, suggestedFileName }` after BDL persists a
+completed user-initiated download outside `SilentDownloadQueue`, so `Browse BOOTH` can
+offer one-click Warehouse adoption without exposing file paths.
 
 ## Isolation, lifetime and compatibility
 
 Wiki uses a nonpersistent knowledge partition, denies downloads and initializes no AMF/BDL
-storage. Material browsing reuses the BOOTH partition and strict download port. Browsing
-origins do not expand authenticated catalog-fetch or cookie-persistence origins, download
-origins, accepted file types or intake authority. Unlisted web/protocol targets retain
+storage. Material browsing reuses the BOOTH partition and strict download port. In addition
+to silent-download requests, `DownloadPort` admits user-initiated downloads from an allowed
+BOOTH item or library page when the redirect chain starts at
+`https://booth.pm/downloadables/<digits>` (with optional `?variation_id=<digits>`) and every
+redirect hop is a credential-free `https:` URL. Browsing origins do not expand authenticated
+catalog-fetch or cookie-persistence origins, download origins, accepted file types or intake
+authority. Unlisted web/protocol targets retain
 per-attempt confirmation. Remote permissions and new native windows remain denied.
 An allowlisted web popup from the visible, unsuspended site-browser tab opens an owned local tab
 instead of replacing the source page; background/pending tabs cannot open more tabs. Main and
@@ -88,5 +96,6 @@ schema/vector family or freeze exemption has been accepted.
 
 ## Document changelog
 
+- 1.2.0 (2026-11-14): add `openBoothItem(productId)`, admit user-clicked `booth.pm/downloadables/<id>(?variation_id=<digits>)` redirects from BOOTH item/library pages in `DownloadPort`, and emit `download-completed` after BDL persistence.
 - 1.1.0 (2026-10-11): retain site-browser pages across shell navigation, add bounded local tabs and title/popup events, and preserve transient login/import lifetimes and remote-content isolation.
 - 1.0.0 (2026-10-11): define fixed host Wiki/AMF material entries and bounded browser geometry, preserving retained account/catalog/download faces and independent acceptance.

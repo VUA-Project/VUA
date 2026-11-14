@@ -1,0 +1,8 @@
+{
+  "contractVersion": "0.1",
+  "requestId": "synthetic-free-state",
+  "correlationId": "synthetic-free-state",
+  "kind": "query",
+  "method": "freeAssets.state",
+  "params": { "schemaVersion": "0.1" }
+}

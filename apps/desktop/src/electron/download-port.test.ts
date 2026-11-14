@@ -373,4 +373,45 @@ describe("download port (F4-3)", () => {
       vi.useRealTimers();
     }
   });
+
+  it("admits player-clicked BOOTH item-page CDN redirects from trusted SiteBrowser views only", () => {
+    const trustedView = { getURL: () => "https://booth.pm/ja/items/900001" };
+    const untrustedView = { getURL: () => "https://booth.pm/ja/items/900001" };
+    const foreignPageView = { getURL: () => "https://vrcfinder.net/item/1" };
+    const port = new DownloadPort({
+      stagingRoot,
+      partitionSession: { downloadURL: (url: string) => downloadURLs.push(url) } as never,
+      allowedOrigins: ["https://booth.pm"],
+      isTrustedBrowserView: (wc) => (wc as unknown) === trustedView,
+      sink: { emit: (event) => { expect(isDownloadEventV01(event)).toBe(true); events.push(event); } },
+      now: () => "2026-11-14T08:00:00.000Z",
+    });
+
+    const original = "https://booth.pm/downloadables/777001?variation_id=888001";
+    const finalUrl = "https://files.example.test/signed-free-ribbon.zip";
+
+    // Untrusted webContents or non-BOOTH initiator page is refused.
+    for (const badView of [untrustedView, foreignPageView]) {
+      const preventDefault = vi.fn();
+      const badItem = new FakeDownloadItem(finalUrl, { chain: [original, finalUrl], filename: "ribbon.zip" });
+      port.handleWillDownload({ preventDefault }, badItem as never, badView as never);
+      expect(preventDefault).toHaveBeenCalledOnce();
+      expect(badItem.savePath).toBe("");
+    }
+
+    // Trusted SiteBrowser view on a BOOTH item page is admitted and supports retry via original URL.
+    const preventDefault = vi.fn();
+    const okItem = new FakeDownloadItem(finalUrl, { chain: [original, finalUrl], filename: "ribbon.zip" });
+    port.handleWillDownload({ preventDefault }, okItem as never, trustedView as never);
+    expect(preventDefault).not.toHaveBeenCalled();
+    const started = events.at(-1)!;
+    expect(started).toMatchObject({
+      kind: "download.started",
+      sourceUrl: finalUrl,
+      initiatedFromPageUrl: "https://booth.pm/ja/items/900001",
+      urlChain: [original, finalUrl],
+    });
+    port.applyIntent(started.downloadId, "retry");
+    expect(downloadURLs).toEqual([original]);
+  });
 });

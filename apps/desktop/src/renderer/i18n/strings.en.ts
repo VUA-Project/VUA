@@ -26,6 +26,7 @@ import { avatarOptimizerCopy } from "./avatar-optimizer-copy.ts";
 import { guideChannelCopy } from "./guide-channel-copy.ts";
 import { recipeDraftFlowCopy } from "./recipe-draft-flow-copy.ts";
 import { installerToolCopy } from "./installer-tool-copy.ts";
+import { freeAssetsCopy } from "./free-assets-copy.ts";
 /**
  * VUA UI string table (en) — SOURCE language.
  * - This table is the structural source of truth: the widened Strings type
@@ -69,6 +70,7 @@ export const strings = {
   guideChannel: guideChannelCopy["en"],
   recipeDraftFlow: recipeDraftFlowCopy["en"],
   installerTool: installerToolCopy["en"],
+  freeAssets: freeAssetsCopy["en"],
   websiteTests: {
     title: "Website connectivity", test: "Test", testAll: "Test all", testing: "Testing…",
     add: "Add website", edit: "Edit website", editSite: "Edit {name}", testSite: "Test {name}",

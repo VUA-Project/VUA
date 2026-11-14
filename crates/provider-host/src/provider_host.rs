@@ -212,6 +212,7 @@ struct WarehouseServices {
     library_downloads: Arc<vua_acquisition::library_download::LibraryDownloadService>,
     library_maintenance: vua_acquisition::library_maintenance::LibraryMaintenance,
     selection_drafts: vua_acquisition::recipe_selection_drafts::RecipeSelectionDrafts,
+    free_assets: vua_acquisition::booth_free_assets::FreeAssetsService,
 }
 
 /// Project-domain write-command wiring (proposal 014, `project.import-copy`):
@@ -913,6 +914,15 @@ pub fn run_provider_host_with_legacy(
                     .parent()
                     .unwrap_or(&config.warehouse_root)
                     .join("recipe-selection-drafts");
+                let free_assets_state_path = config
+                    .warehouse_root
+                    .parent()
+                    .unwrap_or(&config.warehouse_root)
+                    .join("free-assets-state.json");
+                let free_assets = vua_acquisition::booth_free_assets::FreeAssetsService::new(
+                    config.bdl.clone(),
+                    free_assets_state_path,
+                );
                 let library_maintenance =
                     vua_acquisition::library_maintenance::LibraryMaintenance::new(
                         store.clone(),
@@ -948,6 +958,7 @@ pub fn run_provider_host_with_legacy(
                         vua_acquisition::recipe_selection_drafts::RecipeSelectionDrafts::new(
                             draft_root,
                         ),
+                    free_assets,
                 }))
             })
         })
@@ -1577,6 +1588,9 @@ fn handle_application_request(state: &mut HostState, request: &Value) -> FrameOu
     if method.starts_with("recipeDraft.") {
         return recipe_selection_draft_request(state, method, request, request_id, correlation_id);
     }
+    if method.starts_with("freeAssets.") {
+        return free_assets_request(state, method, request, request_id, correlation_id);
+    }
     if method.starts_with("recipe.") {
         // Proposal 029 B-face loop 2: the export face is its own word-row
         // family (recipe-export, ruling 3) with its OWN honest-absence code
@@ -2120,6 +2134,7 @@ fn served_capabilities(state: &HostState) -> Value {
         "operationId": "amf.production", "availability": if state.amf_production.is_some() { "available" } else { "unavailable" }
     }));
     capabilities.as_array_mut().expect("capabilities array").extend(["terms.getProduct","terms.checkUse","terms.refreshProduct","terms.refreshLibrary"].map(|operation|json!({"operationId":operation,"availability":if state.warehouse.is_some(){"available"}else{"unavailable"}})));
+    capabilities.as_array_mut().expect("capabilities array").extend(["freeAssets.state","freeAssets.updatePreferences","freeAssets.ingestSearchPage"].map(|operation|json!({"operationId":operation,"availability":if state.warehouse.is_some(){"available"}else{"unavailable"}})));
     capabilities.as_array_mut().expect("capabilities array").extend([
         json!({"operationId":"environment.unityLicense","availability":if state.unity_license.is_some() {"available"} else {"unavailable"}}),
         json!({"operationId":"environment.checkUnityLicense","availability":if state.amf_production.is_some() {"available"} else {"unavailable"}}),
@@ -5978,6 +5993,66 @@ fn recipe_selection_draft_request(
                 "unavailable" => "unavailable",
                 _ => "validation",
             },
+        )),
+    }
+}
+
+fn free_assets_request(
+    state: &HostState,
+    method: &str,
+    request: &Value,
+    request_id: &str,
+    correlation_id: &str,
+) -> FrameOutcome {
+    let Some(warehouse) = &state.warehouse else {
+        return FrameOutcome::Response(application_error(
+            request_id,
+            correlation_id,
+            "vua.free_assets.unavailable",
+            "errors.freeAssets.unavailable",
+            "unavailable",
+        ));
+    };
+    let is_query = match method {
+        "freeAssets.state" => true,
+        "freeAssets.updatePreferences" | "freeAssets.ingestSearchPage" => false,
+        _ => {
+            return FrameOutcome::Response(application_error(
+                request_id,
+                correlation_id,
+                "vua.provider.unknown_method",
+                "errors.provider.unknownMethod",
+                "validation",
+            ));
+        }
+    };
+    let valid_envelope = if is_query {
+        request["kind"] == "query"
+    } else {
+        request["kind"] == "command"
+            && request
+                .get("commandId")
+                .and_then(Value::as_str)
+                .is_some_and(|id| !id.is_empty())
+    };
+    if !valid_envelope {
+        return FrameOutcome::Response(application_error(
+            request_id,
+            correlation_id,
+            "vua.free_assets.invalid_params",
+            "errors.freeAssets.invalidParams",
+            "validation",
+        ));
+    }
+    let params = request.get("params").cloned().unwrap_or(Value::Null);
+    match warehouse.free_assets.apply(method, params) {
+        Ok(value) => FrameOutcome::Response(application_success(request_id, value)),
+        Err(error) => FrameOutcome::Response(application_error(
+            request_id,
+            correlation_id,
+            error.code(),
+            error.message_key(),
+            error.category(),
         )),
     }
 }

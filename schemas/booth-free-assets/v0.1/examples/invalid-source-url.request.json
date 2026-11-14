@@ -1,0 +1,16 @@
+{
+  "contractVersion": "0.1",
+  "requestId": "invalid-source-url",
+  "correlationId": "invalid-source-url",
+  "kind": "command",
+  "method": "freeAssets.ingestSearchPage",
+  "commandId": "cmd-bad-url",
+  "params": {
+    "schemaVersion": "0.1",
+    "keyword": "SyntheticBaseA",
+    "sourceUrl": "https://example.com/ja/browse/3D%E3%83%A2%E3%83%87%E3%83%AB?q=SyntheticBaseA&max_price=0&sort=new&in_stock=true",
+    "html": "<ul class='market-items'></ul>",
+    "fetchedAt": "2026-11-14T08:00:00Z",
+    "resetCache": true
+  }
+}

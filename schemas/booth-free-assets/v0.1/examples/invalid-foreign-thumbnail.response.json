@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "0.1",
+  "watchedKeywords": [{ "keyword": "SyntheticBaseA", "enabled": true }],
+  "suggestedKeywords": [],
+  "enabledCategories": ["209"],
+  "hideOwned": true,
+  "showSamples": false,
+  "dismissedProductIds": [],
+  "lastQueriedAt": "2026-11-14T08:00:00Z",
+  "items": [
+    {
+      "productId": "booth:900001",
+      "title": "Synthetic Ribbon",
+      "shopName": "Synthetic Atelier",
+      "categoryId": "209",
+      "categoryLabel": "3D衣装",
+      "thumbnailUrl": "https://evil.example.com/synthetic-ribbon.jpg",
+      "matchedKeywords": ["SyntheticBaseA"],
+      "isSample": false,
+      "hasDateCue": false,
+      "owned": false
+    }
+  ]
+}

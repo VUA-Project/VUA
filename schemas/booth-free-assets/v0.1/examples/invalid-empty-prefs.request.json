@@ -1,0 +1,11 @@
+{
+  "contractVersion": "0.1",
+  "requestId": "invalid-empty-prefs",
+  "correlationId": "invalid-empty-prefs",
+  "kind": "command",
+  "method": "freeAssets.updatePreferences",
+  "commandId": "cmd-empty-prefs",
+  "params": {
+    "schemaVersion": "0.1"
+  }
+}

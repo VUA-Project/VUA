@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { DESKTOP_BROWSER_SITES_V1, desktopBrowserSite, desktopBrowserDisplayUrl, isDesktopBrowserViewportV1 } from "./desktop-browser.js";
+import {
+  DESKTOP_BROWSER_SITES_V1,
+  desktopBrowserBoothItemUrl,
+  desktopBrowserDisplayUrl,
+  desktopBrowserSite,
+  isDesktopBrowserBoothItemIdV1,
+  isDesktopBrowserViewportV1,
+} from "./desktop-browser.js";
 
 describe("desktop browser fixed entries and geometry", () => {
   it("keeps the Wiki in host knowledge and all nine material entries in AMF", () => {
@@ -19,5 +26,13 @@ describe("desktop browser fixed entries and geometry", () => {
     expect(desktopBrowserDisplayUrl("https://person:secret@accounts.pixiv.net/login?code=private#token=private")).toBe("https://accounts.pixiv.net/login");
     expect(desktopBrowserDisplayUrl("https://wiki.vrchat.com/wiki/Main_Page")).toBe("https://wiki.vrchat.com/wiki/Main_Page");
     for (const input of ["file:///C:/private", "data:text/html,private", "not a URL"]) expect(desktopBrowserDisplayUrl(input)).toBe("");
+  });
+  it("maps strictly validated booth:<digits> product IDs to canonical item URLs", () => {
+    expect(isDesktopBrowserBoothItemIdV1("booth:900001")).toBe(true);
+    expect(desktopBrowserBoothItemUrl("booth:900001")).toBe("https://booth.pm/ja/items/900001");
+    for (const bad of ["booth:0", "booth:0123", "booth:abc", "https://booth.pm/ja/items/900001", "", null, 900001]) {
+      expect(isDesktopBrowserBoothItemIdV1(bad)).toBe(false);
+      expect(desktopBrowserBoothItemUrl(bad)).toBeNull();
+    }
   });
 });

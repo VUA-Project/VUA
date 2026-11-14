@@ -2,6 +2,7 @@ import {
   isCatalogProductIdV01, isCatalogProductObservationResultV01,
   type CatalogProductObservationV01,
 } from "@vua/contracts";
+import type { BoothReadGate } from "./booth-read-gate.js";
 
 export type CatalogProductReadOutcome = "updated" | "missing" | "stop";
 export interface CatalogProductReader {
@@ -66,6 +67,7 @@ export interface CatalogEnrichmentOptions {
   readonly claim: (productId: string) => Promise<boolean>;
   readonly read: (productId: string, signal: AbortSignal, beforeRead: () => Promise<void>) => Promise<CatalogProductReadOutcome>;
   readonly refreshed: (updated: number) => void;
+  readonly readGate?: BoothReadGate;
   readonly now?: () => number;
   readonly sleep?: (ms: number, signal: AbortSignal) => Promise<void>;
 }
@@ -117,6 +119,11 @@ export function createCatalogEnricher(options: CatalogEnrichmentOptions): Catalo
     };
     const waitForSlot = async () => {
       check();
+      if (options.readGate !== undefined) {
+        await options.readGate.waitUntilReady(abort.signal);
+        check();
+        return;
+      }
       if (lastReadAt !== null) {
         // A backwards wall clock never permits a burst or an unbounded delay.
         const delay = Math.min(5_000, Math.max(0, 5_000 - (now() - lastReadAt)));
@@ -125,6 +132,12 @@ export function createCatalogEnricher(options: CatalogEnrichmentOptions): Catalo
       check();
     };
     const beforeRead = async () => {
+      if (options.readGate !== undefined) {
+        check();
+        await options.readGate.acquire(abort.signal, { foreground: false });
+        check();
+        return;
+      }
       await waitForSlot();
       lastReadAt = now();
     };
@@ -157,7 +170,10 @@ export function createCatalogEnricher(options: CatalogEnrichmentOptions): Catalo
   return {
     scheduleIdle,
     afterSync: run,
-    noteRead() { lastReadAt = now(); },
+    noteRead() {
+      if (options.readGate !== undefined) options.readGate.noteRead();
+      else lastReadAt = now();
+    },
     pause() { clearTimer(); controller?.abort(); scheduleIdle(); },
     dispose() { disposed = true; clearTimer(); controller?.abort(); },
   };

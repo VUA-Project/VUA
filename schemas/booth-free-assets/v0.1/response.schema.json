@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vua-project.github.io/schemas/booth-free-assets/v0.1/response.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "watchedKeywords",
+    "suggestedKeywords",
+    "enabledCategories",
+    "hideOwned",
+    "showSamples",
+    "dismissedProductIds",
+    "lastQueriedAt",
+    "items"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "0.1" },
+    "watchedKeywords": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["keyword", "enabled"],
+        "properties": {
+          "keyword": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]+$"
+          },
+          "enabled": { "type": "boolean" }
+        }
+      }
+    },
+    "suggestedKeywords": {
+      "type": "array",
+      "maxItems": 20,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 80,
+        "pattern": "^[^\\u0000-\\u001f\\u007f-\\u009f]+$"
+      }
+    },
+    "enabledCategories": {
+      "type": "array",
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["209", "230", "231", "217", "214", "215", "216", "127"]
+      }
+    },
+    "hideOwned": { "type": "boolean" },
+    "showSamples": { "type": "boolean" },
+    "dismissedProductIds": {
+      "type": "array",
+      "maxItems": 2000,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^booth:[1-9][0-9]{0,19}$" }
+    },
+    "lastQueriedAt": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-5][0-9](\\.[0-9]{1,9})?Z$"
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 300,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "productId",
+          "title",
+          "shopName",
+          "categoryId",
+          "categoryLabel",
+          "thumbnailUrl",
+          "matchedKeywords",
+          "isSample",
+          "hasDateCue",
+          "owned"
+        ],
+        "properties": {
+          "productId": { "type": "string", "pattern": "^booth:[1-9][0-9]{0,19}$" },
+          "title": { "type": "string", "minLength": 1, "maxLength": 1000 },
+          "shopName": { "type": ["string", "null"], "minLength": 1, "maxLength": 500 },
+          "categoryId": {
+            "type": ["string", "null"],
+            "enum": ["209", "230", "231", "217", "214", "215", "216", "127", null]
+          },
+          "categoryLabel": { "type": ["string", "null"], "minLength": 1, "maxLength": 120 },
+          "thumbnailUrl": {
+            "type": ["string", "null"],
+            "pattern": "^https://booth\\.pximg\\.net/[^\\s\"'<>#]+$"
+          },
+          "matchedKeywords": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 5,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1, "maxLength": 80 }
+          },
+          "isSample": { "type": "boolean" },
+          "hasDateCue": { "type": "boolean" },
+          "owned": { "type": "boolean" }
+        }
+      }
+    }
+  }
+}

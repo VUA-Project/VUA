@@ -365,7 +365,7 @@ from browser shortcuts and both account-acquisition workflows. Exercise matching
 unavailable search, persisted association and no account-membership inference. Library corner
 controls reflect actual file/download facts, including native pause/resume; local import opens
 the folder picker directly, and native file/folder drops use the same AMF task path with explicit
-enablement when required. Single-item intake keeps selected material boundaries; the separate migration entry currently provides read-only structural review. Its [grouping design](development/library-migration-design.md) remains a draft. These refinements do not close real-material or human review outcomes.
+enablement when required. Single-item intake keeps selected material boundaries; the separate migration entry currently provides read-only structural review. Its [grouping design](development/library-migration-design.md) remains a draft. The 2026-11-14 ruling adds an opt-in, manually triggered free-asset discovery view inside `Browse BOOTH` (at most five enabled Avatar Base keywords, page 1 only, shared five-second BOOTH read spacing, five-minute refresh cooldown, human item-page download in `SiteBrowser`, and browser-download adoption with ZIP expansion and single-card reconciliation). These refinements do not close real-material or human review outcomes.
 
 ### Mandatory first step: capability audit
 

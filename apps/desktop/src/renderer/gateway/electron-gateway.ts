@@ -240,6 +240,7 @@ export function createElectronGateway(
     updatePlans: host?.updatePlans,
     amfUiRuntime: host?.amfUiRuntime,
     guideContent: host?.guideContent,
+    freeAssets: createFreeAssetsPort(client, host?.freeAssets),
     environment: createLiveEnvironmentPort(client),
     task: createLiveTaskPort(client),
     tutorial: notRun.tutorial,
@@ -283,3 +284,4 @@ import { createLiveLibraryBrowserPort } from "./library-browser-port.ts";
 import { createAmfReleasePort } from "./amf-release-port.ts";
 import { createVrchatPort } from "./vrchat-port.ts";
 import { createTermsPort } from "./terms-port.ts";
+import { createFreeAssetsPort } from "./free-assets-port.ts";

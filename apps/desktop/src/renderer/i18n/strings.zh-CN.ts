@@ -26,6 +26,7 @@ import { avatarOptimizerCopy } from "./avatar-optimizer-copy.ts";
 import { guideChannelCopy } from "./guide-channel-copy.ts";
 import { recipeDraftFlowCopy } from "./recipe-draft-flow-copy.ts";
 import { installerToolCopy } from "./installer-tool-copy.ts";
+import { freeAssetsCopy } from "./free-assets-copy.ts";
 import type { Strings } from "./strings.en.ts";
 
 /**
@@ -67,6 +68,7 @@ export const strings: Strings = {
   guideChannel: guideChannelCopy["zh-CN"],
   recipeDraftFlow: recipeDraftFlowCopy["zh-CN"],
   installerTool: installerToolCopy["zh-CN"],
+  freeAssets: freeAssetsCopy["zh-CN"],
   websiteTests: {
     title: "网站连通测试", test: "测试", testAll: "测试全部", testing: "测试中…",
     add: "添加网站", edit: "编辑网站", editSite: "编辑 {name}", testSite: "测试 {name}",

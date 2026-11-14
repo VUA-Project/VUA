@@ -1,22 +1,55 @@
 .vua-browser-owner { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-.vua-browser-frame { position: fixed; display: flex; flex-direction: column; z-index: var(--vua-z-browser); overflow: hidden; background: var(--vua-bg-panel); border-left: 1px solid var(--vua-border); }
+.vua-browser-frame { position: fixed; display: flex; flex-direction: column; z-index: var(--vua-z-browser); overflow: hidden; background: var(--vua-bg-canvas); border-left: 1px solid var(--vua-border); }
 .vua-browser-frame[hidden] { display: none; }
-.vua-browser-frame__viewport { flex: 1; min-height: 0; display: grid; place-content: center; text-align: center; padding: 0; }
-.vua-browser-frame__bar { min-height: 44px; display: flex; align-items: center; gap: var(--vua-space-1); padding: 4px 8px; border-bottom: 1px solid var(--vua-border); }
-.vua-browser-frame__tabs { display: flex; flex: 0 0 auto; gap: 4px; padding: var(--vua-space-2) 8px 0; overflow-x: auto; border-bottom: 1px solid var(--vua-border); scrollbar-width: thin; }
-.vua-browser-frame__tab { display: flex; flex: 0 0 auto; max-width: 200px; border: 1px solid transparent; border-radius: var(--vua-radius-md) var(--vua-radius-md) 0 0; }
-.vua-browser-frame__tab[data-active] { border-color: var(--vua-border); border-bottom-color: transparent; background: var(--vua-accent-tint); }
+.vua-browser-frame__viewport { flex: 1; min-height: 0; display: grid; place-content: center; text-align: center; padding: 0; background: var(--vua-bg-panel); }
+.vua-browser-frame__viewport[hidden] { display: none; }
+.vua-browser-frame__local { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; background: var(--vua-bg-canvas); scrollbar-gutter: stable; }
+.vua-browser-frame__local[hidden] { display: none; }
+
+/* Tab strip */
+.vua-browser-frame__tabs { display: flex; flex: 0 0 auto; align-items: center; gap: 4px; padding: 6px 8px 0; overflow-x: auto; background: var(--vua-bg-panel); border-bottom: 1px solid var(--vua-border); scrollbar-width: thin; }
+.vua-browser-frame__tab { display: flex; align-items: center; flex: 0 0 auto; max-width: 220px; border: 1px solid transparent; border-bottom: 0; border-radius: var(--vua-radius-md) var(--vua-radius-md) 0 0; background: transparent; transition: background-color var(--vua-motion-fast, 140ms) ease; }
+.vua-browser-frame__tab:hover:not([data-active]) { background: color-mix(in srgb, var(--vua-text-strong) 5%, transparent); }
+.vua-browser-frame__tab[data-active] { border-color: var(--vua-border); background: var(--vua-bg-elevated); box-shadow: inset 0 2px 0 0 var(--vua-accent); }
 .vua-browser-frame__tab button, .vua-browser-frame__new-tab { color: var(--vua-text-strong); background: transparent; border: 0; cursor: pointer; font: var(--vua-font-caption); }
-.vua-browser-frame__tab [role="tab"] { display: flex; align-items: center; gap: var(--vua-space-2); min-width: 70px; max-width: 164px; padding: 8px var(--vua-space-2); }
+.vua-browser-frame__tab [role="tab"] { display: inline-flex; align-items: center; gap: 6px; min-width: 64px; max-width: 184px; padding: 7px 10px; }
+.vua-browser-frame__tab [role="tab"] svg { flex: none; color: var(--vua-text-secondary); }
+.vua-browser-frame__tab[data-active] [role="tab"] svg { color: var(--vua-accent-text); }
 .vua-browser-frame__tab [role="tab"] span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.vua-browser-frame__tab-close { padding: 5px 7px; }
-.vua-browser-frame__tab-close:hover, .vua-browser-frame__new-tab:hover { background: var(--vua-accent-tint); }
-.vua-browser-frame__new-tab { flex: 0 0 32px; border-radius: var(--vua-radius-md); }
+.vua-browser-frame__tab-close { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; margin-inline-end: 4px; padding: 0; border-radius: var(--vua-radius-control); color: var(--vua-text-secondary); }
+.vua-browser-frame__tab-close:hover, .vua-browser-frame__new-tab:hover:not(:disabled) { background: var(--vua-accent-tint); color: var(--vua-text-strong); }
+.vua-browser-frame__new-tab { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 30px; height: 30px; margin-bottom: 3px; border-radius: var(--vua-radius-control); }
 .vua-browser-frame__new-tab:disabled { opacity: 0.45; cursor: default; }
-.vua-browser-frame__shortcuts { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; border-bottom: 1px solid var(--vua-border); }
-.vua-browser-frame__shortcuts button { padding: 5px var(--vua-space-2); border: 1px solid var(--vua-border); border-radius: var(--vua-radius-md); color: var(--vua-text-strong); background: transparent; cursor: pointer; font: var(--vua-font-caption); }
-.vua-browser-frame__shortcuts button:hover, .vua-browser-frame__shortcuts button[aria-current="true"] { background: var(--vua-accent-tint); border-color: var(--vua-accent); }
-.vua-browser-frame__status { margin: 8px; color: var(--vua-text-secondary); font: var(--vua-font-caption); }
-.vua-browser-frame__error { max-width: 460px; padding: 24px; }
+
+/* Navigation & address bar */
+.vua-browser-frame__bar { min-height: 44px; flex: 0 0 auto; display: flex; align-items: center; gap: 4px; padding: 5px 8px; background: var(--vua-bg-elevated); border-bottom: 1px solid var(--vua-border); }
+.vua-browser-frame__bar [data-browser-home-btn][aria-current="true"] { background: var(--vua-accent-tint); color: var(--vua-accent-text); }
+.vua-browser-frame__address { flex: 1 1 0; min-width: 0; min-height: 32px; display: flex; align-items: center; gap: var(--vua-space-2); padding: 0 12px; border: 1px solid var(--vua-border); border-radius: var(--vua-radius-pill); background: var(--vua-bg-canvas); }
+.vua-browser-frame__address[data-kind="web"] .vua-import__browse-url { color: var(--vua-text-strong); }
+.vua-browser-frame__loading { flex: none; color: var(--vua-accent-text); font: var(--vua-font-caption); white-space: nowrap; }
+.vua-browser-frame__mode-switch { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border: 1px solid var(--vua-accent); border-radius: var(--vua-radius-pill); color: var(--vua-accent-text); background: var(--vua-accent-tint); cursor: pointer; font: var(--vua-font-caption); font-weight: var(--vua-weight-strong); white-space: nowrap; }
+.vua-browser-frame__mode-switch:hover { border-color: var(--vua-border-focus); }
+.vua-browser-frame__mode-switch[aria-pressed="true"] { box-shadow: inset 0 0 0 1px var(--vua-accent); }
+.vua-browser-frame__mode-switch:focus-visible, .vua-browser-home__site:focus-visible { outline: 2px solid var(--vua-border-focus); outline-offset: 2px; }
+.vua-browser-frame__status { margin: 8px 12px; color: var(--vua-text-secondary); font: var(--vua-font-caption); }
+.vua-browser-frame__error { display: grid; gap: var(--vua-space-3); justify-items: center; max-width: 480px; padding: 24px; }
+.vua-browser-frame__error p { margin: 0; color: var(--vua-text-strong); }
+.vua-browser-frame__error-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--vua-space-2); }
+
+/* Browser Homepage */
+.vua-browser-home { display: flex; flex-direction: column; gap: var(--vua-space-5); max-width: 1040px; width: 100%; margin-inline: auto; padding: var(--vua-space-5) var(--vua-space-4); }
+.vua-browser-home[hidden] { display: none; }
+.vua-browser-home__section { display: flex; flex-direction: column; gap: var(--vua-space-3); }
+.vua-browser-home__heading { margin: 0; color: var(--vua-text-secondary); font: var(--vua-font-caption); font-weight: var(--vua-weight-strong); letter-spacing: 0.02em; }
+.vua-browser-home__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(228px, 1fr)); gap: var(--vua-space-3); }
+.vua-browser-home__site { display: flex; flex-direction: column; align-items: stretch; gap: var(--vua-space-2); padding: var(--vua-space-3); border: 1px solid var(--vua-border); border-radius: var(--vua-radius-card); background: var(--vua-bg-panel); color: var(--vua-text-strong); font: inherit; text-align: start; cursor: pointer; transition: border-color var(--vua-motion-fast, 140ms) ease, background-color var(--vua-motion-fast, 140ms) ease; }
+.vua-browser-home__site:hover { border-color: var(--vua-accent); background: var(--vua-bg-elevated); }
+.vua-browser-home__site-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.vua-browser-home__site-mark { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--vua-border); border-radius: var(--vua-radius-control); background: var(--vua-accent-tint); color: var(--vua-accent-text); font: var(--vua-font-body); font-weight: var(--vua-weight-strong); }
+.vua-browser-home__site-meta { display: grid; min-width: 0; }
+.vua-browser-home__site-name { color: var(--vua-text-strong); font: var(--vua-font-body); font-weight: var(--vua-weight-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vua-browser-home__site-host { color: var(--vua-text-secondary); font: var(--vua-font-caption); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: ltr; text-align: start; }
+.vua-browser-home__site-desc { color: var(--vua-text-secondary); font: var(--vua-font-caption); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
 /* Import stays in its dialog, but browsing leaves the shell navigation usable. */
 body[data-vua-browser-view] .vua-content-dialog__overlay { top: var(--vua-browser-top); left: var(--vua-browser-left); }

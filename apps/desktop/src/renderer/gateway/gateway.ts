@@ -38,6 +38,8 @@ export interface VuaGateway {
   readonly amfUiRuntime?: import("@vua/contracts").DesktopAmfUiRuntimeApiV01 | undefined;
   /** Signed entry-guide content channel (`guide-content` v0.1): on-demand Main verification with cached/bundled fallback. */
   readonly guideContent?: import("@vua/contracts").DesktopGuideContentApiV01 | undefined;
+  /** Manual Avatar-scoped BOOTH free-asset discovery (`booth-free-assets` v0.1). */
+  readonly freeAssets?: import("./free-assets-port.ts").FreeAssetsPort | undefined;
   readonly amfModule: import("@vua/contracts").AmfModuleApiV01;
   readonly environment: EnvironmentPort;
   readonly tutorial: TutorialPort;

@@ -1,0 +1,18 @@
+{
+  "contractVersion": "0.1",
+  "requestId": "synthetic-free-prefs",
+  "correlationId": "synthetic-free-prefs",
+  "kind": "command",
+  "method": "freeAssets.updatePreferences",
+  "commandId": "cmd-free-prefs-1",
+  "params": {
+    "schemaVersion": "0.1",
+    "watchedKeywords": [
+      { "keyword": "SyntheticBaseA", "enabled": true },
+      { "keyword": "SyntheticBaseB", "enabled": false }
+    ],
+    "enabledCategories": ["209", "230", "231", "217", "214"],
+    "hideOwned": true,
+    "showSamples": false
+  }
+}

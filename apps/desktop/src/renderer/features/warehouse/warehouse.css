@@ -1270,8 +1270,8 @@
 .vua-library-terms-read { display: grid; justify-items: start; gap: 8px; }
 .vua-library-terms-read > p { margin: 0; }
 
-/* The title row: name and import actions on the left, the room tabs overlay the right end. */
-.vua-warehouse__heading { display: flex; flex: 1; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--vua-space-2) var(--vua-space-4); padding-inline-end: 160px; }
+/* The title row: name on the left, import and sync actions flush on the right. */
+.vua-warehouse__heading { display: flex; flex: 1; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--vua-space-2) var(--vua-space-4); }
 .vua-warehouse__heading h1 { margin: 0; }
 
 /* The next steps of the selection stay under the wall in one reserved row, in view at any window height. */

@@ -22,7 +22,7 @@ export interface SilentDownloadQueue {
   isAwaitingNative(originalUrl: string): boolean;
   /** Native binding only, never evidence that a delivery has been persisted. */
   notifyTransport(event: DownloadEventV01): void;
-  notifyPersisted(event: DownloadEventV01): void;
+  notifyPersisted(event: DownloadEventV01): boolean;
   notifyUnconfirmed(event: DownloadEventV01): void;
   cancel(batchId: string): void;
   setPaused(batchId: string, paused: boolean): { readonly ok: boolean; readonly paused: boolean };
@@ -155,9 +155,10 @@ export function createSilentDownloadQueue(options: SilentDownloadQueueOptions): 
       }
     },
     notifyPersisted(event) {
-      const entry = matching(event); if (entry === undefined) return;
+      const entry = matching(event); if (entry === undefined) return false;
       if (terminal(event)) settle(entry, "settled", event.downloadId);
       else if (event.kind === "download.started") report(entry, "started", event.downloadId);
+      return true;
     },
     notifyUnconfirmed(event) {
       const entry = matching(event); if (entry !== undefined && (terminal(event) || event.kind === "download.started")) settle(entry, "unconfirmed");

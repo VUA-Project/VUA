@@ -1947,4 +1947,29 @@ describe("vrchat-session v0.1 routing (experimental VRChat sign-in)", () => {
     expect(JSON.stringify(response)).not.toContain("secret-pw");
     expect(seen).toHaveLength(1);
   });
+
+  it("routes freeAssets state and preference updates while rejecting Main-only HTML ingestion", async () => {
+    const provider = new MockOrchestratorProviderV01(); await provider.start();
+    const invoke = vi.spyOn(provider, "invoke");
+    const context = { provider, productVersion: "1.1.0", platform: "win32" as const, rendererUrl };
+    await routeDesktopGatewayInvoke(context, `${rendererUrl}/`, {
+      schemaVersion: 1, requestId: "fa-state", method: "freeAssets.state", params: { schemaVersion: "0.1" },
+    });
+    expect(invoke).toHaveBeenLastCalledWith(expect.objectContaining({
+      kind: "query", method: "freeAssets.state", params: { schemaVersion: "0.1" },
+    }));
+    const prefs = { schemaVersion: "0.1" as const, watchedKeywords: [{ keyword: "SyntheticBaseA", enabled: true }] };
+    await routeDesktopGatewayInvoke(context, `${rendererUrl}/`, {
+      schemaVersion: 1, requestId: "fa-prefs", method: "freeAssets.updatePreferences", params: prefs,
+    });
+    expect(invoke).toHaveBeenLastCalledWith(expect.objectContaining({
+      kind: "command", commandId: "fa-prefs", method: "freeAssets.updatePreferences", params: prefs,
+    }));
+    invoke.mockClear();
+    const rejected = await routeDesktopGatewayInvoke(context, `${rendererUrl}/`, {
+      schemaVersion: 1, requestId: "fa-ingest", method: "freeAssets.ingestSearchPage", params: { schemaVersion: "0.1" },
+    });
+    expect(rejected).toMatchObject({ ok: false, error: { code: "invalid_request" } });
+    expect(invoke).not.toHaveBeenCalled();
+  });
 });

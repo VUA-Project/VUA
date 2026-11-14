@@ -26,6 +26,7 @@ import { avatarOptimizerCopy } from "./avatar-optimizer-copy.ts";
 import { guideChannelCopy } from "./guide-channel-copy.ts";
 import { recipeDraftFlowCopy } from "./recipe-draft-flow-copy.ts";
 import { installerToolCopy } from "./installer-tool-copy.ts";
+import { freeAssetsCopy } from "./free-assets-copy.ts";
 import type { Strings } from "./strings.en.ts";
 
 /**
@@ -63,6 +64,7 @@ export const strings: Strings = {
   guideChannel: guideChannelCopy["ko"],
   recipeDraftFlow: recipeDraftFlowCopy["ko"],
   installerTool: installerToolCopy["ko"],
+  freeAssets: freeAssetsCopy["ko"],
   websiteTests: {
     title: "사이트 연결 테스트", test: "테스트", testAll: "전체 테스트", testing: "테스트 중…",
     add: "사이트 추가", edit: "사이트 편집", editSite: "{name} 편집", testSite: "{name} 테스트",

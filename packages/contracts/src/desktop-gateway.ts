@@ -24,6 +24,11 @@ import type {
 
 import { isCatalogSyncParamsV03, type CatalogSyncStatusV03 } from "./catalog-sync-v03.js";
 import { isBoothSearchParamsV01, type BoothSearchParamsV01 } from "./booth-search-v01.js";
+import {
+  isFreeAssetsParamsV01,
+  type FreeAssetsStateParamsV01,
+  type FreeAssetsUpdatePreferencesParamsV01,
+} from "./booth-free-assets-v01.js";
 import { isLibraryDownloadParamsV01, type LibraryDownloadStatusV01 } from "./library-download-v01.js";
 import { isLibraryImportParamsV01, type LibraryImportParamsV01 } from "./library-intake-v01.js";
 import { isLibraryImportPathsParamsV02, type LibraryImportPathsParamsV02 } from "./library-intake-v02.js";
@@ -251,6 +256,10 @@ export interface BoothSearchRequestV1 {
   readonly schemaVersion: 1; readonly requestId: string; readonly method: "catalog.searchProducts";
   readonly params: BoothSearchParamsV01;
 }
+export type FreeAssetsGatewayRequestV1 = { readonly schemaVersion: 1; readonly requestId: string } & (
+  | { readonly method: "freeAssets.state"; readonly params: FreeAssetsStateParamsV01 }
+  | { readonly method: "freeAssets.updatePreferences"; readonly params: FreeAssetsUpdatePreferencesParamsV01 }
+);
 export interface LibraryDownloadStatusRequestV1 {
   readonly schemaVersion: 1; readonly requestId: string; readonly method: "library.downloadStatus";
   readonly params: LibraryDownloadStatusV01;
@@ -1140,6 +1149,7 @@ export type DesktopGatewayRequestV1 =
   | CatalogListRequestV1
   | CatalogSyncStatusRequestV1
   | BoothSearchRequestV1
+  | FreeAssetsGatewayRequestV1
   | LibraryDownloadStatusRequestV1
   | LibraryViewRequestV1
   | LibraryMaintenanceQueryRequestV1 | LibraryMaintenanceCommandRequestV1
@@ -1241,6 +1251,8 @@ export const DESKTOP_GATEWAY_METHOD_KINDS = {
   "catalog.list": "query",
   "catalog.librarySyncStatus": "query",
   "catalog.searchProducts": "query",
+  "freeAssets.state": "query",
+  "freeAssets.updatePreferences": "command",
   "library.downloadStatus": "query",
   "library.list": "query",
   "library.productFiles": "query",
@@ -1889,6 +1901,7 @@ export interface VuaDesktopApiV2 extends Omit<VuaDesktopApiV1, "window" | "syste
 
 export interface VuaDesktopApiV1 {
   readonly desktopBrowser?: import("./desktop-browser.js").DesktopBrowserApiV1;
+  readonly freeAssets?: import("./booth-free-assets-v01.js").FreeAssetsDesktopApiV01;
   readonly amfModule?: import("./amf-module.js").AmfModuleApiV01;
   readonly gateway: DesktopGatewayApiV1;
   readonly events: DesktopGatewayEventsApiV1;
@@ -2181,6 +2194,9 @@ export function isDesktopGatewayRequestV1(value: unknown): value is DesktopGatew
       return hasExactKeys(value, REQUEST_KEYS) && isCatalogSyncParamsV03(value.method, value.params);
     case "catalog.searchProducts":
       return hasExactKeys(value, REQUEST_KEYS) && isBoothSearchParamsV01(value.params);
+    case "freeAssets.state":
+    case "freeAssets.updatePreferences":
+      return hasExactKeys(value, REQUEST_KEYS) && isFreeAssetsParamsV01(value.method, value.params);
     case "library.downloadStatus":
       return hasExactKeys(value, REQUEST_KEYS) && isLibraryDownloadParamsV01(value.method, value.params);
     case "library.importFolders": {

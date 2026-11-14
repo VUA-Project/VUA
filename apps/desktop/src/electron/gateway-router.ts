@@ -297,6 +297,10 @@ function toApplicationRequest(
       return { ...base, kind: "command", commandId: request.requestId, method: request.method, params: request.params };
     case "recipeDraft.migrateLegacy":
       return { ...base, kind: "command", commandId: request.requestId, method: request.method, params: request.params };
+    case "freeAssets.state":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "freeAssets.updatePreferences":
+      return { ...base, kind: "command", commandId: request.requestId, method: request.method, params: request.params };
     case "catalog.detail":
       return { ...base, kind: "query", method: "catalog.detail", params: request.params };
     case "catalog.status":

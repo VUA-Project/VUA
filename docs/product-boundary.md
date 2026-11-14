@@ -584,6 +584,45 @@ five-second spacing, 60-product launch limit, seven-day retry interval and failu
 Sessions and observations stay local. Enrichment does not enumerate unrelated pages, acquire
 materials, infer ownership, or follow description links. Disabling AMF or quitting stops reads.
 
+## BOOTH free-asset discovery and browser download adoption (user ruling, 2026-11-14)
+
+AMF exposes `Browse` as a top-level sidebar page beside `Materials`, opening on a local
+Browser Homepage with zero automatic external requests, community site shortcuts, and an opt-in
+**BOOTH Free** tab. When triggered by the player, `BOOTH Free` queries public BOOTH `3Dモデル`
+`max_price=0` browse pages (`sort=new&in_stock=true`, page 1 only, at most 60 cards per keyword)
+either for a single player-entered keyword / clicked Avatar Base chip or for at most five pinned
+Avatar Base keywords. It never runs on startup or on a background timer, displays no unread
+badges, and offers no batch selection or automated claim action.
+
+Across account-library sync, silent downloads of already-owned files, background enrichment,
+public keyword lookup, and free-asset discovery, VUA applies one consistent rule with respect
+to BOOTH's usage guidelines and pixiv Common Terms of Service Article 14 (revised 2026-06-22,
+items 23 and 24): VUA executes BOOTH reads and file transfers **only after explicit player
+initiation and at human-achievable polite pacing**, and **never automatically claims or acquires
+unowned items on the player's behalf**. Electron Main coordinates foreground and background
+BOOTH session reads through one shared FIFO read gate (`5,000 ms` minimum spacing for item-page
+enrichment and silent downloads; `1,500 ms` minimum spacing for public keyword and `max_price=0`
+browse searches, with no artificial multi-minute lockout on manual searches), and stops immediately
+on HTTP 403, 429, 5xx or sign-in redirection.
+
+Clicking a free-asset card opens the creator's item page (`https://booth.pm/ja/items/<digits>`)
+in the built-in `SiteBrowser` (`purpose="assets"`), where the player views the author's
+description and terms and personally clicks BOOTH's official download button. Watched keywords,
+category filters, dismissed IDs, and the last query cache live in AMF's local state file
+(`free-assets-state.json`), never in BDL (`BDL_FORMAT_VERSION` remains `0.11`), and discovery
+never writes `products` or `product_library_memberships`. When the player adopts a completed
+BOOTH item-page download into Warehouse through `warehouse.importDownloads`, AMF resolves
+provenance from server-recorded download-event facts (`initiated_from_page_url`, `source_url`,
+and `url_chain`), records `artifact_mappings` (`channel = "download_adoption"`), records
+library-agnostic `product_downloadables` (`library_type = NULL`) and `managed_library_files`
+evidence when the download originated from `https://booth.pm/downloadables/<id>` for an
+observed product, and expands `.zip` archives through `zip_intake`. It never writes
+`library.updateEntryMetadata` (reserved for player-declared provenance) or
+`product_library_memberships` (reserved for BOOTH's own library pages), allowing subsequent
+`free_downloads` syncs to reconcile onto the single product card without duplicate local cards.
+The [booth-free-assets contract](protocols/booth-free-assets-v0.1.md) and
+[desktop-browser contract](protocols/desktop-browser-v0.1.md) own the wire and browser rules.
+
 ## Update-distribution request statistics (user ruling, 2026-11-07)
 
 Update checks and downloads can contact ph-r.com, GitHub and configured mirrors. The distribution

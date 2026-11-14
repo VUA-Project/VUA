@@ -300,20 +300,29 @@ impl<'a> DownloadAdopter<'a> {
             CopyRole::Original,
             &now,
         )?;
+        let original_copy = self
+            .store
+            .entry_copies(&item.warehouse_item_id)?
+            .into_iter()
+            .find(|copy| copy.role == CopyRole::Original);
 
-        // N5 D2 opportunistic catalog correlation. Candidate URLs: the
-        // sourceUrl (browser-initiated downloads genuinely carry a
-        // booth.pm/items/ direct link) plus the redirect chain — a silent
-        // download 302s from booth.pm/downloadables/{id} to a signed CDN
-        // address, so the original link only survives as the chain head.
-        // Association priority: an /items/ id anywhere; else a
-        // /downloadables/{id} resolved through BDL's OWN captured
-        // product_downloadables table — server-side facts only, never a
+        // N5 D2 opportunistic catalog correlation. Candidate URLs: a BOOTH
+        // `initiated_from_page_url` (human browser clicks on `booth.pm/items/{id}`
+        // redirect from `booth.pm/downloadables/{id}` to a signed CDN URL, so
+        // the item ID lives on the initiating page URL), `sourceUrl`, plus the
+        // redirect chain. Association priority: an `/items/` id anywhere; else a
+        // `/downloadables/{id}` resolved through BDL's OWN captured
+        // `product_downloadables` table — server-side facts only, never a
         // client assertion over an AMF fact (the IN-4 boundary stands).
-        // Best-effort by design: an unknown product (not yet synced) or a
-        // foreign URL leaves the artifact uncorrelated — never a failed
-        // adoption.
-        let mut association_urls: Vec<&str> = vec![&completion.source_url];
+        let mut association_urls: Vec<&str> = Vec::new();
+        if let Some(page_url) = completion
+            .initiated_from_page_url
+            .as_deref()
+            .filter(|url| is_booth_page_url(url))
+        {
+            association_urls.push(page_url);
+        }
+        association_urls.push(&completion.source_url);
         association_urls.extend(completion.source_url_chain.iter().map(String::as_str));
         let product_id = association_urls
             .iter()
@@ -333,6 +342,36 @@ impl<'a> DownloadAdopter<'a> {
                 Some("download_adoption"),
                 &now,
             );
+            let head_url = completion
+                .source_url_chain
+                .first()
+                .map(String::as_str)
+                .unwrap_or(&completion.source_url);
+            if let (Some(downloadable_id), Some(copy)) = (
+                official_booth_downloadable_id(head_url),
+                original_copy.as_ref(),
+            ) {
+                let _ = self.store.record_adopted_download_evidence(
+                    downloadable_id,
+                    &product_id,
+                    &file_name,
+                    &copy.copy_id,
+                    download_id,
+                    &now,
+                );
+            }
+        }
+        if crate::zip_intake::is_zip(&file_name) {
+            if let Some(copy) = original_copy.as_ref() {
+                let _ = crate::zip_intake::expand(
+                    self.store,
+                    &self.warehouse_root,
+                    copy,
+                    &now,
+                    &|| false,
+                    &|_, _| {},
+                );
+            }
         }
 
         // Invariant (BG-12): the entry was created by this same adoption a
@@ -642,6 +681,221 @@ mod tests {
         std::fs::remove_dir_all(&warehouse_root).ok();
         std::fs::remove_dir_all(&staging_dir).ok();
     }
+
+    #[test]
+    fn browser_free_download_expands_zip_and_reconciles_into_single_card_after_free_downloads_sync() {
+        use std::io::Write;
+        use std::sync::Arc;
+        use vua_bdl_store::{ArtifactMode, ProductObservation, ProductObservationStatus};
+        use vua_orchestrator::{NanosTaskIdGenerator, SqliteTaskStore, SystemClock, TaskRuntime};
+
+        let store = Arc::new(BdlStore::open_in_memory().unwrap());
+        // Item page observed when SiteBrowser landed on https://booth.pm/ja/items/900001
+        // (library_type = None, zero product_library_memberships).
+        store
+            .record_product_observation(&ProductObservation {
+                product_id: "booth:900001".into(),
+                source_url: "https://booth.pm/ja/items/900001".into(),
+                native_product_id: "900001".into(),
+                library_type: None,
+                variant_name: None,
+                final_url: None,
+                status: ProductObservationStatus::Complete,
+                source_locale: Some("ja".into()),
+                source_category: Some("3D衣装".into()),
+                title: Some("Synthetic Ribbon".into()),
+                description: None,
+                age_restriction: None,
+                adult: false,
+                availability: Some("available".into()),
+                price_amount: Some("0".into()),
+                price_currency: Some("JPY".into()),
+                shop_name: Some("Synthetic Atelier".into()),
+                shop_url: None,
+                image_urls: vec![],
+                video_urls: vec![],
+                subproducts: vec![],
+                source_published_at: None,
+                content_hash: format!("sha256:{}", "a".repeat(64)),
+                observed_at: "2026-11-14T08:00:00Z".into(),
+                run_id: None,
+                processor_version: "catalog-enrichment/0.1-json".into(),
+                missing_fields: vec![],
+            })
+            .unwrap();
+
+        let staging_dir = unique_dir("vua-adopt-free", "staging");
+        let staging = staging_dir.join("synthetic-ribbon.zip");
+        {
+            let file = std::fs::File::create(&staging).unwrap();
+            let mut zip = zip::ZipWriter::new(file);
+            zip.start_file("SyntheticRibbon.unitypackage", zip::write::SimpleFileOptions::default())
+                .unwrap();
+            zip.write_all(b"synthetic unitypackage bytes").unwrap();
+            zip.finish().unwrap();
+        }
+        let size = std::fs::metadata(&staging).unwrap().len();
+
+        let consumer = DownloadEventConsumer::new(&store);
+        for (kind, occurred) in [
+            (
+                vua_bdl_store::download_events::DownloadEventKind::Started,
+                "2026-11-14T08:01:00.000Z",
+            ),
+            (
+                vua_bdl_store::download_events::DownloadEventKind::Completed,
+                "2026-11-14T08:01:05.000Z",
+            ),
+        ] {
+            consumer
+                .ingest(&DownloadEventV01 {
+                    schema_version: "0.1".into(),
+                    kind,
+                    download_id: "dl-free-900001".into(),
+                    attempt: 1,
+                    source_url: "https://cdn.example.com/signed-delivery.zip".into(),
+                    initiated_from_page_url: if kind
+                        == vua_bdl_store::download_events::DownloadEventKind::Started
+                    {
+                        Some("https://booth.pm/ja/items/900001".into())
+                    } else {
+                        None
+                    },
+                    url_chain: if kind == vua_bdl_store::download_events::DownloadEventKind::Started
+                    {
+                        Some(vec![
+                            "https://booth.pm/downloadables/777001?variation_id=888001".into(),
+                            "https://cdn.example.com/signed-delivery.zip".into(),
+                        ])
+                    } else {
+                        None
+                    },
+                    suggested_file_name: Some("synthetic-ribbon.zip".into()),
+                    stored_path: Some(staging.to_string_lossy().into_owned()),
+                    expected_bytes: Some(size),
+                    received_bytes: Some(size),
+                    resumable: false,
+                    failure_kind: None,
+                    occurred_at: occurred.into(),
+                })
+                .unwrap();
+        }
+
+        let warehouse_root = unique_dir("vua-adopt-free", "wh");
+        let task_store = Arc::new(SqliteTaskStore::open_in_memory().unwrap());
+        let runtime = TaskRuntime::with_sqlite(
+            task_store.clone(),
+            Arc::new(SystemClock),
+            Arc::new(NanosTaskIdGenerator::default()),
+        )
+        .unwrap();
+        let downloads = crate::library_download::LibraryDownloadService::new(
+            task_store,
+            store.clone(),
+            runtime,
+            warehouse_root.clone(),
+            staging_dir.clone(),
+        )
+        .unwrap();
+        let clock = FixedClock::new(&["2026-11-14T08:01:10.000Z"]);
+        let adopter = DownloadAdopter::new(&store, &clock, &warehouse_root);
+        let adopted = adopter.adopt_download("dl-free-900001").unwrap();
+
+        // 1. Owned product set immediately includes booth:900001, without writing memberships.
+        assert!(store
+            .free_assets_owned_product_ids()
+            .unwrap()
+            .contains("booth:900001"));
+        assert!(store
+            .product_library_memberships("booth:900001")
+            .unwrap()
+            .is_empty());
+
+        // 2. ZIP was expanded so the inner .unitypackage copy is registered.
+        let copies = store
+            .entry_copies(&adopted.entry.warehouse_item_id)
+            .unwrap();
+        assert!(
+            copies
+                .iter()
+                .any(|copy| copy.relative_path.ends_with("SyntheticRibbon.unitypackage")),
+            "expected expanded .unitypackage member in {copies:?}"
+        );
+
+        // 3. Before free_downloads sync, library.list shows exactly ONE card for booth:900001.
+        let before = crate::library_view::list(
+            &store,
+            &warehouse_root,
+            ArtifactMode::UseOriginalUnitypackage,
+            &downloads,
+            serde_json::json!({ "schemaVersion": "0.3" }),
+        )
+        .unwrap();
+        let before_items = before["items"].as_array().unwrap();
+        assert_eq!(before_items.len(), 1, "{before}");
+        assert_eq!(before_items[0]["product"]["productId"], "booth:900001");
+
+        // 4. Simulate later catalogSync of accounts.booth.pm/library/free_downloads.
+        store
+            .record_product_observation(&ProductObservation {
+                product_id: "booth:900001".into(),
+                source_url: "https://booth.pm/ja/items/900001".into(),
+                native_product_id: "900001".into(),
+                library_type: Some("free_downloads".into()),
+                variant_name: None,
+                final_url: None,
+                status: ProductObservationStatus::Complete,
+                source_locale: Some("ja".into()),
+                source_category: Some("3D衣装".into()),
+                title: Some("Synthetic Ribbon".into()),
+                description: None,
+                age_restriction: None,
+                adult: false,
+                availability: Some("available".into()),
+                price_amount: Some("0".into()),
+                price_currency: Some("JPY".into()),
+                shop_name: Some("Synthetic Atelier".into()),
+                shop_url: None,
+                image_urls: vec![],
+                video_urls: vec![],
+                subproducts: vec![],
+                source_published_at: None,
+                content_hash: format!("sha256:{}", "b".repeat(64)),
+                observed_at: "2026-11-14T09:00:00Z".into(),
+                run_id: Some("sync-run-1".into()),
+                processor_version: "catalog-sync/0.3".into(),
+                missing_fields: vec![],
+            })
+            .unwrap();
+        store
+            .upsert_product_downloadables(
+                "booth:900001",
+                &[(777001, "synthetic-ribbon.zip".into())],
+                "2026-11-14T09:00:00Z",
+                Some("sync-run-1"),
+                Some("free_downloads"),
+            )
+            .unwrap();
+
+        // 5. After free_downloads sync, library.list STILL shows ONE reconciled card!
+        let after = crate::library_view::list(
+            &store,
+            &warehouse_root,
+            ArtifactMode::UseOriginalUnitypackage,
+            &downloads,
+            serde_json::json!({ "schemaVersion": "0.3" }),
+        )
+        .unwrap();
+        let after_items = after["items"].as_array().unwrap();
+        assert_eq!(after_items.len(), 1, "{after}");
+        assert_eq!(after_items[0]["kind"], "product");
+        assert_eq!(after_items[0]["product"]["productId"], "booth:900001");
+        assert_eq!(after_items[0]["sources"], serde_json::json!(["free_downloads"]));
+        assert_eq!(after_items[0]["storage"]["presentCopies"], 2);
+
+        std::fs::remove_dir_all(&warehouse_root).ok();
+        std::fs::remove_dir_all(&staging_dir).ok();
+    }
 }
 
 /// `/items/{digits}` in a booth.pm URL (any locale path) — the only URL
@@ -649,6 +903,37 @@ mod tests {
 /// return None (uncorrelated, not an error).
 /// `/downloadables/{digits}` → the digits (BDL capture-table key; the
 /// adoption-side reverse lookup into product_downloadables).
+fn is_booth_page_url(url: &str) -> bool {
+    let Ok(parsed) = url::Url::parse(url) else {
+        return false;
+    };
+    parsed.scheme() == "https"
+        && parsed
+            .host_str()
+            .is_some_and(|host| host == "booth.pm" || host.ends_with(".booth.pm"))
+}
+
+fn official_booth_downloadable_id(url: &str) -> Option<i64> {
+    let rest = url.strip_prefix("https://booth.pm/downloadables/")?;
+    let (digits, query) = match rest.split_once('?') {
+        Some((d, q)) => (d, Some(q)),
+        None => (rest, None),
+    };
+    if digits.is_empty()
+        || digits.starts_with('0')
+        || !digits.bytes().all(|b| b.is_ascii_digit())
+    {
+        return None;
+    }
+    if let Some(q) = query {
+        let var = q.strip_prefix("variation_id=")?;
+        if var.is_empty() || var.starts_with('0') || !var.bytes().all(|b| b.is_ascii_digit()) {
+            return None;
+        }
+    }
+    digits.parse::<i64>().ok()
+}
+
 fn downloadable_id_from_url(url: &str) -> Option<i64> {
     let start = url.find("/downloadables/")? + "/downloadables/".len();
     let tail = &url[start..];

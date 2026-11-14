@@ -8,7 +8,7 @@ import { summarizeLines } from "./use-line-summary.ts";
 describe("directory", () => {
   it("lists every page once, in the player's order", () => {
     const ids = [...directory.env, ...directory.production].map(item => item.id);
-    expect(ids).toEqual(["env-play", "tools-discover", "warehouse", "workshop", "release", "recipe", "packages", "env-create"]);
+    expect(ids).toEqual(["env-play", "tools-discover", "warehouse", "asset-browser", "workshop", "release", "recipe", "packages", "env-create"]);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids.every(isPageId)).toBe(true);
   });
@@ -17,10 +17,12 @@ describe("directory", () => {
     expect(directory.production.filter(item => !isAmfPage(item.id)).map(item => item.id)).toEqual(["env-create"]);
   });
 
-  it("selects Materials on both of its tabs", () => {
+  it("selects Materials and Browse independently as top-level items", () => {
     const materials = directory.production.find(item => item.id === "warehouse")!;
+    const browse = directory.production.find(item => item.id === "asset-browser")!;
     expect(directoryItemSelected(materials, "warehouse")).toBe(true);
-    expect(directoryItemSelected(materials, "asset-browser")).toBe(true);
+    expect(directoryItemSelected(materials, "asset-browser")).toBe(false);
+    expect(directoryItemSelected(browse, "asset-browser")).toBe(true);
     expect(directoryItemSelected(materials, "workshop")).toBe(false);
   });
 

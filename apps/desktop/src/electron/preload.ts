@@ -20,6 +20,7 @@ import type {
   UpdatePlanSnapshotV01,
   AiConnectionLocale,
   AiToolsSnapshotV01,
+  FreeAssetsDesktopStatusV01,
 } from "@vua/contracts";
 
 // 沙箱 preload 只允许 require electron 白名单模块:@vua/contracts 在此仅做
@@ -46,6 +47,11 @@ const desktopBrowserListeners = new WeakMap<
 const navConfirmListeners = new WeakMap<
   (request: NavigationConfirmRequestV1) => void,
   (event: IpcRendererEvent, payload: NavigationConfirmRequestV1) => void
+>();
+
+const freeAssetsListeners = new WeakMap<
+  (status: FreeAssetsDesktopStatusV01) => void,
+  (event: IpcRendererEvent, payload: FreeAssetsDesktopStatusV01) => void
 >();
 
 const overlayViewListeners = new WeakMap<
@@ -336,6 +342,7 @@ const api: VuaDesktopApiV7 = Object.freeze({
   // 远程内容窄面(F4-2):只发语义动作;远程页面本身无 preload、无本面
   desktopBrowser: Object.freeze({
     open: (site: DesktopBrowserSiteIdV1) => ipcRenderer.invoke("vua:desktop-browser:open", site),
+    openBoothItem: (productId: string) => ipcRenderer.invoke("vua:desktop-browser:open-booth-item", productId),
     navigate: (viewId: string, site: DesktopBrowserSiteIdV1) => ipcRenderer.invoke("vua:desktop-browser:navigate", viewId, site),
     goBack: (viewId: string) => ipcRenderer.invoke("vua:desktop-browser:go-back", viewId),
     goForward: (viewId: string) => ipcRenderer.invoke("vua:desktop-browser:go-forward", viewId),
@@ -412,6 +419,22 @@ const api: VuaDesktopApiV7 = Object.freeze({
     fetchProduct: (productId: string) =>
       ipcRenderer.invoke("vua:catalog-sync:fetch-product", productId),
     searchProducts: (query: string) => ipcRenderer.invoke("vua:catalog-sync:search-products", query),
+  }),
+  freeAssets: Object.freeze({
+    status: () => ipcRenderer.invoke("vua:free-assets:status"),
+    query: (target?: string | readonly string[] | null) =>
+      ipcRenderer.invoke("vua:free-assets:query", target ?? null),
+    cancel: () => ipcRenderer.invoke("vua:free-assets:cancel"),
+    subscribe: (listener: (status: FreeAssetsDesktopStatusV01) => void) => {
+      const wrapped = (_event: IpcRendererEvent, payload: FreeAssetsDesktopStatusV01) => listener(payload);
+      freeAssetsListeners.set(listener, wrapped);
+      ipcRenderer.on("vua:free-assets:changed", wrapped);
+      return () => {
+        const current = freeAssetsListeners.get(listener);
+        if (current) ipcRenderer.removeListener("vua:free-assets:changed", current);
+        freeAssetsListeners.delete(listener);
+      };
+    },
   }),
   // 静默下载(N5,2026-10-05 用户裁决):文件 id 批入队即受理;进度与终态
   // 走下载任务面(通知中心),本面不返回过程

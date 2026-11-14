@@ -1,4 +1,4 @@
-import { WebContentsView, session, type BrowserWindow, type Rectangle, type Session } from "electron";
+import { WebContentsView, session, type BrowserWindow, type Rectangle, type Session, type WebContents } from "electron";
 import { DESKTOP_BROWSER_TAB_LIMIT, type DesktopBrowserLoadEventV1, type DesktopBrowserTabEventV1, type DesktopBrowserViewportV1, type RemoteContentEventV1, type RemoteContentViewStateV1 } from "@vua/contracts";
 import { browserViewportBounds } from "./browser-viewport.js";
 import { readSessionPage } from "./session-page.js";
@@ -105,6 +105,13 @@ export class RemoteContentManager {
   }
 
   hasView(viewId: string): boolean { return this.#views.has(viewId); }
+
+  ownsWebContents(webContents: WebContents | null | undefined): boolean {
+    if (webContents == null || this.#disposed) return false;
+    return [...this.#views.values()].some(
+      managed => managed.view.webContents === webContents && !managed.view.webContents.isDestroyed(),
+    );
+  }
 
   setViewport(viewId: string, viewport: DesktopBrowserViewportV1 | null): void {
     const managed = this.#requireView(viewId);

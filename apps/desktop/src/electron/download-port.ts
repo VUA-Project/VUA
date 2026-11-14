@@ -38,6 +38,8 @@ export interface DownloadPortOptions {
   readonly allowedOrigins: readonly string[];
   /** Private library composition: an admitted BOOTH request awaiting native binding. */
   readonly isAwaitingLibraryRequest?: (originalUrl: string) => boolean;
+  /** Interactive SiteBrowser view ownership check for player-clicked BOOTH downloads. */
+  readonly isTrustedBrowserView?: (webContents: WebContents) => boolean;
   readonly sink: DownloadEventSink;
   readonly now?: () => string;
   /** progress 节流间隔(默认 250ms;冒烟可调小) */
@@ -106,7 +108,8 @@ export class DownloadPort {
   handleWillDownload(event: { readonly preventDefault: () => void }, item: DownloadItem, webContents: WebContents): void {
     const sourceUrl = item.getURL();
     const urlChain = this.#urlChainOf(item);
-    const selectedLibraryUrl = this.#selectedLibraryUrlOf(sourceUrl, urlChain);
+    const initiatedFromPageUrl = this.#pageUrlOf(webContents);
+    const selectedLibraryUrl = this.#selectedLibraryUrlOf(sourceUrl, urlChain, webContents, initiatedFromPageUrl);
     if (!isAllowedRemoteOrigin(sourceUrl, this.#options.allowedOrigins) && selectedLibraryUrl === null) {
       event.preventDefault();
       this.#emit({
@@ -114,7 +117,7 @@ export class DownloadPort {
         downloadId: this.#nextId(),
         attempt: 1,
         sourceUrl,
-        initiatedFromPageUrl: this.#pageUrlOf(webContents),
+        initiatedFromPageUrl,
         urlChain,
         suggestedFileName: this.#suggestedNameOf(item),
         storedPath: null,
@@ -139,7 +142,7 @@ export class DownloadPort {
     const record: DownloadRecord = {
       downloadId,
       sourceUrl,
-      initiatedFromPageUrl: this.#pageUrlOf(webContents),
+      initiatedFromPageUrl,
       urlChain,
       selectedLibraryUrl,
       suggestedFileName: this.#suggestedNameOf(item),
@@ -320,11 +323,16 @@ export class DownloadPort {
     }
   }
 
-  #selectedLibraryUrlOf(sourceUrl: string, chain: readonly string[] | null): string | null {
+  #selectedLibraryUrlOf(
+    sourceUrl: string,
+    chain: readonly string[] | null,
+    webContents: WebContents,
+    initiatedFromPageUrl: string | null,
+  ): string | null {
     if (chain === null) return null;
     const original = chain[0];
     if (original === undefined || chain.at(-1) !== sourceUrl
-      || !/^https:\/\/booth\.pm\/downloadables\/[1-9][0-9]*$/u.test(original)
+      || !/^https:\/\/booth\.pm\/downloadables\/[1-9][0-9]*(?:\?variation_id=[1-9][0-9]*)?$/u.test(original)
       || !isAllowedRemoteOrigin(original, this.#options.allowedOrigins)) return null;
     try {
       for (const hop of chain) {
@@ -332,9 +340,25 @@ export class DownloadPort {
         if (url.protocol !== "https:" || url.username !== "" || url.password !== "" || url.hash !== "") return null;
       }
     } catch { return null; }
-    if (this.#pendingRestarts.get(original)?.selectedLibraryUrl === original
-      || this.#options.isAwaitingLibraryRequest?.(original) === true) return original;
+    if (this.#pendingRestarts.get(original)?.selectedLibraryUrl === original) return original;
+    if (/^https:\/\/booth\.pm\/downloadables\/[1-9][0-9]*$/u.test(original)
+      && this.#options.isAwaitingLibraryRequest?.(original) === true) return original;
+    if (this.#options.isTrustedBrowserView?.(webContents) === true
+      && initiatedFromPageUrl !== null
+      && this.#isAllowedBoothInitiatorPage(initiatedFromPageUrl)) return original;
     return null;
+  }
+
+  #isAllowedBoothInitiatorPage(pageUrl: string): boolean {
+    try {
+      const parsed = new URL(pageUrl);
+      return parsed.protocol === "https:"
+        && parsed.username === ""
+        && parsed.password === ""
+        && (parsed.hostname === "booth.pm" || parsed.hostname === "accounts.booth.pm");
+    } catch {
+      return false;
+    }
   }
 
   #suggestedNameOf(item: DownloadItem): string | null {

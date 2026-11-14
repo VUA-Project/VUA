@@ -7,8 +7,22 @@ type Frame = { x: number; y: number; width: number; height: number; visible: boo
 const empty: Frame = { x: 0, y: 0, width: 0, height: 0, visible: false, covered: false };
 
 /** Only the local shell measures layout; the native view receives bounded geometry. */
-export function BrowserFrame({ viewId, children, modalOwner, status, hideContent = false }: {
-  viewId: string | null; children: ReactNode; modalOwner?: string | undefined; status?: ReactNode; hideContent?: boolean;
+export function BrowserFrame({
+  viewId,
+  children,
+  localContent,
+  showLocalContent = false,
+  modalOwner,
+  status,
+  hideContent = false,
+}: {
+  viewId: string | null;
+  children: ReactNode;
+  localContent?: ReactNode;
+  showLocalContent?: boolean | undefined;
+  modalOwner?: string | undefined;
+  status?: ReactNode;
+  hideContent?: boolean;
 }) {
   const owner = useRef<HTMLSpanElement>(null);
   const shapeScope = useShapeScope();
@@ -48,13 +62,13 @@ export function BrowserFrame({ viewId, children, modalOwner, status, hideContent
     let previous = "";
     const measure = () => {
       const rect = viewport.current?.getBoundingClientRect();
-      const value = frame.visible && !frame.covered && !hideContent && rect && rect.width > 0 && rect.height > 0
+      const value = frame.visible && !frame.covered && !hideContent && !showLocalContent && rect && rect.width > 0 && rect.height > 0
         ? { x: Math.max(0, rect.x), y: Math.max(0, rect.y), width: rect.width, height: rect.height } : null;
       const key = JSON.stringify(value);
       if (key === previous) return;
       previous = key;
       void browser?.setViewport(viewId, value).catch(() => { /* The owner handles closed views. */ });
-      if (frame.visible) {
+      if (frame.visible && !showLocalContent) {
         document.body.dataset.vuaBrowserView = viewId;
         document.body.style.setProperty("--vua-browser-left", `${frame.x}px`);
         document.body.style.setProperty("--vua-browser-top", `${frame.y}px`);
@@ -68,7 +82,7 @@ export function BrowserFrame({ viewId, children, modalOwner, status, hideContent
       void browser?.setViewport(viewId, null).catch(() => {});
       if (document.body.dataset.vuaBrowserView === viewId) delete document.body.dataset.vuaBrowserView;
     };
-  }, [viewId, frame, hideContent]);
+  }, [viewId, frame, hideContent, showLocalContent]);
 
   return <>
     <span ref={owner} className="vua-browser-owner" aria-hidden="true" />
@@ -76,7 +90,8 @@ export function BrowserFrame({ viewId, children, modalOwner, status, hideContent
       data-vua-modal-owner={modalOwner} data-vua-shape-scope={shapeScope} hidden={!frame.visible}
       style={{ left: frame.x, top: frame.y, width: frame.width, height: frame.height }}>
       {children}
-      <div ref={viewport} className="vua-browser-frame__viewport">{status}</div>
+      {localContent !== undefined ? <div className="vua-browser-frame__local" hidden={!showLocalContent}>{localContent}</div> : null}
+      <div ref={viewport} className="vua-browser-frame__viewport" hidden={showLocalContent}>{status}</div>
     </div>, document.body)}
   </>;
 }

@@ -1,0 +1,16 @@
+{
+  "contractVersion": "0.1",
+  "requestId": "synthetic-free-ingest",
+  "correlationId": "synthetic-free-ingest",
+  "kind": "command",
+  "method": "freeAssets.ingestSearchPage",
+  "commandId": "cmd-free-ingest-1",
+  "params": {
+    "schemaVersion": "0.1",
+    "keyword": "SyntheticBaseA",
+    "sourceUrl": "https://booth.pm/ja/browse/3D%E3%83%A2%E3%83%87%E3%83%AB?q=SyntheticBaseA&max_price=0&sort=new&in_stock=true",
+    "html": "<ul class='market-items'><li class='item-card' data-product-id='900001' data-product-price='0' data-product-category='209'><a class='js-thumbnail-image item-card__thumbnail-image' data-original='https://booth.pximg.net/c/300x300/synthetic-ribbon.jpg'></a><a class='item-card__category-anchor'>3D衣装</a><div class='item-card__title'><a href='https://booth.pm/ja/items/900001'>【11/30まで】Synthetic Ribbon</a></div><div class='item-card__shop-name'>Synthetic Atelier</div></li></ul>",
+    "fetchedAt": "2026-11-14T08:00:00Z",
+    "resetCache": true
+  }
+}

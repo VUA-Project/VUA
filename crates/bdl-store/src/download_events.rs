@@ -606,6 +606,9 @@ impl<'a> DownloadEventConsumer<'a> {
             .first()
             .and_then(|event| event.url_chain.clone())
             .unwrap_or_default();
+        let initiated_from_page_url = history
+            .first()
+            .and_then(|event| event.initiated_from_page_url.clone());
         Ok(Some(StagingCompletion {
             staging_token: staging_token_for(download_id, &completed.occurred_at),
             download_id: download_id.to_string(),
@@ -614,6 +617,7 @@ impl<'a> DownloadEventConsumer<'a> {
             suggested_file_name: completed.suggested_file_name.clone(),
             source_url,
             source_url_chain,
+            initiated_from_page_url,
         }))
     }
 }
@@ -635,6 +639,9 @@ pub struct StagingCompletion {
     /// The started event's redirect chain (head = the original request
     /// URL); empty when the port saw no redirects.
     pub source_url_chain: Vec<String>,
+    /// The page URL from which a user-initiated browser download started, when
+    /// recorded on the `started` event.
+    pub initiated_from_page_url: Option<String>,
 }
 
 fn staging_token_for(download_id: &str, occurred_at: &str) -> String {

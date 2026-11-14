@@ -24,7 +24,8 @@ export const directory: Readonly<Record<"env" | "production", readonly Directory
     { id: "tools-discover", title: journey.tools, icon: "tools" },
   ],
   production: [
-    { id: "warehouse", title: factory.rooms.materials.name, icon: "folder", pages: ["asset-browser"] },
+    { id: "warehouse", title: factory.rooms.materials.name, icon: "folder" },
+    { id: "asset-browser", title: factory.tabs.browse, icon: "search" },
     { id: "workshop", title: factory.rooms.workshop.name, icon: "avatar" },
     { id: "release", title: strings.nav.pages.release, icon: "anim" },
     { id: "recipe", title: factory.tabs.recipes, icon: "edit" },

@@ -1,6 +1,7 @@
 import { recipeTransferText } from "./amf-recipe-transfer.js";
 import { createCatalogEnricher, readCatalogProduct, type CatalogEnricher, type CatalogProductReader } from "./catalog-enrich.js";
-import { isCatalogProductIdV01, isCatalogEnrichmentQueueResultV01, isCatalogEnrichmentBeginResultV01 } from "@vua/contracts";
+import { createBoothReadGate, createFreeAssetsRunner, type FreeAssetsRunner } from "./booth-read-gate.js";
+import { isCatalogProductIdV01, isCatalogEnrichmentQueueResultV01, isCatalogEnrichmentBeginResultV01, desktopBrowserBoothItemUrl, isFreeAssetsStateV01, normalizeFreeAssetsQueryTargetV01 } from "@vua/contracts";
 import { registerRecipeSharing, queueShareLink } from "./recipe-share-ipc.js";
 import { dialogStrings, startupFailureCopy } from "./dialog-i18n.js";
 import { quitStrings, runningTaskCount } from "./quit-guard.js";
@@ -265,7 +266,9 @@ let downloadPort: DownloadPort | null = null;
 let silentDownloadQueue: ReturnType<typeof createSilentDownloadQueue> | null = null;
 // 账号库同步当前运行(N5 S1):单并发守卫的持有位;结果落 provider 任务面
 let catalogSyncRun: CatalogSyncRun | null = null;
+const boothReadGate = createBoothReadGate();
 let catalogEnricher: CatalogEnricher | null = null;
+let freeAssetsRunner: FreeAssetsRunner | null = null;
 let catalogProductReads = 0;
 let catalogSearchRunning = false;
 const catalogProductRequests = new Set<AbortController>();
@@ -291,10 +294,59 @@ function catalogProductReader(): CatalogProductReader {
     },
   };
 }
+function ensureFreeAssetsRunner(): FreeAssetsRunner {
+  if (freeAssetsRunner === null) {
+    freeAssetsRunner = createFreeAssetsRunner({
+      gate: boothReadGate,
+      canRun: () => !shutdownStarted && provider?.amfReady() === true && remoteContent !== null
+        && catalogSyncRun === null && (silentDownloadQueue?.pending() ?? 0) === 0
+        && downloadPort?.hasActiveTransfers() !== true && amfIngestSink?.pending() !== true,
+      onPauseBackground: () => catalogEnricher?.pause(),
+      onResumeBackground: () => catalogEnricher?.scheduleIdle(),
+      readState: async () => {
+        if (!provider?.amfReady()) return null;
+        const response = await provider.invoke({
+          ...catalogRequestBase(),
+          kind: "query",
+          method: "freeAssets.state",
+          params: { schemaVersion: "0.1" },
+        });
+        return response.ok && isFreeAssetsStateV01(response.value) ? response.value : null;
+      },
+      ingestPage: async (params) => {
+        if (!provider?.amfReady()) return { ok: false, code: "vua.free_assets.unavailable" };
+        const response = await provider.invoke({
+          ...catalogRequestBase(),
+          kind: "command",
+          commandId: crypto.randomUUID(),
+          method: "freeAssets.ingestSearchPage",
+          params,
+        });
+        if (response.ok && isFreeAssetsStateV01(response.value)) return { ok: true, value: response.value };
+        return { ok: false, code: response.ok ? "vua.free_assets.invalid_page" : response.error.code };
+      },
+      fetch: (url, signal) => {
+        if (remoteContent === null || !provider?.amfReady()) return Promise.reject(new Error("free_assets_unavailable"));
+        return remoteContent.fetchWithSession(url, signal);
+      },
+    });
+    freeAssetsRunner.subscribe((status) => {
+      for (const window of BrowserWindow.getAllWindows()) {
+        if (!window.isDestroyed() && isAllowedLocalSender(window.webContents.getURL(), rendererUrl)) {
+          window.webContents.send("vua:free-assets:changed", status);
+        }
+      }
+    });
+  }
+  return freeAssetsRunner;
+}
 function ensureCatalogEnricher(): void {
   catalogEnricher ??= createCatalogEnricher({
+    readGate: boothReadGate,
     canRun: () => !shutdownStarted && provider?.amfReady() === true && remoteContent !== null
-      && catalogSyncRun === null && catalogProductReads === 0 && !catalogSearchRunning && (silentDownloadQueue?.pending() ?? 0) === 0
+      && catalogSyncRun === null && catalogProductReads === 0 && !catalogSearchRunning
+      && !boothReadGate.hasForegroundActivity() && freeAssetsRunner?.isRunning() !== true
+      && (silentDownloadQueue?.pending() ?? 0) === 0
       && downloadPort?.hasActiveTransfers() !== true && amfIngestSink?.pending() !== true,
     queue: async limit => {
       if (!provider?.amfReady()) throw new Error("catalog_unavailable");
@@ -1149,6 +1201,16 @@ function registerIpc(provider: ModuleProvider): void {
     if (remoteContent === null) throw new Error("browser unavailable");
     return browserDisplayState(remoteContent.openSite(site.url));
   });
+  ipcMain.handle("vua:desktop-browser:open-booth-item", async (event, productId: unknown) => {
+    assertBrowserSender(event);
+    const itemUrl = desktopBrowserBoothItemUrl(productId);
+    if (itemUrl === null) throw new Error("invalid booth item");
+    assertAmfReady();
+    await ensureAmfShell();
+    assertAmfReady();
+    if (remoteContent === null) throw new Error("browser unavailable");
+    return browserDisplayState(remoteContent.openSite(itemUrl));
+  });
   ipcMain.handle("vua:desktop-browser:navigate", (event, viewId: unknown, siteId: unknown) => {
     assertBrowserSender(event);
     const site = desktopBrowserSite(siteId);
@@ -1312,9 +1374,9 @@ function registerIpc(provider: ModuleProvider): void {
     const run = startCatalogSync(
       {
         fetch: async (url, signal) => {
-          catalogEnricher?.noteRead();
+          boothReadGate.noteRead();
           try { return await content.fetchWithSession(url, signal); }
-          finally { catalogEnricher?.noteRead(); }
+          finally { boothReadGate.noteRead(); }
         },
         begin: (params) => invokeCatalogSync({ method: "catalog.beginLibrarySync", params }),
         invoke: (params) => invokeCatalogSync({ method: "catalog.ingestLibraryPage", params }),
@@ -1412,44 +1474,71 @@ function registerIpc(provider: ModuleProvider): void {
       }
       catalogProductReads += 1;
       const abort = new AbortController(); catalogProductRequests.add(abort);
+      const endFg = boothReadGate.beginForeground();
       catalogEnricher?.pause();
-      catalogEnricher?.noteRead();
+      const signal = AbortSignal.any([abort.signal, AbortSignal.timeout(60_000)]);
       try {
-        return { ok: await readCatalogProduct(productId, catalogProductReader(), AbortSignal.any([abort.signal, AbortSignal.timeout(60_000)])) === "updated" };
+        return {
+          ok: await readCatalogProduct(
+            productId,
+            catalogProductReader(),
+            signal,
+            () => boothReadGate.acquire(signal, { foreground: true }),
+          ) === "updated",
+        };
       } catch {
         return { ok: false };
       } finally {
+        endFg();
         catalogProductReads -= 1;
         catalogProductRequests.delete(abort);
-        catalogEnricher?.noteRead();
         catalogEnricher?.scheduleIdle();
       }
     },
   );
 
-  let lastSearchAt = 0;
   ipcMain.handle("vua:catalog-sync:search-products", async (event, query: unknown) => {
     assertLocalSender(senderFrameUrl(event)); assertAmfReady();
     const remote = remoteContent; const current = provider;
     if (remote === null || current === null || catalogSearchRunning) throw new Error("search_unavailable");
     catalogSearchRunning = true;
+    const endFg = boothReadGate.beginForeground();
     catalogEnricher?.pause();
     try {
-      const wait = 1500 - (Date.now() - lastSearchAt);
-      if (wait > 0) await new Promise(resolve => setTimeout(resolve, wait));
-      assertAmfReady(); lastSearchAt = Date.now();
-      catalogEnricher?.noteRead();
+      const searchSignal = AbortSignal.timeout(30_000);
+      await boothReadGate.acquire(searchSignal, { foreground: true, minIntervalMs: 1_500 });
+      assertAmfReady();
       return await searchPublicBoothProducts(query, {
         fetch: async url => {
-          try { return await remote.fetchWithSession(url, AbortSignal.timeout(30_000)); }
-          finally { catalogEnricher?.noteRead(); }
+          try { return await remote.fetchWithSession(url, searchSignal); }
+          finally { boothReadGate.noteRead(); }
         },
         parse: params => current.invoke({ contractVersion: APPLICATION_CONTRACT_VERSION, requestId: crypto.randomUUID(), correlationId: crypto.randomUUID(), kind: "query", method: "catalog.searchProducts", params }),
       });
     } finally {
+      endFg();
       catalogSearchRunning = false;
       catalogEnricher?.scheduleIdle();
     }
+  });
+  ipcMain.handle("vua:free-assets:status", (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    assertAmfReady();
+    return ensureFreeAssetsRunner().status();
+  });
+  ipcMain.handle("vua:free-assets:query", async (event, target?: unknown) => {
+    assertLocalSender(senderFrameUrl(event));
+    assertAmfReady();
+    await ensureAmfShell();
+    assertAmfReady();
+    const normalized = normalizeFreeAssetsQueryTargetV01(target);
+    if (normalized === "invalid") throw new Error("invalid free-assets query target");
+    return ensureFreeAssetsRunner().query(normalized);
+  });
+  ipcMain.handle("vua:free-assets:cancel", (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    assertAmfReady();
+    freeAssetsRunner?.cancel();
   });
   ipcMain.handle("vua:silent-download:control", (event, batchId: unknown, paused: unknown) => {
     assertLocalSender(senderFrameUrl(event)); assertAmfReady();
@@ -1966,7 +2055,16 @@ async function ensureAmfShell(): Promise<void> {
     // download-ingest.ts,行为有单测)。握手未声明下载域时诚实降级写诊断
     // 通道。暂存根跟随用户数据目录布局,由注入决定,端口不自选策略
     const ingestSink = createDownloadEventSink({
-      onPersisted: (event) => silentDownloadQueue?.notifyPersisted(event),
+      onPersisted: (event) => {
+        const silent = silentDownloadQueue?.notifyPersisted(event) === true;
+        if (!silent && event.kind === "download.completed") {
+          broadcastDesktopBrowserEvent({
+            kind: "download-completed",
+            downloadId: event.downloadId,
+            suggestedFileName: event.suggestedFileName,
+          });
+        }
+      },
       onRejected: (event) => silentDownloadQueue?.notifyUnconfirmed(event),
       onDropped: (event) => silentDownloadQueue?.notifyUnconfirmed(event),
       invoke: (params) => {
@@ -2008,6 +2106,7 @@ async function ensureAmfShell(): Promise<void> {
       allowedOrigins: ["https://booth.pm"],
       sink: downloadSink,
       isAwaitingLibraryRequest: (originalUrl) => silentDownloadQueue?.isAwaitingNative(originalUrl) === true,
+      isTrustedBrowserView: (wc) => remoteContent?.ownsWebContents(wc) === true,
     });
     // 静默下载编排(N5,2026-10-05 用户裁决):串行 + 6s 源站礼貌间隔,经
     // downloadURL 走 will-download 管道(暂存/事件/九态任务/采纳全复用)
@@ -2060,6 +2159,7 @@ async function ensureAmfShell(): Promise<void> {
     remoteContent.setSuspended(pendingNavConfirms.size > 0);
     ensureCatalogEnricher();
     disposeAmfShell = () => {
+      freeAssetsRunner?.cancel();
       catalogEnricher?.pause();
       for (const request of catalogProductRequests) request.abort();
       catalogSyncRun?.stop(); catalogSyncRun = null;
@@ -2118,7 +2218,7 @@ app.whenReady().then(async () => {
       if (amfGenerations.backend?.available === false) throw new Error("AMF program files need repair");
       return createDesktopOrchestratorProvider(resolveAmfEndpoint());
     },
-    shellBusy: () => catalogSyncRun !== null || (silentDownloadQueue?.pending() ?? 0) > 0
+    shellBusy: () => catalogSyncRun !== null || freeAssetsRunner?.isRunning() === true || (silentDownloadQueue?.pending() ?? 0) > 0
       || downloadPort?.hasActiveTransfers() === true || amfIngestSink?.pending() === true,
   });
   if (!dataTrialValid) provider.refuseDataTrial();
@@ -2127,6 +2227,7 @@ app.whenReady().then(async () => {
   provider.subscribeModule(snapshot => {
     const seq = ++moduleEventSeq;
     if (snapshot.state !== "ready") {
+      freeAssetsRunner?.cancel();
       catalogEnricher?.pause();
       for (const request of catalogProductRequests) request.abort();
     }
@@ -2242,6 +2343,7 @@ app.on("before-quit", (event) => {
     return;
   }
   systemUsage.stop();
+  freeAssetsRunner?.dispose();
   catalogEnricher?.dispose();
   for (const request of catalogProductRequests) request.abort();
   stopGameGuideFollowTimer();

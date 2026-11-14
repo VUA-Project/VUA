@@ -9,6 +9,7 @@ export * from "./catalog-enrichment-v01.js";
 export * from "./catalog-orders.js";
 export * from "./library-download-v01.js";
 export * from "./booth-search-v01.js";
+export * from "./booth-free-assets-v01.js";
 export * from "./library-view-v01.js";
 export * from "./library-maintenance-v01.js";
 export * from "./library-intake-v01.js";

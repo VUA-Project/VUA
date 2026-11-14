@@ -7,6 +7,7 @@
 #![allow(clippy::result_large_err)]
 
 pub mod artifact_inspection;
+pub mod booth_free_assets;
 pub mod booth_search;
 pub mod catalog_sync;
 pub mod description_dependencies;
