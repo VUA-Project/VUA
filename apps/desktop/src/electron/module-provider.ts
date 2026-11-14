@@ -252,6 +252,10 @@ export class ModuleProvider implements OrchestratorProviderV01 {
     return () => this.#listeners.delete(listener);
   }
 
+  subscribeStatus(listener: (status: ReturnType<OrchestratorProviderV01["status"]>) => void): ProviderUnsubscribe {
+    return this.options.host.subscribeStatus?.(listener) ?? (() => {});
+  }
+
   #query(method: "application.getSnapshot" | "task.list"): ApplicationRequestV01 {
     return { contractVersion: this.contractVersion, requestId: crypto.randomUUID(), correlationId: crypto.randomUUID(), kind: "query", method, params: {} };
   }

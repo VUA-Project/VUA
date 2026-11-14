@@ -32,6 +32,7 @@ mod amf_production_routes;
 mod amf_release_routes;
 mod amf_share_routes;
 mod deployment_routes;
+pub mod eac_routes;
 mod external_tool_routes;
 mod game_window_routes;
 mod known_packages;

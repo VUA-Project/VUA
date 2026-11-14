@@ -1,5 +1,11 @@
 // Search synonyms intentionally span all supported languages.
 export const guideSearchAliases: Readonly<Record<string, readonly string[]>> = {
+  "guide-start/eac-30005-occupied": ["30005", "CreateFile failed with 32", "STOP_PENDING", "EasyAntiCheat_EOSSys", "EAC", "Easy Anti-Cheat", "EasyAntiCheat", "占用", "佔用", "运行中", "執行中", "起動できない", "실행 중"],
+  "guide-start/eac-not-installed": ["EAC", "Easy Anti-Cheat is not installed", "EasyAntiCheat_EOS_Setup.exe", "杀毒", "防毒", "白名单", "隔離", "ウイルス対策", "백신"],
+  "guide-start/eac-1275-driver-blocked": ["1275", "StartService", "KB5026372", "内核隔离", "核心隔離", "堆栈保护", "堆疊保護", "コア分離", "코어 격리", "EAC"],
+  "guide-start/eac-untrusted-system-file": ["30004", "Untrusted system file", "WaitForSingleObject", "sfc /scannow", "Armoury Crate", "iCue", "AVG", "Avast", "EAC"],
+  "guide-start/eac-connection-lost": ["verified connection", "connection lost", "EOS", "加速器", "断线", "斷線", "切断", "연결 끊김", "EAC"],
+  "guide-start/eac-sdk-multi-instance": ["Only one instance", "1519", "多开", "多開", "双重启动", "複数起動", "다중 실행", "Build & Test", "EAC"],
   "guide-creator/upload-eligibility": ["New User", "上传资格", "上传条件", "上傳條件", "upload eligibility", "完整账号", "完整帳號", "アップロード条件", "업로드 자격", "업로드 조건"],
   "guide-creator/trust-rank": ["Trust Rank", "用户等级", "信任等级", "使用者等級", "トラストランク", "신뢰 등급", "사용자 등급"],
   "guide-creator/improve-trust": ["提升等级", "升级", "升等", "New User", "rank up", "Visitor", "トラストランク上げ", "등급 올리기"],

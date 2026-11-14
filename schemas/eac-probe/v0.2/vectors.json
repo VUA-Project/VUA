@@ -1,0 +1,348 @@
+[
+  {
+    "name": "valid inspect params",
+    "kind": "inspectParams",
+    "valid": true,
+    "value": {
+      "schemaVersion": "0.2"
+    }
+  },
+  {
+    "name": "reject caller-supplied path in inspect params",
+    "kind": "inspectParams",
+    "valid": false,
+    "value": {
+      "schemaVersion": "0.2",
+      "vrchatPath": "C:\\Games\\VRChat"
+    }
+  },
+  {
+    "name": "reject wrong schemaVersion in inspect params",
+    "kind": "inspectParams",
+    "valid": false,
+    "value": {
+      "schemaVersion": "0.1"
+    }
+  },
+  {
+    "name": "valid terminate params",
+    "kind": "terminateParams",
+    "valid": true,
+    "value": {
+      "schemaVersion": "0.2",
+      "pid": 9012,
+      "created": "134392000100000000",
+      "path": "D:\\SteamLibrary\\steamapps\\common\\VRChat\\start_protected_game.exe",
+      "confirmed": true
+    }
+  },
+  {
+    "name": "reject unconfirmed terminate params",
+    "kind": "terminateParams",
+    "valid": false,
+    "value": {
+      "schemaVersion": "0.2",
+      "pid": 9012,
+      "created": "134392000100000000",
+      "path": "D:\\SteamLibrary\\steamapps\\common\\VRChat\\start_protected_game.exe",
+      "confirmed": false
+    }
+  },
+  {
+    "name": "reject numeric created in terminate params",
+    "kind": "terminateParams",
+    "valid": false,
+    "value": {
+      "schemaVersion": "0.2",
+      "pid": 9012,
+      "created": 134392000100000000,
+      "path": "D:\\SteamLibrary\\steamapps\\common\\VRChat\\start_protected_game.exe",
+      "confirmed": true
+    }
+  },
+  {
+    "name": "valid repair params",
+    "kind": "repairParams",
+    "valid": true,
+    "value": {
+      "schemaVersion": "0.2",
+      "confirmed": true
+    }
+  },
+  {
+    "name": "reject caller-supplied path in repair params",
+    "kind": "repairParams",
+    "valid": false,
+    "value": {
+      "schemaVersion": "0.2",
+      "confirmed": true,
+      "path": "C:\\Temp\\evil.exe"
+    }
+  },
+  {
+    "name": "valid repair receipt launched non-blocking",
+    "kind": "repairReceipt",
+    "valid": true,
+    "value": {
+      "schemaVersion": "vua.eac-repair/v0.2",
+      "outcome": "launched",
+      "exitCode": null
+    }
+  },
+  {
+    "name": "valid repair receipt already running",
+    "kind": "repairReceipt",
+    "valid": true,
+    "value": {
+      "schemaVersion": "vua.eac-repair/v0.2",
+      "outcome": "already_running",
+      "exitCode": null
+    }
+  },
+  {
+    "name": "valid repair receipt completed",
+    "kind": "repairReceipt",
+    "valid": true,
+    "value": {
+      "schemaVersion": "vua.eac-repair/v0.2",
+      "outcome": "completed",
+      "exitCode": 0
+    }
+  },
+  {
+    "name": "valid repair receipt elevation declined",
+    "kind": "repairReceipt",
+    "valid": true,
+    "value": {
+      "schemaVersion": "vua.eac-repair/v0.2",
+      "outcome": "elevation_declined",
+      "exitCode": null
+    }
+  },
+  {
+    "name": "valid repair receipt reparse point refused",
+    "kind": "repairReceipt",
+    "valid": true,
+    "value": {
+      "schemaVersion": "vua.eac-repair/v0.2",
+      "outcome": "reparse_point_refused",
+      "exitCode": null
+    }
+  },
+  {
+    "name": "valid snapshot carrying lastRepair outcome with non-zero exitCode",
+    "kind": "snapshot",
+    "valid": true,
+    "value": {
+      "schemaVersion": "vua.eac-probe/v0.2",
+      "capturedAt": "2026-11-14T08:06:00Z",
+      "processes": [],
+      "services": [
+        {
+          "name": "EasyAntiCheat_EOS",
+          "present": true,
+          "state": "stopped",
+          "firstObservedAt": null
+        },
+        {
+          "name": "EasyAntiCheat_EOSSys",
+          "present": false,
+          "state": "stopped",
+          "firstObservedAt": null
+        }
+      ],
+      "steam": { "runningFlag": 0 },
+      "install": {
+        "eacFolder": "present",
+        "setupSignature": "verified",
+        "serviceBinary": "verified"
+      },
+      "logFindings": [],
+      "conclusion": "ready",
+      "guidanceCode": "vua.eac_probe.ready",
+      "plan": [],
+      "terminationCapability": {
+        "state": "unavailable",
+        "reason": "no_allowlisted_candidate",
+        "candidate": null
+      },
+      "lastRepair": {
+        "outcome": "completed",
+        "exitCode": 1,
+        "updatedAt": "2026-11-14T08:05:55Z"
+      },
+      "diagnostics": []
+    }
+  },
+  {
+    "name": "reject snapshot lastRepair with exitCode on non-completed outcome",
+    "kind": "snapshot",
+    "valid": false,
+    "value": {
+      "schemaVersion": "vua.eac-probe/v0.2",
+      "capturedAt": "2026-11-14T08:06:00Z",
+      "processes": [],
+      "services": [
+        {
+          "name": "EasyAntiCheat_EOS",
+          "present": true,
+          "state": "stopped",
+          "firstObservedAt": null
+        },
+        {
+          "name": "EasyAntiCheat_EOSSys",
+          "present": false,
+          "state": "stopped",
+          "firstObservedAt": null
+        }
+      ],
+      "steam": { "runningFlag": 0 },
+      "install": {
+        "eacFolder": "present",
+        "setupSignature": "verified",
+        "serviceBinary": "verified"
+      },
+      "logFindings": [],
+      "conclusion": "ready",
+      "guidanceCode": "vua.eac_probe.ready",
+      "plan": [],
+      "terminationCapability": {
+        "state": "unavailable",
+        "reason": "no_allowlisted_candidate",
+        "candidate": null
+      },
+      "lastRepair": {
+        "outcome": "elevation_declined",
+        "exitCode": 1223,
+        "updatedAt": "2026-11-14T08:05:55Z"
+      },
+      "diagnostics": []
+    }
+  },
+  {
+    "name": "reject non-empty plan on session_active",
+    "kind": "snapshot",
+    "valid": false,
+    "value": {
+      "schemaVersion": "vua.eac-probe/v0.2",
+      "capturedAt": "2026-11-14T08:05:00Z",
+      "processes": [],
+      "services": [
+        {
+          "name": "EasyAntiCheat_EOS",
+          "present": true,
+          "state": "running",
+          "firstObservedAt": "2026-11-14T08:01:00Z"
+        },
+        {
+          "name": "EasyAntiCheat_EOSSys",
+          "present": true,
+          "state": "running",
+          "firstObservedAt": "2026-11-14T08:01:00Z"
+        }
+      ],
+      "steam": { "runningFlag": 1 },
+      "install": {
+        "eacFolder": "present",
+        "setupSignature": "verified",
+        "serviceBinary": "verified"
+      },
+      "logFindings": [],
+      "conclusion": "session_active",
+      "guidanceCode": "vua.eac_probe.session_active",
+      "plan": ["restart_pc"],
+      "terminationCapability": {
+        "state": "unavailable",
+        "reason": "active_vrchat_session",
+        "candidate": null
+      },
+      "diagnostics": []
+    }
+  },
+  {
+    "name": "reject raw log line in logFindings",
+    "kind": "snapshot",
+    "valid": false,
+    "value": {
+      "schemaVersion": "vua.eac-probe/v0.2",
+      "capturedAt": "2026-11-14T08:12:00Z",
+      "processes": [],
+      "services": [
+        {
+          "name": "EasyAntiCheat_EOS",
+          "present": true,
+          "state": "stopped",
+          "firstObservedAt": null
+        },
+        {
+          "name": "EasyAntiCheat_EOSSys",
+          "present": true,
+          "state": "stop_pending",
+          "firstObservedAt": "2026-11-14T08:10:00Z"
+        }
+      ],
+      "steam": { "runningFlag": 1 },
+      "install": {
+        "eacFolder": "present",
+        "setupSignature": "verified",
+        "serviceBinary": "verified"
+      },
+      "logFindings": [
+        {
+          "code": "launch_error_30005",
+          "observedAt": "2026-11-14T08:11:30Z",
+          "rawLine": "2026.11.14 16:11:30 Error - CreateFile failed with 32"
+        }
+      ],
+      "conclusion": "unloading",
+      "guidanceCode": "vua.eac_probe.unloading",
+      "plan": ["wait_unload", "restart_pc"],
+      "terminationCapability": {
+        "state": "unavailable",
+        "reason": "no_allowlisted_candidate",
+        "candidate": null
+      },
+      "diagnostics": []
+    }
+  },
+  {
+    "name": "reject wrong service order",
+    "kind": "snapshot",
+    "valid": false,
+    "value": {
+      "schemaVersion": "vua.eac-probe/v0.2",
+      "capturedAt": "2026-11-14T08:00:00Z",
+      "processes": [],
+      "services": [
+        {
+          "name": "EasyAntiCheat_EOSSys",
+          "present": false,
+          "state": "stopped",
+          "firstObservedAt": null
+        },
+        {
+          "name": "EasyAntiCheat_EOS",
+          "present": true,
+          "state": "stopped",
+          "firstObservedAt": null
+        }
+      ],
+      "steam": { "runningFlag": 0 },
+      "install": {
+        "eacFolder": "present",
+        "setupSignature": "verified",
+        "serviceBinary": "verified"
+      },
+      "logFindings": [],
+      "conclusion": "ready",
+      "guidanceCode": "vua.eac_probe.ready",
+      "plan": [],
+      "terminationCapability": {
+        "state": "unavailable",
+        "reason": "no_allowlisted_candidate",
+        "candidate": null
+      },
+      "diagnostics": []
+    }
+  }
+]

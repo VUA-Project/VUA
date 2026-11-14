@@ -7,7 +7,11 @@
 #![allow(clippy::result_large_err)]
 
 pub mod eac_allowlist;
+pub mod eac_install;
+pub mod eac_logs;
 pub mod eac_probe;
+pub mod eac_recovery;
+pub mod eac_service;
 pub mod eac_terminate;
 pub mod eac_verify;
 pub mod editor_verify;
@@ -22,6 +26,7 @@ pub mod project_lock;
 pub mod steam_tools;
 pub mod system_resources;
 pub mod tool_install;
+pub mod verified_launch;
 pub mod vpm_backend;
 pub mod vua_identity;
 

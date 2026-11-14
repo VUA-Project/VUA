@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://ph-r.com/vua/schemas/eac-probe/v0.2/repair.schema.json",
+  "title": "VUA official EAC repair launch receipt v0.2",
+  "description": "Receipt returned alongside a refreshed eac-probe v0.2 snapshot when VUA launches the handle-locked, Authenticode-verified EasyAntiCheat_EOS_Setup.exe via Windows UAC (runas) with no arguments.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "outcome", "exitCode"],
+  "properties": {
+    "schemaVersion": {
+      "const": "vua.eac-repair/v0.2"
+    },
+    "outcome": {
+      "enum": [
+        "launched",
+        "already_running",
+        "completed",
+        "elevation_declined",
+        "reparse_point_refused",
+        "verification_failed",
+        "active_session_refused",
+        "not_found",
+        "launch_failed",
+        "timed_out"
+      ]
+    },
+    "exitCode": {
+      "type": ["integer", "null"],
+      "minimum": -2147483648,
+      "maximum": 2147483647
+    }
+  },
+  "if": {
+    "properties": {
+      "outcome": {
+        "const": "completed"
+      }
+    },
+    "required": ["outcome"]
+  },
+  "then": {
+    "properties": {
+      "exitCode": {
+        "type": "integer"
+      }
+    }
+  },
+  "else": {
+    "properties": {
+      "exitCode": {
+        "type": "null"
+      }
+    }
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "schemaVersion": "vua.eac-probe/v0.2",
+  "capturedAt": "2026-11-14T08:15:00Z",
+  "processes": [
+    {
+      "name": "start_protected_game.exe",
+      "pid": 9012,
+      "created": "134392000100000000",
+      "kind": "vrchat_launcher",
+      "path": "D:\\SteamLibrary\\steamapps\\common\\VRChat\\start_protected_game.exe",
+      "hasVisibleWindow": false
+    }
+  ],
+  "services": [
+    {
+      "name": "EasyAntiCheat_EOS",
+      "present": true,
+      "state": "stopped",
+      "firstObservedAt": null
+    },
+    {
+      "name": "EasyAntiCheat_EOSSys",
+      "present": false,
+      "state": "stopped",
+      "firstObservedAt": null
+    }
+  ],
+  "steam": {
+    "runningFlag": 1
+  },
+  "install": {
+    "eacFolder": "present",
+    "setupSignature": "verified",
+    "serviceBinary": "verified"
+  },
+  "logFindings": [],
+  "conclusion": "residual_process",
+  "guidanceCode": "vua.eac_probe.residual_process",
+  "plan": ["stop_vrchat", "terminate_residual", "restart_pc"],
+  "terminationCapability": {
+    "state": "available",
+    "reason": "candidate_verified",
+    "candidate": {
+      "name": "start_protected_game.exe",
+      "pid": 9012,
+      "created": "134392000100000000",
+      "path": "D:\\SteamLibrary\\steamapps\\common\\VRChat\\start_protected_game.exe",
+      "publisherEvidence": "CN=EasyAntiCheat Oy (Authenticode WinVerifyTrust)",
+      "allowlistReason": "User-mode VRChat EAC bootstrapper lingering after game exit"
+    }
+  },
+  "diagnostics": []
+}

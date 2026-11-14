@@ -1,0 +1,421 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://ph-r.com/vua/schemas/eac-probe/v0.2/probe.schema.json",
+  "title": "VUA EAC probe snapshot v0.2",
+  "description": "Read-only EAC status and occupation snapshot for Windows Steam VRChat. Expands frozen v0.1 process inspection with read-only Windows service state for EasyAntiCheat_EOS and EasyAntiCheat_EOSSys, Steam AppID 438100 Running registry flag, scoped EAC installation and Authenticode status, and fixed-pattern VRChat log findings (codes and timestamps only, never raw log lines or user paths).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "capturedAt",
+    "processes",
+    "services",
+    "steam",
+    "install",
+    "logFindings",
+    "conclusion",
+    "guidanceCode",
+    "plan",
+    "terminationCapability",
+    "diagnostics"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "vua.eac-probe/v0.2"
+    },
+    "capturedAt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "processes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/processFinding"
+      }
+    },
+    "services": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "$ref": "#/$defs/serviceFinding"
+      }
+    },
+    "steam": {
+      "$ref": "#/$defs/steamState"
+    },
+    "install": {
+      "$ref": "#/$defs/installState"
+    },
+    "logFindings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/logFinding"
+      }
+    },
+    "conclusion": {
+      "$ref": "#/$defs/conclusion"
+    },
+    "guidanceCode": {
+      "type": "string",
+      "pattern": "^vua\\.eac_probe\\."
+    },
+    "plan": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/recoveryStepId"
+      }
+    },
+    "terminationCapability": {
+      "$ref": "#/$defs/terminationCapability"
+    },
+    "lastRepair": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/lastRepair"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/diagnostic"
+      }
+    }
+  },
+  "$defs": {
+    "severity": {
+      "enum": ["info", "warning", "error"]
+    },
+    "processKind": {
+      "enum": [
+        "eac_loader",
+        "eac_service",
+        "vrchat_game",
+        "vrchat_launcher",
+        "vrchat_overlay"
+      ]
+    },
+    "processFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "pid",
+        "created",
+        "kind",
+        "path",
+        "hasVisibleWindow"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pid": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "created": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9]{1,20}$"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Windows FILETIME creation timestamp in 100-ns ticks encoded as a base-10 string to preserve full 64-bit precision across JSON; null when unreadable."
+        },
+        "kind": {
+          "$ref": "#/$defs/processKind"
+        },
+        "path": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "hasVisibleWindow": {
+          "type": "boolean"
+        }
+      }
+    },
+    "serviceName": {
+      "enum": ["EasyAntiCheat_EOS", "EasyAntiCheat_EOSSys"]
+    },
+    "serviceState": {
+      "enum": [
+        "stopped",
+        "start_pending",
+        "stop_pending",
+        "running",
+        "other",
+        "unreadable"
+      ]
+    },
+    "serviceFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "present", "state", "firstObservedAt"],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/serviceName"
+        },
+        "present": {
+          "type": "boolean"
+        },
+        "state": {
+          "$ref": "#/$defs/serviceState"
+        },
+        "firstObservedAt": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "steamState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runningFlag"],
+      "properties": {
+        "runningFlag": {
+          "enum": [0, 1, null]
+        }
+      }
+    },
+    "installState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["eacFolder", "setupSignature", "serviceBinary"],
+      "properties": {
+        "eacFolder": {
+          "enum": ["present", "missing", "unknown"]
+        },
+        "setupSignature": {
+          "enum": ["verified", "unverified", "missing", "unknown"]
+        },
+        "serviceBinary": {
+          "enum": ["verified", "unverified", "missing", "unknown"]
+        }
+      }
+    },
+    "logFindingCode": {
+      "enum": [
+        "launch_error_30005",
+        "not_installed",
+        "start_service_1275",
+        "untrusted_system_file",
+        "connection_lost"
+      ]
+    },
+    "logFinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "observedAt"],
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/logFindingCode"
+        },
+        "observedAt": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "conclusion": {
+      "enum": [
+        "ready",
+        "session_active",
+        "unloading",
+        "residual_process",
+        "steam_stale",
+        "not_installed",
+        "install_damaged",
+        "unknown"
+      ]
+    },
+    "recoveryStepId": {
+      "enum": [
+        "wait_unload",
+        "stop_vrchat",
+        "quit_steam",
+        "terminate_residual",
+        "official_repair",
+        "restart_pc"
+      ]
+    },
+    "terminationCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "pid",
+        "created",
+        "path",
+        "publisherEvidence",
+        "allowlistReason"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pid": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "created": {
+          "type": "string",
+          "pattern": "^[0-9]{1,20}$"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "publisherEvidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "allowlistReason": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "terminationCapability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "reason", "candidate"],
+      "properties": {
+        "state": {
+          "enum": ["unavailable", "disabled", "available"]
+        },
+        "reason": {
+          "enum": [
+            "allowlist_empty_no_machine_evidence",
+            "no_allowlisted_candidate",
+            "active_vrchat_session",
+            "experimental_switch_disabled",
+            "candidate_verified"
+          ]
+        },
+        "candidate": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/terminationCandidate"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "detail"],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^vua\\.eac_probe\\."
+        },
+        "severity": {
+          "$ref": "#/$defs/severity"
+        },
+        "detail": {
+          "type": "string"
+        }
+      }
+    },
+    "repairOutcome": {
+      "enum": [
+        "launched",
+        "already_running",
+        "completed",
+        "elevation_declined",
+        "reparse_point_refused",
+        "verification_failed",
+        "active_session_refused",
+        "not_found",
+        "launch_failed",
+        "timed_out"
+      ]
+    },
+    "lastRepair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome", "exitCode", "updatedAt"],
+      "properties": {
+        "outcome": {
+          "$ref": "#/$defs/repairOutcome"
+        },
+        "exitCode": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": -2147483648,
+              "maximum": 2147483647
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "updatedAt": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "completed"
+          }
+        },
+        "required": ["outcome"]
+      },
+      "then": {
+        "properties": {
+          "exitCode": {
+            "type": "integer"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "exitCode": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  }
+}

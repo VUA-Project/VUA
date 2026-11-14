@@ -1,0 +1,173 @@
+/* Bounded diagnostic dialog for Easy Anti-Cheat status and recovery ladder. */
+.vua-eac-dialog__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--vua-z-dialog);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--vua-space-3);
+  background: color-mix(in srgb, var(--vua-bg-canvas) 55%, transparent);
+}
+
+.vua-eac-dialog__overlay[data-closing] {
+  pointer-events: none;
+}
+
+.vua-eac-dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(620px, calc(100vw - 48px));
+  max-height: min(86vh, 720px);
+  border: 1px solid var(--vua-border);
+  border-radius: var(--vua-radius-card);
+  background: var(--vua-bg-elevated);
+  box-shadow: var(--vua-dialog-frame, 0 12px 40px color-mix(in srgb, var(--vua-bg-canvas) 60%, transparent));
+}
+
+.vua-eac-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--vua-space-2);
+  padding: var(--vua-space-3) var(--vua-space-3) var(--vua-space-2);
+  border-bottom: 1px solid var(--vua-border);
+}
+
+.vua-eac-dialog__headline {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  font: var(--vua-font-title);
+  font-weight: var(--vua-weight-strong);
+  color: var(--vua-heading-color, var(--vua-text-strong));
+}
+
+.vua-eac-dialog__close {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--vua-text-secondary);
+  font-size: var(--vua-text-title-size);
+  line-height: var(--vua-text-title-leading);
+  cursor: pointer;
+}
+
+.vua-eac-dialog__close:hover {
+  color: var(--vua-text-strong);
+}
+
+.vua-eac-dialog__body {
+  display: grid;
+  gap: var(--vua-space-3);
+  overflow-y: auto;
+  padding: var(--vua-space-3);
+}
+
+.vua-eac-dialog__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vua-space-2);
+  color: var(--vua-text-secondary);
+  font-size: var(--vua-text-caption-size, 0.85rem);
+}
+
+.vua-eac-dialog__facts {
+  display: grid;
+  gap: var(--vua-space-2);
+  margin: 0;
+  padding: var(--vua-space-2) var(--vua-space-3);
+  border: 1px solid var(--vua-border);
+  border-radius: var(--vua-radius-control);
+  background: var(--vua-bg-surface, transparent);
+}
+
+.vua-eac-dialog__fact {
+  display: grid;
+  grid-template-columns: minmax(108px, auto) 1fr;
+  gap: var(--vua-space-2);
+  align-items: baseline;
+}
+
+.vua-eac-dialog__fact dt {
+  color: var(--vua-text-secondary);
+  font-weight: var(--vua-weight-medium, 500);
+}
+
+.vua-eac-dialog__fact dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--vua-text-strong);
+}
+
+.vua-eac-dialog__details {
+  border-top: 1px solid var(--vua-border);
+  padding-top: var(--vua-space-2);
+}
+
+.vua-eac-dialog__details summary {
+  cursor: pointer;
+  color: var(--vua-text-secondary);
+}
+
+.vua-eac-dialog__paths {
+  margin: var(--vua-space-2) 0 0;
+  padding-inline-start: var(--vua-space-3);
+  display: grid;
+  gap: var(--vua-space-1);
+}
+
+.vua-eac-dialog__paths li {
+  overflow-wrap: anywhere;
+  font-family: var(--vua-font-mono, monospace);
+  font-size: 0.82rem;
+}
+
+.vua-eac-dialog__ladder {
+  display: grid;
+  gap: var(--vua-space-2);
+  padding: var(--vua-space-2) var(--vua-space-3);
+  border: 1px solid var(--vua-border);
+  border-radius: var(--vua-radius-control);
+}
+
+.vua-eac-dialog__hint,
+.vua-eac-dialog__feedback {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--vua-text-secondary);
+}
+
+.vua-eac-dialog__step-actions,
+.vua-eac-dialog__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--vua-space-2);
+}
+
+.vua-eac-dialog__footer {
+  justify-content: space-between;
+  padding: var(--vua-space-2) var(--vua-space-3) var(--vua-space-3);
+  border-top: 1px solid var(--vua-border);
+}
+
+.vua-play-eac-inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vua-space-2);
+  padding: var(--vua-space-2) var(--vua-space-3);
+  border: 1px solid var(--vua-border);
+  border-radius: var(--vua-radius-control);
+}
+
+.vua-play-eac-inline span {
+  min-width: 0;
+  flex: 1 1 220px;
+  overflow-wrap: anywhere;
+}

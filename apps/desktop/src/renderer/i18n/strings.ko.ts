@@ -19,6 +19,7 @@ import { unityLicenseCopy } from "./unity-license-copy.ts";
 import { useTermsCopy } from "./use-terms-copy.ts";
 import { hardwareCopy } from "./hardware-copy.ts";
 import { environmentCopy } from "./environment-copy.ts";
+import { eacCopy } from "./eac-copy.ts";
 import { journeyCopy } from "./journey-copy.ts";
 import { contextGuideCopy } from "./context-guide-copy.ts";
 import { helpFaqCopy } from "./help-faq-copy.ts";
@@ -58,6 +59,7 @@ export const strings: Strings = {
   unityLicense: unityLicenseCopy.ko,
   useTerms: useTermsCopy.ko,
   environmentCards: environmentCopy["ko"],
+  eac: eacCopy["ko"],
   journey: journeyCopy["ko"],
   avatarOptimizer: avatarOptimizerCopy["ko"],
   guideChannel: guideChannelCopy["ko"],
@@ -632,6 +634,7 @@ export const strings: Strings = {
       verification_failed: "설치는 끝났지만 필요한 파일이 보이지 않아요. 설치 경로를 확인한 뒤 다시 검사해 주세요.",
       elevation_required: "Windows 관리자 권한이 필요해요. 다시 시도해 권한을 허용하거나 공식 설치 파일을 직접 실행해 주세요.",
       elevation_declined: "Windows 관리자 권한을 취소해 설치가 완료되지 않았어요. 준비되면 다시 검사하고 시도해 주세요.",
+      invalid_location: "설치 프로그램 캐시 경로가 폴더에 연결된 볼륨이나 지원하지 않는 재분석 지점을 거쳐 자동 실행할 수 없어요. 일반 드라이브 경로를 사용하거나 공식 설치 파일을 직접 실행해 주세요.",
     },
     "installerHint": "Unity CLI는 실험적 기능이에요. CLI를 내려받은 뒤 다시 검사해 에디터를 설치하며, 로그인과 라이선스 활성화는 직접 진행해야 해요.",
     "installerKinds": {"unity_cli":"Unity CLI","hub_cli":"설치된 Unity Hub CLI","unity_cli_bootstrap":"공식 Unity CLI 다운로드"},

@@ -3,6 +3,9 @@
  * Settings → Debugging information. */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Alert } from "../../../components/primitives/Alert.tsx";
+import { Button } from "../../../components/primitives/Button.tsx";
+import { ConfirmDialog } from "../../../components/primitives/ConfirmDialog.tsx";
+import { openEncyclopedia } from "../../help/encyclopedia-navigation.ts";
 import { Icon } from "@vua/design-system";
 import type { AiUploadConfirmationV01 } from "@vua/contracts";
 import { useGateway, type AmfProductionList, type AmfProductionPort, type AmfProductionRun, type AmfReleasePort, type AmfReleaseState, type VrchatAvatarCheck, type VrchatPort } from "../../../gateway/index.ts";
@@ -186,9 +189,29 @@ function Album({ production, release, checksEnabled, onNavigate }: {
     );
   };
 
+  const [localTestPromptRunId, setLocalTestPromptRunId] = useState<string | null>(null);
   const act = (runId: string, kind: "bake" | "upload" | "localTest", work: () => Promise<unknown>) => {
     setActionError(null);
     void work().then(accepted => { follow(runId, kind, accepted); refresh(); }, error => setActionError({ runId, kind, error }));
+  };
+  const requestLocalTest = (runId: string) => {
+    const eac = gateway.environment.eac;
+    if (!eac) {
+      act(runId, "localTest", () => release.localTest(runId));
+      return;
+    }
+    void eac.inspect().then(
+      (snap) => {
+        if (snap.conclusion === "session_active" || snap.conclusion === "unloading") {
+          setLocalTestPromptRunId(runId);
+        } else {
+          act(runId, "localTest", () => release.localTest(runId));
+        }
+      },
+      () => {
+        act(runId, "localTest", () => release.localTest(runId));
+      },
+    );
   };
   const checkAgain = (runId: string) => act(runId, "upload", () => production.reinspect(runId));
   useEffect(() => {
@@ -259,7 +282,7 @@ function Album({ production, release, checksEnabled, onNavigate }: {
           otherWork,
           queued: (() => { const queued = queuedFor(runId); return queued ? { operation: queued.operation, ahead: list ? queueAhead(list, queued.taskId) : 1, onRemove: () => { void gateway.task.cancel(queued.taskId).then(refresh, () => {}); } } : null; })(),
           onUpload: () => { setDialogError(null); setDialog({ runId, requestId: null }); },
-          onLocalTest: () => act(runId, "localTest", () => release.localTest(runId)),
+          onLocalTest: () => requestLocalTest(runId),
           onStop: () => { const targetTaskId = followed[runId]?.taskId ?? list?.running.find(item => item.runId === runId)?.taskId ?? run.taskId; void gateway.task.cancel(targetTaskId).then(refresh, () => {}); },
           onCheckAgain: () => checkAgain(runId),
           onSdkFix: fixes => act(runId, "upload", () => production.sdkFix(runId, fixes)),
@@ -291,6 +314,28 @@ function Album({ production, release, checksEnabled, onNavigate }: {
       error={<ActionError error={dialogError} onCheckAgain={() => { setDialog(null); checkAgain(dialog.runId); }} />} starting={starting}
       sdkMustFix={sdkReviewView(dialogRun)?.mustFix.length ?? 0}
       onConfirm={confirmation => { void confirm(confirmation); }} onClose={() => setDialog(null)} />}
+    <ConfirmDialog
+      open={localTestPromptRunId !== null}
+      title={strings.eac.localTest.title}
+      cancelLabel={strings.eac.cancel}
+      confirmLabel={strings.eac.localTest.confirm}
+      onCancel={() => setLocalTestPromptRunId(null)}
+      onConfirm={() => {
+        const runId = localTestPromptRunId;
+        setLocalTestPromptRunId(null);
+        if (runId !== null) act(runId, "localTest", () => release.localTest(runId));
+      }}
+    >
+      <p>{strings.eac.localTest.body}</p>
+      <div>
+        <Button
+          variant="subtle"
+          onClick={() => openEncyclopedia({ topic: "guide-start", section: "eac-sdk-multi-instance" })}
+        >
+          {strings.eac.openGuide}
+        </Button>
+      </div>
+    </ConfirmDialog>
   </>;
 }
 

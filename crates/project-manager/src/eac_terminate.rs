@@ -74,12 +74,18 @@ pub struct TerminationReceiptV01 {
     pub verified: bool,
     pub pre_check: PreCheck,
     // terminated
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub terminated_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub exit_confirmed: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub post_check: Option<PostCheck>,
     // refused / failed
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub guard: Option<TerminationGuard>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub detail: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub inspect_required: Option<bool>,
 }
 
@@ -350,4 +356,102 @@ fn terminate_open_and_wait(
         TerminationGuard::OpenFailed,
         "the termination step requires Windows",
     )
+}
+
+impl TerminationReceiptV01 {
+    pub fn refused_step(
+        pid: u32,
+        name: &str,
+        correlation: &str,
+        pre: PreCheck,
+        guard: TerminationGuard,
+        detail: impl Into<String>,
+    ) -> Self {
+        refused(pid, name, correlation, pre, guard, detail)
+    }
+
+    pub fn terminated_step(
+        pid: u32,
+        name: &str,
+        correlation: &str,
+        pre: PreCheck,
+        terminated_at: String,
+    ) -> Self {
+        Self {
+            schema_version: EAC_TERMINATE_SCHEMA_VERSION,
+            kind: "terminated",
+            pid,
+            process_name: name.to_owned(),
+            task_correlation: correlation.to_owned(),
+            verified: true,
+            pre_check: pre,
+            terminated_at: Some(terminated_at),
+            exit_confirmed: Some(true),
+            post_check: Some(PostCheck { pid_gone: true }),
+            guard: None,
+            detail: None,
+            inspect_required: None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::{json, Value};
+    use std::fs;
+    use std::path::Path;
+
+    #[test]
+    fn serializes_terminated_refused_and_failed_receipts_without_null_optional_fields() {
+        let pre_clean = PreCheck {
+            vrchat_session_active: false,
+            eac_present: true,
+        };
+        let terminated = TerminationReceiptV01::terminated_step(
+            39012,
+            "easyanticheat.exe",
+            "cmd-w25-eac-terminate-01",
+            pre_clean.clone(),
+            "2026-09-09T07:30:00.000Z".to_owned(),
+        );
+        let terminated_json = serde_json::to_value(&terminated).unwrap();
+
+        let fixture_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../schemas/eac-terminate/v0.1/fixtures/termination.terminated.json");
+        let fixture_value: Value =
+            serde_json::from_str(&fs::read_to_string(fixture_path).unwrap()).unwrap();
+        assert_eq!(terminated_json, fixture_value);
+
+        let refused_receipt = TerminationReceiptV01::refused_step(
+            41224,
+            "vrchat.exe",
+            "cmd-w25-eac-terminate-02",
+            PreCheck {
+                vrchat_session_active: true,
+                eac_present: true,
+            },
+            TerminationGuard::ActiveVrchatSession,
+            "active session",
+        );
+        let refused_json = serde_json::to_value(&refused_receipt).unwrap();
+        assert!(refused_json.get("terminatedAt").is_none());
+        assert!(refused_json.get("exitConfirmed").is_none());
+        assert!(refused_json.get("postCheck").is_none());
+        assert!(refused_json.get("inspectRequired").is_none());
+        assert_eq!(refused_json["guard"], json!("active_vrchat_session"));
+
+        let failed_receipt = failed(
+            39012,
+            "start_protected_game.exe",
+            "cmd-fail",
+            pre_clean,
+            TerminationGuard::OpenFailed,
+            "open failed",
+        );
+        let failed_json = serde_json::to_value(&failed_receipt).unwrap();
+        assert!(failed_json.get("terminatedAt").is_none());
+        assert_eq!(failed_json["inspectRequired"], json!(true));
+        assert_eq!(failed_json["guard"], json!("open_failed"));
+    }
 }

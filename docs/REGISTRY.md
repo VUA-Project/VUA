@@ -1,6 +1,6 @@
 # Contract and decision registry
 
-> Updated: 2026-11-13
+> Updated: 2026-11-14
 
 Contracts, schema directories and decisions with their version, status, owner and last review date. [Documentation governance](meta/documentation-governance.md) defines the statuses and when a row changes. Earlier registry contents, including other document versions, remain in Git history and [the archive](archive/2026-09-29/registry-before-simplification.md).
 
@@ -38,6 +38,7 @@ Contracts, schema directories and decisions with their version, status, owner an
 | docs/protocols/desktop-startup-v0.1.md | 1.0.0 | Candidate | Desktop | 2026-10-10 |
 | docs/protocols/desktop-window-v0.2.md | 1.0.2 | Candidate | Desktop | 2026-10-10 |
 | docs/protocols/download-events-v0.1.md | 0.1 | Frozen | Data | 2026-09-06 |
+| docs/protocols/eac-probe-v0.2.md | 0.2.0 | Candidate | Environment | 2026-11-14 |
 | docs/protocols/editor-verify-v0.1.md | 0.1 | Frozen | Environment | 2026-09-13 |
 | docs/protocols/environment-deployment-v0.1.md | 0.1 | Candidate | Environment | 2026-11-11 |
 | docs/protocols/environment-network-v0.1.md | 0.1 | Candidate | Environment | 2026-10-03 |
@@ -139,6 +140,7 @@ Contracts, schema directories and decisions with their version, status, owner an
 | schemas/catalog-orders/v0.1 | 0.1 | Implementation baseline | AMF | 2026-11-07 |
 | schemas/eac-allowlist/v0.1 | 0.1 | Frozen | Environment | 2026-09-10 |
 | schemas/eac-probe/v0.1 | 0.1 | Frozen | Environment | 2026-09-10 |
+| schemas/eac-probe/v0.2/ | 0.2 | Candidate | Environment | 2026-11-14 |
 | schemas/eac-terminate/v0.1 | 0.1 | Frozen | Environment | 2026-09-10 |
 | schemas/editor-verify/v0.1 | 0.1 | Frozen | Environment | 2026-09-13 |
 | schemas/environment-deployment/v0.1 | 0.1 | Candidate | Environment | 2026-11-11 |

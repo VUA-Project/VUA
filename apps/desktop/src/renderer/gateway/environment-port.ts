@@ -2,6 +2,7 @@ import type { DeploymentIntent, DeploymentPlan, DeploymentProgress, TaskSnapshot
 import type { NetworkIntent, NetworkReport } from "@vua/contracts";
 import type { WebsiteObservation } from "@vua/contracts";
 import type { PlayRoute, PlaySession } from "@vua/contracts";
+import type { EacProbeSnapshotV02, EacRepairResultV02, EacTerminateResultV02 } from "@vua/contracts";
 import type { ExternalToolAction, ExternalToolId, ExternalToolSnapshot, InstallerToolAction, InstallerToolId, InstallerToolSnapshot } from "@vua/contracts";
 import type { CheckZone, DeployerView, VersionTrack } from "../features/deployer/deployer-model.ts";
 import type { FixPlanV1 } from "../features/deployer/fix-plan-model.ts";
@@ -43,6 +44,7 @@ export interface EnvironmentPort {
   readonly tools?: { observe(toolId: ExternalToolId): Promise<ExternalToolSnapshot>; act(toolId: ExternalToolId, action: ExternalToolAction, commandId: string): Promise<ExternalToolSnapshot> };
   readonly installerTools?: { observe(toolId: InstallerToolId): Promise<InstallerToolSnapshot>; act(toolId: InstallerToolId, action: InstallerToolAction, commandId: string): Promise<InstallerToolSnapshot> };
   readonly play?: PlayPort;
+  readonly eac?: EacPort;
   readonly managers?: import("./creator-inventory-port.ts").CreatorInventoryPort;
   readonly network?: NetworkPort;
   readonly deployment?: DeploymentPort;
@@ -71,6 +73,19 @@ export interface PlayPort {
   observe(route: PlayRoute): Promise<PlaySession>;
   start(route: PlayRoute, commandId: string): Promise<PlaySession>;
   stop(route: PlayRoute, commandId: string): Promise<PlaySession>;
+}
+
+export interface EacPort {
+  inspect(): Promise<EacProbeSnapshotV02>;
+  repairCapability(): Promise<CapabilityReport>;
+  terminateResidual(
+    target: { readonly pid: number; readonly created: string; readonly path: string },
+    commandId: string,
+  ): Promise<EacTerminateResultV02>;
+  launchRepair(commandId: string): Promise<EacRepairResultV02>;
+  openRepairFolder(): Promise<{ readonly opened: boolean }>;
+  getExperimentalTermination(): Promise<{ readonly enabled: boolean }>;
+  setExperimentalTermination(enabled: boolean): Promise<{ readonly enabled: boolean }>;
 }
 
 /** Explicit HTTPS diagnostics, independent of software readiness and the legacy TCP check. */

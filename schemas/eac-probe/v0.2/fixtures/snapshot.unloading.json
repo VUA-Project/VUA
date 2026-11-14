@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "vua.eac-probe/v0.2",
+  "capturedAt": "2026-11-14T08:12:00Z",
+  "processes": [],
+  "services": [
+    {
+      "name": "EasyAntiCheat_EOS",
+      "present": true,
+      "state": "stopped",
+      "firstObservedAt": null
+    },
+    {
+      "name": "EasyAntiCheat_EOSSys",
+      "present": true,
+      "state": "stop_pending",
+      "firstObservedAt": "2026-11-14T08:10:00Z"
+    }
+  ],
+  "steam": {
+    "runningFlag": 1
+  },
+  "install": {
+    "eacFolder": "present",
+    "setupSignature": "verified",
+    "serviceBinary": "verified"
+  },
+  "logFindings": [
+    {
+      "code": "launch_error_30005",
+      "observedAt": "2026-11-14T08:11:30Z"
+    }
+  ],
+  "conclusion": "unloading",
+  "guidanceCode": "vua.eac_probe.unloading",
+  "plan": ["wait_unload", "restart_pc"],
+  "terminationCapability": {
+    "state": "unavailable",
+    "reason": "no_allowlisted_candidate",
+    "candidate": null
+  },
+  "diagnostics": []
+}

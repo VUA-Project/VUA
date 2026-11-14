@@ -39,12 +39,28 @@ const safety: GuideSourceRef = { url: "https://docs.vrchat.com/docs/vrchat-safet
 const modularAvatar: GuideSourceRef = { url: "https://modular-avatar.nadena.dev/docs/intro", publisher: "Modular Avatar documentation", kind: "community", checkedAt: "2026-10-27" };
 const checked = { reviewStatus: "source-checked", reviewedAt: "2026-10-27" } as const;
 
+const eacHelp: GuideSourceRef = { url: "https://help.vrchat.com/hc/en-us/articles/8135250400915", publisher: "VRChat Help Center", kind: "official", checkedAt: "2026-11-14" };
+const eacSecurityBlog: GuideSourceRef = { url: "https://hello.vrchat.com/blog/vrchat-security-update", publisher: "VRChat Blog", kind: "official", checkedAt: "2026-11-14" };
+const eacCannyUnload: GuideSourceRef = { url: "https://feedback.vrchat.com/bug-reports/p/eac-failing-to-unload-preventing-starting-vrchat-again", publisher: "VRChat Canny", kind: "official", checkedAt: "2026-11-14" };
+const eacCannyKeepRunning: GuideSourceRef = { url: "https://feedback.vrchat.com/bug-reports/p/vrchat-keeps-running-even-after-exiting", publisher: "VRChat Canny", kind: "official", checkedAt: "2026-11-14" };
+const eacCanny1275: GuideSourceRef = { url: "https://feedback.vrchat.com/bug-reports/p/vrchat-cannot-start-after-installing-patch-kb5026372-on-windows-11", publisher: "VRChat Canny", kind: "official", checkedAt: "2026-11-14" };
+const eacCannySdk1519: GuideSourceRef = { url: "https://feedback.vrchat.com/sdk-bug-reports/p/1519-only-one-instance-of-vrchat-at-a-time-eac-error-when-trying-to-build-and-te", publisher: "VRChat Canny", kind: "official", checkedAt: "2026-11-14" };
+const eacSteam30004: GuideSourceRef = { url: "https://steamcommunity.com/app/438100/discussions/5/3473990693213987601/", publisher: "Steam Community", kind: "community", checkedAt: "2026-11-14" };
+const eacAskConflict: GuideSourceRef = { url: "https://ask.vrchat.com/t/cannot-run-other-programs-while-vrchat-is-running/23326", publisher: "VRChat Ask Forum", kind: "community", checkedAt: "2026-11-14" };
+const eacChecked = { reviewStatus: "source-checked", reviewedAt: "2026-11-14" } as const;
+
 const ARTICLE_META: Record<string, Partial<Pick<GuideArticle, "kind" | "aliases" | "sourceRefs" | "reviewStatus" | "reviewedAt">>> = {
   "guide-start/what-is-vrchat": {
     kind: "concept",
     sourceRefs: [{ url: "https://hello.vrchat.com/", publisher: "VRChat", kind: "official", checkedAt: "2026-10-30" }],
     reviewStatus: "source-checked", reviewedAt: "2026-10-30",
   },
+  "guide-start/eac-30005-occupied": { kind: "troubleshooting", sourceRefs: [eacHelp, eacCannyUnload, eacCannyKeepRunning], ...eacChecked },
+  "guide-start/eac-not-installed": { kind: "troubleshooting", sourceRefs: [eacHelp, eacSecurityBlog], ...eacChecked },
+  "guide-start/eac-1275-driver-blocked": { kind: "troubleshooting", sourceRefs: [eacCanny1275, eacHelp], ...eacChecked },
+  "guide-start/eac-untrusted-system-file": { kind: "troubleshooting", sourceRefs: [eacHelp, eacSteam30004, eacAskConflict], ...eacChecked },
+  "guide-start/eac-connection-lost": { kind: "troubleshooting", sourceRefs: [eacHelp, eacSecurityBlog], ...eacChecked },
+  "guide-start/eac-sdk-multi-instance": { kind: "troubleshooting", sourceRefs: [eacCannySdk1519, eacSecurityBlog], ...eacChecked },
   "guide-creator/upload-eligibility": { kind: "procedure", sourceRefs: [firstAvatar], ...checked },
   "guide-creator/trust-rank": { kind: "concept", sourceRefs: [safety], ...checked },
   "guide-creator/improve-trust": { kind: "procedure", sourceRefs: [safety], ...checked },

@@ -7,9 +7,8 @@
 //! leaf signer (deployment_trust). A vendor refresh passes the same gate; anything else
 //! fails closed and keeps the official manual route.
 
-use sha2::{Digest, Sha256};
 use std::{
-    io::{Read, Write},
+    io::Write,
     path::{Path, PathBuf},
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
@@ -43,12 +42,13 @@ pub(super) fn install_steam(
         report(activity)
     };
     let report: &mut DeploymentReporter<'_> = &mut official_report;
-    let installer = match acquire_installer(data_root, report).and_then(|installer| {
-        // Recheck the published/cache path immediately before the executable boundary.
-        verify_installer(&installer.path, report)?;
-        Ok(installer)
+    let locked = match acquire_installer(data_root, report).and_then(|installer| {
+        // Recheck and hold a read-only share lock on the published/cache handle across
+        // execution so no concurrent writer or rename can swap bytes before launch.
+        let (locked, _) = verify_locked_installer(&installer.path, report)?;
+        Ok(locked)
     }) {
-        Ok(installer) => installer,
+        Ok(locked) => locked,
         Err(error @ ("vua.deployment.cancelled" | "vua.deployment.invalid_location")) => {
             return Err(error)
         }
@@ -60,7 +60,9 @@ pub(super) fn install_steam(
             return Err(cause);
         }
     };
-    match install_verified(runner, &installer.path, report) {
+    let result = install_verified(runner, locked.path(), report);
+    drop(locked);
+    match result {
         Ok(()) => Ok(()),
         Err(
             error @ ("vua.deployment.cancelled"
@@ -234,46 +236,39 @@ async fn download(
     file.sync_all().map_err(|_| DOWNLOAD_ERROR)
 }
 
-/// Size sanity plus the exact Valve leaf signer; deliberately no pinned digest — the
-/// unversioned vendor URL would make one stale. Reported byte counts stay honest facts.
+/// Size sanity plus the exact Valve leaf signer on a read-locked handle; deliberately no
+/// pinned digest — the unversioned vendor URL would make one stale.
+fn verify_locked_installer(
+    path: &Path,
+    report: &mut DeploymentReporter<'_>,
+) -> Result<(crate::verified_launch::LockedExecutable, String), &'static str> {
+    let mut locked =
+        crate::verified_launch::LockedExecutable::open_read_locked(path).map_err(|err| {
+            if err.is_invalid_location() {
+                "vua.deployment.invalid_location"
+            } else {
+                INTEGRITY_ERROR
+            }
+        })?;
+    let digest =
+        locked.verify_sha256_and_size(MAX_SETUP_BYTES, None, None, |completed, size| {
+            report(byte_progress(
+                DeploymentPhase::Verifying,
+                completed,
+                Some(size),
+            ))
+        })?;
+    if !crate::deployment_trust::trusted_steam_installer_locked(&locked) {
+        return Err(INTEGRITY_ERROR);
+    }
+    Ok((locked, digest))
+}
+
 fn verify_installer(
     path: &Path,
     report: &mut DeploymentReporter<'_>,
 ) -> Result<String, &'static str> {
-    let mut file = std::fs::File::open(path).map_err(|_| INTEGRITY_ERROR)?;
-    let size = file.metadata().map_err(|_| INTEGRITY_ERROR)?.len();
-    if size == 0 || size > MAX_SETUP_BYTES {
-        return Err(INTEGRITY_ERROR);
-    }
-    let mut sha256 = Sha256::new();
-    let mut buffer = [0u8; 256 * 1024];
-    let mut total = 0u64;
-    let mut last_report = Instant::now();
-    report(byte_progress(DeploymentPhase::Verifying, 0, Some(size)))?;
-    loop {
-        let n = file.read(&mut buffer).map_err(|_| INTEGRITY_ERROR)?;
-        if n == 0 {
-            break;
-        }
-        total += n as u64;
-        if total > MAX_SETUP_BYTES {
-            return Err(INTEGRITY_ERROR);
-        }
-        sha256.update(&buffer[..n]);
-        if last_report.elapsed() >= Duration::from_secs(1) {
-            report(byte_progress(DeploymentPhase::Verifying, total, Some(size)))?;
-            last_report = Instant::now();
-        }
-    }
-    if total != size || !crate::deployment_trust::trusted_steam_installer(path) {
-        return Err(INTEGRITY_ERROR);
-    }
-    report(byte_progress(DeploymentPhase::Verifying, total, Some(size)))?;
-    Ok(sha256
-        .finalize()
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect())
+    verify_locked_installer(path, report).map(|(_, digest)| digest)
 }
 
 /// Run the verified NSIS installer silently. The vendor chooses the destination (no /D);
@@ -354,6 +349,7 @@ impl Drop for OwnedDownload {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Read;
     use vua_orchestrator::{outcome_with_exit, FakeProcessRunner};
 
     fn loopback_server(response: &'static str) -> (String, std::thread::JoinHandle<Vec<u8>>) {

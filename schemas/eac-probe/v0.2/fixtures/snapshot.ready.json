@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "vua.eac-probe/v0.2",
+  "capturedAt": "2026-11-14T08:00:00Z",
+  "processes": [],
+  "services": [
+    {
+      "name": "EasyAntiCheat_EOS",
+      "present": true,
+      "state": "stopped",
+      "firstObservedAt": null
+    },
+    {
+      "name": "EasyAntiCheat_EOSSys",
+      "present": false,
+      "state": "stopped",
+      "firstObservedAt": null
+    }
+  ],
+  "steam": {
+    "runningFlag": 0
+  },
+  "install": {
+    "eacFolder": "present",
+    "setupSignature": "verified",
+    "serviceBinary": "verified"
+  },
+  "logFindings": [],
+  "conclusion": "ready",
+  "guidanceCode": "vua.eac_probe.ready",
+  "plan": [],
+  "terminationCapability": {
+    "state": "unavailable",
+    "reason": "no_allowlisted_candidate",
+    "candidate": null
+  },
+  "diagnostics": []
+}

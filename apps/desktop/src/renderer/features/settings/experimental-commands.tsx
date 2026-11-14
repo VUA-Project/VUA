@@ -163,3 +163,82 @@ export function ExperimentalCommands() {
     </div>
   );
 }
+
+export function EacExperimentalSection() {
+  const eac = useGateway().environment.eac;
+  const eacExperimentalCopy = strings.eac.experimental;
+  const [enabled, setEnabled] = useState(false);
+  const [consentOpen, setConsentOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (eac === undefined) return;
+    let active = true;
+    void eac.getExperimentalTermination().then(
+      (res) => {
+        if (active) setEnabled(res.enabled);
+      },
+      () => {
+        if (active) setEnabled(false);
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [eac]);
+
+  if (eac === undefined) return null;
+
+  const applyEnabled = (next: boolean) => {
+    setBusy(true);
+    void eac
+      .setExperimentalTermination(next)
+      .then(
+        (res) => setEnabled(res.enabled),
+        () => {},
+      )
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <div className="vua-page__stack vua-exp-card" data-nav-id="experimental-eac-section">
+      <section className="vua-exp-card__row">
+        <div className="vua-exp-card__text">
+          <p className="vua-exp-card__row-title">
+            <strong>{eacExperimentalCopy.title}</strong>{" "}
+            <Badge tone="warning">{copy.deleteBadge}</Badge>
+          </p>
+          <p className="vua-caption vua-text-secondary">{eacExperimentalCopy.description}</p>
+        </div>
+        <Toggle
+          on={enabled}
+          disabled={busy}
+          variant="danger"
+          label={eacExperimentalCopy.title}
+          onToggle={() => {
+            if (enabled) {
+              applyEnabled(false);
+              return;
+            }
+            setConsentOpen(true);
+          }}
+        />
+      </section>
+
+      <ConfirmDialog
+        open={consentOpen}
+        danger
+        title={eacExperimentalCopy.consentTitle}
+        cancelLabel={strings.eac.cancel}
+        confirmLabel={eacExperimentalCopy.consentConfirm}
+        onCancel={() => setConsentOpen(false)}
+        onConfirm={() => {
+          setConsentOpen(false);
+          applyEnabled(true);
+        }}
+      >
+        <p className="vua-confirm-dialog__lede">{eacExperimentalCopy.consentBody}</p>
+      </ConfirmDialog>
+    </div>
+  );
+}

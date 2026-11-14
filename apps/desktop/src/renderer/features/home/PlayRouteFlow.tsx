@@ -3,7 +3,7 @@
  * what that step depends on. The Gateway owns checks, plans, tasks and sessions; this view only derives
  * the next step from them. */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isTerminalTaskStateV01, type DeploymentIntent, type DeploymentPlan, type DeploymentProgress, type PicoInstallRegion, type PlayRoute, type PlaySession, type ScenarioConnection, type ScenarioEnvironmentCheck, type ScenarioSop, type TaskSnapshotV01 } from "@vua/contracts";
+import { isTerminalTaskStateV01, type DeploymentIntent, type DeploymentPlan, type DeploymentProgress, type EacProbeSnapshotV02, type PicoInstallRegion, type PlayRoute, type PlaySession, type ScenarioConnection, type ScenarioEnvironmentCheck, type ScenarioSop, type TaskSnapshotV01 } from "@vua/contracts";
 import { Icon, type IconName } from "@vua/design-system";
 import { useGateway } from "../../gateway/index.ts";
 import { currentLocale, format, strings } from "../../i18n/index.ts";
@@ -13,9 +13,12 @@ import { storageKeys } from "../../app/storage-keys.ts";
 import { useUnityMirrors } from "../../app/unity-download-preference.ts";
 import { openExternalUrl } from "../../app/open-external.ts";
 import { Button } from "../../components/primitives/Button.tsx";
+import { ConfirmDialog } from "../../components/primitives/ConfirmDialog.tsx";
 import { readDeploymentReceipt, type DeploymentReceiptBookmark } from "../deployer/deployment-receipt.ts";
 import { PICO_RUNTIME_PAGE, readDeploymentManualHandoff } from "../deployer/deployment-handoff.ts";
 import { ToolReinstallRow } from "../tools/ToolReinstall.tsx";
+import { EacDialog } from "./EacDialog.tsx";
+import { eacConclusionHeadline, shouldPromptBeforeLaunch, shouldShowInlineEacRow } from "./eac-model.ts";
 import { StepRows } from "./PlaySetupFlow.tsx";
 import { checklistSignature, playChecklist, playFlowPhase, progressPercent, readConfirmed, writeConfirmed, type PlayFlowPhase } from "./play-flow-model.ts";
 import "./play-flow.css";
@@ -54,7 +57,7 @@ export function PlayRouteFlow({ route, session, unavailable, launchPending, refr
   onLaunch: (stop: boolean) => void; onAccounts: () => void; onStep: (step: PlayFlowStep) => void;
 }) {
   const gateway = useGateway();
-  const scenarios = gateway.environment.scenarios, deployment = gateway.environment.deployment;
+  const scenarios = gateway.environment.scenarios, deployment = gateway.environment.deployment, eac = gateway.environment.eac;
   const copy = playFlowCopy[currentLocale];
   const useMirrors = useUnityMirrors();
   const receiptKey = `${storageKeys.deploymentReceiptPlay}.${route}`;
@@ -80,6 +83,10 @@ export function PlayRouteFlow({ route, session, unavailable, launchPending, refr
   });
   const [task, setTask] = useState<TaskSnapshotV01 | null>(null);
   const [step, setStep] = useState<DeploymentProgress | null>(null);
+  const [eacSnapshot, setEacSnapshot] = useState<EacProbeSnapshotV02 | null>(null);
+  const [eacChecking, setEacChecking] = useState(false);
+  const [eacDialogOpen, setEacDialogOpen] = useState(false);
+  const [preLaunchPrompt, setPreLaunchPrompt] = useState<EacProbeSnapshotV02 | null>(null);
   const startedHere = useRef(false), command = useRef<string | null>(null), handedOff = useRef(false);
   const taskRef = useRef(task); taskRef.current = task;
 
@@ -103,7 +110,21 @@ export function PlayRouteFlow({ route, session, unavailable, launchPending, refr
   useEffect(() => {
     if (firstCheck.current) { firstCheck.current = false; if (lastChecks.has(route)) return; }
     void runCheck();
+    if (eac && eacSnapshot !== null) {
+      void eac.inspect().then(setEacSnapshot, () => {});
+    }
   }, [refreshToken]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const issue = session?.issue;
+    if (!eac || (issue !== "start_timeout" && issue !== "close_timeout" && issue !== "close_failed")) return;
+    let alive = true;
+    void eac.inspect().then(
+      (snap) => { if (alive) setEacSnapshot(snap); },
+      () => {},
+    );
+    return () => { alive = false; };
+  }, [eac, session?.issue]);
 
   useEffect(() => {
     if (!scenarios) { setSopSettled(true); return; }
@@ -180,7 +201,19 @@ export function PlayRouteFlow({ route, session, unavailable, launchPending, refr
       if (handoff) void openExternalUrl(handoff.officialUrl);
       handedOff.current = true; lastChecks.delete(route); setTask(null); setTaskId(null); setCheck(null);
     }
-    else if (phase === "launch") onLaunch(false);
+    else if (phase === "launch") {
+      if (!eac) { onLaunch(false); return; }
+      if (eacChecking) return;
+      setEacChecking(true);
+      void eac.inspect().then(
+        (snap) => {
+          setEacSnapshot(snap);
+          if (shouldPromptBeforeLaunch(snap)) setPreLaunchPrompt(snap);
+          else onLaunch(false);
+        },
+        () => { onLaunch(false); },
+      ).finally(() => { setEacChecking(false); });
+    }
     else if (phase === "stop") onLaunch(true);
   };
 
@@ -206,7 +239,17 @@ export function PlayRouteFlow({ route, session, unavailable, launchPending, refr
     : session?.issue ? strings.environmentCards.issues[session.issue]
     : null;
   const label = phase === "running" && percent !== null ? `${copy.phases.running} ${percent}%` : copy.phases[phase];
-  const spinning = phase === "checking" || phase === "running" || phase === "starting";
+  const timeoutIssue =
+    session?.issue === "start_timeout" || session?.issue === "close_timeout" || session?.issue === "close_failed"
+      ? session.issue
+      : null;
+  const timeoutEacAttribution =
+    timeoutIssue !== null && eacSnapshot !== null && eacSnapshot.conclusion !== "ready" && eacSnapshot.conclusion !== "unknown"
+      ? format(strings.environmentCards.eacAttribution[timeoutIssue], {
+          reason: eacConclusionHeadline(eacSnapshot, strings.eac, Date.now()),
+        })
+      : null;
+  const spinning = phase === "checking" || phase === "running" || phase === "starting" || eacChecking;
   const actRef = useRef(act); actRef.current = act;
   const needsDetails = phase === "confirm" || phase === "unavailable" || (phase === "execute" && regionMissing);
   useEffect(() => {
@@ -222,6 +265,10 @@ export function PlayRouteFlow({ route, session, unavailable, launchPending, refr
         <span className="vua-play-flow__sr">{s.ready ? strings.environmentCards.installed : strings.environmentCards.missing}</span>
       </li>)}
     </ul>
+    {shouldShowInlineEacRow(eacSnapshot) && eacSnapshot ? <div className="vua-play-eac-inline" role="status">
+      <span>{eacConclusionHeadline(eacSnapshot, strings.eac, Date.now())}</span>
+      <Button variant="subtle" data-nav-id={`play-eac-view-${route}`} onClick={() => setEacDialogOpen(true)}>{strings.eac.view}</Button>
+    </div> : null}
     {pico ? <div className="vua-play-flow__options">
       <fieldset className="vua-segmented" disabled={spinning}><legend className="vua-play-flow__sr">{copy.connection}</legend>
         {(["usb", "wifi"] as const).map(value => <label key={value} data-checked={connection === value}>
@@ -241,7 +288,10 @@ export function PlayRouteFlow({ route, session, unavailable, launchPending, refr
         return { id: item.id, text: words?.title ?? item.id, actor: item.automatic ? "vua" as const : "player" as const, title: words?.explanation };
       })} />
     </div> : null}
-    {notice ? <p className="vua-play-flow__notice" role="status" data-tone={phase === "retry" ? "warning" : undefined}>{notice}</p> : null}
+    {notice ? <p className="vua-play-flow__notice" role="status" data-tone={phase === "retry" ? "warning" : undefined}>
+      {notice}
+      {timeoutEacAttribution ? <>{" "}{timeoutEacAttribution}{" "}<Button variant="subtle" onClick={() => setEacDialogOpen(true)}>{strings.eac.view}</Button></> : null}
+    </p> : null}
     {repairable.length > 0 || picoRepairable ? <details className="vua-play-flow__repair" onToggle={event => setRepairOpen(event.currentTarget.open)}>
       <summary>{copy.repair}</summary>
       {repairOpen ? repairable.map(item => <ToolReinstallRow key={item.component} toolId={item.component as "vrchat" | "steamvr"} title={componentName(item.component)} />) : null}
@@ -257,5 +307,40 @@ export function PlayRouteFlow({ route, session, unavailable, launchPending, refr
         ? <Button variant="subtle" onClick={() => { void deployment.cancel(task.taskId, task.revision).catch(() => {}); }}>{copy.cancel}</Button> : null}
       <Button variant="subtle" className="vua-play-flow__accounts" data-nav-id={`play-accounts-${route}`} onClick={onAccounts}>{copy.accounts}</Button>
     </div>
+    <EacDialog
+      open={eacDialogOpen}
+      initialSnapshot={eacSnapshot}
+      onClose={() => setEacDialogOpen(false)}
+      onSnapshotChange={setEacSnapshot}
+      {...(session?.canStop ? { onStopVrchat: () => onLaunch(true) } : {})}
+    />
+    <ConfirmDialog
+      open={preLaunchPrompt !== null}
+      title={strings.eac.preLaunch.title}
+      cancelLabel={strings.eac.cancel}
+      confirmLabel={strings.eac.launchAnyway}
+      onCancel={() => setPreLaunchPrompt(null)}
+      onConfirm={() => {
+        setPreLaunchPrompt(null);
+        onLaunch(false);
+      }}
+    >
+      {preLaunchPrompt ? (
+        <>
+          <p>{eacConclusionHeadline(preLaunchPrompt, strings.eac, Date.now())}</p>
+          <div>
+            <Button
+              variant="subtle"
+              onClick={() => {
+                setPreLaunchPrompt(null);
+                setEacDialogOpen(true);
+              }}
+            >
+              {strings.eac.view}
+            </Button>
+          </div>
+        </>
+      ) : null}
+    </ConfirmDialog>
   </div>;
 }

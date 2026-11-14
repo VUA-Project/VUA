@@ -12,4 +12,5 @@ no runtime module or registration mechanism.
 ## Entries
 
 - [Environment detection and guided deployment](environment-detection-and-deployment.md)
+- [EAC read-only status detection](eac-status.md)
 - [EAC conflict detection and residual-process recovery](eac-process-recovery.md)

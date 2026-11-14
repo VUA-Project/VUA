@@ -19,6 +19,7 @@ import { unityLicenseCopy } from "./unity-license-copy.ts";
 import { useTermsCopy } from "./use-terms-copy.ts";
 import { hardwareCopy } from "./hardware-copy.ts";
 import { environmentCopy } from "./environment-copy.ts";
+import { eacCopy } from "./eac-copy.ts";
 import { journeyCopy } from "./journey-copy.ts";
 import { contextGuideCopy } from "./context-guide-copy.ts";
 import { helpFaqCopy } from "./help-faq-copy.ts";
@@ -62,6 +63,7 @@ export const strings: Strings = {
   unityLicense: unityLicenseCopy["zh-CN"],
   useTerms: useTermsCopy["zh-CN"],
   environmentCards: environmentCopy["zh-CN"],
+  eac: eacCopy["zh-CN"],
   journey: journeyCopy["zh-CN"],
   avatarOptimizer: avatarOptimizerCopy["zh-CN"],
   guideChannel: guideChannelCopy["zh-CN"],
@@ -640,6 +642,7 @@ export const strings: Strings = {
       verification_failed: "安装流程已结束，但未找到预期的程序文件。请核对安装路径后重新检测。",
       elevation_required: "安装需要 Windows 管理员权限。请重试并在弹窗中点“是”，或手动运行官方安装包。",
       elevation_declined: "未授予 Windows 管理员权限，安装未能继续。准备好后请重新检测并重试。",
+      invalid_location: "安装包缓存目录位于挂载卷或不受支持的重解析路径上，无法自动提权启动。请使用标准盘符目录，或直接手动运行官方安装程序。",
     },
     "installerHint": "Unity CLI 仍为实验功能。下载完成后请先重新检测，再安装编辑器；账号登录与许可证激活仍需手动完成。",
     "installerKinds": {"unity_cli":"Unity CLI","hub_cli":"本机已有 Unity Hub CLI","unity_cli_bootstrap":"下载官方 Unity CLI"},

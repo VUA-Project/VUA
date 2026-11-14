@@ -237,6 +237,7 @@ pub struct EnvironmentConfig {
 struct EnvironmentServices {
     roots: EnvironmentRoots,
     play: vua_project_manager::play_session::PlayService,
+    eac: vua_project_manager::eac_probe::v02::EacProbeService,
     tools: HashMap<&'static str, vua_orchestrator::external_tools::ToolService>,
     installer_tools: HashMap<&'static str, vua_orchestrator::external_tools::InstallerToolService>,
     network: vua_orchestrator::network::NetworkService,
@@ -1003,6 +1004,9 @@ pub fn run_provider_host_with_legacy(
         Ok(Arc::new(EnvironmentServices {
             roots: config.roots.clone(),
             play: vua_project_manager::play_session::PlayService::windows(config.roots.clone()),
+            eac: vua_project_manager::eac_probe::v02::EacProbeService::windows(
+                config.roots.clone(),
+            ),
             tools: vua_orchestrator::external_tools::STEAM_TOOLS.iter().map(|spec| (spec.tool_id, vua_orchestrator::external_tools::ToolService::new(Arc::new(vua_project_manager::steam_tools::SteamToolPlatform::new(config.roots.clone(), spec)), Arc::new(SystemClock), spec.tool_id))).collect(),
             installer_tools: vua_orchestrator::external_tools::INSTALLER_TOOLS.iter().map(|spec| (spec.tool_id, vua_orchestrator::external_tools::InstallerToolService::new(Arc::new(vua_project_manager::tool_install::WindowsInstallerToolPlatform::new(config.roots.registry.clone(), spec)), Arc::new(SystemClock), spec.tool_id))).collect(),
             network: vua_orchestrator::network::NetworkService::new(
@@ -1663,6 +1667,20 @@ fn handle_application_request(state: &mut HostState, request: &Value) -> FrameOu
             correlation_id,
         );
     }
+    if matches!(
+        method,
+        "environment.inspectEac"
+            | "environment.configureEacExperimental"
+            | "environment.terminateEacResidual"
+            | "environment.launchEacRepair"
+    ) {
+        return crate::eac_routes::request(
+            state.environment.as_ref().map(|s| &s.eac),
+            request,
+            request_id,
+            correlation_id,
+        );
+    }
     if matches!(method, "tools.observeConnection" | "tools.actConnection") {
         return crate::external_tool_routes::request(
             state.environment.as_ref().map(|s| &s.tools),
@@ -2006,6 +2024,9 @@ fn served_capabilities(state: &HostState) -> Value {
         {"operationId": "environment.observeGameWindow", "availability": "available"},
         {"operationId": "environment.inspectManagerApps", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
         {"operationId": "environment.observePlay", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "environment.inspectEac", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "environment.terminateEacResidual", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "environment.launchEacRepair", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
         {"operationId": "tools.observeConnection", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
         {"operationId": "tools.actConnection", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
         {"operationId": "tools.observeInstaller", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},

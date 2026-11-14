@@ -6,7 +6,6 @@
 //! verifies exact byte size, SHA-256 and Windows PE (`MZ`) header, refuses to overwrite a running
 //! tool process, and executes NSIS `/S` without shell invocation.
 
-use sha2::{Digest, Sha256};
 use std::{
     io::{Read, Write},
     path::{Path, PathBuf},
@@ -398,11 +397,13 @@ pub(crate) fn install_official_tool(
         report(activity)
     };
     let report: &mut DeploymentReporter<'_> = &mut official_report;
-    let installer = match acquire_installer(data_root, spec, report).and_then(|installer| {
-        verify_installer(&installer.path, spec, report)?;
-        Ok(installer)
+    let locked = match acquire_installer(data_root, spec, report).and_then(|installer| {
+        // Hold a read-only share lock on the verified installer handle across launch so
+        // no concurrent writer or rename can swap bytes before execution.
+        let (locked, _) = verify_locked_installer(&installer.path, spec, report)?;
+        Ok(locked)
     }) {
-        Ok(installer) => installer,
+        Ok(locked) => locked,
         Err(error @ ("vua.deployment.cancelled" | "vua.deployment.invalid_location")) => {
             return Err(error)
         }
@@ -417,7 +418,9 @@ pub(crate) fn install_official_tool(
     if tool_is_running(spec) {
         return Err("vua.deployment.tool_running");
     }
-    match install_verified(runner, &installer.path, spec, report) {
+    let result = install_verified(runner, locked.path(), spec, report);
+    drop(locked);
+    match result {
         Ok(()) => Ok(()),
         Err(
             error @ ("vua.deployment.cancelled"
@@ -598,54 +601,40 @@ async fn download(
     file.sync_all().map_err(|_| DOWNLOAD_ERROR)
 }
 
+fn verify_locked_installer(
+    path: &Path,
+    spec: &InstallerToolSpec,
+    report: &mut DeploymentReporter<'_>,
+) -> Result<(crate::verified_launch::LockedExecutable, String), &'static str> {
+    let mut locked =
+        crate::verified_launch::LockedExecutable::open_read_locked(path).map_err(|err| {
+            if err.is_invalid_location() {
+                "vua.deployment.invalid_location"
+            } else {
+                INTEGRITY_ERROR
+            }
+        })?;
+    let digest = locked.verify_sha256_and_size(
+        MAX_SETUP_BYTES,
+        Some(spec.size),
+        Some(spec.sha256),
+        |completed, size| {
+            report(byte_progress(
+                DeploymentPhase::Verifying,
+                completed,
+                Some(size),
+            ))
+        },
+    )?;
+    Ok((locked, digest))
+}
+
 fn verify_installer(
     path: &Path,
     spec: &InstallerToolSpec,
     report: &mut DeploymentReporter<'_>,
 ) -> Result<String, &'static str> {
-    let mut file = std::fs::File::open(path).map_err(|_| INTEGRITY_ERROR)?;
-    let size = file.metadata().map_err(|_| INTEGRITY_ERROR)?.len();
-    if size != spec.size || size < 64 {
-        return Err(INTEGRITY_ERROR);
-    }
-    let mut sha256 = Sha256::new();
-    let mut buffer = [0u8; 256 * 1024];
-    let mut total = 0u64;
-    let mut first_two = [0u8; 2];
-    let mut last_report = Instant::now();
-    report(byte_progress(DeploymentPhase::Verifying, 0, Some(size)))?;
-    loop {
-        let n = file.read(&mut buffer).map_err(|_| INTEGRITY_ERROR)?;
-        if n == 0 {
-            break;
-        }
-        if total == 0 && n >= 2 {
-            first_two.copy_from_slice(&buffer[..2]);
-        } else if total == 1 {
-            first_two[1] = buffer[0];
-        } else if total == 0 && n == 1 {
-            first_two[0] = buffer[0];
-        }
-        total += n as u64;
-        if total > spec.size {
-            return Err(INTEGRITY_ERROR);
-        }
-        sha256.update(&buffer[..n]);
-        if last_report.elapsed() >= Duration::from_secs(1) {
-            report(byte_progress(DeploymentPhase::Verifying, total, Some(size)))?;
-            last_report = Instant::now();
-        }
-    }
-    let digest: String = sha256
-        .finalize()
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect();
-    if total != size || first_two != *b"MZ" || digest != spec.sha256 {
-        return Err(INTEGRITY_ERROR);
-    }
-    report(byte_progress(DeploymentPhase::Verifying, total, Some(size)))?;
-    Ok(digest)
+    verify_locked_installer(path, spec, report).map(|(_, digest)| digest)
 }
 
 pub(crate) fn install_verified(

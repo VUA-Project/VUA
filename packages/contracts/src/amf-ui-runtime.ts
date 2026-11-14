@@ -26,8 +26,15 @@ export interface DesktopAmfUiRuntimeApiV01 {
 export interface DesktopToolLogosApiV01 {
   logo(toolId: string): Promise<string | null>;
 }
+/** Narrow Electron Main surface for EAC folder location and experimental termination consent. */
+export interface DesktopEacApiV01 {
+  openRepairFolder(): Promise<{ readonly opened: boolean }>;
+  getExperimentalTermination(): Promise<{ readonly enabled: boolean }>;
+  setExperimentalTermination(enabled: boolean): Promise<{ readonly enabled: boolean }>;
+}
 export interface VuaDesktopApiV7 extends VuaDesktopApiV6 {
   readonly amfUiRuntime?: DesktopAmfUiRuntimeApiV01;
   readonly toolLogos?: DesktopToolLogosApiV01;
   readonly guideContent?: import("./guide-content.js").DesktopGuideContentApiV01;
+  readonly eac?: DesktopEacApiV01;
 }

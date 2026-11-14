@@ -3,9 +3,8 @@
 //! install. Keep acquisition and installation here rather than in the renderer or
 //! application core. No redistribution: bytes come only from the official route below.
 
-use sha2::{Digest, Sha256};
 use std::{
-    io::{Read, Write},
+    io::Write,
     path::{Path, PathBuf},
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
@@ -86,12 +85,13 @@ pub(super) fn install_pico(
         report(activity)
     };
     let report: &mut DeploymentReporter<'_> = &mut official_report;
-    let installer = match acquire_installer(data_root, artifact, report).and_then(|installer| {
-        // Recheck the published/cache path immediately before the executable boundary.
-        verify_installer(&installer.path, artifact, report)?;
-        Ok(installer)
+    let locked = match acquire_installer(data_root, artifact, report).and_then(|installer| {
+        // Recheck and hold a read-only share lock on the published/cache handle across
+        // execution so no concurrent writer or rename can swap bytes before launch.
+        let (locked, _) = verify_locked_installer(&installer.path, artifact, report)?;
+        Ok(locked)
     }) {
-        Ok(installer) => installer,
+        Ok(locked) => locked,
         Err(error @ ("vua.deployment.cancelled" | "vua.deployment.invalid_location")) => {
             return Err(error)
         }
@@ -103,7 +103,9 @@ pub(super) fn install_pico(
             return Err(cause);
         }
     };
-    match install_verified(runner, &installer.path, report) {
+    let result = install_verified(runner, locked.path(), report);
+    drop(locked);
+    match result {
         Ok(()) => Ok(()),
         Err(
             error @ ("vua.deployment.cancelled"
@@ -281,51 +283,45 @@ async fn download(
     file.sync_all().map_err(|_| DOWNLOAD_ERROR)
 }
 
-/// Exact size and SHA-256 pin plus the Douyin Vision leaf signer; reported byte counts
-/// stay honest facts, never fabricated percentages.
+/// Exact size and SHA-256 pin plus the Douyin Vision leaf signer on a read-locked handle;
+/// reported byte counts stay honest facts, never fabricated percentages.
+fn verify_locked_installer(
+    path: &Path,
+    artifact: &PicoArtifact,
+    report: &mut DeploymentReporter<'_>,
+) -> Result<(crate::verified_launch::LockedExecutable, String), &'static str> {
+    let mut locked =
+        crate::verified_launch::LockedExecutable::open_read_locked(path).map_err(|err| {
+            if err.is_invalid_location() {
+                "vua.deployment.invalid_location"
+            } else {
+                INTEGRITY_ERROR
+            }
+        })?;
+    let digest = locked.verify_sha256_and_size(
+        MAX_SETUP_BYTES,
+        Some(artifact.size),
+        Some(artifact.sha256),
+        |completed, size| {
+            report(byte_progress(
+                DeploymentPhase::Verifying,
+                completed,
+                Some(size),
+            ))
+        },
+    )?;
+    if !crate::deployment_trust::trusted_pico_installer_locked(&locked) {
+        return Err(INTEGRITY_ERROR);
+    }
+    Ok((locked, digest))
+}
+
 fn verify_installer(
     path: &Path,
     artifact: &PicoArtifact,
     report: &mut DeploymentReporter<'_>,
 ) -> Result<String, &'static str> {
-    let mut file = std::fs::File::open(path).map_err(|_| INTEGRITY_ERROR)?;
-    let size = file.metadata().map_err(|_| INTEGRITY_ERROR)?.len();
-    if size != artifact.size {
-        return Err(INTEGRITY_ERROR);
-    }
-    let mut sha256 = Sha256::new();
-    let mut buffer = [0u8; 256 * 1024];
-    let mut total = 0u64;
-    let mut last_report = Instant::now();
-    report(byte_progress(DeploymentPhase::Verifying, 0, Some(size)))?;
-    loop {
-        let n = file.read(&mut buffer).map_err(|_| INTEGRITY_ERROR)?;
-        if n == 0 {
-            break;
-        }
-        total += n as u64;
-        if total > artifact.size {
-            return Err(INTEGRITY_ERROR);
-        }
-        sha256.update(&buffer[..n]);
-        if last_report.elapsed() >= Duration::from_secs(1) {
-            report(byte_progress(DeploymentPhase::Verifying, total, Some(size)))?;
-            last_report = Instant::now();
-        }
-    }
-    let digest: String = sha256
-        .finalize()
-        .iter()
-        .map(|b| format!("{b:02x}"))
-        .collect();
-    if total != size
-        || digest != artifact.sha256
-        || !crate::deployment_trust::trusted_pico_installer(path)
-    {
-        return Err(INTEGRITY_ERROR);
-    }
-    report(byte_progress(DeploymentPhase::Verifying, total, Some(size)))?;
-    Ok(digest)
+    verify_locked_installer(path, artifact, report).map(|(_, digest)| digest)
 }
 
 /// Run the verified NSIS installer silently. The vendor chooses the destination (no /D);
@@ -406,6 +402,7 @@ impl Drop for OwnedDownload {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Read;
     use vua_orchestrator::{outcome_with_exit, FakeProcessRunner};
 
     fn loopback_server(response: &'static str) -> (String, std::thread::JoinHandle<Vec<u8>>) {

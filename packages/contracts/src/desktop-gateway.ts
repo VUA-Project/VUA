@@ -6,6 +6,15 @@ import { isTermsParams, type TermsRequestV1 } from "./terms-v01.js";
 import { isAmfProductionParams, type AmfProductionRequestV1 } from "./amf-production-v01.js";
 import { isScenarioEnvironmentParams, type ScenarioEnvironmentRequestV1 } from "./scenario-environment.js";
 import { isPlayCommandId, isPlayParams, type PlayRoute } from "./play-session.js";
+import {
+  isEacCommandId,
+  isEacInspectParams,
+  isEacRepairParams,
+  isEacTerminateParams,
+  type EacInspectParamsV02,
+  type EacRepairParamsV02,
+  type EacTerminateParamsV02,
+} from "./eac-probe-v02.js";
 import { isExternalToolParams, type ExternalToolAction, type ExternalToolId } from "./external-tool.js";
 import { isInstallerToolParams, type InstallerToolAction, type InstallerToolId } from "./installer-tool.js";
 import { isNetworkParams, type NetworkIntent } from "./environment-network.js";
@@ -1113,6 +1122,9 @@ export type DesktopGatewayRequestV1 =
   | ScenarioEnvironmentRequestV1
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.inspectManagerApps"; readonly params: Readonly<Record<string, never>> }
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.observePlay"; readonly params: { readonly route: PlayRoute } }
+  | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.inspectEac"; readonly params: EacInspectParamsV02 }
+  | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.terminateEacResidual"; readonly params: EacTerminateParamsV02 & { readonly commandId: string } }
+  | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.launchEacRepair"; readonly params: EacRepairParamsV02 & { readonly commandId: string } }
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "tools.observeConnection"; readonly params: { readonly toolId: ExternalToolId } }
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "tools.actConnection"; readonly params: { readonly toolId: ExternalToolId; readonly action: ExternalToolAction; readonly commandId: string } }
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "tools.observeInstaller"; readonly params: { readonly toolId: InstallerToolId } }
@@ -1220,6 +1232,9 @@ export const DESKTOP_GATEWAY_METHOD_KINDS = {
   "environment.testWebsites": "query",
   "environment.planDeployment": "query",
   "environment.observePlay": "query",
+  "environment.inspectEac": "query",
+  "environment.terminateEacResidual": "command",
+  "environment.launchEacRepair": "command",
   "tools.observeConnection": "query",
   "tools.actConnection": "command",
   "tools.observeInstaller": "query",
@@ -2080,6 +2095,30 @@ export function isDesktopGatewayRequestV1(value: unknown): value is DesktopGatew
       return hasExactKeys(value, REQUEST_KEYS) && isDeploymentParams(value.params, false);
     case "environment.observePlay":
       return hasExactKeys(value, REQUEST_KEYS) && isPlayParams(value.params);
+    case "environment.inspectEac":
+      return hasExactKeys(value, REQUEST_KEYS) && isEacInspectParams(value.params);
+    case "environment.terminateEacResidual": {
+      if (
+        !hasExactKeys(value, REQUEST_KEYS)
+        || !hasExactKeys(value.params, ["schemaVersion", "pid", "created", "path", "confirmed", "commandId"])
+        || !isEacCommandId(value.params.commandId)
+      ) {
+        return false;
+      }
+      const { commandId: _commandId, ...params } = value.params;
+      return isEacTerminateParams(params);
+    }
+    case "environment.launchEacRepair": {
+      if (
+        !hasExactKeys(value, REQUEST_KEYS)
+        || !hasExactKeys(value.params, ["schemaVersion", "confirmed", "commandId"])
+        || !isEacCommandId(value.params.commandId)
+      ) {
+        return false;
+      }
+      const { commandId: _commandId, ...params } = value.params;
+      return isEacRepairParams(params);
+    }
     case "tools.observeConnection":
       return hasExactKeys(value, REQUEST_KEYS) && isExternalToolParams(value.params, false);
     case "tools.actConnection":

@@ -19,6 +19,7 @@ import { unityLicenseCopy } from "./unity-license-copy.ts";
 import { useTermsCopy } from "./use-terms-copy.ts";
 import { hardwareCopy } from "./hardware-copy.ts";
 import { environmentCopy } from "./environment-copy.ts";
+import { eacCopy } from "./eac-copy.ts";
 import { journeyCopy } from "./journey-copy.ts";
 import { contextGuideCopy } from "./context-guide-copy.ts";
 import { helpFaqCopy } from "./help-faq-copy.ts";
@@ -64,6 +65,7 @@ export const strings = {
   unityLicense: unityLicenseCopy.en,
   useTerms: useTermsCopy.en,
   environmentCards: environmentCopy["en"],
+  eac: eacCopy["en"],
   journey: journeyCopy["en"],
   avatarOptimizer: avatarOptimizerCopy["en"],
   guideChannel: guideChannelCopy["en"],
@@ -648,6 +650,7 @@ export const strings = {
       verification_failed: "The installer exited, but expected files weren't found. Check the install path and run checks again.",
       elevation_required: "Administrator permission is required. Retry and approve the Windows prompt, or run the official installer manually.",
       elevation_declined: "The Windows permission prompt was declined, so installation couldn't proceed. Recheck and retry when ready.",
+      invalid_location: "The installer cache path traverses a folder-mounted volume or unsupported reparse path. Move VUA data to a standard drive path or run the official installer manually.",
     },
     "installerHint": "Unity CLI support is experimental. Once downloaded, recheck before installing the Editor. Signing in and activating a license stay manual steps.",
     "installerKinds": {"unity_cli":"Unity CLI","hub_cli":"Installed Unity Hub CLI","unity_cli_bootstrap":"Official Unity CLI download"},

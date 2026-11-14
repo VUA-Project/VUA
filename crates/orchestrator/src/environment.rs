@@ -619,6 +619,12 @@ impl EnvironmentEngine {
         self.check_unity_hub()
     }
 
+    /// The VRChat finding alone, for locating the Steam VRChat installation directory without
+    /// probing SteamVR, PICO, or Unity Hub.
+    pub fn inspect_vrchat(&self) -> EnvironmentCheckItemV1 {
+        self.check_vrchat()
+    }
+
     // --- play zone: Steam chain ---
 
     /// Locates the Steam install (registry first, then candidate roots)

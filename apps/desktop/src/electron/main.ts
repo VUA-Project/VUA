@@ -34,6 +34,7 @@ import type {
 import { APPLICATION_CONTRACT_VERSION, DESKTOP_BROWSER_SITES_V1, desktopBrowserSite, desktopBrowserDisplayUrl, isDesktopBrowserViewportV1, accountGuideDestination, isGameWindowObservationResult, isLibraryDownloadParamsV01, isLibraryDownloadSnapshotV01, isAiUploadConfirmationV01, isGuideContentIdV01 } from "@vua/contracts";
 import type { OrchestratorProviderV01 } from "@vua/orchestrator-provider";
 import { routeDesktopGatewayInvoke, type DesktopGatewayRouteContext } from "./gateway-router.js";
+import { createEacMainController, type EacMainController } from "./eac-main.js";
 import { vrchatSession, writeSdkSessionFile, type VrchatSessionService } from "./vrchat-session.js";
 import { DownloadPort } from "./download-port.js";
 import { createSilentDownloadQueue } from "./silent-download.js";
@@ -171,6 +172,7 @@ let mainWindow: BrowserWindow | null = null;
 let aiTools: AiToolsServer | null = null;
 /** Experimental VRChat sign-in (vrchat-session v0.1), held by Electron Main. */
 let vrchatService: VrchatSessionService | null = null;
+let eacController: EacMainController | null = null;
 const SPLASH_VISIBLE_MS = 1_760;
 const SPLASH_FLATTENED_HOLD_MS = 320;
 let startupWindow: BrowserWindow | null = null;
@@ -717,6 +719,7 @@ function registerIpc(provider: ModuleProvider): void {
       resolveMaterialSource: resolveProductionContext,
       launchAmfEditor: (runId, taskId) => launchAmfEditor(provider, runId, taskId),
       vrchat: vrchatRouteFace(provider),
+      eac: eacController ?? undefined,
     },
     senderFrameUrl(event),
     request,
@@ -1094,6 +1097,19 @@ function registerIpc(provider: ModuleProvider): void {
     assertAmfReady();
     try { return { opened: await shell.openPath(path.join(amfDataRoot(), "warehouse")) === "" }; }
     catch { return { opened: false }; }
+  });
+  ipcMain.handle("vua:eac:open-folder", async (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    return eacController?.openRepairFolder() ?? { opened: false };
+  });
+  ipcMain.handle("vua:eac:get-experimental", async (event) => {
+    assertLocalSender(senderFrameUrl(event));
+    return eacController?.getExperimentalTermination() ?? { enabled: false };
+  });
+  ipcMain.handle("vua:eac:set-experimental", async (event, enabled: unknown) => {
+    assertBrowserSender(event);
+    if (typeof enabled !== "boolean") throw new Error("invalid EAC experimental toggle");
+    return eacController ? eacController.setExperimentalTermination(enabled) : { enabled: false };
   });
   ipcMain.handle("vua:library:open-booth-product", async (event, productId: unknown) => {
     assertBrowserSender(event); assertAmfReady();
@@ -2164,13 +2180,18 @@ app.whenReady().then(async () => {
     invoke: request => routeDesktopGatewayInvoke({ provider: provider!, productVersion: app.getVersion(),
       platform: process.platform as "win32" | "darwin" | "linux", rendererUrl,
       resolveMaterialSource: resolveProductionContext, launchAmfEditor: (runId, taskId) => launchAmfEditor(provider!, runId, taskId),
-      vrchat: vrchatRouteFace(provider!) },
+      vrchat: vrchatRouteFace(provider!), eac: eacController ?? undefined },
       mainWindow?.webContents.getURL() ?? "", request),
   });
   aiTools.subscribe(snapshot => {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("vua:ai-tools:changed", snapshot);
   });
   vrchatService = vrchatSession({ directory: app.getPath("userData"), version: app.getVersion(), secrets: safeStorage, openExternal: url => shell.openExternal(url) });
+  eacController = createEacMainController({
+    userDataDir: app.getPath("userData"),
+    provider,
+    showItemInFolder: fullPath => shell.showItemInFolder(fullPath),
+  });
   registerIpc(provider);
   systemUsage.start(desktopRuntime.providerExecutable);
   /* 启动韧性(2026-09-26)+启动并行(2026-11-11):IPC 先注册,宿主后端与主窗口并行启动,
@@ -2188,6 +2209,7 @@ app.whenReady().then(async () => {
   if (!packagedSmoke && aiTools.initiallyEnabled) await aiTools.setEnabled(true);
   // 启动会话检查(尽力而为):VRChat 结束的会话在此被发现;记住的密码可续登
   if (!packagedSmoke) void vrchatService.refresh().catch(() => {});
+  if (!packagedSmoke) void eacController.syncProvider().catch(() => {});
   if (packagedSmoke && mainWindow) {
     await packagedSmoke.verify(mainWindow, provider);
     return;

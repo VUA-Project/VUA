@@ -20,6 +20,7 @@ export const installerToolCopy = {
     errors: {
       uacCancelled: "Installation cancelled at the Windows prompt.",
       downloadFailed: "Couldn't download the installer. Check your connection or use the official page.",
+      invalidLocation: "Installer cache path uses a folder-mounted volume or unsupported reparse path. Open the official page to install manually.",
       generic: "Action didn't complete ({code}).",
     },
   },
@@ -43,6 +44,7 @@ export const installerToolCopy = {
     errors: {
       uacCancelled: "已在 Windows 权限提示处取消安装。",
       downloadFailed: "未能下载官方安装包，请检查网络或前往官方页面下载。",
+      invalidLocation: "安装包缓存目录位于挂载卷或不受支持的重解析路径上，请打开官方页面手动下载安装。",
       generic: "操作未完成（{code}）。",
     },
   },
@@ -66,6 +68,7 @@ export const installerToolCopy = {
     errors: {
       uacCancelled: "已在 Windows 權限提示視窗取消安裝。",
       downloadFailed: "無法下載官方安裝檔，請檢查網路或開啟官方頁面。",
+      invalidLocation: "安裝檔快取目錄位於掛載磁碟區或不支援的重新解析路徑上，請開啟官方頁面手動安裝。",
       generic: "操作未完成（{code}）。",
     },
   },
@@ -89,6 +92,7 @@ export const installerToolCopy = {
     errors: {
       uacCancelled: "Windows の確認画面でインストールがキャンセルされました。",
       downloadFailed: "インストーラーを取得できませんでした。通信状況を確認するか公式ページをご利用ください。",
+      invalidLocation: "キャッシュ先がフォルダーマウントされたボリュームまたは非対応の再解析パス上のため自動起動できません。公式ページから手動で導入してください。",
       generic: "操作を完了できませんでした（{code}）。",
     },
   },
@@ -112,6 +116,7 @@ export const installerToolCopy = {
     errors: {
       uacCancelled: "Windows 권한 확인 창에서 설치를 취소했어요.",
       downloadFailed: "설치 프로그램을 받지 못했어요. 네트워크를 확인하거나 공식 페이지를 이용해 주세요.",
+      invalidLocation: "캐시 경로가 폴더에 연결된 볼륨이나 지원하지 않는 재분석 지점을 거쳐 자동 실행할 수 없어요. 공식 페이지에서 직접 설치해 주세요.",
       generic: "작업을 완료하지 못했어요 ({code}).",
     },
   },

@@ -177,6 +177,11 @@ const api: VuaDesktopApiV7 = Object.freeze({
   guideContent: Object.freeze({
     read: (id: import("@vua/contracts").GuideContentIdV01) => ipcRenderer.invoke("vua:guide-content:read", id),
   }),
+  eac: Object.freeze({
+    openRepairFolder: () => ipcRenderer.invoke("vua:eac:open-folder"),
+    getExperimentalTermination: () => ipcRenderer.invoke("vua:eac:get-experimental"),
+    setExperimentalTermination: (enabled: boolean) => ipcRenderer.invoke("vua:eac:set-experimental", enabled),
+  }),
   gateway: Object.freeze({
     version: DESKTOP_GATEWAY_VERSION,
     invoke: (request: DesktopGatewayRequestV1) => ipcRenderer.invoke("vua:gateway:invoke", request),

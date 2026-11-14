@@ -19,6 +19,7 @@ import { unityLicenseCopy } from "./unity-license-copy.ts";
 import { useTermsCopy } from "./use-terms-copy.ts";
 import { hardwareCopy } from "./hardware-copy.ts";
 import { environmentCopy } from "./environment-copy.ts";
+import { eacCopy } from "./eac-copy.ts";
 import { journeyCopy } from "./journey-copy.ts";
 import { contextGuideCopy } from "./context-guide-copy.ts";
 import { helpFaqCopy } from "./help-faq-copy.ts";
@@ -58,6 +59,7 @@ export const strings: Strings = {
   unityLicense: unityLicenseCopy.ja,
   useTerms: useTermsCopy.ja,
   environmentCards: environmentCopy["ja"],
+  eac: eacCopy["ja"],
   journey: journeyCopy["ja"],
   avatarOptimizer: avatarOptimizerCopy["ja"],
   guideChannel: guideChannelCopy["ja"],
@@ -632,6 +634,7 @@ export const strings: Strings = {
       verification_failed: "インストール処理は終了しましたが、必要なファイルが見つかりません。保存先を確認してから再チェックしてください。",
       elevation_required: "Windows の管理者権限が必要です。再試行して権限の確認を許可するか、公式インストーラーを手動で実行してください。",
       elevation_declined: "Windows の権限確認がキャンセルされたため、インストールを完了できませんでした。準備ができたら再チェックしてやり直してください。",
+      invalid_location: "インストーラーのキャッシュ先がフォルダーマウントされたボリュームまたは非対応の再解析パス上にあるため自動起動できません。標準のドライブパスを使用するか、公式インストーラーを手動で実行してください。",
     },
     "installerHint": "Unity CLI 連携は実験的な機能です。CLI の取得後に一度再チェックしてから Editor を導入してください。アカウントのログインとライセンス認証はユーザー自身の操作になります。",
     "installerKinds": {"unity_cli":"Unity CLI","hub_cli":"導入済みの Unity Hub CLI","unity_cli_bootstrap":"公式 Unity CLI のダウンロード"},

@@ -336,7 +336,40 @@ function createFixtureEnvironment(
     deployer: { zones },
     versions: fixtureVersions,
   });
+  let fixtureEacExperimental = false;
   return {
+    eac: {
+      inspect: () => Promise.resolve({
+        schemaVersion: "vua.eac-probe/v0.2",
+        capturedAt: new Date().toISOString(),
+        processes: [],
+        services: [
+          { name: "EasyAntiCheat_EOS", present: true, state: "stopped", firstObservedAt: null },
+          { name: "EasyAntiCheat_EOSSys", present: false, state: "stopped", firstObservedAt: null },
+        ],
+        steam: { runningFlag: 0 },
+        install: { eacFolder: "present", setupSignature: "verified", serviceBinary: "verified" },
+        logFindings: [],
+        conclusion: "ready",
+        guidanceCode: "vua.eac_probe.ready",
+        plan: [],
+        terminationCapability: {
+          state: "unavailable",
+          reason: "no_allowlisted_candidate",
+          candidate: null,
+        },
+        diagnostics: [],
+      }),
+      terminateResidual: () => Promise.reject(new Error("fixture_eac_terminate_unavailable")),
+      repairCapability: () => Promise.resolve<CapabilityReport>({ state: "unavailable" }),
+      launchRepair: () => Promise.reject(new Error("fixture_eac_repair_unavailable")),
+      openRepairFolder: () => Promise.resolve({ opened: false }),
+      getExperimentalTermination: () => Promise.resolve({ enabled: fixtureEacExperimental }),
+      setExperimentalTermination: (enabled: boolean) => {
+        fixtureEacExperimental = enabled;
+        return Promise.resolve({ enabled });
+      },
+    },
     snapshot: () => Promise.resolve(signal.get()),
     subscribe: signal.subscribe,
     // fixture 驱动完整状态机供走查(C-ENV):runCheck → running →(settleMs)→

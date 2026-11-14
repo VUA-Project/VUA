@@ -4,6 +4,7 @@ import { createUnityLicensePort } from "./unity-license-port.ts";
 import { createAmfModulePort } from "./amf-module-port.ts";
 import { createDistributionPort } from "./distribution-port.ts";
 import { createLivePlayPort } from "./live-play-port.ts";
+import { createLiveEacPort } from "./live-eac-port.ts";
 import { createLiveInstallerToolPort, createLiveToolPort } from "./live-tool-port.ts";
 import { createCreatorInventoryPort } from "./creator-inventory-port.ts";
 import { createLiveNetworkPort } from "./live-network-port.ts";
@@ -145,7 +146,7 @@ function createLiveTaskPort(client: GatewayClient): TaskPort {
   };
 }
 
-function createLiveEnvironmentPort(client: GatewayClient): EnvironmentPort {
+function createLiveEnvironmentPort(client: GatewayClient, host?: DesktopKernelHost): EnvironmentPort {
   let pending: Promise<EnvironmentView> | undefined;
   const readView = async (): Promise<EnvironmentView> => {
     const result = await client.invoke({
@@ -171,6 +172,7 @@ function createLiveEnvironmentPort(client: GatewayClient): EnvironmentPort {
     scenarios: createScenarioEnvironmentPort(client),
     unityLicense: createUnityLicensePort(client),
     play: createLivePlayPort(client),
+    eac: createLiveEacPort(client, host),
     tools: createLiveToolPort(client),
     installerTools: createLiveInstallerToolPort(client),
     managers: createCreatorInventoryPort(client),
@@ -203,6 +205,7 @@ function createLiveEnvironmentPort(client: GatewayClient): EnvironmentPort {
 /** Kernel 宿主完整面:gateway/events 供 client,dialog 供素材来源选取与仓储导入拾取 */
 export interface DesktopKernelHost extends DesktopGatewayHost {
   readonly amfModule?: import("@vua/contracts").AmfModuleApiV01;
+  readonly eac?: import("@vua/contracts").DesktopEacApiV01;
   dialog?: {
     pickMaterialSource(
       intake: "direct_unity_package" | "local_reusable_vpm",
@@ -240,7 +243,7 @@ export function createElectronGateway(
     updatePlans: host?.updatePlans,
     amfUiRuntime: host?.amfUiRuntime,
     guideContent: host?.guideContent,
-    environment: createLiveEnvironmentPort(client),
+    environment: createLiveEnvironmentPort(client, host),
     task: createLiveTaskPort(client),
     tutorial: notRun.tutorial,
     modelProduction: liveModelProduction,

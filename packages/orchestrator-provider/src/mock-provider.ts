@@ -238,6 +238,11 @@ export class MockOrchestratorProviderV01 implements OrchestratorProviderV01 {
       case "environment.startPlay":
       case "environment.stopPlay":
         return this.#failure(request, this.#error("vua.play_session.unavailable", "unavailable", "errors.playSession.unavailable", request.correlationId, false, false));
+      case "environment.inspectEac":
+      case "environment.terminateEacResidual":
+      case "environment.launchEacRepair":
+      case "environment.configureEacExperimental":
+        return this.#failure(request, this.#error("vua.eac.unavailable", "unavailable", "errors.eac.unavailable", request.correlationId, true, false));
       case "tools.observeConnection":
       case "tools.actConnection":
         return this.#failure(request, this.#error("vua.external_tool.unavailable", "unavailable", "errors.externalTool.unavailable", request.correlationId, false, false));

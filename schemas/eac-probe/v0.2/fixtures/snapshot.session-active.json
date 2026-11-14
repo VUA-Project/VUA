@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "vua.eac-probe/v0.2",
+  "capturedAt": "2026-11-14T08:05:00Z",
+  "processes": [
+    {
+      "name": "EasyAntiCheat_EOS.exe",
+      "pid": 4120,
+      "created": "134392000000000000",
+      "kind": "eac_service",
+      "path": "C:\\Program Files (x86)\\EasyAntiCheat_EOS\\EasyAntiCheat_EOS.exe",
+      "hasVisibleWindow": false
+    },
+    {
+      "name": "VRChat.exe",
+      "pid": 8844,
+      "created": "134392000050000000",
+      "kind": "vrchat_game",
+      "path": "D:\\SteamLibrary\\steamapps\\common\\VRChat\\VRChat.exe",
+      "hasVisibleWindow": true
+    }
+  ],
+  "services": [
+    {
+      "name": "EasyAntiCheat_EOS",
+      "present": true,
+      "state": "running",
+      "firstObservedAt": "2026-11-14T08:01:00Z"
+    },
+    {
+      "name": "EasyAntiCheat_EOSSys",
+      "present": true,
+      "state": "running",
+      "firstObservedAt": "2026-11-14T08:01:00Z"
+    }
+  ],
+  "steam": {
+    "runningFlag": 1
+  },
+  "install": {
+    "eacFolder": "present",
+    "setupSignature": "verified",
+    "serviceBinary": "verified"
+  },
+  "logFindings": [],
+  "conclusion": "session_active",
+  "guidanceCode": "vua.eac_probe.session_active",
+  "plan": [],
+  "terminationCapability": {
+    "state": "unavailable",
+    "reason": "active_vrchat_session",
+    "candidate": null
+  },
+  "diagnostics": []
+}

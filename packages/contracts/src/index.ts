@@ -25,6 +25,7 @@ export * from "./download-events.js";
 
 export * from "./environment-deployment.js";
 export * from "./environment-network.js";
+export * from "./eac-probe-v02.js";
 export * from "./game-window.js";
 export * from "./website-test.js";
 export * from "./account-guide.js";

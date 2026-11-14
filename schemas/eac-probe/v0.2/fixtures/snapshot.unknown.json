@@ -1,0 +1,43 @@
+{
+  "schemaVersion": "vua.eac-probe/v0.2",
+  "capturedAt": "2026-11-14T08:35:00Z",
+  "processes": [],
+  "services": [
+    {
+      "name": "EasyAntiCheat_EOS",
+      "present": false,
+      "state": "unreadable",
+      "firstObservedAt": null
+    },
+    {
+      "name": "EasyAntiCheat_EOSSys",
+      "present": false,
+      "state": "unreadable",
+      "firstObservedAt": null
+    }
+  ],
+  "steam": {
+    "runningFlag": null
+  },
+  "install": {
+    "eacFolder": "unknown",
+    "setupSignature": "unknown",
+    "serviceBinary": "unknown"
+  },
+  "logFindings": [],
+  "conclusion": "unknown",
+  "guidanceCode": "vua.eac_probe.unknown",
+  "plan": [],
+  "terminationCapability": {
+    "state": "unavailable",
+    "reason": "no_allowlisted_candidate",
+    "candidate": null
+  },
+  "diagnostics": [
+    {
+      "code": "vua.eac_probe.service_unreadable",
+      "severity": "warning",
+      "detail": "Service control manager status query failed."
+    }
+  ]
+}

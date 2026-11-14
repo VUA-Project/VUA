@@ -59,6 +59,9 @@ export function describeInstallerError(code: string, copy: InstallerCopy): strin
   if (normalized.includes("cancel") || normalized.includes("uac") || normalized.includes("elevation") || normalized.includes("abort")) {
     return copy.errors.uacCancelled;
   }
+  if (normalized.includes("invalid_location") || normalized.includes("reparse")) {
+    return copy.errors.invalidLocation;
+  }
   if (normalized.includes("download") || normalized.includes("source") || normalized.includes("network") || normalized.includes("hash") || normalized.includes("verify")) {
     return copy.errors.downloadFailed;
   }

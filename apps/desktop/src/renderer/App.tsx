@@ -75,7 +75,7 @@ import {
   buildDiagnostics,
   downloadDiagnostics,
 } from "./features/settings/diagnostics.ts";
-import { ExperimentalCommands } from "./features/settings/experimental-commands.tsx";
+import { EacExperimentalSection, ExperimentalCommands } from "./features/settings/experimental-commands.tsx";
 import { VrchatSignInSection } from "./features/settings/vrchat-sign-in.tsx";
 import { AccountSettingsPage } from "./features/settings/AccountSettingsPage.tsx";
 import { EnvironmentSettingsPage } from "./features/settings/environment-page.tsx";
@@ -213,10 +213,12 @@ function AmfExperimentalCommands() {
 
 function ExperimentalSettingsPage() {
   const copy = strings.settings.experimental;
-  const vrchat = useGateway().vrchat;
+  const gateway = useGateway();
+  const vrchat = gateway.vrchat;
   return <div className="vua-page">
     <section className="vua-page__hero"><h1 className="vua-title">{strings.nav.pages.settingsExperimental}</h1></section>
     <AmfExperimentalCommands />
+    <Card><EacExperimentalSection /></Card>
     {vrchat !== undefined ? <Card><VrchatSignInSection /></Card> : null}
     <Card><div className="vua-page__stack">
       <h3>{copy.taskDiagnosticsTitle}</h3>

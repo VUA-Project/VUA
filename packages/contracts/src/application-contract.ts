@@ -9,6 +9,19 @@ import { isNetworkParams, type NetworkIntent, type NetworkResult } from "./envir
 import { isWebsiteTestParams, type WebsiteTestParams, type WebsiteTestResult } from "./website-test.js";
 import { type GameWindowObservationResultV1 } from "./game-window.js";
 import { isPlayCommandId, isPlayParams, type PlayRoute, type PlaySessionResult } from "./play-session.js";
+import {
+  isEacCommandId,
+  isEacInspectParams,
+  isEacRepairParams,
+  isEacTerminateParams,
+  type EacExperimentalConfigResultV02,
+  type EacInspectParamsV02,
+  type EacInspectResultV02,
+  type EacRepairParamsV02,
+  type EacRepairResultV02,
+  type EacTerminateParamsV02,
+  type EacTerminateResultV02,
+} from "./eac-probe-v02.js";
 import { isExternalToolParams, type ExternalToolAction, type ExternalToolId, type ExternalToolResult } from "./external-tool.js";
 import { isInstallerToolParams, type InstallerToolAction, type InstallerToolId, type InstallerToolResult } from "./installer-tool.js";
 import type { ManagerAppsResult } from "./manager-apps.js";
@@ -2882,6 +2895,10 @@ export type ApplicationRequestV01 =
   | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly commandId: string; readonly method: "amf.production.prepare" | "amf.production.assemble" | "amf.production.reinspect" | "amf.production.open" | "amf.production.closeEditor" | "amf.production.rollback" | "amf.production.restoreRevision" | "amf.production.renameRecipe" | "amf.production.deleteRecipe" | "amf.production.saveRecipe" | "amf.production.prepareRecipe" | "amf.production.exportRecipe" | "amf.production.importRecipe" | "amf.production.applyRecipe" | "amf.production.localTest" | "amf.production.bakeTurntable" | "amf.production.upload" | "amf.production.faceTrackingPatch" | "amf.production.sdkFix" | "amf.production.changeSources" | "amf.production.delete" | "amf.production.setCapacity" | "amf.production.removeOutfit" | "amf.production.applyLighting" | "amf.production.setOptimizer" | "amf.production.applyTextureMemory" | "amf.production.saveFit" | "amf.production.renameFit" | "amf.production.deleteFit"; readonly params: Readonly<Record<string, unknown>> })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.inspectManagerApps"; readonly params: Readonly<Record<string, never>> })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.observePlay"; readonly params: { readonly route: PlayRoute } })
+  | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.inspectEac"; readonly params: EacInspectParamsV02 })
+  | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly method: "environment.terminateEacResidual"; readonly commandId: string; readonly params: EacTerminateParamsV02 })
+  | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly method: "environment.launchEacRepair"; readonly commandId: string; readonly params: EacRepairParamsV02 })
+  | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly method: "environment.configureEacExperimental"; readonly commandId: string; readonly params: { readonly enabled: boolean } })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "tools.observeConnection"; readonly params: { readonly toolId: ExternalToolId } })
   | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly method: "tools.actConnection"; readonly commandId: string; readonly params: { readonly toolId: ExternalToolId; readonly action: ExternalToolAction } })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "tools.observeInstaller"; readonly params: { readonly toolId: InstallerToolId } })
@@ -3060,6 +3077,10 @@ export type ApplicationSuccessValueV01 =
   | ProductTermsV01 | TermsUseCheckV01 | TermsAcceptedV01
   | ManagerAppsResult
   | PlaySessionResult
+  | EacInspectResultV02
+  | EacTerminateResultV02
+  | EacRepairResultV02
+  | EacExperimentalConfigResultV02
   | ExternalToolResult
   | InstallerToolResult
   | NetworkResult
@@ -3339,6 +3360,30 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
     return value.kind === (command ? "command" : "query")
       && hasExactKeys(value, command ? ["contractVersion", "requestId", "correlationId", "kind", "method", "params", "commandId"] : ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
       && (!command || isPlayCommandId(value.commandId)) && isPlayParams(value.params);
+  }
+  if (value.method === "environment.inspectEac") {
+    return value.kind === "query"
+      && hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
+      && isEacInspectParams(value.params);
+  }
+  if (value.method === "environment.terminateEacResidual") {
+    return value.kind === "command"
+      && hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params", "commandId"])
+      && isEacCommandId(value.commandId)
+      && isEacTerminateParams(value.params);
+  }
+  if (value.method === "environment.launchEacRepair") {
+    return value.kind === "command"
+      && hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params", "commandId"])
+      && isEacCommandId(value.commandId)
+      && isEacRepairParams(value.params);
+  }
+  if (value.method === "environment.configureEacExperimental") {
+    return value.kind === "command"
+      && hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params", "commandId"])
+      && isEacCommandId(value.commandId)
+      && hasExactKeys(value.params, ["enabled"])
+      && typeof value.params.enabled === "boolean";
   }
   if (value.method === "environment.planDeployment" || value.method === "environment.executeDeployment") {
     const execute = value.method === "environment.executeDeployment";
