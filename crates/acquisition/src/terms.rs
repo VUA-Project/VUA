@@ -241,6 +241,17 @@ pub fn all_product_details(
         .collect())
 }
 
+pub fn product_details_for_ids(
+    store: &BdlStore,
+    ids: &[String],
+) -> Result<std::collections::HashMap<String, TermsDetail>, BdlStoreError> {
+    Ok(store
+        .product_terms_for_ids(ids)?
+        .into_iter()
+        .map(|(id, terms)| (id, detail_from_product_terms(terms)))
+        .collect())
+}
+
 pub fn detail_from_product_terms(product: ProductTerms) -> TermsDetail {
     let id = product.product_id.clone();
     let documents: Vec<_> = product
@@ -447,16 +458,17 @@ pub fn check_use(
         .iter()
         .find(|p| p.id == preset)
         .ok_or(BdlStoreError::InvalidObservation("preset"))?;
-    let mut bulk = (ids.len() > 1)
-        .then(|| all_product_details(store))
+    let bulk = (ids.len() > 1)
+        .then(|| product_details_for_ids(store, ids))
         .transpose()?;
     let mut products = Vec::new();
     let mut matching_product_ids = Vec::new();
     let mut combination = decision(Vec::new());
     for id in ids {
-        let detail = match &mut bulk {
+        let detail = match &bulk {
             Some(map) => map
-                .remove(id)
+                .get(id)
+                .cloned()
                 .unwrap_or_else(|| detail_from_product_terms(ProductTerms::not_observed(id))),
             None => product_detail(store, id)?,
         };

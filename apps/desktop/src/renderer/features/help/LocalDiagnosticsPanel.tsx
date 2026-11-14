@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   SYMPTOM_IDS_V01,
+  type ClientConfigUpdateReceiptV01,
   type LocalDiagnosticsSnapshotV01,
   type SymptomDiagnosisV01,
   type SymptomIdV01,
@@ -23,6 +24,30 @@ function formatBytes(bytes: number | null): string {
   if (mib < 1024) return `${mib.toFixed(1)} MiB`;
   const gib = mib / 1024;
   return `${gib.toFixed(1)} GiB`;
+}
+
+function formatCapturedTime(iso: string): string {
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return iso;
+  return parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+export function formatClientConfigReceiptFeedback(
+  receipt: ClientConfigUpdateReceiptV01,
+  fallbackSizeGb: number,
+  fallbackExpiryDays: number,
+  copy: Pick<typeof strings.localDiagnostics, "configSaveDone" | "configSaveDoneNoBackup">,
+): string {
+  const gb = receipt.cacheSizeGb ?? fallbackSizeGb;
+  const days = receipt.cacheExpiryDelayDays ?? fallbackExpiryDays;
+  if (receipt.backupRelativePath) {
+    return format(copy.configSaveDone, {
+      gb,
+      days,
+      backup: receipt.backupRelativePath,
+    });
+  }
+  return format(copy.configSaveDoneNoBackup, { gb, days });
 }
 
 function formatPort(port: UdpPortObservationV01, copy: typeof strings.localDiagnostics.cards): string {
@@ -74,11 +99,13 @@ export function buildRedactedDiagnosticSummary(
   return JSON.stringify(
     {
       schemaVersion: snapshot.schemaVersion,
+      capturedAt: snapshot.capturedAt,
       clientRunning: snapshot.clientRunning,
       recentLog: snapshot.recentClientLog.classification,
       cache: {
         presence: snapshot.clientCache.presence,
         used: formatBytes(snapshot.clientCache.totalBytes),
+        capturedAt: snapshot.clientCache.capturedAt,
         free: formatBytes(snapshot.clientCache.driveFreeBytes),
         cacheSizeGb: snapshot.clientConfig.cacheSizeGb,
         cacheExpiryDelayDays: snapshot.clientConfig.cacheExpiryDelayDays,
@@ -174,7 +201,7 @@ export function LocalDiagnosticsPanel({
     setCacheExpiryInput(String(next.clientConfig.cacheExpiryDelayDays ?? 30));
   };
 
-  const loadAll = async (symptom: SymptomIdV01) => {
+  const loadAll = async (symptom: SymptomIdV01, forceRefresh = false) => {
     if (!port) {
       setUnavailable(true);
       return;
@@ -182,6 +209,9 @@ export function LocalDiagnosticsPanel({
     setRefreshing(true);
     setDiagnosing(true);
     try {
+      if (forceRefresh) {
+        await port.observe();
+      }
       const diag = await port.diagnose(symptom);
       setUnavailable(false);
       setSnapshot(diag.snapshot);
@@ -265,10 +295,7 @@ export function LocalDiagnosticsPanel({
         crypto.randomUUID(),
       );
       setCfgFeedback(
-        format(copy.configSaveDone, {
-          gb: receipt.cacheSizeGb ?? sizeNum,
-          days: receipt.cacheExpiryDelayDays ?? expiryNum,
-        }),
+        formatClientConfigReceiptFeedback(receipt, sizeNum, expiryNum, copy),
       );
       await loadAll(selectedSymptom);
     } catch (err) {
@@ -301,7 +328,7 @@ export function LocalDiagnosticsPanel({
           <Button
             data-nav-id="diagnostics-refresh"
             disabled={!port || refreshing}
-            onClick={() => void loadAll(selectedSymptom)}
+            onClick={() => void loadAll(selectedSymptom, true)}
           >
             <Icon name="refresh" size={16} />
             {refreshing ? copy.refreshing : copy.refresh}
@@ -322,6 +349,11 @@ export function LocalDiagnosticsPanel({
         </div>
       </header>
       <p className="vua-local-diag__subtitle">{copy.subtitle}</p>
+      {snapshot ? (
+        <p className="vua-local-diag__secondary-fact" data-diag-captured-at>
+          {format(copy.capturedAtLabel, { time: formatCapturedTime(snapshot.capturedAt) })}
+        </p>
+      ) : null}
 
       {unavailable || !snapshot ? (
         <p className="vua-local-diag__guard" role="status">
@@ -359,9 +391,11 @@ export function LocalDiagnosticsPanel({
               </div>
               <p className="vua-local-diag__primary-fact">
                 {snapshot.clientCache.presence === "found"
-                  ? format(copy.cards.cacheUsage, {
-                      used: formatBytes(snapshot.clientCache.totalBytes),
-                    })
+                  ? snapshot.clientCache.totalBytes === null
+                    ? copy.cards.cacheMeasuring
+                    : format(copy.cards.cacheUsage, {
+                        used: formatBytes(snapshot.clientCache.totalBytes),
+                      })
                   : copy.cards.cacheMissing}
               </p>
               <p className="vua-local-diag__secondary-fact">
@@ -375,6 +409,11 @@ export function LocalDiagnosticsPanel({
                 {snapshot.clientCache.driveFreeBytes !== null
                   ? ` · ${format(copy.cards.driveFree, {
                       free: formatBytes(snapshot.clientCache.driveFreeBytes),
+                    })}`
+                  : ""}
+                {snapshot.clientCache.capturedAt !== null
+                  ? ` · ${format(copy.cards.cacheCapturedAt, {
+                      time: formatCapturedTime(snapshot.clientCache.capturedAt),
                     })}`
                   : ""}
               </p>

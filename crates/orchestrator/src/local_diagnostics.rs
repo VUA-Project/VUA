@@ -10,7 +10,7 @@
 //!   whenever `VRChat.exe` is running or process liveness cannot be verified.
 
 use crate::environment::{free_disk_bytes, EnvironmentRoots};
-use crate::time::{rfc3339, Clock};
+use crate::time::{rfc3339, rfc3339_offset_millis, Clock};
 use crate::win_registry::RegistryHive;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -18,12 +18,17 @@ use std::collections::VecDeque;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
-use std::time::SystemTime;
+use std::sync::{Arc, Condvar, Mutex};
+use std::time::{Duration, Instant, SystemTime};
 
 pub const LOCAL_DIAGNOSTICS_SCHEMA: &str = "vua.local-diagnostics/v0.1";
+pub const CONFIG_BACKUP_RELATIVE_PATH: &str = "LocalLow/VRChat/VRChat/config.json.vua.bak";
 
 const MAX_CACHE_WALK_ENTRIES: usize = 50_000;
+const SNAPSHOT_CACHE_TTL: Duration = Duration::from_secs(10);
+const SNAPSHOT_CACHE_TTL_MS: i64 = 10_000;
+const CACHE_WALK_FRESH_TTL: Duration = Duration::from_secs(30);
+const INITIAL_CACHE_WALK_WAIT: Duration = Duration::from_millis(150);
 const LOG_TAIL_MAX_BYTES: u64 = 128 * 1024;
 const MAX_CONFIG_JSON_BYTES: u64 = 1024 * 1024;
 const MAX_STEAMVR_SETTINGS_BYTES: u64 = 2 * 1024 * 1024;
@@ -293,6 +298,7 @@ pub struct ClientCacheObservation {
     pub presence: &'static str,
     pub total_bytes: Option<u64>,
     pub truncated: bool,
+    pub captured_at: Option<String>,
     pub drive_free_bytes: Option<u64>,
     pub drive_total_bytes: Option<u64>,
 }
@@ -470,6 +476,7 @@ pub struct ClientConfigUpdateReceipt {
     pub schema_version: &'static str,
     pub updated_at: String,
     pub backup_written: bool,
+    pub backup_relative_path: Option<String>,
     pub cache_size_gb: Option<u64>,
     pub cache_expiry_delay_days: Option<u64>,
 }
@@ -523,11 +530,55 @@ enum RecordedOutcome {
     UpdateConfig(ClientConfigUpdateInput, ClientConfigUpdateReceipt),
 }
 
+#[derive(Debug, Clone)]
+struct CachedSnapshot {
+    snapshot: LocalDiagnosticsSnapshot,
+    captured_instant: Instant,
+}
+
+#[derive(Debug, Clone)]
+struct ClientCacheWalkEntry {
+    cache_dir: PathBuf,
+    total_bytes: u64,
+    truncated: bool,
+    captured_at: String,
+    completed_instant: Instant,
+}
+
+struct ClientCacheWalkState {
+    in_flight_dir: Option<PathBuf>,
+    generation: u64,
+    latest: Option<ClientCacheWalkEntry>,
+}
+
+struct ClientCacheWalkCoordinator {
+    state: Mutex<ClientCacheWalkState>,
+    cvar: Condvar,
+}
+
+impl ClientCacheWalkCoordinator {
+    fn new() -> Self {
+        Self {
+            state: Mutex::new(ClientCacheWalkState {
+                in_flight_dir: None,
+                generation: 0,
+                latest: None,
+            }),
+            cvar: Condvar::new(),
+        }
+    }
+}
+
 pub struct LocalDiagnosticsService {
     roots: EnvironmentRoots,
     probe: Arc<dyn LocalDiagnosticsProbe>,
     clock: Arc<dyn Clock>,
     ledger: Mutex<VecDeque<(String, RecordedOutcome)>>,
+    snapshot_cache: Mutex<Option<CachedSnapshot>>,
+    cache_walk: Arc<ClientCacheWalkCoordinator>,
+    cache_walk_wait_budget: Duration,
+    #[cfg(test)]
+    cache_walk_delay: Duration,
 }
 
 impl LocalDiagnosticsService {
@@ -541,11 +592,225 @@ impl LocalDiagnosticsService {
             probe,
             clock,
             ledger: Mutex::new(VecDeque::new()),
+            snapshot_cache: Mutex::new(None),
+            cache_walk: Arc::new(ClientCacheWalkCoordinator::new()),
+            cache_walk_wait_budget: INITIAL_CACHE_WALK_WAIT,
+            #[cfg(test)]
+            cache_walk_delay: Duration::ZERO,
         }
     }
 
     fn vrchat_root(&self) -> PathBuf {
         self.roots.local_low.join("VRChat").join("VRChat")
+    }
+
+    fn invalidate_caches(&self) {
+        if let Ok(mut guard) = self.snapshot_cache.lock() {
+            *guard = None;
+        }
+        if let Ok(mut walk) = self.cache_walk.state.lock() {
+            walk.generation = walk.generation.wrapping_add(1);
+            walk.in_flight_dir = None;
+            walk.latest = None;
+        }
+    }
+
+    fn spawn_cache_walk(&self, cache_dir: PathBuf, generation: u64) {
+        let coordinator = Arc::clone(&self.cache_walk);
+        let clock = Arc::clone(&self.clock);
+        #[cfg(test)]
+        let delay = self.cache_walk_delay;
+        let _ = std::thread::Builder::new()
+            .name("vua-diag-cache-walk".into())
+            .spawn(move || {
+                #[cfg(test)]
+                if !delay.is_zero() {
+                    std::thread::sleep(delay);
+                }
+                let (total_bytes, truncated) = walk_client_cache_dir(&cache_dir);
+                let captured_at = clock.now_rfc3339();
+                if let Ok(mut state) = coordinator.state.lock() {
+                    if state.generation == generation {
+                        state.latest = Some(ClientCacheWalkEntry {
+                            cache_dir,
+                            total_bytes,
+                            truncated,
+                            captured_at,
+                            completed_instant: Instant::now(),
+                        });
+                        state.in_flight_dir = None;
+                    }
+                    coordinator.cvar.notify_all();
+                }
+            });
+    }
+
+    fn inspect_client_cache_nonblocking(
+        &self,
+        cache_dir: &Path,
+        fallback_root: &Path,
+    ) -> ClientCacheObservation {
+        let (drive_free_bytes, drive_total_bytes) = existing_ancestor(cache_dir, fallback_root)
+            .and_then(|target| free_disk_bytes(target).ok())
+            .map(|(free, total)| (Some(free), Some(total)))
+            .unwrap_or((None, None));
+
+        let meta = match fs::symlink_metadata(cache_dir) {
+            Ok(meta) => meta,
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                return ClientCacheObservation {
+                    presence: "missing",
+                    total_bytes: None,
+                    truncated: false,
+                    captured_at: None,
+                    drive_free_bytes,
+                    drive_total_bytes,
+                };
+            }
+            Err(_) => {
+                return ClientCacheObservation {
+                    presence: "read_failed",
+                    total_bytes: None,
+                    truncated: false,
+                    captured_at: None,
+                    drive_free_bytes,
+                    drive_total_bytes,
+                };
+            }
+        };
+        if is_reparse_or_symlink(&meta) || !meta.is_dir() {
+            return ClientCacheObservation {
+                presence: "read_failed",
+                total_bytes: None,
+                truncated: false,
+                captured_at: None,
+                drive_free_bytes,
+                drive_total_bytes,
+            };
+        }
+
+        let Ok(mut state) = self.cache_walk.state.lock() else {
+            return ClientCacheObservation {
+                presence: "read_failed",
+                total_bytes: None,
+                truncated: false,
+                captured_at: None,
+                drive_free_bytes,
+                drive_total_bytes,
+            };
+        };
+
+        if let Some(entry) = state
+            .latest
+            .as_ref()
+            .filter(|e| e.cache_dir == cache_dir)
+            .cloned()
+        {
+            let age = entry.completed_instant.elapsed();
+            if age < CACHE_WALK_FRESH_TTL {
+                if age >= SNAPSHOT_CACHE_TTL && state.in_flight_dir.is_none() {
+                    let generation = state.generation;
+                    state.in_flight_dir = Some(cache_dir.to_path_buf());
+                    drop(state);
+                    self.spawn_cache_walk(cache_dir.to_path_buf(), generation);
+                }
+                return ClientCacheObservation {
+                    presence: "found",
+                    total_bytes: Some(entry.total_bytes),
+                    truncated: entry.truncated,
+                    captured_at: Some(entry.captured_at),
+                    drive_free_bytes,
+                    drive_total_bytes,
+                };
+            }
+        }
+
+        if state.in_flight_dir.as_deref() != Some(cache_dir) {
+            let generation = state.generation;
+            state.in_flight_dir = Some(cache_dir.to_path_buf());
+            self.spawn_cache_walk(cache_dir.to_path_buf(), generation);
+        }
+
+        let wait_budget = self.cache_walk_wait_budget;
+        if !wait_budget.is_zero() {
+            if let Ok((after_wait, _)) =
+                self.cache_walk
+                    .cvar
+                    .wait_timeout_while(state, wait_budget, |s| {
+                        s.latest.as_ref().is_none_or(|e| e.cache_dir != cache_dir)
+                            && s.in_flight_dir.as_deref() == Some(cache_dir)
+                    })
+            {
+                state = after_wait;
+            } else {
+                return ClientCacheObservation {
+                    presence: "found",
+                    total_bytes: None,
+                    truncated: false,
+                    captured_at: None,
+                    drive_free_bytes,
+                    drive_total_bytes,
+                };
+            }
+        }
+
+        if let Some(entry) = state.latest.as_ref().filter(|e| e.cache_dir == cache_dir) {
+            ClientCacheObservation {
+                presence: "found",
+                total_bytes: Some(entry.total_bytes),
+                truncated: entry.truncated,
+                captured_at: Some(entry.captured_at.clone()),
+                drive_free_bytes,
+                drive_total_bytes,
+            }
+        } else {
+            ClientCacheObservation {
+                presence: "found",
+                total_bytes: None,
+                truncated: false,
+                captured_at: None,
+                drive_free_bytes,
+                drive_total_bytes,
+            }
+        }
+    }
+
+    fn cached_or_fresh_snapshot(&self) -> LocalDiagnosticsSnapshot {
+        if let Ok(guard) = self.snapshot_cache.lock() {
+            if let Some(cached) = guard.as_ref() {
+                if cached.captured_instant.elapsed() < SNAPSHOT_CACHE_TTL {
+                    let now_str = self.clock.now_rfc3339();
+                    let within_clock_ttl = match (
+                        rfc3339_offset_millis(&now_str),
+                        rfc3339_offset_millis(&cached.snapshot.captured_at),
+                    ) {
+                        (Some(now_ms), Some(captured_ms)) => {
+                            let delta = now_ms - captured_ms;
+                            (0..SNAPSHOT_CACHE_TTL_MS).contains(&delta)
+                        }
+                        _ => true,
+                    };
+                    if within_clock_ttl {
+                        // If a previously pending background cache walk has now completed,
+                        // upgrade `client_cache` in-place without re-probing ports/OSCQuery.
+                        let mut snap = cached.snapshot.clone();
+                        if snap.client_cache.presence == "found"
+                            && snap.client_cache.total_bytes.is_none()
+                        {
+                            if let Ok(walk_state) = self.cache_walk.state.lock() {
+                                if let Some(entry) = &walk_state.latest {
+                                    snap.client_cache.total_bytes = Some(entry.total_bytes);
+                                    snap.client_cache.truncated = entry.truncated;
+                                    snap.client_cache.captured_at = Some(entry.captured_at.clone());
+                                }
+                            }
+                        }
+                        return snap;
+                    }
+                }
+            }
+        }
+        self.observe_local()
     }
 
     pub fn observe_local(&self) -> LocalDiagnosticsSnapshot {
@@ -555,7 +820,7 @@ impl LocalDiagnosticsService {
         let (client_config, custom_cache_base) =
             inspect_client_config(&vrchat_root.join("config.json"));
         let cache_dir = resolve_cache_dir(&vrchat_root, custom_cache_base.as_deref());
-        let client_cache = inspect_client_cache(&cache_dir, &self.roots.local_low);
+        let client_cache = self.inspect_client_cache_nonblocking(&cache_dir, &self.roots.local_low);
         let osc = inspect_osc_local(&vrchat_root.join("OSC"), self.probe.as_ref());
         let steamvr_settings = inspect_steamvr_settings(&self.roots);
         let audio_endpoints = inspect_audio_endpoints(&self.roots);
@@ -563,7 +828,7 @@ impl LocalDiagnosticsService {
         let system_tuning = inspect_system_tuning(&self.roots);
         let recent_client_log = inspect_recent_client_log(&vrchat_root);
 
-        LocalDiagnosticsSnapshot {
+        let snapshot = LocalDiagnosticsSnapshot {
             schema_version: LOCAL_DIAGNOSTICS_SCHEMA,
             captured_at,
             client_running,
@@ -575,11 +840,18 @@ impl LocalDiagnosticsService {
             streaming_settings,
             system_tuning,
             recent_client_log,
+        };
+        if let Ok(mut guard) = self.snapshot_cache.lock() {
+            *guard = Some(CachedSnapshot {
+                snapshot: snapshot.clone(),
+                captured_instant: Instant::now(),
+            });
         }
+        snapshot
     }
 
     pub fn diagnose_symptom(&self, symptom: SymptomId) -> SymptomDiagnosis {
-        let snapshot = self.observe_local();
+        let snapshot = self.cached_or_fresh_snapshot();
         let captured_at = snapshot.captured_at.clone();
         let findings = collect_findings_for_symptom(symptom, &snapshot);
         let sop_steps = build_sop_steps(symptom, &snapshot, &findings);
@@ -640,6 +912,7 @@ impl LocalDiagnosticsService {
         }
         let osc_dir = vrchat_root.join("OSC");
         let (removed_file_count, freed_bytes) = clear_osc_json_files(&osc_dir)?;
+        self.invalidate_caches();
         let receipt = OscCacheClearReceipt {
             schema_version: LOCAL_DIAGNOSTICS_SCHEMA,
             cleared_at: self.clock.now_rfc3339(),
@@ -718,14 +991,31 @@ impl LocalDiagnosticsService {
         }
 
         fs::create_dir_all(&vrchat_root).map_err(|_| LocalDiagnosticsError::IoFailed)?;
+        let backup_path = vrchat_root.join("config.json.vua.bak");
         let mut backup_written = false;
+        let mut backup_exists = false;
         if existed {
-            let backup_path = vrchat_root.join("config.json.vua.bak");
-            if fs::symlink_metadata(&backup_path).is_ok_and(|m| m.file_type().is_symlink()) {
+            match fs::symlink_metadata(&backup_path) {
+                Ok(meta) => {
+                    if is_reparse_or_symlink(&meta) || !meta.is_file() {
+                        return Err(LocalDiagnosticsError::IoFailed);
+                    }
+                    // Preserve the original pre-VUA backup across subsequent edits.
+                    backup_exists = true;
+                }
+                Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                    fs::copy(&config_path, &backup_path)
+                        .map_err(|_| LocalDiagnosticsError::IoFailed)?;
+                    backup_written = true;
+                    backup_exists = true;
+                }
+                Err(_) => return Err(LocalDiagnosticsError::IoFailed),
+            }
+        } else if let Ok(meta) = fs::symlink_metadata(&backup_path) {
+            if is_reparse_or_symlink(&meta) || !meta.is_file() {
                 return Err(LocalDiagnosticsError::IoFailed);
             }
-            fs::copy(&config_path, &backup_path).map_err(|_| LocalDiagnosticsError::IoFailed)?;
-            backup_written = true;
+            backup_exists = true;
         }
 
         let serialized = serde_json::to_vec_pretty(&Value::Object(map))
@@ -750,10 +1040,12 @@ impl LocalDiagnosticsService {
             return Err(LocalDiagnosticsError::IoFailed);
         }
 
+        self.invalidate_caches();
         let receipt = ClientConfigUpdateReceipt {
             schema_version: LOCAL_DIAGNOSTICS_SCHEMA,
             updated_at: self.clock.now_rfc3339(),
             backup_written,
+            backup_relative_path: backup_exists.then(|| CONFIG_BACKUP_RELATIVE_PATH.to_owned()),
             cache_size_gb: input.cache_size_gb,
             cache_expiry_delay_days: input.cache_expiry_delay_days,
         };
@@ -885,43 +1177,7 @@ fn existing_ancestor<'a>(start: &'a Path, fallback: &'a Path) -> Option<&'a Path
     None
 }
 
-fn inspect_client_cache(cache_dir: &Path, fallback_root: &Path) -> ClientCacheObservation {
-    let (drive_free_bytes, drive_total_bytes) = existing_ancestor(cache_dir, fallback_root)
-        .and_then(|target| free_disk_bytes(target).ok())
-        .map(|(free, total)| (Some(free), Some(total)))
-        .unwrap_or((None, None));
-
-    let meta = match fs::symlink_metadata(cache_dir) {
-        Ok(meta) => meta,
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-            return ClientCacheObservation {
-                presence: "missing",
-                total_bytes: None,
-                truncated: false,
-                drive_free_bytes,
-                drive_total_bytes,
-            };
-        }
-        Err(_) => {
-            return ClientCacheObservation {
-                presence: "read_failed",
-                total_bytes: None,
-                truncated: false,
-                drive_free_bytes,
-                drive_total_bytes,
-            };
-        }
-    };
-    if is_reparse_or_symlink(&meta) || !meta.is_dir() {
-        return ClientCacheObservation {
-            presence: "read_failed",
-            total_bytes: None,
-            truncated: false,
-            drive_free_bytes,
-            drive_total_bytes,
-        };
-    }
-
+fn walk_client_cache_dir(cache_dir: &Path) -> (u64, bool) {
     let mut stack = vec![cache_dir.to_path_buf()];
     let mut visited = 0usize;
     let mut total_bytes = 0u64;
@@ -953,13 +1209,7 @@ fn inspect_client_cache(cache_dir: &Path, fallback_root: &Path) -> ClientCacheOb
         }
     }
 
-    ClientCacheObservation {
-        presence: "found",
-        total_bytes: Some(total_bytes),
-        truncated,
-        drive_free_bytes,
-        drive_total_bytes,
-    }
+    (total_bytes, truncated)
 }
 
 fn inspect_osc_local(osc_dir: &Path, probe: &dyn LocalDiagnosticsProbe) -> OscLocalObservation {
@@ -2937,5 +3187,181 @@ mod tests {
         let out_of_bounds =
             b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\nff\r\n{\"OSC_PORT\":9000}\r\n0\r\n\r\n";
         assert_eq!(parse_oscquery_host_info(out_of_bounds), None);
+    }
+
+    #[test]
+    fn update_client_config_preserves_original_backup_across_multiple_edits() {
+        let temp = TestTempDir::new();
+        let roots = test_roots(temp.path());
+        let vrc = roots.local_low.join("VRChat").join("VRChat");
+        fs::create_dir_all(&vrc).unwrap();
+        fs::write(
+            vrc.join("config.json"),
+            r#"{"cache_size": 35, "cache_expiry_delay": 30, "custom_key": "original"}"#,
+        )
+        .unwrap();
+
+        let svc = LocalDiagnosticsService::new(
+            roots,
+            Arc::new(FakeProbe {
+                running: Ok(false),
+                udp9000: UdpPortObservation::unbound(),
+                udp9001: UdpPortObservation::unbound(),
+                osc_query: OscQueryLoopbackObservation::not_detected(),
+            }),
+            Arc::new(FixedClock::new(&[
+                "2026-11-14T06:00:00.000Z",
+                "2026-11-14T06:01:00.000Z",
+            ])),
+        );
+
+        let first = svc
+            .update_client_config(
+                "cfg-edit-1",
+                ClientConfigUpdateInput {
+                    cache_size_gb: Some(60),
+                    cache_expiry_delay_days: Some(90),
+                },
+            )
+            .unwrap();
+        assert!(first.backup_written);
+        assert_eq!(
+            first.backup_relative_path.as_deref(),
+            Some("LocalLow/VRChat/VRChat/config.json.vua.bak")
+        );
+
+        let second = svc
+            .update_client_config(
+                "cfg-edit-2",
+                ClientConfigUpdateInput {
+                    cache_size_gb: Some(120),
+                    cache_expiry_delay_days: Some(180),
+                },
+            )
+            .unwrap();
+        assert!(
+            !second.backup_written,
+            "second edit must not overwrite config.json.vua.bak"
+        );
+        assert_eq!(
+            second.backup_relative_path.as_deref(),
+            Some("LocalLow/VRChat/VRChat/config.json.vua.bak")
+        );
+
+        let backup: Value =
+            serde_json::from_str(&fs::read_to_string(vrc.join("config.json.vua.bak")).unwrap())
+                .unwrap();
+        assert_eq!(backup["cache_size"], 35);
+        assert_eq!(backup["cache_expiry_delay"], 30);
+        assert_eq!(backup["custom_key"], "original");
+
+        let live: Value =
+            serde_json::from_str(&fs::read_to_string(vrc.join("config.json")).unwrap()).unwrap();
+        assert_eq!(live["cache_size"], 120);
+        assert_eq!(live["cache_expiry_delay"], 180);
+    }
+
+    #[test]
+    fn diagnose_symptom_reuses_ten_second_snapshot_cache_and_background_cache_walk_stamps_captured_at(
+    ) {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        struct CountingProbe {
+            calls: Arc<AtomicUsize>,
+        }
+        impl LocalDiagnosticsProbe for CountingProbe {
+            fn is_client_running(&self) -> Result<bool, ProcessProbeUnavailable> {
+                self.calls.fetch_add(1, Ordering::SeqCst);
+                Ok(false)
+            }
+            fn probe_udp_port(&self, _port: u16) -> UdpPortObservation {
+                UdpPortObservation::unbound()
+            }
+            fn probe_oscquery_loopback(&self) -> OscQueryLoopbackObservation {
+                OscQueryLoopbackObservation::not_detected()
+            }
+        }
+
+        let temp = TestTempDir::new();
+        let roots = test_roots(temp.path());
+        let vrc = roots.local_low.join("VRChat").join("VRChat");
+        let cache_dir = vrc.join("Cache-WindowsPlayer");
+        let osc_avatars = vrc.join("OSC").join("usr_1").join("Avatars");
+        fs::create_dir_all(&cache_dir).unwrap();
+        fs::create_dir_all(&osc_avatars).unwrap();
+        fs::write(cache_dir.join("bundle.vrcw"), vec![0u8; 2048]).unwrap();
+        fs::write(osc_avatars.join("avtr_1.json"), b"{}").unwrap();
+
+        let calls = Arc::new(AtomicUsize::new(0));
+        let svc = LocalDiagnosticsService::new(
+            roots.clone(),
+            Arc::new(CountingProbe {
+                calls: Arc::clone(&calls),
+            }),
+            Arc::new(FixedClock::new(&[
+                "2026-11-14T07:00:00.000Z", // observe_local #1 snapshot
+                "2026-11-14T07:00:00.050Z", // background cache walk #1 captured_at
+                "2026-11-14T07:00:03.000Z", // diagnose #2 TTL check (3s < 10s -> cache hit)
+                "2026-11-14T07:00:07.000Z", // diagnose #3 TTL check (7s < 10s -> cache hit)
+                "2026-11-14T07:00:15.000Z", // diagnose #4 TTL check (15s >= 10s -> expired)
+                "2026-11-14T07:00:15.000Z", // observe_local #2 snapshot
+                "2026-11-14T07:00:16.000Z", // clear_osc_avatar_cache receipt
+                "2026-11-14T07:00:17.000Z", // observe_local #3 snapshot after cache invalidation
+                "2026-11-14T07:00:17.050Z", // background cache walk #2 after invalidation
+            ])),
+        );
+
+        let d1 = svc.diagnose_symptom(SymptomId::OscOrFaceTrackingNotResponding);
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        assert_eq!(d1.snapshot.client_cache.total_bytes, Some(2048));
+        assert!(d1.snapshot.client_cache.captured_at.is_some());
+
+        // Switching symptoms within 10s recomputes findings without re-probing.
+        let d2 = svc.diagnose_symptom(SymptomId::DiskCacheFull);
+        let d3 = svc.diagnose_symptom(SymptomId::LowFpsOrVramPressure);
+        assert_eq!(calls.load(Ordering::SeqCst), 1);
+        assert_eq!(d2.captured_at, d1.captured_at);
+        assert_eq!(d3.captured_at, d1.captured_at);
+
+        // After 10s TTL expires, diagnose_symptom captures a fresh snapshot.
+        let d4 = svc.diagnose_symptom(SymptomId::CrashOrEacBlock);
+        assert_eq!(calls.load(Ordering::SeqCst), 2);
+        assert_eq!(d4.captured_at, "2026-11-14T07:00:15.000Z");
+
+        // Offline write immediately invalidates cached snapshot (clear_osc calls is_client_running once = 3,
+        // and the next diagnose_symptom must probe fresh = 4).
+        svc.clear_osc_avatar_cache("clear-invalidate").unwrap();
+        assert_eq!(calls.load(Ordering::SeqCst), 3);
+        let d5 = svc.diagnose_symptom(SymptomId::OscOrFaceTrackingNotResponding);
+        assert_eq!(calls.load(Ordering::SeqCst), 4);
+        assert_eq!(d5.snapshot.osc.avatar_config_count, 0);
+
+        // Slow HDD cache walk returns non-blockingly when exceeding wait budget, then populates captured_at.
+        let mut slow_svc = LocalDiagnosticsService::new(
+            roots,
+            Arc::new(FakeProbe {
+                running: Ok(false),
+                udp9000: UdpPortObservation::unbound(),
+                udp9001: UdpPortObservation::unbound(),
+                osc_query: OscQueryLoopbackObservation::not_detected(),
+            }),
+            Arc::new(FixedClock::new(&[
+                "2026-11-14T07:10:00.000Z",
+                "2026-11-14T07:10:00.200Z",
+                "2026-11-14T07:10:01.000Z",
+            ])),
+        );
+        slow_svc.cache_walk_wait_budget = Duration::from_millis(5);
+        slow_svc.cache_walk_delay = Duration::from_millis(80);
+
+        let initial_snap = slow_svc.observe_local();
+        assert_eq!(initial_snap.client_cache.presence, "found");
+        assert_eq!(initial_snap.client_cache.total_bytes, None);
+        assert_eq!(initial_snap.client_cache.captured_at, None);
+
+        std::thread::sleep(Duration::from_millis(130));
+        let settled_diag = slow_svc.diagnose_symptom(SymptomId::DiskCacheFull);
+        assert_eq!(settled_diag.snapshot.client_cache.total_bytes, Some(2048));
+        assert!(settled_diag.snapshot.client_cache.captured_at.is_some());
     }
 }

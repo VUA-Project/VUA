@@ -696,7 +696,7 @@ describe("run summary", () => {
     let currentDigest = digest;
     const { client, calls, service } = await setup(async request => {
       if (request.method === "diagnostics.observeLocal") return envelope(request, { localDiagnostics: { clientRunning: false } });
-      if (request.method === "diagnostics.updateClientConfig") return envelope(request, { clientConfigReceipt: { backupWritten: true, cacheSizeGb: 30, cacheExpiryDelayDays: 60 } });
+      if (request.method === "diagnostics.updateClientConfig") return envelope(request, { clientConfigReceipt: { backupWritten: true, backupRelativePath: "LocalLow/VRChat/VRChat/config.json.vua.bak", cacheSizeGb: 30, cacheExpiryDelayDays: 60 } });
       if (request.method === "library.importGroups") return envelope(request, { schemaVersion: "0.1", operation: "library.importGroups", taskId: "migration-1", correlationId: "corr-1" });
       if (request.method === "amf.production.planTextureMemory") return envelope(request, { schemaVersion: "0.1", runId: request.params.runId, planDigest: currentDigest, plan: { platform: request.params.platform, targetRank: request.params.targetRank } });
       if (request.method === "amf.production.applyTextureMemory") return envelope(request, { operation: "amf.production", runId: request.params.runId, taskId: "tex-task" });

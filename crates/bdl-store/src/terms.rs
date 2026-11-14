@@ -424,6 +424,141 @@ impl BdlStore {
         })
     }
 
+    /// Loads VN3 terms evidence for a bounded slice of product IDs (`WHERE product_id IN (...)`),
+    /// reading and parsing only the VN3 documents referenced by those products, and falling back
+    /// to `all_product_terms` when more than 50 unique IDs are requested.
+    pub fn product_terms_for_ids(
+        &self,
+        ids: &[String],
+    ) -> Result<std::collections::HashMap<String, ProductTerms>, BdlStoreError> {
+        use std::collections::{BTreeSet, HashMap};
+
+        let unique_ids: Vec<&str> = {
+            let mut seen = BTreeSet::new();
+            ids.iter()
+                .map(String::as_str)
+                .filter(|id| seen.insert(*id))
+                .collect()
+        };
+        if unique_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+        if unique_ids.len() > 50 {
+            return self.all_product_terms();
+        }
+
+        let placeholders = (1..=unique_ids.len())
+            .map(|index| format!("?{index}"))
+            .collect::<Vec<_>>()
+            .join(",");
+        let connection = self.connection.lock().expect("SQLite connection poisoned");
+
+        let mut snapshots: HashMap<String, (String, Option<String>)> = HashMap::new();
+        {
+            let sql = format!(
+                "SELECT product_id,observed_at,problem
+                 FROM product_terms_snapshots
+                 WHERE product_id IN ({placeholders})"
+            );
+            let mut stmt = connection.prepare(&sql)?;
+            let rows = stmt.query_map(
+                rusqlite::params_from_iter(unique_ids.iter().copied()),
+                |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, String>(1)?,
+                        row.get::<_, Option<String>>(2)?,
+                    ))
+                },
+            )?;
+            for row in rows {
+                let (product_id, observed_at, problem) = row?;
+                snapshots.insert(product_id, (observed_at, problem));
+            }
+        }
+
+        let mut docs_by_key: HashMap<(String, String, String), Option<TermsDocument>> =
+            HashMap::new();
+        let mut sources_by_product: HashMap<String, Vec<TermsSource>> = HashMap::new();
+        {
+            let sql = format!(
+                "SELECT p.product_id,s.source_id,s.source_kind,s.source_url,s.google_file_id,s.status,s.fetched_at,s.problem,s.sha256,s.parser_version
+                 FROM product_terms_sources p JOIN terms_sources s USING(source_id)
+                 WHERE p.product_id IN ({placeholders})
+                 ORDER BY p.product_id,s.source_id"
+            );
+            let mut stmt = connection.prepare(&sql)?;
+            let records = stmt
+                .query_map(
+                    rusqlite::params_from_iter(unique_ids.iter().copied()),
+                    |row| {
+                        Ok((
+                            row.get::<_, String>(0)?,
+                            TermsSource {
+                                link: TermsLink {
+                                    source_id: row.get(1)?,
+                                    source_kind: row.get(2)?,
+                                    source_url: row.get(3)?,
+                                    google_file_id: row.get(4)?,
+                                },
+                                status: row.get(5)?,
+                                fetched_at: row.get(6)?,
+                                problem: row.get(7)?,
+                                document: None,
+                            },
+                            row.get::<_, Option<String>>(8)?,
+                            row.get::<_, Option<String>>(9)?,
+                        ))
+                    },
+                )?
+                .collect::<Result<Vec<_>, _>>()?;
+            for (product_id, mut source, sha, parser) in records {
+                if let (Some(sha), Some(parser)) = (sha, parser) {
+                    let key = (source.link.source_id.clone(), sha, parser);
+                    let document = match docs_by_key.get(&key) {
+                        Some(cached) => cached.clone(),
+                        None => {
+                            let loaded = stored_document(&connection, &key.0, &key.1, &key.2)?;
+                            docs_by_key.insert(key, loaded.clone());
+                            loaded
+                        }
+                    };
+                    source.document = document;
+                }
+                sources_by_product
+                    .entry(product_id)
+                    .or_default()
+                    .push(source);
+            }
+        }
+
+        let mut out = HashMap::with_capacity(unique_ids.len());
+        for &id in &unique_ids {
+            let captured = snapshots.remove(id);
+            let observed_at = captured.as_ref().map(|c| c.0.clone());
+            let capture_problem = captured.and_then(|c| c.1);
+            let sources = sources_by_product.remove(id).unwrap_or_default();
+            let state = compute_product_terms_state(
+                observed_at.as_deref(),
+                capture_problem.as_deref(),
+                &sources,
+            )
+            .to_owned();
+            out.insert(
+                id.to_owned(),
+                ProductTerms {
+                    schema_version: "0.1".into(),
+                    product_id: id.to_owned(),
+                    state,
+                    observed_at,
+                    capture_problem,
+                    sources,
+                },
+            );
+        }
+        Ok(out)
+    }
+
     /// Loads every recorded product's VN3 terms evidence in four bulk queries under one lock,
     /// avoiding N+1 queries when annotating or filtering an entire library view.
     pub fn all_product_terms(
@@ -581,5 +716,114 @@ impl BdlStore {
             );
         }
         Ok(out)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{ProductObservation, ProductObservationStatus};
+
+    fn insert_synthetic_product(store: &BdlStore, id: &str, source_suffix: &str) {
+        let now = "2026-11-14T00:00:00.000Z";
+        store
+            .record_product_observation(&ProductObservation {
+                product_id: id.into(),
+                native_product_id: id[6..].into(),
+                library_type: Some("bought".into()),
+                variant_name: None,
+                source_url: format!("https://booth.pm/items/{}", &id[6..]),
+                final_url: None,
+                status: ProductObservationStatus::Complete,
+                source_locale: None,
+                source_category: None,
+                title: Some("Synthetic product".into()),
+                description: None,
+                age_restriction: None,
+                adult: false,
+                availability: None,
+                price_amount: None,
+                price_currency: None,
+                shop_name: None,
+                shop_url: None,
+                image_urls: Vec::new(),
+                video_urls: Vec::new(),
+                subproducts: Vec::new(),
+                source_published_at: None,
+                content_hash: format!("sha256:{}", "a".repeat(64)),
+                observed_at: now.into(),
+                run_id: None,
+                processor_version: "synthetic/1".into(),
+                missing_fields: Vec::new(),
+            })
+            .unwrap();
+        let link = TermsLink {
+            source_id: format!("drive:{source_suffix}"),
+            source_kind: "drive".into(),
+            source_url: format!("https://drive.google.com/file/d/{source_suffix}/view"),
+            google_file_id: Some(source_suffix.into()),
+        };
+        store
+            .record_terms_links(id, std::slice::from_ref(&link), now)
+            .unwrap();
+        let doc = TermsDocument {
+            sha256: format!(
+                "{:064x}",
+                source_suffix.bytes().fold(0u64, |acc, byte| acc
+                    .wrapping_mul(131)
+                    .wrapping_add(u64::from(byte)))
+            ),
+            parser_version: "vn3-parser/1".into(),
+            status: "parsed".into(),
+            generator_version: Some("1.11".into()),
+            vn3_version: Some("1.10".into()),
+            language: Some("ja".into()),
+            content_title: Some("Synthetic".into()),
+            licensor: Some("example.invalid".into()),
+            credit_notation: None,
+            hashtags: Vec::new(),
+            agreement_version: Some("0.42".into()),
+            special_note: None,
+            warnings: Vec::new(),
+            items: vec![TermItem {
+                item: "A".into(),
+                term_key: "individual_use".into(),
+                value: "permitted".into(),
+                condition: Some("commercial_and_non_profit".into()),
+                raw_text: "Permitted".into(),
+                summary_raw_text: Some("Permitted".into()),
+            }],
+        };
+        store
+            .record_terms_result(&link.source_id, "parsed", now, None, Some(&doc))
+            .unwrap();
+    }
+
+    #[test]
+    fn product_terms_for_ids_queries_only_requested_products_below_bulk_threshold() {
+        let store = BdlStore::open_in_memory().unwrap();
+        insert_synthetic_product(&store, "booth:1", "doc1");
+        insert_synthetic_product(&store, "booth:2", "doc2");
+        insert_synthetic_product(&store, "booth:999", "unrelated");
+
+        // Corrupt the unrelated product's VN3 document JSON so a full-table scan (`all_product_terms`)
+        // deterministically fails, proving `product_terms_for_ids` skips unrelated rows.
+        {
+            let conn = store.connection.lock().unwrap();
+            conn.execute(
+                r#"UPDATE vn3_documents SET warnings = '[{"unknownField":1}]' WHERE source_id = 'drive:unrelated'"#,
+                [],
+            )
+            .unwrap();
+        }
+        assert!(store.all_product_terms().is_err());
+
+        let subset = store
+            .product_terms_for_ids(&["booth:1".into(), "booth:2".into(), "booth:404".into()])
+            .unwrap();
+        assert_eq!(subset.len(), 3);
+        assert_eq!(subset["booth:1"].state, "parsed");
+        assert_eq!(subset["booth:2"].state, "parsed");
+        assert_eq!(subset["booth:404"].state, "not_observed");
     }
 }

@@ -79,11 +79,12 @@
         "clientCache": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["presence", "totalBytes", "truncated", "driveFreeBytes", "driveTotalBytes"],
+          "required": ["presence", "totalBytes", "truncated", "capturedAt", "driveFreeBytes", "driveTotalBytes"],
           "properties": {
             "presence": { "enum": ["found", "missing", "read_failed"] },
             "totalBytes": { "type": ["integer", "null"], "minimum": 0 },
             "truncated": { "type": "boolean" },
+            "capturedAt": { "type": ["string", "null"], "minLength": 1, "maxLength": 64 },
             "driveFreeBytes": { "type": ["integer", "null"], "minimum": 0 },
             "driveTotalBytes": { "type": ["integer", "null"], "minimum": 0 }
           }

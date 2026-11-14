@@ -72,17 +72,22 @@ export function notificationBellAlert(
   return null;
 }
 
-/** Prunes dismissed IDs that are no longer present in the loaded task snapshot. */
+export const MAX_DISMISSED_IDS = 512;
+
+/**
+ * Evicts only the oldest dismissed IDs when exceeding `maxEntries`.
+ * Never prunes by `task.list` snapshot membership, because partial snapshots
+ * during AMF startup, restart, or timeout omit AMF tasks and would otherwise
+ * resurrect dismissed AMF notifications (including failed red alerts) once AMF recovers.
+ */
 export function pruneDismissedIds(
   dismissed: ReadonlySet<string>,
-  knownTaskIds: ReadonlySet<string>,
+  maxEntries: number = MAX_DISMISSED_IDS,
 ): ReadonlySet<string> {
-  if (knownTaskIds.size === 0 || dismissed.size === 0) return dismissed;
-  const next = new Set<string>();
-  for (const id of dismissed) {
-    if (knownTaskIds.has(id)) next.add(id);
-  }
-  return next.size === dismissed.size ? dismissed : next;
+  const cap = Math.max(1, Math.trunc(maxEntries));
+  if (dismissed.size <= cap) return dismissed;
+  const items = [...dismissed];
+  return new Set(items.slice(items.length - cap));
 }
 
 /** 清除动作的合法性:仅终态通知可清除(活动任务不可清除,取消走任务取消) */
@@ -131,7 +136,10 @@ export function loadDismissedIds(): ReadonlySet<string> {
     if (raw === null) return new Set();
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return new Set();
-    return new Set(parsed.filter((id): id is string => typeof id === "string"));
+    const loaded = new Set(parsed.filter((id): id is string => typeof id === "string"));
+    const pruned = pruneDismissedIds(loaded);
+    if (pruned !== loaded) persistDismissedSet(pruned);
+    return pruned;
   } catch {
     return new Set();
   }
@@ -139,9 +147,11 @@ export function loadDismissedIds(): ReadonlySet<string> {
 
 export function saveDismissedId(taskId: string): ReadonlySet<string> {
   const next = new Set(loadDismissedIds());
+  next.delete(taskId);
   next.add(taskId);
-  persistDismissedSet(next);
-  return next;
+  const pruned = pruneDismissedIds(next);
+  persistDismissedSet(pruned);
+  return pruned;
 }
 
 export function persistDismissedSet(ids: ReadonlySet<string>): void {

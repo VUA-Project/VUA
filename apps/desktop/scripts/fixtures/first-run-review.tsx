@@ -97,6 +97,7 @@ function syntheticDiagnosticsSnapshot(): LocalDiagnosticsSnapshotV01 {
       presence: "found",
       totalBytes: 8 * 1024 * 1024 * 1024,
       truncated: false,
+      capturedAt: now,
       driveFreeBytes: 120 * 1024 * 1024 * 1024,
       driveTotalBytes: 512 * 1024 * 1024 * 1024,
     },

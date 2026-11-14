@@ -55,6 +55,14 @@ available whether or not the AMF module is enabled.
 | `diagnostics.clearOscAvatarCache` | command | `{ schemaVersion: "0.1" }` | `{ oscCacheClearReceipt }` |
 | `diagnostics.updateClientConfig` | command | `{ schemaVersion: "0.1", cacheSizeGb?, cacheExpiryDelayDays? }` | `{ clientConfigReceipt }` |
 
+`diagnostics.observeLocal` always performs a fresh local probe and updates a 10-second in-memory
+snapshot cache; `diagnostics.diagnoseSymptom` reuses that cached snapshot while fresh so switching
+between symptom tabs recomputes `findings` and `sopSteps` without repeating port-table, OSCQuery or
+filesystem probes. `Cache-WindowsPlayer` byte summation runs on a dedicated background worker thread
+with a short non-blocking wait budget and stamps `clientCache.capturedAt` (`null` when missing,
+unreadable, or still measuring in the background). Both offline write commands immediately
+invalidate the snapshot cache and background cache measurement.
+
 Commands carry a closed `commandId` (`1..=128` ASCII `[A-Za-z0-9_.:-]+`) at the Application Contract
 `0.1` envelope level; Desktop Gateway moves `commandId` from IPC params without changing identity.
 Replaying an admitted command ID with identical parameters returns the recorded receipt without
@@ -114,8 +122,11 @@ repeating filesystem writes; replaying the same command ID with different parame
 - `diagnostics.updateClientConfig` requires at least one of `cacheSizeGb` (`30..=200` integer) or
   `cacheExpiryDelayDays` (`30..=365` integer). If `VRChat/VRChat/config.json` exists and is not a
   JSON object, it fails with `vua.diagnostics.config_malformed` without modifying the file.
-  Otherwise it preserves all existing JSON properties, writes `config.json.vua.bak` when updating
-  an existing file, syncs a sibling temporary file to disk, and atomically renames it into place.
+  Otherwise it preserves all existing JSON properties, writes `VRChat/VRChat/config.json.vua.bak`
+  only when that backup does not yet exist (preserving the pre-VUA original configuration across
+  subsequent edits and reporting `backupRelativePath: "LocalLow/VRChat/VRChat/config.json.vua.bak"`
+  whenever a backup file is present, or `null` when creating `config.json` from scratch), syncs a
+  sibling temporary file to disk, and atomically renames it into place.
 
 ## Document changelog
 

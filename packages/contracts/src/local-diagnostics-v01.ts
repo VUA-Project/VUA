@@ -95,6 +95,7 @@ export interface ClientCacheObservationV01 {
   readonly presence: "found" | "missing" | "read_failed";
   readonly totalBytes: number | null;
   readonly truncated: boolean;
+  readonly capturedAt: string | null;
   readonly driveFreeBytes: number | null;
   readonly driveTotalBytes: number | null;
 }
@@ -237,6 +238,7 @@ export interface ClientConfigUpdateReceiptV01 {
   readonly schemaVersion: typeof LOCAL_DIAGNOSTICS_SCHEMA;
   readonly updatedAt: string;
   readonly backupWritten: boolean;
+  readonly backupRelativePath: string | null;
   readonly cacheSizeGb: number | null;
   readonly cacheExpiryDelayDays: number | null;
 }
@@ -352,10 +354,11 @@ export function isLocalDiagnosticsSnapshotV01(v: unknown): v is LocalDiagnostics
     || !nullableNonNegInt(cfg.screenshotResWidth) || !nullableNonNegInt(cfg.screenshotResHeight)
     || !nullableNumber(cfg.fpvSteadycamFov)) return false;
 
-  if (!exactKeys(v.clientCache, ["presence", "totalBytes", "truncated", "driveFreeBytes", "driveTotalBytes"])) return false;
+  if (!exactKeys(v.clientCache, ["presence", "totalBytes", "truncated", "capturedAt", "driveFreeBytes", "driveTotalBytes"])) return false;
   const cache = v.clientCache;
   if (!["found", "missing", "read_failed"].includes(String(cache.presence))
     || !nullableNonNegInt(cache.totalBytes) || typeof cache.truncated !== "boolean"
+    || (cache.capturedAt !== null && !nonEmptyString(cache.capturedAt, 64))
     || !nullableNonNegInt(cache.driveFreeBytes) || !nullableNonNegInt(cache.driveTotalBytes)) return false;
 
   if (!exactKeys(v.osc, ["avatarCachePresence", "avatarConfigCount", "avatarCacheBytes", "newestModifiedAt", "udp9000", "udp9001", "oscQuery"])) return false;
@@ -450,12 +453,13 @@ export function isOscCacheClearReceiptResultV01(v: unknown): v is OscCacheClearR
 
 export function isClientConfigUpdateReceiptResultV01(v: unknown): v is ClientConfigUpdateReceiptResultV01 {
   if (!exactKeys(v, ["clientConfigReceipt"]) || !exactKeys(v.clientConfigReceipt, [
-    "schemaVersion", "updatedAt", "backupWritten", "cacheSizeGb", "cacheExpiryDelayDays",
+    "schemaVersion", "updatedAt", "backupWritten", "backupRelativePath", "cacheSizeGb", "cacheExpiryDelayDays",
   ])) return false;
   const r = v.clientConfigReceipt;
   return r.schemaVersion === LOCAL_DIAGNOSTICS_SCHEMA
     && nonEmptyString(r.updatedAt, 64)
     && typeof r.backupWritten === "boolean"
+    && (r.backupRelativePath === null || r.backupRelativePath === "LocalLow/VRChat/VRChat/config.json.vua.bak")
     && (r.cacheSizeGb === null || (nonNegInt(r.cacheSizeGb) && r.cacheSizeGb >= 30 && r.cacheSizeGb <= 200))
     && (r.cacheExpiryDelayDays === null || (nonNegInt(r.cacheExpiryDelayDays) && r.cacheExpiryDelayDays >= 30 && r.cacheExpiryDelayDays <= 365));
 }

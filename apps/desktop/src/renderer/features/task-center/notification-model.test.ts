@@ -183,9 +183,44 @@ test("multi-family retention preserves the latest terminal receipt per notifyFam
   assert.equal(notificationBellAlert(visible, 0, new Set(["upload-1", "sync-2"])), null);
   assert.equal(notificationBellAlert(visible, 1, new Set(["upload-1", "sync-2"])), "unseen");
 
-  const pruned = pruneDismissedIds(new Set(["stale-1", "sync-1"]), new Set(["sync-1", "sync-2", "upload-1"]));
-  assert.deepEqual([...pruned], ["sync-1"]);
-  // Empty knownTaskIds before initial load never wipes dismissed history.
-  const untouched = pruneDismissedIds(new Set(["stale-1"]), new Set());
-  assert.deepEqual([...untouched], ["stale-1"]);
+  const pruned = pruneDismissedIds(new Set(["id-1", "id-2", "id-3", "id-4"]), 2);
+  assert.deepEqual([...pruned], ["id-3", "id-4"]);
+  const untouched = pruneDismissedIds(new Set(["id-1", "id-2"]), 2);
+  assert.equal(untouched.size, 2);
+  assert.deepEqual([...untouched], ["id-1", "id-2"]);
+});
+
+test("AMF partial snapshot during startup/restart never resurrects dismissed failed AMF notifications", () => {
+  const hostSync: TaskItem = {
+    id: "host-sync-1",
+    title: "Library sync",
+    status: "completed",
+    originPage: "warehouse",
+    cancellable: false,
+    notifyOnComplete: true,
+    notifyFamily: "library:sync",
+  };
+  const amfFailed: TaskItem = {
+    id: "amf-assemble-9",
+    title: "Assemble Avatar",
+    status: "failed",
+    originPage: "workshop",
+    cancellable: false,
+    notifyOnComplete: true,
+    notifyFamily: "amf:production",
+  };
+
+  // Player dismisses both terminal receipts while full snapshot is present.
+  let dismissed = pruneDismissedIds(new Set(["host-sync-1", "amf-assemble-9"]));
+  assert.equal(visibleNotifications([hostSync, amfFailed], dismissed).length, 0);
+
+  // AMF restarts or times out: task.list temporarily returns only host tasks.
+  dismissed = pruneDismissedIds(dismissed);
+  assert.equal(dismissed.has("amf-assemble-9"), true);
+  assert.equal(visibleNotifications([hostSync], dismissed).length, 0);
+
+  // AMF recovers and returns amf-assemble-9 again: must stay dismissed and bell stays quiet.
+  const recoveredVisible = visibleNotifications([hostSync, amfFailed], dismissed);
+  assert.deepEqual(recoveredVisible, []);
+  assert.equal(notificationBellAlert(recoveredVisible, 0, new Set()), null);
 });

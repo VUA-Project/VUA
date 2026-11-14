@@ -105,9 +105,32 @@ describe("local-diagnostics v0.1 Candidate wire", () => {
         schemaVersion: LOCAL_DIAGNOSTICS_SCHEMA,
         updatedAt: "2026-11-14T00:00:00Z",
         backupWritten: true,
+        backupRelativePath: "LocalLow/VRChat/VRChat/config.json.vua.bak",
         cacheSizeGb: 30,
         cacheExpiryDelayDays: 60,
       },
     })).toBe(true);
+
+    expect(isClientConfigUpdateReceiptResultV01({
+      clientConfigReceipt: {
+        schemaVersion: LOCAL_DIAGNOSTICS_SCHEMA,
+        updatedAt: "2026-11-14T00:00:00Z",
+        backupWritten: false,
+        backupRelativePath: null,
+        cacheSizeGb: 30,
+        cacheExpiryDelayDays: null,
+      },
+    })).toBe(true);
+
+    expect(isClientConfigUpdateReceiptResultV01({
+      clientConfigReceipt: {
+        schemaVersion: LOCAL_DIAGNOSTICS_SCHEMA,
+        updatedAt: "2026-11-14T00:00:00Z",
+        backupWritten: true,
+        backupRelativePath: "C:\\Users\\Alice\\AppData\\LocalLow\\VRChat\\VRChat\\config.json.vua.bak",
+        cacheSizeGb: 30,
+        cacheExpiryDelayDays: 60,
+      },
+    })).toBe(false);
   });
 });

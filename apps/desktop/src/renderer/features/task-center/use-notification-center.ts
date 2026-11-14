@@ -41,12 +41,11 @@ export function useNotificationCenter() {
     };
   }, [gateway]);
 
-  // Prune stale dismissed IDs once authoritative task list has loaded.
+  // Cap dismissed IDs by FIFO capacity rather than snapshot membership so
+  // partial host-only snapshots during AMF startup/restart never erase AMF dismissals.
   useEffect(() => {
-    if (view.tasks.length === 0) return;
-    const knownIds = new Set(view.tasks.map((task) => task.id));
     setDismissed((current) => {
-      const pruned = pruneDismissedIds(current, knownIds);
+      const pruned = pruneDismissedIds(current);
       if (pruned !== current) persistDismissedSet(pruned);
       return pruned;
     });

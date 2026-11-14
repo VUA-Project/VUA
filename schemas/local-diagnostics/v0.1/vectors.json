@@ -126,6 +126,7 @@
             "presence": "found",
             "totalBytes": 12884901888,
             "truncated": false,
+            "capturedAt": "2026-11-14T00:00:00Z",
             "driveFreeBytes": 107374182400,
             "driveTotalBytes": 536870912000
           },
@@ -206,6 +207,7 @@
             "presence": "missing",
             "totalBytes": null,
             "truncated": false,
+            "capturedAt": null,
             "driveFreeBytes": null,
             "driveTotalBytes": null
           },
