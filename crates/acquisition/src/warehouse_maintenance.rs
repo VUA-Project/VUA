@@ -496,6 +496,13 @@ fn run_generate_vpm(
         spec.warehouse_item_id,
         std::process::id()
     ));
+    struct TempPublishGuard(PathBuf);
+    impl Drop for TempPublishGuard {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+    let _publish_cleanup = TempPublishGuard(publish_root.clone());
 
     let token = MaterialCancelToken::new();
     let generated = executor

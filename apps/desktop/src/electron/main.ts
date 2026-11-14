@@ -322,8 +322,28 @@ function ensureCatalogEnricher(): void {
 // 失败的运行在 provider 侧不产生任务,通知中心/任务轮询永远等不到——此处
 // 记下终态码,probe 面据此让渲染层把「已开始」翻成失败提示
 let catalogSyncLastTerminal: { runId: string; code: string | null } | null = null;
-// 系统资源占用采集器(顶栏占用查看器):whenReady 启动,退出前 stop
+// 系统资源占用采集器(顶栏占用查看器):whenReady 启动,全部窗口最小化/隐藏至托盘时暂停采样,退出前 stop
 const systemUsage = new SystemUsageCollector();
+let anyWindowShown = false;
+function syncSystemUsageVisibility(): void {
+  if (shutdownStarted) return;
+  const anyVisible = BrowserWindow.getAllWindows().some(
+    window => !window.isDestroyed() && window.isVisible() && !window.isMinimized(),
+  );
+  if (anyVisible) {
+    anyWindowShown = true;
+    systemUsage.resume();
+  } else if (anyWindowShown && startupWindow === null) {
+    systemUsage.pause();
+  }
+}
+app.on("browser-window-created", (_event, window) => {
+  window.on("show", syncSystemUsageVisibility);
+  window.on("hide", syncSystemUsageVisibility);
+  window.on("minimize", syncSystemUsageVisibility);
+  window.on("restore", syncSystemUsageVisibility);
+  window.on("closed", syncSystemUsageVisibility);
+});
 const lastAppliedIntentSeq = new Map<string, number>();
 let shutdownStarted = false;
 
@@ -539,11 +559,11 @@ function resolveAmfEndpoint(): DesktopProviderEndpoint {
 function vrchatRouteFace(host: ModuleProvider): NonNullable<DesktopGatewayRouteContext["vrchat"]> {
   /** Before the provider accepts the upload: when the player is signed in, place the
    *  one-time session file beside the Bridge files of the run's work project. */
-  const writeSdkHandoff = async (runId: string): Promise<void> => {
+  const writeSdkHandoff = async (runId: string): Promise<string> => {
     const service = vrchatService;
-    if (service === null) return;
+    if (service === null) return "";
     const session = service.sdkSession();
-    if (session === null) return;
+    if (session === null) return "";
     const response = await host.invoke({
       contractVersion: APPLICATION_CONTRACT_VERSION,
       requestId: `vrchat-handoff-${crypto.randomUUID()}`,
@@ -557,9 +577,10 @@ function vrchatRouteFace(host: ModuleProvider): NonNullable<DesktopGatewayRouteC
       && typeof (value as { projectRoot?: unknown }).projectRoot === "string"
       ? (value as { projectRoot: string }).projectRoot
       : null;
-    if (projectRoot === null || projectRoot.length === 0 || path.isAbsolute(projectRoot) === false) return;
+    if (projectRoot === null || projectRoot.length === 0 || path.isAbsolute(projectRoot) === false) return "";
     const file = await writeSdkSessionFile(projectRoot, session);
     service.noteSdkHandoff(file);
+    return file;
   };
   return {
     handle: request => {
@@ -569,7 +590,11 @@ function vrchatRouteFace(host: ModuleProvider): NonNullable<DesktopGatewayRouteC
     },
     snapshot: () => vrchatService?.snapshot() ?? { experimentalEnabled: false, signedIn: false },
     writeSdkHandoff,
-    discardSdkHandoff: () => vrchatService?.clearSdkHandoffs(),
+    discardSdkHandoff: (file?: string) => {
+      if (file === "") return;
+      if (typeof file === "string") vrchatService?.discardSdkHandoff(file);
+      else vrchatService?.clearSdkHandoffs();
+    },
   };
 }
 
@@ -589,6 +614,9 @@ function registerIpc(provider: ModuleProvider): void {
     assertAiSender(event); if (locale !== "en" && locale !== "zh-CN" && locale !== "zh-TW" && locale !== "ja" && locale !== "ko") throw new Error("invalid_ai_locale");
     const prompt = aiTools!.prompt(locale as AiConnectionLocale);
     if (action === "copy-prompt") { clipboard.writeText(prompt); return; } return prompt;
+  });
+  ipcMain.handle("vua:ai-tools:copy-config", event => {
+    assertAiSender(event); clipboard.writeText(aiTools!.configJson());
   });
   ipcMain.handle("vua:ai-tools:resolve", (event, id: unknown, decision: unknown, confirmation: unknown) => {
     assertAiSender(event); if (typeof id !== "string" || id.length > 100 || (decision !== "approve" && decision !== "reject")) throw new Error("invalid_ai_approval");
@@ -2162,10 +2190,10 @@ app.whenReady().then(async () => {
     version: app.getVersion(), ...aiConnectionStore(app.getPath("userData"), safeStorage), ...aiRequestStore(app.getPath("userData")),
     build: typeof __VUA_BUILD_INFO__ === "undefined" ? (await import("../../scripts/build-info.mjs")).buildInfo : __VUA_BUILD_INFO__,
     invoke: request => routeDesktopGatewayInvoke({ provider: provider!, productVersion: app.getVersion(),
-      platform: process.platform as "win32" | "darwin" | "linux", rendererUrl,
+      platform: process.platform as "win32" | "darwin" | "linux", rendererUrl, trustedInternalCaller: true,
       resolveMaterialSource: resolveProductionContext, launchAmfEditor: (runId, taskId) => launchAmfEditor(provider!, runId, taskId),
       vrchat: vrchatRouteFace(provider!) },
-      mainWindow?.webContents.getURL() ?? "", request),
+      mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents.getURL() : "", request),
   });
   aiTools.subscribe(snapshot => {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send("vua:ai-tools:changed", snapshot);

@@ -47,6 +47,11 @@ describe("AMF production response boundary", () => {
       tolerance:{counts:"exact",textureBytes:"decoded_estimate",uncompressedBytes:"within_25_percent"},
       rows:[row],total:{triangles:10,materialSlots:1,textureBytes:20,physBones:0,parameterBits:8,uncompressedBytes:40,complete:true}};
     expect(isAmfPlanPrediction(prediction)).toBe(true);
+    const performanceRanks={pc:{rank:"good",limitingMetrics:[]},android:{rank:"very_poor",limitingMetrics:["triangles","skinnedMeshes","basicMeshes","materialSlots","textureBytes","physBones"]}};
+    expect(isAmfPlanPrediction({...prediction,total:{...prediction.total,performanceRanks}})).toBe(true);
+    expect(isAmfPlanPrediction({...prediction,total:{...prediction.total,performanceRanks:{...performanceRanks,pc:{rank:"Ultra",limitingMetrics:[]}}}})).toBe(false);
+    expect(isAmfPlanPrediction({...prediction,total:{...prediction.total,performanceRanks:{...performanceRanks,android:{rank:"poor",limitingMetrics:["triangles","triangles"]}}}})).toBe(false);
+    expect(isAmfPlanPrediction({...prediction,total:{...prediction.total,performanceRanks:{...performanceRanks,android:{rank:"poor",limitingMetrics:["boneCount"]}}}})).toBe(false);
     // An undecided parameter count stays null; a wrong tolerance or a missing total is refused.
     expect(isAmfPlanPrediction({...prediction,rows:[{...row,parameterBits:null,complete:false}]})).toBe(true);
     expect(isAmfPlanPrediction({...prediction,tolerance:{...prediction.tolerance,uncompressedBytes:"exact"}})).toBe(false);

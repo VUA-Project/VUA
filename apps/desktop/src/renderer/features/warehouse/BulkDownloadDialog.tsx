@@ -44,7 +44,7 @@ export function BulkDownloadDialog({ products, mode, skippedLocal, onClose, onCh
         else if ("errorCode" in outcome) message = outcome.errorCode === "vua.library.file_busy" ? strings.warehouse.cardMenu.downloadBusyHint : outcome.errorCode === "vua.library.replacement_ambiguous" ? strings.warehouse.cardMenu.downloadAmbiguousHint : copy.failed;
         else {
           message = copy.queued;
-          registerTaskIdentity(outcome.taskId, { title: `${strings.taskCenter.downloadTask} · ${choice.product.title}`, originPage: "warehouse", notifyOnComplete: true });
+          registerTaskIdentity(outcome.taskId, { title: `${strings.taskCenter.downloadTask} · ${choice.product.title}`, originPage: "warehouse", notifyOnComplete: true, notifyFamily: "library:download" });
           onChanged();
         }
       } catch { /* Transport failure does not prove that an accepted download failed. */ message = copy.downloadUnknown; }

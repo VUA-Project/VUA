@@ -213,9 +213,10 @@ with N1's prerequisite capabilities. A module supplies a scenario and its SOP; e
 management stays in the host.
 
 Six Steam tools — VRCFT, Space Calibrator, OVR Advanced Settings, OVR Overlay Translator, OVR
-Toolkit and OyasumiVR — share the Candidate Steam connection: discovery, install handoff, launch
-and status observation. VRCFT also has its device picker and hardware SOP. VRCS and LIV are
-description cards for now. Local Windows runs on 2026-10-14 exercised discovery, reuse of
+Toolkit and OyasumiVR — plus Desktop+ and fpsVR share the Candidate Steam connection: discovery,
+install handoff, launch and status observation, while SlimeVR Server, VRCT, VRCX and VRCS share the
+official-installer connection (`installer-tool v0.1`). VRCFT also has its device picker and hardware
+SOP. XSOverlay and LIV remain description cards pending real Steam executable verification. Local Windows runs on 2026-10-14 exercised discovery, reuse of
 installed software, Steam launch handoff and process observation for all six tools, and found
 launches slower than the observation window and normal-close failures; the findings are in
 [external-tool v0.4](protocols/external-tool-v0.4.md) (superseding [v0.3](protocols/external-tool-v0.3.md))

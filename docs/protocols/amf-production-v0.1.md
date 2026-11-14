@@ -1,8 +1,8 @@
 # AMF material-first production v0.1
 
-> Document version: 0.43.0
+> Document version: 0.44.0
 > Status: Candidate
-> Updated: 2026-11-12
+> Updated: 2026-11-14
 > Owner: AMF
 
 This face implements the first N3 production path. Users select local library inputs before a
@@ -875,6 +875,16 @@ texture whose importer settings the rules cannot decide, a mesh without a readab
 (32 bytes per vertex is then assumed), or a missing PhysBone type marks it false while the other
 values stay.
 
+`total` also carries optional `performanceRanks: { pc, android }`, each with
+`rank` (`"excellent" | "good" | "medium" | "poor" | "very_poor"`) and `limitingMetrics`
+(`"triangles" | "skinnedMeshes" | "basicMeshes" | "materialSlots" | "textureBytes" | "physBones"`
+exceeding `Good`), computed from the summed `triangles`, `skinnedMeshes`,
+`basicMeshes` (`meshes - skinnedMeshes`), `materialSlots`, `textureBytes` and `physBones` against
+VRChat's published PC and Android/Quest performance thresholds. Metrics not collected during
+pre-assembly prefab inspection — bone count, PhysBone affected transforms and colliders, contacts,
+particle systems, lights, audio sources, cloth and animators — are evaluated only by the VRChat
+SDK's post-build check. Plans from older builds without `performanceRanks` remain valid.
+
 `available` is false, with no rows and no total, when a selected candidate carries no footprint
 observation, which happens for a run inspected by an AMF build that predates it; the page then
 says so and offers a recheck instead of showing zeros.
@@ -970,6 +980,8 @@ Legacy `recipe.*` is still retained during consumer and data migration. This add
 does not retire its workspace, stores, frozen contracts, or library reference protections.
 
 ## Document changelog
+
+- 0.44.0 (2026-11-14): `amf.production.plan` `prediction.total` carries optional `performanceRanks` (`pc` and `android` `{ rank, limitingMetrics }`) against VRChat's published PC and Android/Quest thresholds; older plans without `performanceRanks` remain readable.
 
 - 0.43.0 (2026-11-12): add optional `amf.production.setOptimizer` (`com.anatawa12.avatar-optimizer` `1.9.21` `TraceAndOptimize` on the owned Avatar), protected by snapshot, `optimizer` revision replay and Build Record, with local NDMF `ManualProcessAvatar` before/after measurement (`localMeasurementOnly: true`), Face Tracking `osc_gimmick_possible` warning, and conditional Recipe v0.6 capture.
 

@@ -13,6 +13,8 @@ use vua_bdl_store::{ArtifactMode, BdlStore, LibraryCopyEvidence};
 use vua_orchestrator::RecipeDocumentStore;
 
 const MAX_ARCHIVE_ENTRIES: usize = 100_000;
+const MAX_MEMBER_BYTES: u64 = 4 * 1024 * 1024 * 1024;
+const MAX_TOTAL_BYTES: u64 = 16 * 1024 * 1024 * 1024;
 const MAX_SOURCES: usize = 4096;
 
 fn hash_text(value: &str) -> String {
@@ -28,13 +30,23 @@ fn safe_zip_member(value: &str) -> bool {
             .all(|part| !part.is_empty() && part != "." && part != "..")
 }
 
-fn sha256_reader(mut reader: impl Read) -> Result<String, &'static str> {
+fn sha256_reader(reader: impl Read, cumulative_bytes: &mut u64) -> Result<String, &'static str> {
+    let mut bounded = reader.take(MAX_MEMBER_BYTES + 1);
     let mut hasher = Sha256::new();
     let mut buf = [0u8; 64 * 1024];
+    let mut member_bytes = 0u64;
     loop {
-        let count = reader.read(&mut buf).map_err(|_| "unreadable")?;
+        let count = bounded.read(&mut buf).map_err(|_| "unreadable")?;
         if count == 0 {
             break;
+        }
+        member_bytes = member_bytes.saturating_add(count as u64);
+        if member_bytes > MAX_MEMBER_BYTES {
+            return Err("member_too_large");
+        }
+        *cumulative_bytes = cumulative_bytes.saturating_add(count as u64);
+        if *cumulative_bytes > MAX_TOTAL_BYTES {
+            return Err("archive_too_large");
         }
         hasher.update(&buf[..count]);
     }
@@ -191,6 +203,7 @@ pub(crate) fn production_material_matching_copies<'a>(
         if archive.len() > MAX_ARCHIVE_ENTRIES {
             continue;
         }
+        let mut archive_bytes = 0u64;
         for idx in 0..archive.len() {
             let Ok(inner) = archive.by_index(idx) else {
                 continue;
@@ -205,8 +218,11 @@ pub(crate) fn production_material_matching_copies<'a>(
             {
                 continue;
             }
-            if sha256_reader(inner).ok().as_deref() == Some(expected.as_str()) {
+            if sha256_reader(inner, &mut archive_bytes).ok().as_deref() == Some(expected.as_str()) {
                 matched_ids.insert(copy.copy.copy_id.clone());
+                break;
+            }
+            if archive_bytes > MAX_TOTAL_BYTES {
                 break;
             }
         }
@@ -348,6 +364,7 @@ pub fn draft_materials_for_line(
                                 if archive.len() > MAX_ARCHIVE_ENTRIES {
                                     return Err(DraftError("archive_too_large"));
                                 }
+                                let mut archive_bytes = 0u64;
                                 let mut member_found = false;
                                 for idx in 0..archive.len() {
                                     let inner = archive
@@ -367,14 +384,16 @@ pub fn draft_materials_for_line(
                                     member_found = true;
                                     if !member_norm.to_ascii_lowercase().ends_with(".unitypackage")
                                     {
-                                        if sha256_reader(inner).ok().as_deref() == Some(identity) {
+                                        if sha256_reader(inner, &mut archive_bytes).ok().as_deref()
+                                            == Some(identity)
+                                        {
                                             saw_verified_non_package = true;
                                         } else {
                                             saw_changed = true;
                                         }
                                         break;
                                     }
-                                    match sha256_reader(inner) {
+                                    match sha256_reader(inner, &mut archive_bytes) {
                                         Ok(digest) if digest == identity => {
                                             let source_id = format!(
                                                 "{}-{}",
@@ -393,6 +412,9 @@ pub fn draft_materials_for_line(
                                             matched_any_source = true;
                                         }
                                         Ok(_) => saw_changed = true,
+                                        Err("member_too_large" | "archive_too_large") => {
+                                            return Err(DraftError("archive_too_large"));
+                                        }
                                         Err(_) => {}
                                     }
                                     break;
@@ -445,6 +467,7 @@ pub fn draft_materials_for_line(
                 if archive.len() > MAX_ARCHIVE_ENTRIES {
                     return Err(DraftError("archive_too_large"));
                 }
+                let mut archive_bytes = 0u64;
                 let mut archive_had_package = false;
                 for idx in 0..archive.len() {
                     let inner = archive
@@ -460,9 +483,15 @@ pub fn draft_materials_for_line(
                     {
                         continue;
                     }
-                    if sha256_reader(inner).is_err() {
-                        saw_changed = true;
-                        continue;
+                    match sha256_reader(inner, &mut archive_bytes) {
+                        Ok(_) => {}
+                        Err("member_too_large" | "archive_too_large") => {
+                            return Err(DraftError("archive_too_large"));
+                        }
+                        Err(_) => {
+                            saw_changed = true;
+                            continue;
+                        }
                     }
                     archive_had_package = true;
                     let source_id =
@@ -501,6 +530,7 @@ pub fn draft_materials_for_line(
                 if archive.len() > MAX_ARCHIVE_ENTRIES {
                     return Err(DraftError("archive_too_large"));
                 }
+                let mut archive_bytes = 0u64;
                 let item_name = &entry_names[&zip_copy.copy.warehouse_item_id];
                 for idx in 0..archive.len() {
                     let Ok(inner) = archive.by_index(idx) else {
@@ -515,23 +545,29 @@ pub fn draft_materials_for_line(
                     {
                         continue;
                     }
-                    if sha256_reader(inner).ok().as_deref() == Some(identity) {
-                        let source_id = format!(
-                            "{}-{}",
-                            zip_copy.copy.copy_id,
-                            &hash_text(&raw_member)[..24]
-                        );
-                        upsert_source(
-                            &mut sources,
-                            source_id,
-                            &zip_copy.copy.warehouse_item_id,
-                            item_name,
-                            raw_member.replace('\\', "/"),
-                            &zip_copy.product_ids,
-                            sel_idx,
-                        );
-                        matched_any_source = true;
-                        found_in_unexpanded = true;
+                    match sha256_reader(inner, &mut archive_bytes) {
+                        Ok(digest) if digest == identity => {
+                            let source_id = format!(
+                                "{}-{}",
+                                zip_copy.copy.copy_id,
+                                &hash_text(&raw_member)[..24]
+                            );
+                            upsert_source(
+                                &mut sources,
+                                source_id,
+                                &zip_copy.copy.warehouse_item_id,
+                                item_name,
+                                raw_member.replace('\\', "/"),
+                                &zip_copy.product_ids,
+                                sel_idx,
+                            );
+                            matched_any_source = true;
+                            found_in_unexpanded = true;
+                        }
+                        Err("member_too_large" | "archive_too_large") => {
+                            return Err(DraftError("archive_too_large"));
+                        }
+                        _ => {}
                     }
                 }
             }

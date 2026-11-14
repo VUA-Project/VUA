@@ -9,3 +9,4 @@ const tables: Record<string, typeof en> = {
   ko: { read: "연결된 약관 일괄 읽기", reading: "약관 읽는 중…", done: "약관 읽기를 마치고 용도 필터 결과를 갱신했어요.", stopped: "일부 약관을 읽지 못했어요. 상품 상세 화면에서 이유를 확인하고 다시 시도할 수 있어요.", failed: "약관 읽기를 시작하지 못했어요. 다시 시도해 주세요." },
 };
 export const libraryTermsCopy = tables[currentLocale] ?? en;
+export const libraryTermsTables = tables;

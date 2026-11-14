@@ -72,7 +72,13 @@ test("isValidNewFolderName: 闭集与 Main 侧判据一致", () => {
   assert.equal(isValidNewFolderName("a\\b"), false);
   assert.equal(isValidNewFolderName("a\u0000b"), false);
   assert.equal(isValidNewFolderName("a\u001Fb"), false);
+  assert.equal(isValidNewFolderName("a\u007Fb"), false);
   assert.equal(isValidNewFolderName("tab\tname"), false);
+  assert.equal(isValidNewFolderName("pack "), false);
+  assert.equal(isValidNewFolderName("pack."), false);
+  assert.equal(isValidNewFolderName("a:b"), false);
+  assert.equal(isValidNewFolderName("CON"), false);
+  assert.equal(isValidNewFolderName("lpt9.dir"), false);
 });
 
 test("mergeUniqueFolders: 既有保持序 + 新增去重追加;空选取不改清单", () => {

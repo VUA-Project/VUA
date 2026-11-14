@@ -342,6 +342,7 @@ impl InstallerToolPlatform for WindowsInstallerToolPlatform {
         }
         let parent = executable.parent().ok_or("unavailable")?;
         let mut command = std::process::Command::new(executable);
+        vua_orchestrator::strip_sensitive_env(&mut command);
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
@@ -379,8 +380,9 @@ fn cached_installer(data_root: &Path, spec: &InstallerToolSpec) -> PathBuf {
 }
 
 pub(crate) fn tool_is_running(spec: &InstallerToolSpec) -> bool {
-    crate::play_session::os::processes_matching(|name| name == spec.process_name)
-        .is_ok_and(|list| !list.is_empty())
+    // Use Toolhelp32 executable-name inspection directly and fail closed on snapshot error
+    // so elevated tools (such as SlimeVR) are never overwritten while running.
+    crate::play_session::os::has_process_named(spec.process_name).unwrap_or(true)
 }
 
 pub(crate) fn install_official_tool(

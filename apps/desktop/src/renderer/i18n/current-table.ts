@@ -1,9 +1,5 @@
 import { defaultLocale, resolveInitialLocale, type LocaleId } from "./locales.ts";
-import { strings as zhCN } from "./strings.zh-CN.ts";
-import { strings as zhTW } from "./strings.zh-TW.ts";
 import { strings as en, type Strings } from "./strings.en.ts";
-import { strings as ja } from "./strings.ja.ts";
-import { strings as ko } from "./strings.ko.ts";
 import { storageKeys } from "../app/storage-keys.ts";
 import { systemLanguages } from "./system-languages.ts";
 
@@ -12,11 +8,16 @@ import { systemLanguages } from "./system-languages.ts";
  * 语言切换经设置页写入存储后整页重载生效(桌面工具纪律,
  * 与场景切换同模式,免去全应用响应式换表的复杂度)。
  *
- * 已交付语言表在此登记(与 locales.ts 注册表 available 同步);
- * 未登记的 locale 解析结果回落源语言 en,绝不返回残缺表。
+ * 源语言 en 静态引入保底;非 en 已交付语言表按需动态导入,
+ * 冷启动只拉取当前生效语言包,未登记或加载异常回落源语言 en。
  */
 
-const tables: Partial<Record<LocaleId, Strings>> = { "zh-CN": zhCN, "zh-TW": zhTW, en, ja, ko };
+const loaders: Partial<Record<Exclude<LocaleId, "en">, () => Promise<{ readonly strings: Strings }>>> = {
+  "zh-CN": () => import("./strings.zh-CN.ts"),
+  "zh-TW": () => import("./strings.zh-TW.ts"),
+  ja: () => import("./strings.ja.ts"),
+  ko: () => import("./strings.ko.ts"),
+};
 
 function readStoredLocale(): string | null {
   try {
@@ -26,9 +27,22 @@ function readStoredLocale(): string | null {
   }
 }
 
-export const currentLocale: LocaleId = (() => {
+const requestedLocale: LocaleId = (() => {
   const resolved = resolveInitialLocale(readStoredLocale(), systemLanguages());
-  return tables[resolved] !== undefined ? resolved : defaultLocale;
+  return resolved === "en" || loaders[resolved] !== undefined ? resolved : defaultLocale;
 })();
 
-export const currentStrings: Strings = tables[currentLocale] ?? en;
+const loadedStrings: Strings | null = await (async (): Promise<Strings | null> => {
+  if (requestedLocale === "en") return en;
+  const load = loaders[requestedLocale];
+  if (!load) return null;
+  try {
+    return (await load()).strings;
+  } catch {
+    return null;
+  }
+})();
+
+export const currentLocale: LocaleId = loadedStrings !== null ? requestedLocale : defaultLocale;
+
+export const currentStrings: Strings = loadedStrings ?? en;

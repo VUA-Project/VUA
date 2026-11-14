@@ -1,6 +1,13 @@
 import type { AmfRecipeDocument, AmfRecipeMaterialResolution } from "@vua/contracts";
 import { describe, expect, it } from "vitest";
-import { fastDocumentReadiness, newestFirst, recipeMaterialRows, recipeProductIds, recipeReadiness } from "./recipe-cards-model.ts";
+import {
+  fastDocumentReadiness,
+  filterRecipeSummaries,
+  newestFirst,
+  recipeMaterialRows,
+  recipeProductIds,
+  recipeReadiness,
+} from "./recipe-cards-model.ts";
 import { requestProductionRecipe, takeRequestedProductionRecipe } from "./production-recipe-navigation.ts";
 
 const resolution = (materialId: string, status: AmfRecipeMaterialResolution["status"], boothProductId: string | null = null): AmfRecipeMaterialResolution =>
@@ -73,5 +80,24 @@ describe("fastDocumentReadiness and production recipe handoff", () => {
     requestProductionRecipe("recipe-alpha");
     expect(takeRequestedProductionRecipe()).toBe("recipe-alpha");
     expect(takeRequestedProductionRecipe()).toBeNull();
+  });
+
+  it("filters Recipe summaries across title, outfit/package names, BOOTH titles, and readiness", () => {
+    const items = [
+      { recipeId: "r", title: "Summer Stage", avatarName: "Meiyun" },
+      { recipeId: "r2", title: "Winter Casual", avatarName: "Shinano", boothProductIds: ["99"] },
+    ];
+    const recipes = new Map([["r", recipe]]);
+    const plans = new Map([
+      ["r", { ready: true, materials: [resolution("body", "ready")] }],
+      ["r2", { ready: false, materials: [resolution("coat", "material_missing")] }],
+    ]);
+    const pictures = new Map([["booth:99", { title: "Fluffy Scarf" }]]);
+
+    expect(filterRecipeSummaries(items, { query: "meiyun coat", readiness: "all", recipes }).map(i => i.recipeId)).toEqual(["r"]);
+    expect(filterRecipeSummaries(items, { query: "modular-avatar", readiness: "all", recipes }).map(i => i.recipeId)).toEqual(["r"]);
+    expect(filterRecipeSummaries(items, { query: "scarf", readiness: "all", pictures }).map(i => i.recipeId)).toEqual(["r2"]);
+    expect(filterRecipeSummaries(items, { query: "", readiness: "ready", plans }).map(i => i.recipeId)).toEqual(["r"]);
+    expect(filterRecipeSummaries(items, { query: "", readiness: "attention", plans }).map(i => i.recipeId)).toEqual(["r2"]);
   });
 });

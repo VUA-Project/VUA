@@ -683,6 +683,9 @@ mod tests {
             },
             openvrpaths: Vec::new(),
             vcc_settings_candidates: Vec::new(),
+            pico_connect_settings_candidates: Vec::new(),
+            vcc_exe_candidates: Vec::new(),
+            alcom_exe_candidates: Vec::new(),
         }
     }
 

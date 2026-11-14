@@ -27,8 +27,8 @@
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use vua_orchestrator::CREDENTIAL_ENV_REMOVALS;
+use std::time::Duration;
+use vua_orchestrator::strip_sensitive_env;
 
 /// Handshake payload schema version (`schemas/unity-bridge/handshake/v1.0/`).
 /// The bridge package writes the same constant (`EditorHandshake`).
@@ -285,19 +285,39 @@ pub struct DetachedEditorSpawner;
 impl EditorSpawner for DetachedEditorSpawner {
     fn spawn(&self, executable: &Path, args: &[String]) -> std::io::Result<u32> {
         use std::process::{Command, Stdio};
-        let mut command = Command::new(executable);
-        command
-            .args(args)
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null());
-        for key in CREDENTIAL_ENV_REMOVALS.iter() {
-            command.env_remove(key);
-        }
-        // Dropping the child detaches it (std does not kill on drop): the
-        // editor outlives this call and is managed by the user/OS.
-        let pid = command.spawn()?.id();
-        Ok(pid)
+        let build = |_breakaway: bool| {
+            let mut command = Command::new(executable);
+            command
+                .args(args)
+                .stdin(Stdio::null())
+                .stdout(Stdio::null())
+                .stderr(Stdio::null());
+            strip_sensitive_env(&mut command);
+            #[cfg(windows)]
+            {
+                use std::os::windows::process::CommandExt;
+                use windows_sys::Win32::System::Threading::{
+                    CREATE_BREAKAWAY_FROM_JOB, CREATE_NEW_PROCESS_GROUP,
+                };
+                let flags = if _breakaway {
+                    CREATE_BREAKAWAY_FROM_JOB | CREATE_NEW_PROCESS_GROUP
+                } else {
+                    CREATE_NEW_PROCESS_GROUP
+                };
+                command.creation_flags(flags);
+            }
+            command
+        };
+        // Break away from the provider job on Windows so closing VUA never kills an
+        // interactive Unity SDK upload session; fall back if an outer OS job denies breakaway.
+        let child = match build(true).spawn() {
+            Ok(child) => child,
+            Err(err) if err.kind() == std::io::ErrorKind::PermissionDenied => {
+                build(false).spawn()?
+            }
+            Err(err) => return Err(err),
+        };
+        Ok(child.id())
     }
 }
 
@@ -306,10 +326,12 @@ pub struct SystemWait;
 
 impl HandoffWait for SystemWait {
     fn now_millis(&self) -> u64 {
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .map(|value| value.as_millis() as u64)
-            .unwrap_or_default()
+        static MONOTONIC_ORIGIN: std::sync::OnceLock<std::time::Instant> =
+            std::sync::OnceLock::new();
+        MONOTONIC_ORIGIN
+            .get_or_init(std::time::Instant::now)
+            .elapsed()
+            .as_millis() as u64
     }
 
     fn sleep(&self, duration: Duration) {

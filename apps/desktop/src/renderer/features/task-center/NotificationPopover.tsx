@@ -9,7 +9,7 @@ import type { PageId } from "../../app/nav-model.ts";
 import type { TaskItem } from "../../gateway/index.ts";
 import { Button } from "../../components/primitives/Button.tsx";
 import { NotificationList } from "./NotificationList.tsx";
-import { scrollClosesPanel, taskRowOpenTarget } from "./notification-model.ts";
+import { isTerminalStatus, notificationBellAlert, scrollClosesPanel, taskRowOpenTarget } from "./notification-model.ts";
 import { useNotificationCenter } from "./use-notification-center.ts";
 import { requestClock, requestTitle } from "../ai-requests/AiRequestCard.tsx";
 import { requestPage } from "../ai-requests/ai-request-routing.ts";
@@ -39,6 +39,8 @@ export function NotificationPopover({ navigate, page }: { navigate: (target: Pag
   const center = useNotificationCenter();
   const ai = useAiRequests();
   const [phase, setPhase] = useState<"closed" | "open" | "closing">("closed");
+  const [pinned, setPinned] = useState(false);
+  const [seenTerminalIds, setSeenTerminalIds] = useState<ReadonlySet<string>>(() => new Set());
   const [peek, setPeek] = useState<AiActionRequestV01 | null>(null);
   const toggleRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -76,6 +78,18 @@ export function NotificationPopover({ navigate, page }: { navigate: (target: Pag
 
   const close = () => setPhase((p) => (p === "open" ? "closing" : p));
 
+  useEffect(() => {
+    if (phase !== "open") return;
+    const terminalIds = center.notifications.filter((task) => isTerminalStatus(task.status)).map((task) => task.id);
+    if (terminalIds.length === 0) return;
+    setSeenTerminalIds((current) => {
+      if (terminalIds.every((id) => current.has(id))) return current;
+      const next = new Set(current);
+      for (const id of terminalIds) next.add(id);
+      return next;
+    });
+  }, [phase, center.notifications]);
+
   // 打开即聚焦面板;关闭后焦点还回铃铛(仅当焦点曾在面板内)
   useEffect(() => {
     if (phase === "open") {
@@ -93,44 +107,50 @@ export function NotificationPopover({ navigate, page }: { navigate: (target: Pag
   }, [phase]);
 
   // 外击(排除面板与铃铛自身)/Escape/面板外滚动/失焦关闭——与 NavOverflowMenu
-  // 交互对齐;面板内列表滚动不关闭(W25 真机第四批:window 捕获阶段的
-  // scroll 关闭监听曾把面板内滚动一并算作关闭手势,判定语义钉在
-  // notification-model.scrollClosesPanel)
+  // 交互对齐;固定(pinned)模式下外击/外滚/失焦不自动关闭面板。
   useEffect(() => {
     if (phase !== "open") return;
     const panel = panelRef.current;
     const onPointerDown = (event: PointerEvent) => {
+      if (pinned) return;
       if (event.target instanceof Node && panel?.contains(event.target)) return;
       if (event.target instanceof Node && toggleRef.current?.contains(event.target)) return;
       close();
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (pinned && !(event.target instanceof Node && panel?.contains(event.target))) return;
         event.stopPropagation();
+        setPinned(false);
         close();
       }
     };
     const onScroll = (event: Event) => {
+      if (pinned) return;
       const target = event.target instanceof Node ? event.target : null;
       if (scrollClosesPanel(target !== null && panel?.contains(target) === true)) close();
+    };
+    const onBlur = () => {
+      if (!pinned) close();
     };
     window.addEventListener("pointerdown", onPointerDown, true);
     window.addEventListener("keydown", onKeyDown, true);
     window.addEventListener("scroll", onScroll, true);
-    window.addEventListener("blur", close);
+    window.addEventListener("blur", onBlur);
     return () => {
       window.removeEventListener("pointerdown", onPointerDown, true);
       window.removeEventListener("keydown", onKeyDown, true);
       window.removeEventListener("scroll", onScroll, true);
-      window.removeEventListener("blur", close);
+      window.removeEventListener("blur", onBlur);
     };
-  }, [phase]);
+  }, [phase, pinned]);
 
   // §2.6:任务引擎未接入时入口整条不出现(所有 hooks 之后)
   if (center.capability?.state !== "ready") return null;
 
   const expanded = phase !== "closed";
   const count = center.activeCount + pending.length;
+  const alert = notificationBellAlert(center.notifications, pending.length, seenTerminalIds);
 
   return (
     <>
@@ -141,15 +161,18 @@ export function NotificationPopover({ navigate, page }: { navigate: (target: Pag
         className="vua-shell__notify"
         data-nav-id="shell-notifications"
         data-attention={pending.length > 0 || undefined}
+        data-alert={alert ?? undefined}
         aria-expanded={expanded}
         aria-label={format(copy.openAria, { count })}
-        onClick={() => { setPeek(null); setPhase((p) => (p === "closed" ? "open" : "closing")); }}
+        onClick={() => { setPeek(null); if (expanded) setPinned(false); setPhase((p) => (p === "closed" ? "open" : "closing")); }}
       >
         <Icon name="bell" size={16} />
         {count > 0 ? (
-          <span className="vua-shell__notify-badge" aria-hidden="true">
+          <span className="vua-shell__notify-badge" data-alert={alert === "failed" ? "failed" : undefined} aria-hidden="true">
             {count}
           </span>
+        ) : alert !== null ? (
+          <span className="vua-shell__notify-dot" data-alert={alert} aria-hidden="true" />
         ) : null}
       </button>
       </Tooltip>
@@ -170,29 +193,46 @@ export function NotificationPopover({ navigate, page }: { navigate: (target: Pag
       {expanded
         ? createPortal(
             <>
-              <div
-                className={`vua-notify-backdrop${phase === "closing" ? " vua-notify-backdrop--closing" : ""}`}
-                data-vua-native-occluder data-vua-shell-popover
-                onClick={close}
-              />
+              {!pinned ? (
+                <div
+                  className={`vua-notify-backdrop${phase === "closing" ? " vua-notify-backdrop--closing" : ""}`}
+                  data-vua-native-occluder data-vua-shell-popover
+                  onClick={close}
+                />
+              ) : null}
               <div
                 ref={panelRef}
                 className={`vua-notify-panel${phase === "closing" ? " vua-notify-panel--closing" : ""}`}
+                data-vua-native-occluder
                 data-vua-shell-popover
+                data-pinned={pinned || undefined}
                 role="region"
                 aria-label={copy.title}
                 tabIndex={-1}
               >
                 <div className="vua-notify-panel__header">
                   <span className="vua-notify-panel__title">{copy.title}</span>
-                  <button
-                    type="button"
-                    className="vua-notify-panel__close"
-                    aria-label={copy.closeAria}
-                    onClick={close}
-                  >
-                    <Icon name="close" size={16} />
-                  </button>
+                  <div className="vua-notify-panel__actions">
+                    <button
+                      type="button"
+                      className="vua-notify-panel__pin"
+                      aria-pressed={pinned}
+                      aria-label={pinned ? copy.unpinAria : copy.pinAria}
+                      title={pinned ? copy.unpinAria : copy.pinAria}
+                      data-nav-id="shell-notifications-pin"
+                      onClick={() => setPinned((current) => !current)}
+                    >
+                      <Icon name="pin" size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="vua-notify-panel__close"
+                      aria-label={copy.closeAria}
+                      onClick={() => { setPinned(false); close(); }}
+                    >
+                      <Icon name="close" size={16} />
+                    </button>
+                  </div>
                 </div>
                 {amf.state === "failed" ? <p role="status">{format(strings.amfModule.failed, { amf: TERMS.amf })}</p> : null}
                 {pending.length > 0 ? <section className="vua-notify-ai" aria-label={aiCopy.requests}>
@@ -200,7 +240,7 @@ export function NotificationPopover({ navigate, page }: { navigate: (target: Pag
                   <ul>{pending.map(request => <li key={request.id}>
                     <span><strong>{requestTitle(request)}</strong><br />
                       <span className="vua-caption vua-text-secondary">{format(aiCopy.askedAt, { time: requestClock(request.createdAt) })}</span></span>
-                    <Button variant="primary" onClick={() => { close(); openRequest(request); }}>{aiCopy.goConfirm}</Button>
+                    <Button variant="primary" onClick={() => { if (!pinned) close(); openRequest(request); }}>{aiCopy.goConfirm}</Button>
                   </li>)}</ul>
                 </section> : null}
                 <NotificationList
@@ -210,7 +250,7 @@ export function NotificationPopover({ navigate, page }: { navigate: (target: Pag
                   onRetry={(id) => void center.retry(id)}
                   dismissible={center.dismissible}
                   onBackToOrigin={(task: TaskItem) => {
-                    close();
+                    if (!pinned) close();
                     // 行打开语义经模型函数(D2):活动/终态两态一致回来源页
                     navigate(taskRowOpenTarget(task));
                   }}

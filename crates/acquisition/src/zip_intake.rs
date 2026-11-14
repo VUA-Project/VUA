@@ -71,16 +71,10 @@ pub(crate) fn expand(
 fn regular(meta: &fs::Metadata) -> bool {
     meta.is_file() && !reparse(meta)
 }
+/// Rejects symlinks and directory junctions (`IsReparseTagNameSurrogate` on Windows)
+/// while allowing transparent OS storage reparse tags (CompactOS WOF, OneDrive Cloud, Dedup).
 fn reparse(meta: &fs::Metadata) -> bool {
-    #[cfg(windows)]
-    {
-        use std::os::windows::fs::MetadataExt;
-        meta.file_attributes() & 0x400 != 0
-    }
-    #[cfg(not(windows))]
-    {
-        meta.file_type().is_symlink()
-    }
+    meta.file_type().is_symlink()
 }
 
 pub(crate) fn is_reparse(meta: &fs::Metadata) -> bool {
@@ -299,12 +293,14 @@ fn expand_inner(
             }
         }
     }
+    static EXPAND_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_nanos();
+    let seq = EXPAND_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let stage = OwnedTree {
-        path: expanded.join(format!(".vua-expand-{stamp:x}")),
+        path: expanded.join(format!(".vua-expand-{stamp:x}-{seq:x}")),
         root: root.clone(),
     };
     fs::create_dir(&stage.path).map_err(|_| "expansion_io_failed")?;

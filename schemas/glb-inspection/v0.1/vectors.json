@@ -1,0 +1,146 @@
+{
+  "validRequests": [
+    {
+      "schemaVersion": "0.1",
+      "productId": "booth:6106863"
+    },
+    {
+      "schemaVersion": "0.1",
+      "entryId": "wh-item-001"
+    }
+  ],
+  "invalidRequests": [
+    {
+      "schemaVersion": "0.1"
+    },
+    {
+      "schemaVersion": "0.1",
+      "productId": "booth:6106863",
+      "entryId": "wh-item-001"
+    },
+    {
+      "schemaVersion": "0.1",
+      "productId": "C:\\Users\\Alice\\Avatar.vrm"
+    }
+  ],
+  "validResults": [
+    {
+      "schemaVersion": "vua.glb-inspection/v0.1",
+      "truncated": false,
+      "items": [
+        {
+          "copyId": "copy-vrm1",
+          "fileName": "Avatar_v1.vrm",
+          "sourceKind": "standalone_file",
+          "containerFileName": null,
+          "sizeBytes": 14820352,
+          "format": "vrm_1_0",
+          "extensionsUsed": ["VRMC_vrm", "VRMC_springBone", "VRMC_materials_mtoon"],
+          "contentSummary": {
+            "meshCount": 6,
+            "primitiveCount": 14,
+            "triangleEstimate": 38420,
+            "skinCount": 1,
+            "nodeCount": 94,
+            "animationCount": 0
+          },
+          "materialSummary": {
+            "materialCount": 8,
+            "unlitMaterialCount": 0,
+            "mtoonMaterialCount": 8
+          },
+          "textureSummary": {
+            "textureCount": 12,
+            "embeddedImageCount": 12,
+            "externalUriTextureCount": 0
+          },
+          "secondaryMotion": {
+            "springBoneJointCount": 24,
+            "nodeConstraintCount": 2,
+            "expressionCount": 18
+          },
+          "vrm": {
+            "specVersion": "1.0",
+            "hasHumanoidHeadBone": true,
+            "hasFullBodyBones": true,
+            "hasToeBones": true,
+            "headBoneHeightMeters": 1.32,
+            "boneCount": 52,
+            "modelName": "Kipfel",
+            "authors": ["Studio Example"],
+            "avatarPermission": "onlyAuthor",
+            "commercialUsage": "personalNonProfit",
+            "modification": "allowModification",
+            "licenseUrl": "https://vrm.dev/licenses/1.0/"
+          },
+          "boundsMeters": {
+            "size": [0.46, 1.48, 0.31],
+            "min": [-0.23, 0.0, -0.15],
+            "max": [0.23, 1.48, 0.16]
+          }
+        },
+        {
+          "copyId": "copy-prop-zip",
+          "fileName": "Models/AvatarAccessory.glb",
+          "sourceKind": "zip_member",
+          "containerFileName": "AvatarAccessory_Pack.zip",
+          "sizeBytes": 2097152,
+          "format": "glb_2_0",
+          "extensionsUsed": ["KHR_materials_unlit"],
+          "contentSummary": {
+            "meshCount": 2,
+            "primitiveCount": 3,
+            "triangleEstimate": 4200,
+            "skinCount": 0,
+            "nodeCount": 5,
+            "animationCount": 0
+          },
+          "materialSummary": {
+            "materialCount": 2,
+            "unlitMaterialCount": 2,
+            "mtoonMaterialCount": 0
+          },
+          "textureSummary": {
+            "textureCount": 2,
+            "embeddedImageCount": 2,
+            "externalUriTextureCount": 0
+          },
+          "secondaryMotion": {
+            "springBoneJointCount": 0,
+            "nodeConstraintCount": 0,
+            "expressionCount": 0
+          },
+          "vrm": null,
+          "boundsMeters": {
+            "size": [0.38, 0.4, 0.42],
+            "min": [-0.19, -0.2, -0.21],
+            "max": [0.19, 0.2, 0.21]
+          }
+        }
+      ]
+    }
+  ],
+  "invalidResults": [
+    {
+      "schemaVersion": "vua.glb-inspection/v0.1",
+      "truncated": false,
+      "items": [
+        {
+          "copyId": "copy-leak",
+          "fileName": "C:\\Users\\Alice\\Secrets\\Prop.glb",
+          "sourceKind": "standalone_file",
+          "containerFileName": null,
+          "sizeBytes": 128,
+          "format": "glb_2_0",
+          "extensionsUsed": [],
+          "contentSummary": null,
+          "materialSummary": null,
+          "textureSummary": null,
+          "secondaryMotion": null,
+          "vrm": null,
+          "boundsMeters": null
+        }
+      ]
+    }
+  ]
+}

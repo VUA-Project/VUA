@@ -69,6 +69,17 @@ async function run() {
     const nativePresence = observed.value.toolConnection.presence; nativeRead = false;
     await click('[data-nav-id=nav-tools-discover]'); await waitFor(() => js('!!document.querySelector("[data-nav-id=tool-vrcft-action]")'), "tool card"); await refresh();
     assert(await js('[...document.querySelectorAll(".vua-tools-hub .vua-environment-card__action")].length===14 && [...document.querySelectorAll(".vua-tools-hub .vua-environment-card__action")].every(button=>!!button.textContent.trim() && !!button.getAttribute("aria-label"))'), "All fourteen tool actions name their next step in a word and keep an accessible operation name");
+    await waitFor(() => js('!!document.querySelector("[data-testid=tools-filter-bar]") && !!document.querySelector("[data-pose-graph] .vua-pose-graph__body")'), "tools filter bar and native pose graph");
+    assert(await js('document.querySelectorAll("[data-pose-graph] .vua-pose-graph__sources > li").length === 9'), "Native pose graph renders all nine canonical pose sources");
+    await click('[data-testid=tools-filter-free-only]');
+    await waitFor(() => js('document.querySelectorAll(".vua-tools-hub .vua-environment-card__action").length === 9'), "free-only filter");
+    assert(await js('document.querySelector("[data-testid=tools-filter-free-only]").getAttribute("aria-pressed") === "true"'), "Free-only filter exposes pressed state and narrows catalog to nine free tools");
+    await click('[data-testid=tools-goal-tracking]');
+    await waitFor(() => js('document.querySelectorAll(".vua-tools-hub .vua-environment-card__action").length === 3'), "tracking goal filter");
+    assert(await js('document.querySelector("[data-testid=tools-goal-tracking]").getAttribute("aria-pressed") === "true"'), "Goal filter narrows catalog to three tracking tools");
+    await click('[data-testid=tools-goal-all]');
+    await click('[data-testid=tools-filter-free-only]');
+    await waitFor(() => js('document.querySelectorAll(".vua-tools-hub .vua-environment-card__action").length === 14'), "reset tool filters");
     for (const scale of [1, 1.5]) {
       window.setSize(960, 800); window.webContents.setZoomFactor(scale);
       for (const toolId of ['vrcft','space','slimevr','vrcs','translator','vrct','advanced','toolkit','oyasumi','xsoverlay','desktopplus','fpsvr','vrcx','liv']) {

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vua.local/schemas/local-diagnostics/v0.1/client-config-update-receipt.schema.json",
+  "title": "ClientConfigUpdateReceiptResultV01",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["clientConfigReceipt"],
+  "properties": {
+    "clientConfigReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "updatedAt", "backupWritten", "backupRelativePath", "cacheSizeGb", "cacheExpiryDelayDays"],
+      "properties": {
+        "schemaVersion": { "const": "vua.local-diagnostics/v0.1" },
+        "updatedAt": { "type": "string", "minLength": 1 },
+        "backupWritten": { "type": "boolean" },
+        "backupRelativePath": {
+          "oneOf": [
+            { "const": "LocalLow/VRChat/VRChat/config.json.vua.bak" },
+            { "type": "null" }
+          ]
+        },
+        "cacheSizeGb": { "type": ["integer", "null"], "minimum": 30, "maximum": 200 },
+        "cacheExpiryDelayDays": { "type": ["integer", "null"], "minimum": 30, "maximum": 365 }
+      }
+    }
+  }
+}

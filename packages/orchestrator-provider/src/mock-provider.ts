@@ -245,7 +245,15 @@ export class MockOrchestratorProviderV01 implements OrchestratorProviderV01 {
       case "tools.actInstaller":
         return this.#failure(request, this.#error("vua.installer_tool.unavailable", "unavailable", "errors.externalTool.unavailable", request.correlationId, false, false));
       case "environment.inspectManagerApps":
+      case "environment.openManagerApp":
         return this.#failure(request, this.#error("vua.manager_apps.unavailable", "unavailable", "errors.playSession.unavailable", request.correlationId, false, false));
+      case "environment.observePoseGraph":
+        return this.#failure(request, this.#error("vua.pose_graph.unavailable", "unavailable", "errors.playSession.unavailable", request.correlationId, false, false));
+      case "diagnostics.observeLocal":
+      case "diagnostics.diagnoseSymptom":
+      case "diagnostics.clearOscAvatarCache":
+      case "diagnostics.updateClientConfig":
+        return this.#failure(request, this.#error("vua.local_diagnostics.unavailable", "unavailable", "errors.localDiagnostics.unavailable", request.correlationId, false, false));
       case "environment.planDeployment":
       case "environment.executeDeployment":
         return this.#failure(request, this.#error("vua.deployment.unavailable", "unavailable", "errors.deployment.failed", request.correlationId, false, false));
@@ -471,6 +479,7 @@ export class MockOrchestratorProviderV01 implements OrchestratorProviderV01 {
       case "library.importGroups":
       case "library.entryMetadata": case "library.updateEntryMetadata": case "library.removeLocalEntries": case "library.removeCards":
       case "library.productFiles":
+      case "library.inspectGlb":
       case "library.removalPreview": case "library.removeFiles": case "library.removalStatus": case "library.pendingRemovals": case "library.resolveRemoval":
       case "recipeDraft.selectionStatus":
       case "recipeDraft.materialsForLine": case "recipeDraft.legacyCensus": case "recipeDraft.migrateLegacy":

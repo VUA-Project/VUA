@@ -138,6 +138,71 @@
     "code": "NF5MQDQ4N075"
   },
   {
+    "name": "recipe-v06",
+    "declaration": {
+      "formatVersion": "0.6",
+      "recipe": {
+        "formatVersion": "0.6",
+        "recipeId": "recipe-optimizer",
+        "title": "Two-piece Avatar with Avatar Optimizer",
+        "editorVersion": "2022.3.22f1c1",
+        "materials": [
+          {
+            "id": "material-1",
+            "packageName": "Avatar.unitypackage",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "boothProductId": "1000001"
+          },
+          {
+            "id": "material-2",
+            "packageName": "Coat.unitypackage",
+            "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "boothProductId": "1000001"
+          }
+        ],
+        "avatar": {
+          "materialId": "material-1",
+          "prefabPath": "Assets/Avatar.prefab",
+          "prefabGuid": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "outfits": [
+          {
+            "materialId": "material-2",
+            "prefabPath": "Assets/Coat.prefab",
+            "mode": "merge_armature",
+            "bone": "",
+            "toggleName": "Coat",
+            "active": true,
+            "prefabGuid": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+          }
+        ],
+        "packages": {
+          "com.vrchat.avatars": "3.10.5",
+          "nadena.dev.modular-avatar": "1.18.7",
+          "com.anatawa12.avatar-optimizer": "1.9.6"
+        },
+        "adjustments": {
+          "lighting": [],
+          "sdkFixes": [],
+          "optimizer": true
+        }
+      },
+      "sources": {
+        "material-1": {
+          "boothProductId": "1000001",
+          "shopName": "Synthetic shop"
+        },
+        "material-2": {
+          "boothProductId": "1000001",
+          "shopName": "Synthetic shop"
+        }
+      }
+    },
+    "canonical": "{\"formatVersion\":\"0.6\",\"recipe\":{\"adjustments\":{\"lighting\":[],\"optimizer\":true,\"sdkFixes\":[]},\"avatar\":{\"materialId\":\"material-1\",\"prefabGuid\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"prefabPath\":\"Assets/Avatar.prefab\"},\"editorVersion\":\"2022.3.22f1c1\",\"formatVersion\":\"0.6\",\"materials\":[{\"boothProductId\":\"1000001\",\"id\":\"material-1\",\"packageName\":\"Avatar.unitypackage\",\"sha256\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"},{\"boothProductId\":\"1000001\",\"id\":\"material-2\",\"packageName\":\"Coat.unitypackage\",\"sha256\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}],\"outfits\":[{\"active\":true,\"bone\":\"\",\"materialId\":\"material-2\",\"mode\":\"merge_armature\",\"prefabGuid\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"prefabPath\":\"Assets/Coat.prefab\",\"toggleName\":\"Coat\"}],\"packages\":{\"com.anatawa12.avatar-optimizer\":\"1.9.6\",\"com.vrchat.avatars\":\"3.10.5\",\"nadena.dev.modular-avatar\":\"1.18.7\"},\"recipeId\":\"recipe-optimizer\",\"title\":\"Two-piece Avatar with Avatar Optimizer\"},\"sources\":{\"material-1\":{\"boothProductId\":\"1000001\",\"shopName\":\"Synthetic shop\"},\"material-2\":{\"boothProductId\":\"1000001\",\"shopName\":\"Synthetic shop\"}}}",
+    "sha256": "be9da17f89921edbe37cfec4479818185affb89ba46191cca1074846135dcc12",
+    "code": "QTET2ZW9J8FD"
+  },
+  {
     "name": "selection",
     "declaration": {
       "kind": "vua.selection",

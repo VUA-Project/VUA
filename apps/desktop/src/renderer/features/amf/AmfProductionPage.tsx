@@ -634,7 +634,7 @@ export function AmfProductionPage({ onNavigate, onPrepareEnv }: {
             void port.saveRecipe(runId,recipeTitle.trim() || run.result?.facts?.avatarName || copy.title).then(setSavedRecipe)
               .catch(e => setError(productionErrorMessage(e, copy.taskFailed))).finally(() => setRequesting(false));
           }}><label className="vua-n3__field">{copy.recipeName}<input value={recipeTitle} maxLength={120} placeholder={run.result.facts.avatarName || copy.title} onChange={e => setRecipeTitle(e.target.value)}/></label>
-          <Button type="submit" variant="primary" disabled={ftLocked}>{copy.saveRecipe}</Button></form>}
+          <Button type="submit" variant="default" disabled={ftLocked}>{copy.saveRecipe}</Button></form>}
       </Card>}
       <details className="vua-n3__advanced vua-line__source-details"><summary>{ui.details}</summary><dl><dt>{ui.lineId}</dt><dd>{run.runId}</dd><dt>{copy.editor}</dt><dd>{run.editor.version}</dd></dl><code>{run.projectRoot}</code><ul>{materials.map(material => <li key={material.id}>{material.item}<small>{material.name} · {material.id}</small></li>)}</ul></details>
       {shown === "face" && port && <FaceTrackingCard port={port} run={run} disabled={busy} onUnityHolds={e => fail(e)}
@@ -679,8 +679,15 @@ function PredictionNote({ prediction }: { prediction: AmfPlanPrediction }) {
     String(row.physBones), row.parameterBits === null ? "—" : `${row.parameterBits} / 256`,
   ];
   const columns = ["size", "triangles", "materialSlots", "textureMemory", "physBones", "parameterBits"] as const;
+  const ranks = prediction.total?.performanceRanks;
   return <div className="vua-line__prediction">
     <p>{predictionCopy.title}</p>
+    {ranks && <p className="vua-caption" data-testid="prediction-performance-ranks">
+      {format(predictionCopy.rankSummary, {
+        pc: predictionCopy.ranks[ranks.pc.rank],
+        android: predictionCopy.ranks[ranks.android.rank],
+      })}
+    </p>}
     <table className="vua-line__prediction-table">
       <thead><tr><th scope="col"/>{columns.map(column => <th key={column} scope="col">{predictionCopy.columns[column]}</th>)}</tr></thead>
       <tbody>
@@ -692,6 +699,18 @@ function PredictionNote({ prediction }: { prediction: AmfPlanPrediction }) {
           {cells(prediction.total).map((cell, index) => <td key={columns[index]}>{cell}</td>)}</tr>}
       </tbody>
     </table>
+    {ranks && ranks.pc.limitingMetrics.length > 0 && <p className="vua-caption vua-text-secondary">
+      {format(predictionCopy.limiting, {
+        platform: predictionCopy.platforms.pc,
+        metrics: ranks.pc.limitingMetrics.map(m => predictionCopy.metricNames[m]).join(", "),
+      })}
+    </p>}
+    {ranks && ranks.android.limitingMetrics.length > 0 && <p className="vua-caption vua-text-secondary">
+      {format(predictionCopy.limiting, {
+        platform: predictionCopy.platforms.android,
+        metrics: ranks.android.limitingMetrics.map(m => predictionCopy.metricNames[m]).join(", "),
+      })}
+    </p>}
     <p className="vua-caption vua-text-secondary">{predictionCopy.note}</p>
     {prediction.rows.some(row => !row.complete) && <p className="vua-caption vua-text-secondary">{predictionCopy.incomplete}</p>}
   </div>;

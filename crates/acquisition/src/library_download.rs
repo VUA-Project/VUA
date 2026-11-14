@@ -6,7 +6,7 @@ use crate::artifact_inspection::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use vua_bdl_store::{
@@ -155,6 +155,7 @@ pub struct LibraryDownloadService {
     recovered: HashSet<String>,
     mutations: Mutex<()>,
     copy_writes: Arc<Mutex<()>>,
+    terminal_checkpoints: Mutex<HashMap<String, Checkpoint>>,
     pub(crate) library_content_checks: Arc<Mutex<crate::library_reconcile::ContentChecks>>,
 }
 impl LibraryDownloadService {
@@ -183,6 +184,7 @@ impl LibraryDownloadService {
             recovered,
             mutations: Mutex::new(()),
             copy_writes: Arc::new(Mutex::new(())),
+            terminal_checkpoints: Mutex::new(HashMap::new()),
             library_content_checks: Arc::new(Mutex::new(library_content_checks)),
         })
     }
@@ -298,11 +300,34 @@ impl LibraryDownloadService {
                 .cmp(&a.created_at)
                 .then_with(|| b.task_id.cmp(&a.task_id))
         });
-        tasks
+        let mut out = Vec::new();
+        for task in tasks
             .into_iter()
             .filter(|task| task.task_id.starts_with("library-download-"))
-            .map(|task| self.snapshot(&self.load(&task.task_id)?))
-            .collect()
+        {
+            let checkpoint = if task.state.is_terminal() {
+                let cached = self
+                    .terminal_checkpoints
+                    .lock()
+                    .expect("terminal checkpoints poisoned")
+                    .get(&task.task_id)
+                    .cloned();
+                if let Some(cached) = cached {
+                    cached
+                } else {
+                    let loaded = self.load(&task.task_id)?;
+                    self.terminal_checkpoints
+                        .lock()
+                        .expect("terminal checkpoints poisoned")
+                        .insert(task.task_id.clone(), loaded.clone());
+                    loaded
+                }
+            } else {
+                self.load(&task.task_id)?
+            };
+            out.push(self.snapshot_for_task(&task, &checkpoint));
+        }
+        Ok(out)
     }
 
     fn load(&self, batch_id: &str) -> Result<Checkpoint, LibraryDownloadError> {
@@ -354,19 +379,51 @@ impl LibraryDownloadService {
             .store
             .task(&current.batch_id)?
             .ok_or(LibraryDownloadError("batch_not_found"))?;
-        let files = current.files.iter().map(|file| json!({
-            "downloadableId": file.downloadable_id, "fileName": file.file_name, "phase": file.phase,
-            "downloadId": file.download_id, "errorCode": file.error_code, "entryId": file.entry_id,
-            "copyId": file.copy_id, "artifactSha256": file.artifact_sha256, "replaced": file.replaced,
-        })).collect::<Vec<_>>();
-        Ok(
-            json!({ "schemaVersion": "0.1", "batchId": current.batch_id, "taskId": current.batch_id,
-                "productId": current.product_id, "revision": task.revision, "state": task.state,
-                "cancellationRequested": task.cancel_requested,
-                "recoveryDisposition": if self.recovered.contains(&current.batch_id) || current.files.iter().any(|file| file.phase == FilePhase::Unconfirmed || file.error_code.as_deref() == Some("vua.library.staging_cleanup_failed")) { "inspect_required" } else { "none" },
-                "files": files,
-            }),
-        )
+        Ok(self.snapshot_for_task(&task, current))
+    }
+
+    fn snapshot_for_task(
+        &self,
+        task: &vua_orchestrator::StoredTask,
+        current: &Checkpoint,
+    ) -> Value {
+        let files = current
+            .files
+            .iter()
+            .map(|file| {
+                json!({
+                    "downloadableId": file.downloadable_id,
+                    "fileName": file.file_name,
+                    "phase": file.phase,
+                    "downloadId": file.download_id,
+                    "errorCode": file.error_code,
+                    "entryId": file.entry_id,
+                    "copyId": file.copy_id,
+                    "artifactSha256": file.artifact_sha256,
+                    "replaced": file.replaced,
+                })
+            })
+            .collect::<Vec<_>>();
+        json!({
+            "schemaVersion": "0.1",
+            "batchId": current.batch_id,
+            "taskId": current.batch_id,
+            "productId": current.product_id,
+            "revision": task.revision,
+            "state": task.state,
+            "cancellationRequested": task.cancel_requested,
+            "recoveryDisposition": if self.recovered.contains(&current.batch_id)
+                || current.files.iter().any(|file| {
+                    file.phase == FilePhase::Unconfirmed
+                        || file.error_code.as_deref()
+                            == Some("vua.library.staging_cleanup_failed")
+                }) {
+                "inspect_required"
+            } else {
+                "none"
+            },
+            "files": files,
+        })
     }
 
     pub fn apply(

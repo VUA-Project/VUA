@@ -79,6 +79,11 @@ body:has(.vua-overlay) {
   color: var(--vua-on-status);
 }
 
+.vua-overlay__chrome-button:focus-visible {
+  outline: 2px solid var(--vua-border-focus);
+  outline-offset: 2px;
+}
+
 /* ---------- 引导视图(2026-09-26 裁决):窄窗引导内容 ---------- */
 
 .vua-overlay-guide {
@@ -120,6 +125,11 @@ body:has(.vua-overlay) {
 .vua-overlay-guide__topic[data-active] {
   background: var(--vua-accent, var(--vua-bg-elevated));
   color: var(--vua-accent-contrast);
+}
+
+.vua-overlay-guide__topic:focus-visible {
+  outline: 2px solid var(--vua-border-focus);
+  outline-offset: 2px;
 }
 
 .vua-overlay-guide__content {

@@ -23,6 +23,8 @@ export interface TaskIdentity {
    * 完成也应有通知——运行窗口太短,用户打开通知中心时已按默认纪律
    * 消失)。只影响呈现,不影响任务权威事实。 */
   readonly notifyOnComplete?: boolean;
+  /** Optional notification family so distinct task categories retain their own latest completion receipt. */
+  readonly notifyFamily?: string;
 }
 
 const identities = new Map<string, TaskIdentity>();

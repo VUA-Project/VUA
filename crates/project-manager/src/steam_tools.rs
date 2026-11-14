@@ -175,6 +175,7 @@ impl ToolPlatform for SteamToolPlatform {
             .filter(|exe| exe.is_file())
             .ok_or("steam_missing")?;
         let mut command = std::process::Command::new(&steam);
+        vua_orchestrator::strip_sensitive_env(&mut command);
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;

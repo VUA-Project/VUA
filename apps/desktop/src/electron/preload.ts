@@ -117,6 +117,7 @@ const api: VuaDesktopApiV7 = Object.freeze({
     setEnabled: (enabled: boolean) => ipcRenderer.invoke("vua:ai-tools:set-enabled", enabled),
     prompt: (locale: AiConnectionLocale) => ipcRenderer.invoke("vua:ai-tools:prompt", locale),
     copyPrompt: (locale: AiConnectionLocale) => ipcRenderer.invoke("vua:ai-tools:copy-prompt", locale),
+    copyConfig: () => ipcRenderer.invoke("vua:ai-tools:copy-config"),
     resolve: (id: string, decision: "approve" | "reject", confirmation?: { avatarName: string; rightsConfirmed: true }) => ipcRenderer.invoke("vua:ai-tools:resolve", id, decision, confirmation),
     subscribe: (listener: (value: AiToolsSnapshotV01) => void) => {
       const wrapped = (_event: IpcRendererEvent, value: AiToolsSnapshotV01) => listener(value);

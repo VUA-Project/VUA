@@ -1,5 +1,5 @@
-import { isLibraryListV02, isLibraryListV03, type LibraryListParamsV02, type LibraryListParamsV03, type LibraryUseV02, type LibraryVn3CountsV03, type LibraryVn3RowV03 } from "@vua/contracts";
-import { isLibraryListV01, isLibraryProductFilesV01, type LibraryListParamsV01 } from "@vua/contracts";
+import { isLibraryListV02, isLibraryListV03, type LibraryFormatV03, type LibraryListParamsV02, type LibraryListParamsV03, type LibraryUseV02, type LibraryVn3CountsV03, type LibraryVn3RowV03 } from "@vua/contracts";
+import { isGlbInspectionResultV01, isLibraryListV01, isLibraryProductFilesV01, type GlbInspectionResultV01, type LibraryListParamsV01 } from "@vua/contracts";
 import type { LibraryEntryMetadataV01 } from "@vua/contracts";
 import type { WarehouseEntry } from "./acquire-port.ts";
 import type { CatalogListView, CatalogProductSummary } from "./catalog-browser-port.ts";
@@ -22,6 +22,7 @@ export interface LibraryCardFacts {
   readonly purchasedAt?: string | null;
   readonly publishedAt?: string | null;
   readonly sizeBytes?: number;
+  readonly formats?: readonly LibraryFormatV03[];
   readonly variantCount?: number;
   readonly sourceCategory?: string | null;
   readonly storage: LibraryStorageFacts;
@@ -60,12 +61,13 @@ export interface LibraryFileInventory {
 export interface LibraryBrowserPort {
   list(query: LibraryListParamsV01 | LibraryListParamsV02 | LibraryListParamsV03): Promise<LibraryPageView>;
   productFiles(productId: string): Promise<LibraryFileInventory>;
+  inspectGlb?(target: { readonly productId: string } | { readonly entryId: string }): Promise<GlbInspectionResultV01>;
 }
 /** Facts the current face adds to a row, absent on earlier faces. */
-function currentFacts(row: object): Pick<LibraryCardFacts, "vn3" | "addedAt" | "purchasedAt" | "publishedAt" | "sizeBytes"> {
+function currentFacts(row: object): Pick<LibraryCardFacts, "vn3" | "addedAt" | "purchasedAt" | "publishedAt" | "sizeBytes" | "formats"> {
   if (!("sizeBytes" in row)) return {};
-  const current = row as { readonly addedAt: string | null; readonly purchasedAt?: string | null; readonly publishedAt: string | null; readonly sizeBytes: number; readonly vn3?: LibraryVn3RowV03 };
-  return { addedAt: current.addedAt, purchasedAt: current.purchasedAt ?? null, publishedAt: current.publishedAt, sizeBytes: current.sizeBytes, ...(current.vn3 ? { vn3: current.vn3 } : {}) };
+  const current = row as { readonly addedAt: string | null; readonly purchasedAt?: string | null; readonly publishedAt: string | null; readonly sizeBytes: number; readonly formats?: readonly LibraryFormatV03[]; readonly vn3?: LibraryVn3RowV03 };
+  return { addedAt: current.addedAt, purchasedAt: current.purchasedAt ?? null, publishedAt: current.publishedAt, sizeBytes: current.sizeBytes, ...(current.formats ? { formats: current.formats } : {}), ...(current.vn3 ? { vn3: current.vn3 } : {}) };
 }
 export function createLiveLibraryBrowserPort(client: GatewayClient): LibraryBrowserPort {
   return {
@@ -75,7 +77,7 @@ export function createLiveLibraryBrowserPort(client: GatewayClient): LibraryBrow
       let older = false;
       // An AMF module that predates this face rejects it; the library stays usable in that module's order.
       if (!response.ok && query.schemaVersion === "0.3" && response.error.kind === "application" && response.error.error.code === "vua.library.invalid_params") {
-        const { sort: _sort, vn3: _vn3, schemaVersion: _version, ...ordinary } = query;
+        const { sort: _sort, format: _format, vn3: _vn3, schemaVersion: _version, ...ordinary } = query;
         response = await read({ ...ordinary, schemaVersion: "0.1" });
         older = true;
       }
@@ -112,6 +114,18 @@ export function createLiveLibraryBrowserPort(client: GatewayClient): LibraryBrow
       const response = await client.invoke({ schemaVersion: 1, requestId: crypto.randomUUID(), method: "library.productFiles", params: { schemaVersion: "0.1", productId } });
       if (!response.ok || !isLibraryProductFilesV01(response.value) || response.value.productId !== productId) throw new Error("library_files_read_failed");
       return { productId, items: response.value.items };
+    },
+    async inspectGlb(target) {
+      const response = await client.invoke({
+        schemaVersion: 1,
+        requestId: crypto.randomUUID(),
+        method: "library.inspectGlb",
+        params: { schemaVersion: "0.1", ...target },
+      });
+      if (!response.ok || !isGlbInspectionResultV01(response.value)) {
+        throw new Error("library_glb_inspect_failed");
+      }
+      return response.value;
     },
   };
 }

@@ -316,4 +316,18 @@ describe("experimental VRChat sign-in storage", () => {
     vrchatSession({ directory, version: "1", secrets: fakeSecrets(), client: fakeClient() });
     expect(fs.existsSync(other)).toBe(true);
   });
+
+  it("discards only the rejected run's handoff file when concurrent runs are active", async () => {
+    const projectA = tempDirectory();
+    const projectB = tempDirectory();
+    const fileA = await writeSdkSessionFile(projectA, { username: "Aran", auth: "auth-a", twoFactorAuth: null }, async () => {});
+    const fileB = await writeSdkSessionFile(projectB, { username: "Aran", auth: "auth-b", twoFactorAuth: null }, async () => {});
+    const directory = tempDirectory();
+    const service = vrchatSession({ directory, version: "1", secrets: fakeSecrets(), client: fakeClient() });
+    service.noteSdkHandoff(fileA);
+    service.noteSdkHandoff(fileB);
+    service.discardSdkHandoff(fileB);
+    expect(fs.existsSync(fileB)).toBe(false);
+    expect(fs.existsSync(fileA)).toBe(true);
+  });
 });

@@ -15,6 +15,7 @@ import { boothCategoryLabel } from "../../i18n/booth-category-copy.ts";
 import { shownVariant } from "./library-view-model.ts";
 import { priceLabel, readableDescription, sizeLabel, videoLink } from "./library-text.ts";
 import { ProductTerms } from "./ProductTerms.tsx";
+import { GlbInspectionSection } from "./GlbInspectionSection.tsx";
 import { DetailAlbum } from "./WarehouseAlbum.tsx";
 
 const copy = strings.warehouse;
@@ -161,6 +162,7 @@ export function ProductDetail({ product, facts, title, badges, actions, filesRev
     {product.ageRestriction !== null ? <p className="vua-caption vua-text-secondary">{format(copy.detail.ageRestrictionNote, { value: product.ageRestriction })}</p> : null}
 
     <ProductTerms productId={product.productId} title={title} onUpdated={onTermsUpdated} />
+    <GlbInspectionSection target={{ productId: product.productId }} revision={filesRevision} />
     <ProductFiles productId={product.productId} revision={filesRevision} onManage={onManageFiles} />
 
     {product.subproducts.length > 1 ? <section className="vua-warehouse-detail__section">

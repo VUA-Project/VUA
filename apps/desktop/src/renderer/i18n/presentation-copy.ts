@@ -48,3 +48,4 @@ const copy: Partial<Record<LocaleId, typeof en>> = {
 };
 
 export const presentationCopy = copy[currentLocale] ?? en;
+export const presentationTables = copy;

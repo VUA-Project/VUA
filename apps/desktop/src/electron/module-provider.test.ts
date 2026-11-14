@@ -346,6 +346,20 @@ describe("host / optional AMF process boundary", () => {
     expect(changes.at(-1)?.state).toBe("failed");
     expect(provider.status().state).toBe("ready");
     expect((await provider.invoke(query("task.list"))).ok).toBe(true);
-    await provider.setAmfEnabled(false); await provider.prepareShutdown({ timeoutMs: 100 });
+    const crashedCall = await provider.invoke({ contractVersion: "0.1", requestId: "r-crash", correlationId: "r-crash", kind: "query", method: "recipe.list", params: {} });
+    expect(!crashedCall.ok && crashedCall.error).toMatchObject({ code: "vua.amf.unavailable", retryable: false });
+    await provider.setAmfEnabled(false);
+    const disabledCall = await provider.invoke({ contractVersion: "0.1", requestId: "r-off", correlationId: "r-off", kind: "query", method: "recipe.list", params: {} });
+    expect(!disabledCall.ok && disabledCall.error).toMatchObject({ code: "vua.amf.unavailable", retryable: false });
+    await provider.prepareShutdown({ timeoutMs: 100 });
+  });
+
+  it("marks AMF unavailable as retryable while deferred or starting", async () => {
+    const { provider } = setup({ enabled: true, deferInitialAmf: true });
+    await provider.start();
+    expect(provider.moduleSnapshot().state).toBe("starting");
+    const deferredCall = await provider.invoke({ contractVersion: "0.1", requestId: "r-starting", correlationId: "r-starting", kind: "query", method: "recipe.list", params: {} });
+    expect(!deferredCall.ok && deferredCall.error).toMatchObject({ code: "vua.amf.unavailable", retryable: true });
+    await provider.prepareShutdown({ timeoutMs: 100 });
   });
 });

@@ -136,7 +136,7 @@
 .vua-release-upload { display: grid; gap: var(--vua-space-2); }
 .vua-release-upload__button {
   display: flex; align-items: center; justify-content: center; gap: var(--vua-space-2); width: 100%; min-height: 56px; padding: var(--vua-space-3) var(--vua-space-5);
-  border: 0; border-radius: var(--vua-radius-control); background: var(--room); color: var(--vua-bg-canvas);
+  border: 0; border-radius: var(--vua-radius-control); background: var(--room); color: var(--vua-on-status);
   font: var(--vua-font-title); font-weight: var(--vua-weight-strong); letter-spacing: 0.01em; cursor: pointer;
    transition: transform var(--vua-motion-fast), filter var(--vua-motion-fast);
 }
@@ -309,6 +309,19 @@
 .vua-line-terms [data-decision="contact_licensor"] > strong, .vua-line-terms__overall[data-decision="contact_licensor"] { color: var(--vua-warning-text); }
 .vua-line-terms [data-decision="nonconforming"] > strong, .vua-line-terms__overall[data-decision="nonconforming"] { color: var(--vua-error-text); }
 .vua-line-terms [data-decision="unknown"] > strong, .vua-line-terms__overall[data-decision="unknown"] { color: var(--vua-text-secondary); }
+.vua-line-terms__restriction { color: var(--vua-warning-text); }
+
+/* Creator attribution and BOOTH links for the line's materials. */
+.vua-creator-credits { display: grid; gap: 8px; min-width: 0; }
+.vua-creator-credits__header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.vua-creator-credits__header h3 { margin: 0; }
+.vua-creator-credits__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.vua-creator-credits__list li { display: grid; gap: 4px; padding: 4px 0; border-bottom: 1px solid var(--vua-border); }
+.vua-creator-credits__main { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; min-width: 0; }
+.vua-creator-credits__main strong { overflow-wrap: anywhere; }
+.vua-creator-credits__role { font: var(--vua-font-caption); color: var(--vua-text-secondary); }
+.vua-creator-credits__meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; min-width: 0; }
+.vua-creator-credits__meta small { font: var(--vua-font-caption); color: var(--vua-text-secondary); overflow-wrap: anywhere; }
 .vua-upload-eligibility { display: grid; gap: var(--vua-space-2); padding: var(--vua-space-3); border: 1px solid var(--vua-border); border-radius: var(--vua-radius-control); background: var(--vua-bg-panel); }
 .vua-upload-eligibility h2 { margin: 0; font: var(--vua-font-body); font-weight: var(--vua-weight-strong); }
 .vua-upload-eligibility p { margin: 0; font: var(--vua-font-caption); color: var(--vua-text-secondary); }

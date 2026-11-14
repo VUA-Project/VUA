@@ -112,6 +112,24 @@ pub const CREDENTIAL_ENV_REMOVALS: &[&str] = &[
     "ANTHROPIC_API_KEY",
 ];
 
+/// Strips credential-bearing variables ([`CREDENTIAL_ENV_REMOVALS`]) and internal
+/// `VUA_*` host/bootstrap variables from an external `Command` before spawn so
+/// upstream desktop sessions never inherit VUA tokens or smoke switches.
+pub fn strip_sensitive_env(command: &mut std::process::Command) {
+    for key in CREDENTIAL_ENV_REMOVALS {
+        command.env_remove(key);
+    }
+    for (key, _) in std::env::vars_os() {
+        let name = key.to_string_lossy();
+        if name
+            .get(..4)
+            .is_some_and(|prefix| prefix.eq_ignore_ascii_case("VUA_"))
+        {
+            command.env_remove(&key);
+        }
+    }
+}
+
 impl Default for ProcessSpec {
     fn default() -> Self {
         Self {
@@ -852,5 +870,34 @@ mod tests {
         spec.windows_nsis_install_dir = None;
         spec.executable = "SteamSetup.exe".into();
         assert!(StdProcessRunner.run(&spec).is_err());
+    }
+
+    #[test]
+    fn strip_sensitive_env_removes_credentials_and_internal_vua_vars() {
+        std::env::set_var("VUA_INTERNAL_SMOKE_TEST_VAR", "1");
+        let mut command = std::process::Command::new("cmd");
+        strip_sensitive_env(&mut command);
+        std::env::remove_var("VUA_INTERNAL_SMOKE_TEST_VAR");
+        let envs: std::collections::BTreeMap<String, Option<String>> = command
+            .get_envs()
+            .map(|(k, v)| {
+                (
+                    k.to_string_lossy().into_owned(),
+                    v.map(|val| val.to_string_lossy().into_owned()),
+                )
+            })
+            .collect();
+        for key in CREDENTIAL_ENV_REMOVALS {
+            assert_eq!(
+                envs.get(*key),
+                Some(&None),
+                "{key} must be explicitly removed"
+            );
+        }
+        assert_eq!(
+            envs.get("VUA_INTERNAL_SMOKE_TEST_VAR"),
+            Some(&None),
+            "VUA_* variables must be explicitly removed"
+        );
     }
 }

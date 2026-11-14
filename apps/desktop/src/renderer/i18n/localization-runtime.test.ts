@@ -6,6 +6,7 @@ import { storageKeys } from "../app/storage-keys.ts";
 import { strings as en } from "./strings.en.ts";
 import { strings as ja } from "./strings.ja.ts";
 import { strings as zh } from "./strings.zh-CN.ts";
+import { strings as zhTW } from "./strings.zh-TW.ts";
 import { strings as ko } from "./strings.ko.ts";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -13,7 +14,7 @@ afterEach(() => vi.unstubAllGlobals());
 describe("application language formatting", () => {
   it("uses the chosen language even when the host uses another default", () => {
     const timestamp = "2026-09-20T04:30:00Z";
-    for (const locale of ["en", "ja", "zh-CN", "ko"] as const) {
+    for (const locale of ["en", "ja", "zh-CN", "zh-TW", "ko"] as const) {
       expect(formatDateTime(timestamp, locale)).toBe(new Intl.DateTimeFormat(locale, {
         year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
       }).format(new Date(timestamp)));
@@ -28,7 +29,7 @@ describe("application language formatting", () => {
 
 describe("diagnostics preserve uncertainty", () => {
   it("explains known findings and does not mistake readiness for SDK approval", () => {
-    for (const table of [en, ja, zh, ko]) {
+    for (const table of [en, ja, zh, zhTW, ko]) {
       expect(diagnosticMessage("references.missing_material", table.diagnostics)).toBe(table.diagnostics.missingMaterial);
       expect(diagnosticMessage("upload_readiness.clean", table.diagnostics)).toBe(table.diagnostics.uploadComponentsPresent);
       expect(diagnosticMessage("performance.estimated", table.diagnostics)).toBe(table.diagnostics.performanceEstimated);

@@ -19,11 +19,13 @@ pub mod external_tools;
 mod filesystem;
 mod inspection_evidence;
 mod journal;
+pub mod local_diagnostics;
 mod material_types;
 mod model;
 pub mod network;
 mod overlay_surface;
 mod plan_documents;
+pub mod pose_graph;
 mod process;
 mod production_evidence;
 mod project_identity;
@@ -111,8 +113,8 @@ pub use overlay_surface::{
 };
 pub use plan_documents::{ApproveOutcome, PlanDocumentStore, APPROVED_PLAN_SCHEMA_VERSION};
 pub use process::{
-    outcome_with_exit, FakeProcessRunner, ProcessError, ProcessOutcome, ProcessRunner, ProcessSpec,
-    StdProcessRunner, CREDENTIAL_ENV_REMOVALS,
+    outcome_with_exit, strip_sensitive_env, FakeProcessRunner, ProcessError, ProcessOutcome,
+    ProcessRunner, ProcessSpec, StdProcessRunner, CREDENTIAL_ENV_REMOVALS,
 };
 pub use production_evidence::{
     EvidenceKind, EvidenceResolution, EvidenceSourceRef, EvidenceStore, EvidenceSubject,

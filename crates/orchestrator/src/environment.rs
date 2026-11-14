@@ -471,6 +471,12 @@ pub struct EnvironmentRoots {
     /// VCC settings candidates, same resolution order the package backend
     /// uses (LOCALAPPDATA first, legacy Roaming fallback).
     pub vcc_settings_candidates: Vec<PathBuf>,
+    /// PICO Connect streaming settings candidates (Roaming first, LOCALAPPDATA fallback).
+    pub pico_connect_settings_candidates: Vec<PathBuf>,
+    /// VRChat Creator Companion executable candidates (`LOCALAPPDATA\Programs`, `ProgramFiles`).
+    pub vcc_exe_candidates: Vec<PathBuf>,
+    /// ALCOM (`vrc-get-gui`) executable candidates (`LOCALAPPDATA\Programs`, `ProgramFiles`).
+    pub alcom_exe_candidates: Vec<PathBuf>,
 }
 
 impl Default for EnvironmentRoots {
@@ -482,6 +488,8 @@ impl Default for EnvironmentRoots {
             .unwrap_or_else(|_| format!("{user_profile}\\AppData\\Local"));
         let roaming_app_data = std::env::var("APPDATA")
             .unwrap_or_else(|_| format!("{user_profile}\\AppData\\Roaming"));
+        let program_files =
+            std::env::var("ProgramFiles").unwrap_or_else(|_| "C:\\Program Files".to_owned());
         Self {
             steam_common: vec![PathBuf::from(
                 "C:\\Program Files (x86)\\Steam\\steamapps\\common",
@@ -524,6 +532,39 @@ impl Default for EnvironmentRoots {
                 PathBuf::from(&roaming_app_data)
                     .join("VRChatCreatorCompanion")
                     .join("settings.json"),
+            ],
+            pico_connect_settings_candidates: vec![
+                PathBuf::from(&roaming_app_data)
+                    .join("PICO Connect")
+                    .join("settings.json"),
+                PathBuf::from(&local_app_data)
+                    .join("PICO Connect")
+                    .join("settings.json"),
+            ],
+            vcc_exe_candidates: vec![
+                PathBuf::from(&local_app_data)
+                    .join("Programs")
+                    .join("VRChat Creator Companion")
+                    .join("CreatorCompanion.exe"),
+                PathBuf::from(&program_files)
+                    .join("VRChat Creator Companion")
+                    .join("CreatorCompanion.exe"),
+            ],
+            alcom_exe_candidates: vec![
+                PathBuf::from(&local_app_data)
+                    .join("Programs")
+                    .join("ALCOM")
+                    .join("ALCOM.exe"),
+                PathBuf::from(&local_app_data)
+                    .join("Programs")
+                    .join("ALCOM")
+                    .join("vrc-get-gui.exe"),
+                PathBuf::from(&program_files)
+                    .join("ALCOM")
+                    .join("ALCOM.exe"),
+                PathBuf::from(&program_files)
+                    .join("ALCOM")
+                    .join("vrc-get-gui.exe"),
             ],
         }
     }
@@ -1310,22 +1351,34 @@ fn parse_vdf_library_roots(vdf_path: &Path) -> Vec<PathBuf> {
 }
 
 fn tcp_reachable(probe: &str) -> bool {
-    let Ok(addrs) = probe.to_socket_addrs() else {
-        return false;
-    };
-    for address in addrs {
-        if TcpStream::connect_timeout(&address, NETWORK_TIMEOUT).is_ok() {
-            return true;
+    let target = probe.to_owned();
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let deadline = std::time::Instant::now() + NETWORK_TIMEOUT;
+        let Ok(addrs) = target.to_socket_addrs() else {
+            let _ = tx.send(false);
+            return;
+        };
+        for address in addrs {
+            let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+            if remaining.is_zero() {
+                break;
+            }
+            if TcpStream::connect_timeout(&address, remaining).is_ok() {
+                let _ = tx.send(true);
+                return;
+            }
         }
-    }
-    false
+        let _ = tx.send(false);
+    });
+    rx.recv_timeout(NETWORK_TIMEOUT).unwrap_or(false)
 }
 
 /// `(free_bytes, total_bytes)` for the drive holding `path`. Windows uses the
 /// kernel32 `GetDiskFreeSpaceExW` export directly — one well-understood call
 /// instead of a new dependency (ORC-DEV-005).
 #[cfg(windows)]
-fn free_disk_bytes(path: &Path) -> Result<(u64, u64), Option<String>> {
+pub(crate) fn free_disk_bytes(path: &Path) -> Result<(u64, u64), Option<String>> {
     use std::os::windows::ffi::OsStrExt;
 
     #[link(name = "kernel32")]
@@ -1354,6 +1407,6 @@ fn free_disk_bytes(path: &Path) -> Result<(u64, u64), Option<String>> {
 }
 
 #[cfg(not(windows))]
-fn free_disk_bytes(_path: &Path) -> Result<(u64, u64), Option<String>> {
+pub(crate) fn free_disk_bytes(_path: &Path) -> Result<(u64, u64), Option<String>> {
     Err(Some(error_codes::UNSUPPORTED_PLATFORM.to_owned()))
 }

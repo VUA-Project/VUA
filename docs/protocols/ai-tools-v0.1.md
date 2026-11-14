@@ -1,8 +1,8 @@
 # External Agent tools v0.1
 
-> Document version: 0.15.0
+> Document version: 0.19.0
 > Status: Candidate
-> Updated: 2026-11-12
+> Updated: 2026-11-14
 > Owner: Integration
 
 The built-in MCP adapter belongs to Electron Main. The external Agent supplies conversation,
@@ -13,7 +13,7 @@ slice does not retrofit historical release artifacts or declare N acceptance.
 ## Connection and lifetime
 
 The player opens **MCP** in the top bar (the command bar in Frutiger Aero), enables the connection, copies the supplied
-prompt, and pastes it into an AI tool on the same computer that supports local Streamable HTTP.
+prompt (or copies only the `mcpServers` JSON config snippet via `copyConfig`), and pastes it into an AI tool on the same computer that supports local Streamable HTTP.
 VUA remains open. The prompt explains host/AMF functions, the actual URL and Authorization header,
 available tools, novice explanation guidance and the optional
 [Unity-Skills](https://github.com/Besty0728/Unity-Skills) REST/Skills companion. That companion is
@@ -47,13 +47,19 @@ Gateway dispatch; a client cannot provide a Gateway method, shell string or arbi
 | `vua_status`, `vua_tasks`, `vua_task` | Current capabilities/task facts |
 | `vua_play_setups`, `vua_sop`, `vua_check_environment` | Independent [scenario read family](scenario-environment-v0.1.md) and [play-setup catalog/SOP v0.2](scenario-environment-v0.2.md) |
 | `vua_unity_license` | Metadata-only [Unity license hints](unity-license-v0.1.md) and historical checks; starts no program |
-| `vua_plan_installation`, `vua_request_installation` | Existing digest-bound deployment plan/execute |
+| `vua_plan_installation`, `vua_request_installation` | Existing digest-bound deployment plan/execute (`purposes` and/or official-installer `tools`) |
+| `vua_local_diagnostics`, `vua_diagnose_symptom`, `vua_request_clear_osc_cache`, `vua_request_update_client_config` | Privacy-safe [local diagnostics](local-diagnostics-v0.1.md), symptom-to-SOP checks, and approval-gated offline OSC cache cleanup and `config.json` cache limit updates |
 | `vua_play_status`, `vua_request_play` | Existing route observations and card-owned launch/stop; preexisting applications retained |
+| `vua_tool_catalog` | Static curated companion-tool metadata (`vua.tool-catalog/v0.1`: goal category, free vs paid Steam pricing, delivery channel, license, official URL, and status-tool mapping); performs no process or network check |
 | `vua_tool_status`, `vua_request_tool` | Candidate Steam connections for VRCFaceTracking, OpenVR Space Calibrator, OVR Advanced Settings, OVR Toolkit, OyasumiVR, OVR Overlay Translator, ChilloutVR, Reborn, Desktop+ and fpsVR |
-| `vua_library`, `vua_material_files` | Bounded existing local AMF/BDL library queries; no login/download/upload |
+| `vua_installer_tool_status`, `vua_request_installer_tool` | Official-installer companion tools (`installer-tool v0.1`: SlimeVR Server, VRCT, VRCX, VRCS) |
+| `vua_manager_apps`, `vua_request_open_manager` | Sanitized local presence and approval-gated zero-argument breakaway launch of external creator managers ([manager-apps v0.2](manager-apps-v0.2.md): `unity_hub`, `vcc`, `alcom`); local filesystem paths are omitted |
+| `vua_pose_graph` | Passive read-only [pose and tracking topology](pose-graph-v0.1.md) (`environment.observePoseGraph` `v0.1`: active OpenXR runtime family, external SteamVR OpenVR drivers, FBT/face bridges and Space Calibrator hints) |
+| `vua_library`, `vua_material_files`, `vua_glb_inspect`, `vua_request_library_import_groups` | Bounded local AMF/BDL library queries (including `source: "local"`, `format` (`vrm_or_glb` / `unitypackage`), `availabilityStatus`, `sourceCategory`, `descriptionLinksTo`, and `v0.3` `sort`/`vn3` filters), header-only [GLB and VRM metadata inspection](glb-inspection-v0.1.md) (`library.inspectGlb` `v0.1`), and approval-gated grouped migration intake ([library-migration v0.1](library-migration-v0.1.md)); no login/download/upload |
 | `vua_terms`, `vua_terms_check` | Recorded [VN3 terms](terms-v0.1.md) of BOOTH products and one use checked across several; local evidence only |
-| `vua_amf_materials`, `vua_amf_run`, `vua_amf_plan`, `vua_amf_release` | Candidate material-first read/plan facts and a finished Avatar's turntable and uploads |
-| `vua_request_amf_prepare`, `vua_request_amf_assemble`, `vua_request_amf_reinspect`, `vua_request_amf_open` | Existing [AMF production](amf-production-v0.1.md) authority and Bridge v5 |
+| `vua_recipes`, `vua_recipe` | Saved local Avatar Recipe summaries and full Recipe documents |
+| `vua_amf_materials`, `vua_amf_run`, `vua_amf_plan`, `vua_amf_face_tracking_plan`, `vua_amf_texture_plan`, `vua_amf_lighting_plan`, `vua_amf_outfit_removal_plan`, `vua_amf_release` | Candidate material-first read/plan facts, face-tracking patch plans, decoded texture-memory plans, lilToon brightness alignment plans, outfit removal inventories, and a finished Avatar's turntable and uploads |
+| `vua_request_amf_prepare`, `vua_request_amf_assemble`, `vua_request_amf_texture_apply`, `vua_request_amf_lighting_apply`, `vua_request_amf_outfit_remove`, `vua_request_amf_reinspect`, `vua_request_amf_close_editor`, `vua_request_amf_open` | Existing [AMF production](amf-production-v0.1.md) authority and Bridge v5, including digest-verified restore-point mutations |
 | `vua_request_amf_local_test` | Local Windows PC SDK test of a finished Avatar; ordinary player approval, no upload rights confirmation |
 | `vua_request_amf_upload` | [Managed upload](amf-production-v0.1.md#release); confirmed on the release page with the player's rights confirmation |
 | `vua_request_cancel_task` | Existing revision-bound cancellation request |
@@ -112,6 +118,15 @@ use MCP protocol errors whose `data` carries the error fields below.
 `vua_amf_run` returns a summary plus a `resource_link` to its run URI. The summary retains phase,
 revision, progress, selection, source names, the latest 20 steps with their total count, recovery
 and result-fact counts. Each prefab has only `path`, `name`, `isAvatar` and `humanoidBoneCount`.
+
+### Structured MCP Prompts
+
+The server advertises the MCP `prompts` capability (`prompts/list` and `prompts/get`) with four
+parameter-validated workflow templates (`vua-play-setup`, `vua-diagnose-symptom`,
+`vua-amf-assembly`, and `vua-release-check`). Prompt arguments are validated against contract enums
+and run-ID bounds before returning structured user messages; invalid prompt names or arguments fail
+closed with MCP `-32602` (`unsupported_tool_or_parameters`). Prompts never execute tools or approve
+mutations on their own.
 SDK review retains its state, platform, overall rating, issue counts by level and category
 ratings. A run with version records gives the five newest in `revisions` and their number in
 `revisionCount`; the run Resource holds them all. Rendered previews follow the
@@ -142,7 +157,7 @@ The adapter owns this conservative retry table:
 | --- | --- |
 | `gateway_unavailable`, `too_many_requests`, `vua.amf_production.busy` | `true` |
 | `connection_disabled`, `unsupported_tool_or_parameters`, `approval_not_found`, `approval_not_waiting` | `false` |
-| `review_pending_requests_first`, `installation_plan_changed`, `assembly_plan_changed`, `material_or_editor_no_longer_available` | `false` |
+| `review_pending_requests_first`, `installation_plan_changed`, `assembly_plan_changed`, `texture_plan_changed`, `lighting_plan_changed`, `outfit_removal_plan_changed`, `material_or_editor_no_longer_available` | `false` |
 | `recommendation_needs_player`, `result_too_large`, `request_failed`, `internal`, `invalid_request`, `unsupported_method` | `false` |
 | Every other code, including future application codes | `false` |
 
@@ -250,6 +265,11 @@ The [Recipe v0.5 contract](amf-recipe-v0.5.md) owns statuses, match rules and di
 
 ## Document changelog
 
+- 0.19.0 (2026-11-14): advertise MCP `prompts` (`prompts/list` and `prompts/get` for `vua-play-setup`, `vua-diagnose-symptom`, `vua-amf-assembly`, and `vua-release-check`), add `format` (`vrm_or_glb`, `unitypackage`) filtering on `vua_library`, and add standalone `mcpServers` JSON clipboard copy (`copyConfig`).
+- 0.18.0 (2026-11-14): add `vua_tool_catalog` (`vua.tool-catalog/v0.1`), `vua_request_update_client_config` (`diagnostics.updateClientConfig`), `vua_request_library_import_groups` (`library-migration v0.1`), `vua_library` `source: "local"`/`availabilityStatus`/`sourceCategory`/`descriptionLinksTo` filters, and digest-bound AMF post-assembly plan/apply tools (`vua_amf_texture_plan`, `vua_request_amf_texture_apply`, `vua_amf_lighting_plan`, `vua_request_amf_lighting_apply`, `vua_amf_outfit_removal_plan`, `vua_request_amf_outfit_remove`).
+- 0.17.0 (2026-11-14): add `vua_pose_graph` (`pose-graph v0.1`) and `vua_glb_inspect` (`glb-inspection v0.1`).
+- 0.16.1 (2026-11-14): add `vua_manager_apps` sanitized output and `vua_request_open_manager` (`manager-apps v0.2`).
+- 0.16.0 (2026-11-14): add `vua_local_diagnostics`, `vua_diagnose_symptom`, `vua_request_clear_osc_cache` (`local-diagnostics v0.1`), `vua_installer_tool_status`, `vua_request_installer_tool` and `ToolDeploymentIntent` (`installer-tool v0.1` / `environment-deployment v0.1`), `vua_recipes`, `vua_recipe`, `vua_amf_face_tracking_plan`, `vua_library` `v0.3` `sort`/`vn3` filters, and compact `optimizer`/`faceTracking`/`parameterBudget` fields in `vua_amf_run`.
 - 0.15.0 (2026-11-12): add Desktop+ and fpsVR to the Steam tools (`external-tool v0.4`).
 - 0.14.0 (2026-11-11): add `vua_play_setups` (`environment.listPlaySetups` `v0.2`) and `vua_sop` `selection` (`environment.getScenarioSop` `v0.2`) while keeping `v0.1` scenario SOP queries intact.
 - 0.13.0 (2026-11-08): request approved local Avatar tests and read bounded test summaries and upload eligibility.

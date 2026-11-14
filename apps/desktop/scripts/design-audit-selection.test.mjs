@@ -5,6 +5,7 @@ import { runDeadlineMs, shardViews, viewsForChanges } from "./design-audit/selec
 const views = [
   { id: "library-wall", area: "library" }, { id: "terms-parsed", area: "terms" }, { id: "workshop-a", area: "workshop" },
   { id: "control-recipes", area: "control-center" }, { id: "release-a", area: "release-room" }, { id: "env-play", area: "environment" },
+  { id: "help-diagnostics", area: "help-diagnostics" }, { id: "command-palette-open", area: "command-palette" },
 ];
 const ids = list => list.map(view => view.id);
 
@@ -12,6 +13,8 @@ test("a feature file reaches its own views", () => {
   assert.deepEqual(ids(viewsForChanges(["apps/desktop/src/renderer/features/warehouse/WarehousePage.tsx"], views)), ["library-wall", "terms-parsed"]);
   assert.deepEqual(ids(viewsForChanges(["apps/desktop/src/renderer/features/amf/ControlRecipeGraph.tsx"], views)), ["control-recipes"]);
   assert.deepEqual(ids(viewsForChanges(["apps/desktop/src/renderer/features/amf/release/ReleaseSheet.tsx"], views)), ["release-a"]);
+  assert.deepEqual(ids(viewsForChanges(["apps/desktop/src/renderer/features/help/LocalDiagnosticsPanel.tsx"], views)), ["help-diagnostics"]);
+  assert.deepEqual(ids(viewsForChanges(["apps/desktop/src/renderer/features/command-palette/CommandPalette.tsx"], views)), ["command-palette-open"]);
 });
 
 test("shared styles and unknown renderer files reach every view", () => {

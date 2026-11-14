@@ -63,7 +63,13 @@
 }
 
 .vua-confirm-dialog__close {
+  display: inline-grid;
+  place-items: center;
+  min-width: var(--vua-control-height-md);
+  min-height: var(--vua-control-height-md);
+  padding: 0;
   border: none;
+  border-radius: var(--vua-radius-control);
   background: transparent;
   color: var(--vua-text-secondary);
   font-size: var(--vua-text-title-size);

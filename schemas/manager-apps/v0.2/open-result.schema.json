@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.vua.local/manager-apps/v0.2/open-result.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "managerAppLaunch"
+  ],
+  "properties": {
+    "managerAppLaunch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "managerId",
+        "launchedAt"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": "vua.manager-apps/v0.2"
+        },
+        "managerId": {
+          "enum": [
+            "unity_hub",
+            "vcc",
+            "alcom"
+          ]
+        },
+        "launchedAt": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

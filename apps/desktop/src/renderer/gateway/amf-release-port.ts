@@ -99,9 +99,9 @@ export function createAmfReleasePort(client: GatewayClient): AmfReleasePort {
     }
     return response.value;
   };
-  const accepted = (value: unknown, title?: string): AmfReleaseAccepted => {
+  const accepted = (value: unknown, title?: string, notifyFamily = "amf:release"): AmfReleaseAccepted => {
     if (!record(value) || value.schemaVersion !== "0.1" || !text(value.runId) || !text(value.taskId) || !value.taskId) throw new Error("amf_release_receipt_invalid");
-    if (title !== undefined) registerTaskIdentity(value.taskId, { title, originPage: "release", notifyOnComplete: true });
+    if (title !== undefined) registerTaskIdentity(value.taskId, { title, originPage: "release", notifyOnComplete: true, notifyFamily });
     return { runId: value.runId, taskId: value.taskId };
   };
   return {
@@ -117,15 +117,15 @@ export function createAmfReleasePort(client: GatewayClient): AmfReleasePort {
       return `data:image/png;base64,${v.data}`;
     },
     async bakeTurntable(runId) {
-      return accepted(await call({ method: "amf.production.bakeTurntable", params: { schemaVersion: "0.1", runId } }), strings.releaseRoom.turntable.baking);
+      return accepted(await call({ method: "amf.production.bakeTurntable", params: { schemaVersion: "0.1", runId } }), strings.releaseRoom.turntable.baking, "amf:bake");
     },
     async localTest(runId) {
-      return accepted(await call({ method: "amf.production.localTest", params: { schemaVersion: "0.1", runId } }), strings.releaseRoom.localTest.button);
+      return accepted(await call({ method: "amf.production.localTest", params: { schemaVersion: "0.1", runId } }), strings.releaseRoom.localTest.button, "amf:localTest");
     },
     async upload(runId, confirmation) {
       if (confirmation.rightsConfirmed !== true || !isAmfAvatarName(confirmation.avatarName)) throw new Error("amf_release_confirmation_invalid");
       return accepted(await call({ method: "amf.production.upload", params: { schemaVersion: "0.1", runId, avatarName: confirmation.avatarName, rightsConfirmed: true } }),
-        strings.releaseRoom.upload.button);
+        strings.releaseRoom.upload.button, "amf:upload");
     },
   };
 }

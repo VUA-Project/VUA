@@ -1,7 +1,7 @@
 import { formatDateTime } from "./i18n/index.ts";
 import { Suspense, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useSidebarGlide } from "./components/use-sidebar-glide.ts";
-import type { DesktopShellCommandV1, GuideTargetV1 } from "@vua/contracts";
+import { SYMPTOM_IDS_V01, type DesktopShellCommandV1, type GuideTargetV1 } from "@vua/contracts";
 import { saveDebugMode, useDebugMode } from "./app/debug-mode.ts";
 import {
   availablePage,
@@ -64,12 +64,16 @@ import { ToastHost } from "./components/primitives/ToastHost.tsx";
 import { Tooltip } from "./components/primitives/Tooltip.tsx";
 import { AiRequestsHere } from "./features/ai-requests/AiRequestsHere.tsx";
 import { ResourceMonitor } from "./features/resource-monitor/ResourceMonitor.tsx";
+import { useResourceUsage } from "./features/resource-monitor/resource-usage-store.ts";
 import { BootGate, BootSplash } from "./components/splash/BootSplash.tsx";
 import { bootProgress } from "./app/boot-progress.ts";
 import { ToolsPage, type ToolsPageId } from "./features/tools/ToolsPage.tsx";
-import { ToolsHub } from "./features/tools/ToolsHub.tsx";
+import { TOOL_HUB_GROUPS, ToolsHub } from "./features/tools/ToolsHub.tsx";
 import { HelpPage } from "./features/help/HelpPage.tsx";
-import { ENCYCLOPEDIA_EVENT } from "./features/help/encyclopedia-navigation.ts";
+import { ENCYCLOPEDIA_EVENT, openEncyclopedia } from "./features/help/encyclopedia-navigation.ts";
+import { GUIDE_ARTICLES } from "./features/guide/guide-catalog.ts";
+import { guidePage } from "./features/guide/guide-content.ts";
+import { structureCopy } from "./i18n/structure-copy.ts";
 import { shouldClearGuideRequest, type GuideRequest } from "./features/overlay/GuideOverlayView.tsx";
 import {
   buildDiagnostics,
@@ -225,8 +229,8 @@ function ExperimentalSettingsPage() {
   </div>;
 }
 
-/** VUA cannot tell yet whether SteamVR is running (issue #27), so the automatic saver option stays hidden. */
-const steamVRDetection = false;
+/** Read-only SteamVR runtime process observation via desktop-resource v0.2 (issue #27). */
+const steamVRDetection = true;
 
 function ThemeSettingsPage({
   theme,
@@ -333,22 +337,24 @@ function ThemeSettingsPage({
         </div>
         <div className="vua-preference-row">
           <div><h3>{copy.saverHeading}</h3><p>{copy.saverDescription}</p></div>
-          <div className="vua-settings-row">
-            <Toggle on={saverOn} onToggle={onSaverToggle} label={saverOn ? copy.saverTurnOff : copy.saverTurnOn} />
-            {saverSource === "auto" ? <span className="vua-text-secondary">{copy.saverStateAuto}</span> : null}
+          <div className="vua-settings-saver">
+            <div className="vua-settings-row">
+              <Toggle on={saverOn} onToggle={onSaverToggle} label={saverOn ? copy.saverTurnOff : copy.saverTurnOn} />
+              {saverSource === "auto" ? <span className="vua-text-secondary">{copy.saverStateAuto}</span> : null}
+            </div>
+            {steamVRDetection ? (
+              <label className="vua-settings-check">
+                <input
+                  type="checkbox"
+                  checked={saverAuto}
+                  aria-label={copy.saverAutoAria}
+                  data-nav-id="theme-saver-auto"
+                  onChange={(event) => onSaverAutoChange(event.target.checked)}
+                />
+                <span>{copy.saverAutoLabel}</span>
+              </label>
+            ) : null}
           </div>
-          {/* The SteamVR option shows once VUA can tell that SteamVR is running (issue #27). */}
-          {steamVRDetection ? (
-            <label className="vua-settings-check">
-              <input
-                type="checkbox"
-                checked={saverAuto}
-                aria-label={copy.saverAutoAria}
-                onChange={(event) => onSaverAutoChange(event.target.checked)}
-              />
-              <span>{copy.saverAutoLabel}</span>
-            </label>
-          ) : null}
         </div>
       </Card>
     </div>
@@ -535,7 +541,7 @@ interface PageActions {
   /** 指挥台首页(S-VFX-2):打开命令面板 */
   openPalette: () => void;
   /** 指挥台首页(S-VFX-2):速达卡跳转 */
-  navigate: (target: PageId) => void;
+  navigate: (target: PageId, hash?: string) => void;
   openAccounts: () => void;
   startTour: () => void;
 }
@@ -582,7 +588,7 @@ function renderPage(
     case "settings-modules":
       return <ModulesPage onOpen={() => actions.navigate("warehouse")} />;
     case "tools-discover":
-      return <ToolsHub onPrepareSteam={() => actions.navigate("env-play")} />;
+      return <ToolsHub onPrepareSteam={() => actions.navigate("env-play")} navigate={actions.navigate} />;
     case "tools-devices":
     case "tools-calibration":
     case "tools-installed":
@@ -696,10 +702,17 @@ function AppShell({
     }
     if (settingsReturn) window.history.replaceState({ ...window.history.state, vuaSettingsReturn: settingsReturn, vuaSettingsReturnHash: settingsReturnHash }, "");
   }, [page, settingsOpen, settingsReturn, settingsReturnHash]);
-  const navigate = (target: PageId) => {
+  const navigate = (target: PageId, hash?: string) => {
     target = availablePage(target, amf.installed);
+    const desiredHash = hash !== undefined && readHashPage(hash) === target ? hash : undefined;
     if (target === page) {
       if (showOnboarding && !settingsOpen) onOnboardingComplete({ status: "skipped", goals: [], environments: [] });
+      const currentHash = window.location.hash.replace(/^#\/?/, "");
+      const resetDiagnosticsSubpage = target === "help" && desiredHash === undefined && currentHash.startsWith("help?");
+      const nextHash = desiredHash ?? (resetDiagnosticsSubpage ? "help" : undefined);
+      if (!showOnboarding && nextHash !== undefined && currentHash !== nextHash) {
+        navigatePage(target, true, desiredHash);
+      }
       return;
     }
     if (target.startsWith("settings-")) {
@@ -707,18 +720,18 @@ function AppShell({
         setSettingsReturn(page);
         setSettingsReturnHash(readHashPage() === page ? window.location.hash : undefined);
       }
-      navigatePage(target);
+      navigatePage(target, true, desiredHash);
       return;
     }
     const source = settingsOpen ? settingsReturn : page;
-    if (source?.startsWith("help-") && target === "help") {
+    if (source?.startsWith("help-") && target === "help" && desiredHash === undefined) {
       setSettingsReturn(null);
       navigatePage("help");
       return;
     }
     setSettingsReturn(null);
     if (showOnboarding) onOnboardingComplete({ status: "skipped", goals: [], environments: [] });
-    navigatePage(target);
+    navigatePage(target, true, desiredHash);
   };
   useEffect(() => {
     if (!amf.installed && isAmfPage(page)) navigatePage("settings-modules");
@@ -770,45 +783,6 @@ function AppShell({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
-
-  const commands = useMemo<CommandItem[]>(() => {
-    // Search lists what the sidebars list, under the same names.
-    const directoryPages = [...directory.env, ...directory.production.filter(item => amf.installed || !isAmfPage(item.id))];
-    const pages: CommandItem[] = [
-      ...directoryPages.map(item => ({ id: item.id, group: "pages" as const, label: item.title, keywords: item.id, run: () => navigate(item.id) })),
-      ...moduleDef("settings").groups.flatMap(group => group.pages.map(p => ({ id: p.id, group: "pages" as const, label: pageLabel(p), keywords: p.id, run: () => navigate(p.id) }))),
-    ];
-    const actions: CommandItem[] = [
-      { id: "help", group: "pages", label: strings.journey.help, keywords: "help guidance encyclopedia", run: () => navigate("help") },
-      {
-        id: "start-tour",
-        group: "actions",
-        label: strings.tour.paletteEntry,
-        keywords: "tour guide onboarding",
-        run: startTour,
-      },
-      {
-        id: "toggle-theme",
-        group: "actions",
-        label:
-          resolvedTheme === "dark"
-            ? strings.commandPalette.toggleThemeToLight
-            : strings.commandPalette.toggleThemeToDark,
-        keywords: "theme",
-        // pref=system 时落当前生效主题的反面(此后不再跟随系统);走查覆盖
-        // 在时翻转覆盖值(不写存储);其余直翻偏好
-        run: () => {
-          if (themeOverride !== null) {
-            setThemeOverride(themeOverride === "dark" ? "light" : "dark");
-            return;
-          }
-          setThemePref(toggledPreference(resolvedTheme));
-        },
-      },
-    ];
-    return [...pages, ...actions];
-    // navigate 由 App 每次渲染新建;命令表重建成本低,无需缓存
-  }, [navigate, resolvedTheme, themeOverride, amf.installed]);
 
   // 沉浸式自定义标题栏:仅在 Electron 壳内渲染窗口控制(浏览器预览无 preload,不渲染)
   const inShell = window.vua !== undefined;
@@ -903,7 +877,8 @@ function AppShell({
       return false;
     }
   });
-  const steamVRRunning = false;
+  const { snapshot: resourceUsage } = useResourceUsage();
+  const steamVRRunning = resourceUsage?.steamVrRunning === true;
   const saverApplied =
     effectsOverrideFromUrl ||
     resourceSaverActive({
@@ -961,6 +936,117 @@ function AppShell({
     onSaverToggle: () => setEffects(current => current === "off" ? "on" : "off"),
     saverAuto: effectsAuto, onSaverAutoChange: setEffectsAuto, steamVRRunning,
   };
+
+  const commands = useMemo<CommandItem[]>(() => {
+    // Search lists what the sidebars list, under the same names, plus Help, Tools, Encyclopedia and quick preferences.
+    const directoryPages = [...directory.env, ...directory.production.filter(item => amf.installed || !isAmfPage(item.id))];
+    const toolHints = structureCopy[currentLocale].toolHints;
+    const pages: CommandItem[] = [
+      { id: "home", group: "pages", label: strings.journey.home, keywords: "home index overview", run: () => navigate("home") },
+      ...directoryPages.map(item => ({ id: item.id, group: "pages" as const, label: item.title, keywords: item.id, run: () => navigate(item.id) })),
+      ...moduleDef("settings").groups.flatMap(group => group.pages.map(p => ({ id: p.id, group: "pages" as const, label: pageLabel(p), hint: strings.nav.tabs.settings, keywords: p.id, run: () => navigate(p.id) }))),
+      { id: "help", group: "pages", label: strings.journey.help, keywords: "help guidance faq", run: () => navigate("help") },
+      { id: "help-wizard", group: "pages", label: strings.journey.wizard, hint: strings.journey.help, keywords: "wizard beginner concepts", run: () => navigate("help-wizard") },
+      { id: "help-encyclopedia", group: "pages", label: strings.journey.guide, hint: strings.journey.help, keywords: "encyclopedia wiki knowledge", run: () => navigate("help-encyclopedia") },
+      { id: "help-ai", group: "pages", label: strings.aiTools.title, hint: strings.aiTools.shortTitle, keywords: "mcp ai agent claude cursor codex", run: () => navigate("help-ai") },
+      {
+        id: "help-diagnostics",
+        group: "pages",
+        label: strings.localDiagnostics.entryTitle,
+        hint: strings.journey.help,
+        keywords: "diagnostics troubleshoot osc cache steamvr eac crash fps mic",
+        run: () => navigate("help", "help?sub=diagnostics"),
+      },
+      {
+        id: "pose-topology",
+        group: "pages",
+        label: strings.poseGraph.title,
+        hint: strings.journey.tools,
+        keywords: "pose fbt slimevr openxr openvr tracker space calibrator mocopi haritorax",
+        run: () => {
+          navigate("tools-discover");
+          requestAnimationFrame(() => document.querySelector(".vua-pose-graph")?.scrollIntoView({ block: "start" }));
+        },
+      },
+      ...TOOL_HUB_GROUPS.flatMap(group => group.tools.map(tool => ({
+        id: `tool-${tool.id}`,
+        group: "pages" as const,
+        label: tool.title,
+        hint: strings.journey[group.key],
+        keywords: `${tool.id} ${toolHints[tool.id as keyof typeof toolHints] ?? ""}`,
+        run: () => navigate("tools-discover", `tools-discover?tool=${encodeURIComponent(tool.id)}`),
+      }))),
+    ];
+    const guides: CommandItem[] = GUIDE_ARTICLES.map(article => ({
+      id: `guide-${article.id}`,
+      group: "guide" as const,
+      label: article.title,
+      hint: guidePage(article.target.topic).title,
+      keywords: `${article.id} ${article.aliases.join(" ")}`,
+      run: () => openEncyclopedia(article.target),
+    }));
+    const familyChoices = [
+      { id: "grid" as const, label: presentationCopy.settings.grid, keywords: "grid theme skin" },
+      { id: "frutiger-aero" as const, label: presentationCopy.settings.aero, keywords: "aero vista frutiger glass theme skin" },
+      { id: "tenshi" as const, label: presentationCopy.settings.tenshi, keywords: "tenshi kaiwai angel sky blue theme skin" },
+      { id: "jirai" as const, label: presentationCopy.settings.jirai, keywords: "jirai kei pink dark lace theme skin" },
+    ];
+    const actions: CommandItem[] = [
+      {
+        id: "start-tour",
+        group: "actions",
+        label: strings.tour.paletteEntry,
+        keywords: "tour guide onboarding",
+        run: startTour,
+      },
+      ...(fixedThemeForFamily(resolvedThemeFamily) === null
+        ? [{
+            id: "toggle-theme",
+            group: "actions" as const,
+            label:
+              resolvedTheme === "dark"
+                ? strings.commandPalette.toggleThemeToLight
+                : strings.commandPalette.toggleThemeToDark,
+            keywords: "theme dark light mode",
+            run: () => {
+              if (themeOverride !== null) {
+                setThemeOverride(themeOverride === "dark" ? "light" : "dark");
+                return;
+              }
+              setThemePref(toggledPreference(resolvedTheme));
+            },
+          }]
+        : []),
+      ...familyChoices
+        .filter(choice => choice.id !== resolvedThemeFamily)
+        .map(choice => ({
+          id: `skin-${choice.id}`,
+          group: "actions" as const,
+          label: `${presentationCopy.settings.family}: ${choice.label}`,
+          keywords: choice.keywords,
+          run: () => pagePrefs.onThemeFamilyChange(choice.id),
+        })),
+      {
+        id: "toggle-saver",
+        group: "actions",
+        label: effects === "off" ? strings.settings.theme.saverTurnOff : strings.settings.theme.saverTurnOn,
+        hint: strings.settings.theme.saverHeading,
+        keywords: "saver effects animation gpu performance",
+        run: pagePrefs.onSaverToggle,
+      },
+      ...SYMPTOM_IDS_V01.map(symptom => ({
+        id: `diagnose-${symptom}`,
+        group: "actions" as const,
+        label: strings.localDiagnostics.symptoms[symptom],
+        hint: strings.localDiagnostics.entryTitle,
+        keywords: `diagnose symptom troubleshoot ${symptom.replaceAll("_", " ")}`,
+        run: () => navigate("help", `help?sub=diagnostics&symptom=${symptom}`),
+      })),
+    ];
+    return [...pages, ...guides, ...actions];
+    // navigate 由 App 每次渲染新建;命令表重建成本低,无需缓存
+  }, [navigate, resolvedTheme, resolvedThemeFamily, themeOverride, amf.installed, effects]);
+
   const contentPage = settingsOpen ? settingsReturn : page;
 
   return (

@@ -149,3 +149,19 @@
   color: var(--vua-text-secondary);
 }
 
+.vua-usage-panel__trend {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--vua-space-3);
+  padding-top: var(--vua-space-1);
+  border-top: 1px solid var(--vua-border);
+}
+
+.vua-usage-panel__sparkline {
+  width: 120px;
+  height: 24px;
+  color: var(--vua-accent);
+  flex-shrink: 0;
+}
+

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SystemResourceUsageV2 } from "@vua/contracts";
-import { formatGigabytes, loadStateOf, percentOf, usagePercents } from "./resource-monitor-model.ts";
+import { amfCapacityGuidance, formatGigabytes, loadStateOf, percentOf, sparklinePoints, usagePercents } from "./resource-monitor-model.ts";
 const snapshot = (patch: Partial<SystemResourceUsageV2> = {}): SystemResourceUsageV2 => ({
   schemaVersion: 2, ramUsedBytes: 30, ramTotalBytes: 100, vramUsedBytes: 60, vramTotalBytes: 100,
   cpuUsagePercent: 10, gpuUsagePercent: 20, gpuName: "Synthetic GPU", gpuKind: "discrete", sampledAt: "2026-10-10T00:00:00Z", ...patch });
@@ -35,5 +35,26 @@ describe("tightest resource (F6)", () => {
   });
   it("formats observed capacities in GiB", () => {
     expect(formatGigabytes(12.34 * 1024 ** 3)).toBe("12.3");
+  });
+  it("derives grounded Avatar build capacity guidance from observed free RAM", () => {
+    const gib = 1024 ** 3;
+    expect(amfCapacityGuidance(snapshot({ ramUsedBytes: 16 * gib, ramTotalBytes: 32 * gib }))).toEqual({
+      tier: "comfortable",
+      availableRamGiB: "16.0",
+    });
+    expect(amfCapacityGuidance(snapshot({ ramUsedBytes: 24 * gib, ramTotalBytes: 32 * gib }))).toEqual({
+      tier: "single",
+      availableRamGiB: "8.0",
+    });
+    expect(amfCapacityGuidance(snapshot({ ramUsedBytes: 13 * gib, ramTotalBytes: 16 * gib }))).toEqual({
+      tier: "tight",
+      availableRamGiB: "3.0",
+    });
+    expect(amfCapacityGuidance(snapshot({ ramTotalBytes: 0 }))).toBeNull();
+  });
+  it("computes bounded SVG sparkline coordinates across the 60s window", () => {
+    expect(sparklinePoints([])).toBe("");
+    expect(sparklinePoints([50])).toBe("");
+    expect(sparklinePoints([0, 50, 100], 100, 24)).toBe("0.0,22.0 50.0,12.0 100.0,2.0");
   });
 });

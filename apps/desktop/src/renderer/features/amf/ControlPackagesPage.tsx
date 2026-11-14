@@ -10,6 +10,7 @@ import type { PageId } from "../../app/nav-model.ts";
 import { Button } from "../../components/primitives/Button.tsx";
 import { SegmentBar } from "../../components/SegmentBar.tsx";
 import { SlideDrawer } from "../../components/SlideDrawer.tsx";
+import { useEscapeClose } from "../../components/use-escape-close.ts";
 import { strings, presentationCopy, format } from "../../i18n/index.ts";
 import { PackagesPage } from "../packages/PackagesPage.tsx";
 import { InstallConfirmDialog } from "../packages/InstallConfirmDialog.tsx";
@@ -27,6 +28,7 @@ import { SkinSlot } from "./control-slots.tsx";
 import { Popconfirm } from "../../components/primitives/Popconfirm.tsx";
 import { Tooltip } from "../../components/primitives/Tooltip.tsx";
 import { Alert } from "../../components/primitives/Alert.tsx";
+import { CopyableText } from "../../components/primitives/CopyableText.tsx";
 import { toast } from "../../components/primitives/toast-store.ts";
 import { PRODUCTION_LIST_FRESH_MS, readProductionList, useTaskKey } from "./production-list-read.ts";
 import "./control-center.css";
@@ -121,13 +123,28 @@ function ProjectsScreen({ projects, loading, registeredFailed, onOpen, onNavigat
   const groups = (["work", "unity"] as const).map(kind => ({ kind, rows: shown.filter(project => project.kind === kind) })).filter(group => group.rows.length > 0);
   return <section className="vua-control__screen" aria-label={copy.views.projects}>
     <div className="vua-control__stage-bar">
-      <input type="search" className="vua-control__search" value={query} placeholder={copy.searchProjects} aria-label={copy.searchProjects} onChange={event => setQuery(event.target.value)}/>
+      <input
+        type="search"
+        className="vua-control__search"
+        value={query}
+        placeholder={copy.searchProjects}
+        aria-label={copy.searchProjects}
+        onChange={event => setQuery(event.target.value)}
+        onKeyDown={event => {
+          if (event.key === "Escape" && query !== "") {
+            event.preventDefault();
+            event.stopPropagation();
+            setQuery("");
+          }
+        }}
+      />
       <Button variant="subtle" onClick={onReload}><Icon name="refresh" size={16}/>{copy.reload}</Button>
       <Button onClick={() => onNavigate("workshop")}>{factory.newLine}</Button>
     </div>
     {registeredFailed && <p className="vua-caption vua-control__warn"><Icon name="warning" size={16}/>{copy.projectsUnreadable}</p>}
     {loading ? <p role="status" className="vua-caption vua-text-secondary">{strings.amfProduction.loading}</p>
       : projects.length === 0 ? <div className="vua-control__panel vua-control__empty"><SkinSlot name="control-panel-corner" className="vua-control__corner"/><Icon name="folder" size={24}/><p className="vua-text-secondary">{copy.projectsEmpty}</p></div>
+      : shown.length === 0 ? <p role="status" className="vua-caption vua-text-secondary">{copy.projectsNoMatch}</p>
       : groups.map(group => <section key={group.kind} className="vua-control__group">
         <h2 className="vua-control__group-head"><span>{copy.groups[group.kind]}</span><small>{copy.groupHints[group.kind]}</small><span className="vua-control__count">{group.rows.length}</span></h2>
         <ul className="vua-control__projects">{group.rows.map(project => <li key={project.key}>
@@ -288,7 +305,21 @@ function ProjectScreen({ project, level, blocks, repos, catalog, onBack, onNavig
               <span>{repo.name}</span><small>{pkg.sources[repo.kind]}</small></label>)}
           </fieldset>
         </details>}
-        <input type="search" className="vua-control__search" value={query} placeholder={copy.searchPackages} aria-label={copy.searchPackages} onChange={event => setQuery(event.target.value)}/>
+        <input
+          type="search"
+          className="vua-control__search"
+          value={query}
+          placeholder={copy.searchPackages}
+          aria-label={copy.searchPackages}
+          onChange={event => setQuery(event.target.value)}
+          onKeyDown={event => {
+            if (event.key === "Escape" && query !== "") {
+              event.preventDefault();
+              event.stopPropagation();
+              setQuery("");
+            }
+          }}
+        />
         <label className="vua-control__check"><input type="checkbox" checked={prerelease} onChange={event => { if (event.target.checked) setAskPrerelease(true); else setPrerelease(false); }}/>{copy.showPrerelease}</label>
         {canInstall && updates.length > 0 && <Button disabled={busy} onClick={() => { void previewInstall(updates); }}><Icon name="arrow-up" size={16}/>{format(copy.updateAll, { count: updates.length })}</Button>}
       </div>
@@ -322,7 +353,7 @@ function ProjectScreen({ project, level, blocks, repos, catalog, onBack, onNavig
       <div className="vua-control__project-title">
         <span className="vua-control__kind" data-kind={project.kind === "work" ? "avatar" : "material"}><Icon name={project.kind === "work" ? "avatar" : "folder"} size={16}/>{copy.kinds[project.kind]}</span>
         <h2>{project.name}</h2>
-        <p className="vua-caption vua-text-secondary"><span className="vua-control__mono">{project.path}</span> · {project.unityVersion ? format(copy.unity, { version: project.unityVersion }) : copy.unityUnknown}
+        <p className="vua-caption vua-text-secondary"><CopyableText value={project.path} copyLabel={copy.copyPath} copiedLabel={copy.copiedPath}/> · {project.unityVersion ? format(copy.unity, { version: project.unityVersion }) : copy.unityUnknown}
           {project.phase !== null && <> · <span className="vua-line__status" data-status={phaseStatus(project.phase)}>{factory.status[phaseStatus(project.phase)]}</span></>}</p>
       </div>
       {project.runId !== null && <div className="vua-n3__actions">
@@ -334,7 +365,7 @@ function ProjectScreen({ project, level, blocks, repos, catalog, onBack, onNavig
 
     {!project.listed ? <div className="vua-control__panel vua-control__unlisted"><SkinSlot name="control-panel-corner" className="vua-control__corner"/>
         <h3>{copy.unlistedTitle}</h3><p className="vua-text-secondary">{copy.unlistedHint}</p>
-        <p className="vua-control__mono vua-control__path">{project.path}</p>
+        <div className="vua-control__path"><CopyableText value={project.path} copyLabel={copy.copyPath} copiedLabel={copy.copiedPath}/></div>
       </div>
     : <>
       <PackageGuideAlert needs={guide}/>
@@ -396,6 +427,11 @@ function PackageLine({ row, versions, prerelease, busy, canInstall, canRemove, p
 /** Repositories players commonly add. A click only fills the form; the review step still applies. */
 const KNOWN_REPOS = [
   { name: "Avatar Optimizer", url: "https://vpm.anatawa12.com/vpm.json" },
+  { name: "lilToon / lilAvatarUtils / LilyCalInventory", url: "https://lilxyzw.github.io/vpm-repos/vpm.json" },
+  { name: "TexTransTool", url: "https://vpm.rs64.net/vpm.json" },
+  { name: "FaceEmo", url: "https://suzuryg.github.io/vpm-repos/vpm.json" },
+  { name: "VRCQuestTools", url: "https://kurotu.github.io/vpm-repos/vpm.json" },
+  { name: "Narazaka (FloorAdjuster)", url: "https://vpm.narazaka.net/index.json" },
   { name: "VRCFury", url: "https://vcc.vrcfury.com" },
   { name: "Poiyomi", url: "https://poiyomi.github.io/vpm/index.json" },
 ] as const;
@@ -404,6 +440,7 @@ function ReposScreen({ view, blocks, repos, catalog, adding, setAdding, onChange
   view: LiveView; blocks: Blocks; repos: readonly ControlRepo[]; catalog: readonly RepoCatalogRepoRowV01[] | null; onChanged: () => void;
   adding: RepoAdding; setAdding: (value: RepoAdding) => void;
 }) {
+  useEscapeClose(adding !== "closed", () => setAdding("closed"));
   const gateway = useGateway();
   const [url, setUrl] = useState("");
   const [name, setName] = useState("");

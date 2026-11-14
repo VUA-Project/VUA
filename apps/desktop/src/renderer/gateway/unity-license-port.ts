@@ -24,7 +24,7 @@ export function createUnityLicensePort(client: GatewayClient): UnityLicensePort 
         throw new Error(error.kind === "application" ? error.error.code : error.kind);
       }
       if (!isUnityLicenseAcceptedV01(response.value)) throw new Error("unity_license_check_invalid");
-      registerTaskIdentity(response.value.taskId, { title, originPage: "settings-accounts", notifyOnComplete: true });
+      registerTaskIdentity(response.value.taskId, { title, originPage: "settings-accounts", notifyOnComplete: true, notifyFamily: "unity:license" });
       return { taskId: response.value.taskId };
     },
   };

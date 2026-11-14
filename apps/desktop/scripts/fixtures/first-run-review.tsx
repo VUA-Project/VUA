@@ -1,5 +1,15 @@
 import { createRoot, type Root } from "react-dom/client";
-import { scenarioRequiredComponents, type DeploymentPurpose, type DesktopShellCommandV1, type VuaDesktopApiV2 } from "@vua/contracts";
+import {
+  POSE_SOURCE_IDS,
+  scenarioRequiredComponents,
+  type DeploymentPurpose,
+  type DesktopShellCommandV1,
+  type LocalDiagnosticsSnapshotV01,
+  type PoseGraphSnapshotV01,
+  type SymptomDiagnosisV01,
+  type SymptomIdV01,
+  type VuaDesktopApiV2,
+} from "@vua/contracts";
 import { App } from "../../src/renderer/App.tsx";
 import { currentLocale, format, strings } from "../../src/renderer/i18n/index.ts";
 import { storageKeys } from "../../src/renderer/app/storage-keys.ts";
@@ -66,10 +76,127 @@ const settlePage = async () => {
   await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
 };
 
+function syntheticDiagnosticsSnapshot(): LocalDiagnosticsSnapshotV01 {
+  const now = new Date().toISOString();
+  return {
+    schemaVersion: "vua.local-diagnostics/v0.1",
+    capturedAt: now,
+    clientRunning: false,
+    clientConfig: {
+      presence: "found",
+      cacheDirectoryCustom: false,
+      cacheSizeGb: 30,
+      cacheExpiryDelayDays: 30,
+      cameraResWidth: null,
+      cameraResHeight: null,
+      screenshotResWidth: null,
+      screenshotResHeight: null,
+      fpvSteadycamFov: null,
+    },
+    clientCache: {
+      presence: "found",
+      totalBytes: 8 * 1024 * 1024 * 1024,
+      truncated: false,
+      capturedAt: now,
+      driveFreeBytes: 120 * 1024 * 1024 * 1024,
+      driveTotalBytes: 512 * 1024 * 1024 * 1024,
+    },
+    osc: {
+      avatarCachePresence: "found",
+      avatarConfigCount: 4,
+      avatarCacheBytes: 16384,
+      newestModifiedAt: now,
+      udp9000: { state: "bound", ownerPid: 4200, ownerProcess: "VRCFaceTracking.exe" },
+      udp9001: { state: "unbound", ownerPid: null, ownerProcess: null },
+      oscQuery: { state: "found", httpPort: 54321, advertisedOscPort: 9000, ownerProcess: "VRCFaceTracking.exe" },
+    },
+    steamvrSettings: {
+      presence: "found",
+      renderTargetMultiplier: 1.0,
+      motionSmoothing: false,
+      vrchatResolutionScale: 1.0,
+      safeModeEnabled: false,
+      blockedDrivers: [],
+    },
+    audioEndpoints: {
+      state: "observed",
+      defaultCaptureRole: "physical_or_usb",
+      virtualMicHijack: "none",
+      communicationsMismatch: false,
+    },
+    streamingSettings: {
+      questLink: { presence: "missing", encodeResolutionWidth: null, encodeBitrateMbps: null, dynamicBitrate: null, linkSharpening: null },
+      picoConnect: { presence: "found", preset: "ultra", bitrateMbps: 150 },
+    },
+    systemTuning: {
+      hardwareGpuScheduling: true,
+      powerPlanRole: "balanced",
+      ovrAdvancedSettingsInstalled: true,
+    },
+    recentClientLog: {
+      classification: "clean_or_inconclusive",
+      newestModifiedAt: now,
+    },
+  };
+}
+
+function syntheticSymptomDiagnosis(symptom: SymptomIdV01): SymptomDiagnosisV01 {
+  const snapshot = syntheticDiagnosticsSnapshot();
+  return {
+    schemaVersion: "vua.local-diagnostics/v0.1",
+    symptom,
+    capturedAt: snapshot.capturedAt,
+    snapshot,
+    findings: [
+      { code: "osc_port_9000_conflict", severity: "attention", layer: "companion_osc" },
+      { code: "osc_avatar_cache_present", severity: "info", layer: "client_config_cache" },
+    ],
+    sopSteps: [
+      {
+        stepId: "osc_resolve_port_9000_conflict",
+        layer: "companion_osc",
+        title: "Resolve UDP 9000 conflict",
+        instruction: "Ensure only one router binds UDP 9000 before starting VRChat.",
+      },
+      {
+        stepId: "osc_check_avatar_parameters",
+        layer: "avatar_sdk",
+        title: "Verify avatar parameter sync",
+        instruction: "Refresh cached avatar parameter JSON files when parameters change.",
+      },
+    ],
+    suggestedHelper: "clear_osc_avatar_cache",
+  };
+}
+
+function syntheticPoseGraph(): PoseGraphSnapshotV01 {
+  return {
+    schemaVersion: "vua.pose-graph/v0.1",
+    capturedAt: new Date().toISOString(),
+    openxr: { presence: "found", runtimeName: "SteamVR" },
+    steamvrDrivers: ["space_calibrator", "slimevr", "mocopi"],
+    blockedSteamvrDrivers: ["space_calibrator"],
+    fbtDriverConflictRisk: "multiple_openvr_fbt_drivers",
+    lastHeadsetHint: "PICO 4 Pro",
+    poseSources: POSE_SOURCE_IDS.map(sourceId => ({
+      sourceId,
+      state: sourceId === "headset_6dof" || sourceId === "slimevr"
+        ? "active"
+        : sourceId === "mocopi" || sourceId === "space_calibrator"
+          ? "installed"
+          : "not_detected",
+      detailCode: sourceId === "space_calibrator" ? "blocked_by_safe_mode" : null,
+    })),
+  };
+}
+
 window.vua = {
-  gateway: { invoke: async (req: { method: string; params?: { intent?: { purposes: string[] }; route?: string; urls?: string[]; path?: string }; }) => {
+  gateway: { invoke: async (req: { method: string; params?: { intent?: { purposes: string[] }; route?: string; urls?: string[]; path?: string; symptom?: SymptomIdV01 }; }) => {
     let value: unknown;
-    if (req.method === "app.snapshot") value = { capabilities: { tasks: true, operations: ["environment.planDeployment", "environment.executeDeployment", "environment.testWebsites", "environment.observePlay", "environment.startPlay", "environment.stopPlay", "environment.inspectManagerApps"].map(operationId => ({ operationId, availability: "available" })) } };
+    if (req.method === "app.snapshot") value = { capabilities: { tasks: true, operations: ["environment.planDeployment", "environment.executeDeployment", "environment.testWebsites", "environment.observePlay", "environment.startPlay", "environment.stopPlay", "environment.inspectManagerApps", "diagnostics.observeLocal", "diagnostics.diagnoseSymptom", "environment.observePoseGraph"].map(operationId => ({ operationId, availability: "available" })) } };
+    if (req.method === "diagnostics.observeLocal") value = { localDiagnostics: syntheticDiagnosticsSnapshot() };
+    if (req.method === "diagnostics.diagnoseSymptom") value = { symptomDiagnosis: syntheticSymptomDiagnosis(req.params?.symptom ?? "osc_or_face_tracking_not_responding") };
+    if (req.method === "environment.observePoseGraph") value = { poseGraph: syntheticPoseGraph() };
     if (req.method === "task.list") value = { revision: 1, tasks: [] };
     if (req.method === "environment.getSnapshot") value = { contractVersion: "0.1", revision: 0, capturedAt: new Date().toISOString(), items: [{ checkId: "unity_editors", zone: "create", presence: "detected", facts: { editors: editorVersions().map(version => ({ version, path: `C:/Synthetic/Unity/${version}`, classification: "other_unity_version" })) } }] };
     if (req.method === "environment.testWebsites") { websiteCalls += 1; value = { websiteTests: req.params!.urls!.map(url => ({ url, status: "reachable", elapsedMs: 8, httpStatus: 200 })) }; }
@@ -568,8 +695,26 @@ const review = {
     document.querySelector<HTMLButtonElement>('[data-nav-id="logo-home"]')!.click();
     await wait(() => !document.querySelector("[data-first-use-notice]"));
     await click(copy.tools);
-    await wait(() => document.querySelector(".vua-tools-hub"));
+    await wait(() => document.querySelector(".vua-tools-hub") && document.querySelector("[data-pose-graph] .vua-pose-graph__body"));
     await settlePage();
+  },
+  async previewDiagnostics() {
+    await mountPreview();
+    document.querySelector<HTMLButtonElement>('[data-nav-id="logo-home"]')!.click();
+    await wait(() => !document.querySelector("[data-first-use-notice]"));
+    window.location.hash = "#help?sub=diagnostics";
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    await wait(() => document.querySelector("[data-local-diagnostics] [data-symptom-diagnosis]"), "local diagnostics panel");
+    await settlePage();
+  },
+  async previewCommandPalette() {
+    await mountPreview();
+    document.querySelector<HTMLButtonElement>('[data-nav-id="logo-home"]')!.click();
+    await wait(() => !document.querySelector("[data-first-use-notice]"));
+    await settlePage();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "p", ctrlKey: true, bubbles: true }));
+    await wait(() => document.querySelector(".vua-palette") && document.querySelectorAll(".vua-palette__option").length > 0, "command palette open");
+    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
   },
   settlePage,
   async beforeKey(key: string) {

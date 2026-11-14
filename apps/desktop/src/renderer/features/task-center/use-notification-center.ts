@@ -11,6 +11,8 @@ import {
   canDismiss,
   isTerminalStatus,
   loadDismissedIds,
+  persistDismissedSet,
+  pruneDismissedIds,
   saveDismissedId,
   visibleNotifications,
 } from "./notification-model.ts";
@@ -39,7 +41,17 @@ export function useNotificationCenter() {
     };
   }, [gateway]);
 
-  // 通知投影:活动任务恒显;终态任务仅 notifyOnComplete 保留的最新一条可见
+  // Cap dismissed IDs by FIFO capacity rather than snapshot membership so
+  // partial host-only snapshots during AMF startup/restart never erase AMF dismissals.
+  useEffect(() => {
+    setDismissed((current) => {
+      const pruned = pruneDismissedIds(current);
+      if (pruned !== current) persistDismissedSet(pruned);
+      return pruned;
+    });
+  }, [view.tasks]);
+
+  // 通知投影:活动任务恒显;终态任务按 notifyFamily 各族保留最新一条可见
   const notifications = useMemo(
     () => visibleNotifications(view.tasks, dismissed),
     [view.tasks, dismissed],

@@ -280,10 +280,17 @@ fn remember(
 }
 fn same_path(left: &std::path::Path, right: &std::path::Path) -> bool {
     fn normalize(path: &std::path::Path) -> String {
-        path.to_string_lossy()
-            .trim_start_matches(r"\\?\")
-            .replace('/', "\\")
-            .to_lowercase()
+        let raw = path.to_string_lossy();
+        let stripped = if let Some(unc) = raw
+            .get(..8)
+            .filter(|prefix| prefix.eq_ignore_ascii_case(r"\\?\UNC\"))
+            .and_then(|_| raw.get(8..))
+        {
+            std::borrow::Cow::Owned(format!(r"\\{unc}"))
+        } else {
+            std::borrow::Cow::Borrowed(raw.strip_prefix(r"\\?\").unwrap_or(&raw))
+        };
+        stripped.replace('/', "\\").to_lowercase()
     }
     normalize(left) == normalize(right)
 }
@@ -547,6 +554,15 @@ impl PlayPlatform for WindowsPlayPlatform {
     }
     fn launch(&self, launch: &Launch) -> Result<(), &'static str> {
         let mut command = std::process::Command::new(&launch.exe);
+        vua_orchestrator::strip_sensitive_env(&mut command);
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            use windows_sys::Win32::System::Threading::CREATE_BREAKAWAY_FROM_JOB;
+            // Steam, VRChat, SteamVR and headset streaming apps belong to the player's
+            // session and must survive VUA exit/restart rather than die with the Provider job.
+            command.creation_flags(CREATE_BREAKAWAY_FROM_JOB);
+        }
         command.args(&launch.args);
         command
             .stdin(std::process::Stdio::null())
@@ -606,6 +622,10 @@ pub(crate) mod os {
         }
         if !ok {
             return Err(error);
+        }
+        // An exiting zombie whose handle opened before final teardown is treated as vanished.
+        if exit.dwLowDateTime != 0 || exit.dwHighDateTime != 0 {
+            return Err(std::io::Error::from_raw_os_error(87));
         }
         Ok(ProcessIdentity {
             pid,
@@ -670,6 +690,101 @@ pub(crate) mod os {
         }
         Ok(out)
     }
+    /// Checks whether any live process in the Toolhelp32 snapshot matches `target_lower`
+    /// (`szExeFile` lowercased) without calling `OpenProcess`, so elevated or cross-session
+    /// processes never fail with `ERROR_ACCESS_DENIED`.
+    #[cfg(windows)]
+    pub(crate) fn has_process_named(target_lower: &str) -> std::io::Result<bool> {
+        use windows_sys::Win32::{
+            Foundation::{CloseHandle, ERROR_NO_MORE_FILES, INVALID_HANDLE_VALUE},
+            System::Diagnostics::ToolHelp::{
+                CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+                TH32CS_SNAPPROCESS,
+            },
+        };
+        let handle = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
+        if handle == INVALID_HANDLE_VALUE {
+            return Err(std::io::Error::last_os_error());
+        }
+        let mut entry: PROCESSENTRY32W = unsafe { std::mem::zeroed() };
+        entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+        let mut more = unsafe { Process32FirstW(handle, &mut entry) };
+        while more != 0 {
+            let end = entry
+                .szExeFile
+                .iter()
+                .position(|c| *c == 0)
+                .unwrap_or(entry.szExeFile.len());
+            let name = String::from_utf16_lossy(&entry.szExeFile[..end]).to_lowercase();
+            if name == target_lower {
+                // If we can inspect the process and confirm it has already exited, ignore the zombie;
+                // otherwise (live or elevated/unreadable) treat it as running.
+                let exited_zombie =
+                    matches!(identity(entry.th32ProcessID), Err(e) if e.raw_os_error() == Some(87));
+                if !exited_zombie {
+                    unsafe {
+                        CloseHandle(handle);
+                    }
+                    return Ok(true);
+                }
+            }
+            more = unsafe { Process32NextW(handle, &mut entry) };
+        }
+        let error = std::io::Error::last_os_error();
+        unsafe {
+            CloseHandle(handle);
+        }
+        if error.raw_os_error() != Some(ERROR_NO_MORE_FILES as i32) {
+            return Err(error);
+        }
+        Ok(false)
+    }
+    /// Collects all live lowercase process basenames matching `candidates_lower` in a single
+    /// Toolhelp32 snapshot pass (1 kernel snapshot instead of N), filtering exited zombies.
+    #[cfg(windows)]
+    pub(crate) fn running_from_candidates(
+        candidates_lower: &[&str],
+    ) -> std::io::Result<std::collections::BTreeSet<String>> {
+        use windows_sys::Win32::{
+            Foundation::{CloseHandle, ERROR_NO_MORE_FILES, INVALID_HANDLE_VALUE},
+            System::Diagnostics::ToolHelp::{
+                CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W,
+                TH32CS_SNAPPROCESS,
+            },
+        };
+        let handle = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) };
+        if handle == INVALID_HANDLE_VALUE {
+            return Err(std::io::Error::last_os_error());
+        }
+        let mut entry: PROCESSENTRY32W = unsafe { std::mem::zeroed() };
+        entry.dwSize = std::mem::size_of::<PROCESSENTRY32W>() as u32;
+        let mut more = unsafe { Process32FirstW(handle, &mut entry) };
+        let mut matched = std::collections::BTreeSet::new();
+        while more != 0 {
+            let end = entry
+                .szExeFile
+                .iter()
+                .position(|c| *c == 0)
+                .unwrap_or(entry.szExeFile.len());
+            let name = String::from_utf16_lossy(&entry.szExeFile[..end]).to_lowercase();
+            if !matched.contains(&name) && candidates_lower.iter().any(|c| *c == name) {
+                let exited_zombie =
+                    matches!(identity(entry.th32ProcessID), Err(e) if e.raw_os_error() == Some(87));
+                if !exited_zombie {
+                    matched.insert(name);
+                }
+            }
+            more = unsafe { Process32NextW(handle, &mut entry) };
+        }
+        let error = std::io::Error::last_os_error();
+        unsafe {
+            CloseHandle(handle);
+        }
+        if error.raw_os_error() != Some(ERROR_NO_MORE_FILES as i32) {
+            return Err(error);
+        }
+        Ok(matched)
+    }
     #[cfg(windows)]
     pub(crate) fn close(expected: &ProcessIdentity) -> std::io::Result<()> {
         use windows_sys::Win32::{
@@ -728,6 +843,10 @@ pub(crate) mod os {
     pub(crate) fn processes_matching(
         _: impl Fn(&str) -> bool,
     ) -> std::io::Result<Vec<ProcessIdentity>> {
+        Err(std::io::Error::other("Windows required"))
+    }
+    #[cfg(not(windows))]
+    pub(crate) fn has_process_named(_: &str) -> std::io::Result<bool> {
         Err(std::io::Error::other("Windows required"))
     }
 }
@@ -886,5 +1005,18 @@ mod tests {
             assert_eq!(closed.len(), 3);
             assert!(!closed.contains(&platform.live[0]));
         }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn has_process_named_observes_current_executable_without_false_positive() {
+        let current_exe = std::env::current_exe().expect("current test executable");
+        let current_name = current_exe
+            .file_name()
+            .expect("exe name")
+            .to_string_lossy()
+            .to_lowercase();
+        assert!(os::has_process_named(&current_name).unwrap());
+        assert!(!os::has_process_named("vua-definitely-not-running-process-0000.exe").unwrap());
     }
 }

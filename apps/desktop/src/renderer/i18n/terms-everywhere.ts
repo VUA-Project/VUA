@@ -9,3 +9,4 @@ const tables:Record<string,Copy>={
   ko:{special:"특기 사항",use:"예정 용도",allowed:"허용",conditional:"조건부 허용",contact:"제작자 문의 필요",forbidden:"불가",unknown:"원문 확인 필요",no_terms:"약관 없음",check:"레시피 약관 점검",combined:"종합 판정",informational:"이 판정은 참고용이며 저장을 막지 않아요. 반드시 원본 약관과 특기 사항을 직접 확인해 주세요.",read:"약관 읽기",reading:"약관 읽는 중…",failed:"약관을 점검하지 못했어요. 다시 시도해 주세요.",retry:"다시 점검",noProducts:"BOOTH 출처가 기록되지 않아 이용 가능 여부를 알 수 없어요.",files:"레시피에는 원본 에셋 파일이 들어 있지 않아요. 받는 사람도 해당 소재를 직접 보유하고 있어야 해요.",settings:"포함된 설정 항목",bindings:"장착 방식",merge:"아마추어 병합",attach:"지정 본에 부착",switches:"토글 스위치",fits:"체형 핏 조정",lighting:"밝기 및 조명 기준",sdkFixes:"SDK 수정 항목",optimizer:"Avatar Optimizer",shopUnknown:"상점명 미기록",titleUnknown:"상품명 미기록",unavailable:"지금은 약관 점검을 사용할 수 없어요.",stopped:"약관 읽기가 끝나지 않았어요. 다시 시도해 보세요."},
 };
 export const termsEverywhereCopy:Copy=tables[currentLocale]??en;
+export const termsEverywhereTables = tables;

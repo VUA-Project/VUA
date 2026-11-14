@@ -45,6 +45,8 @@ export interface EnvironmentPort {
   readonly play?: PlayPort;
   readonly managers?: import("./creator-inventory-port.ts").CreatorInventoryPort;
   readonly network?: NetworkPort;
+  readonly diagnostics?: import("./local-diagnostics-port.ts").LocalDiagnosticsPort;
+  readonly poseGraph?: import("./pose-graph-port.ts").PoseGraphPort;
   readonly deployment?: DeploymentPort;
   /** 只读快照:渲染前拉取;订阅推送到达前不得把本地缓存当事实来源 */
   snapshot(): Promise<EnvironmentView>;

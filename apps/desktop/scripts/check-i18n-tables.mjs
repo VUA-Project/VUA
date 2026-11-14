@@ -6,6 +6,9 @@
  * - 数组条目(guide pages 的 sections 等):长度与元素 id 集合对齐。
  * 任一不对齐即非零退出。
  */
+import { readdirSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { strings as en } from "../src/renderer/i18n/strings.en.ts";
 import { localeRegistry } from "../src/renderer/i18n/locales.ts";
 
@@ -90,8 +93,40 @@ for (const entry of availableTargets) {
   compareTables(en, strings, entry.id);
 }
 
+const i18nDir = resolve(dirname(fileURLToPath(import.meta.url)), "../src/renderer/i18n");
+const targetIds = availableTargets.map((entry) => entry.id);
+let sidecarCount = 0;
+
+for (const fileName of readdirSync(i18nDir).sort()) {
+  if (!fileName.endsWith(".ts") || fileName.endsWith(".test.ts") || fileName.startsWith("strings.")) {
+    continue;
+  }
+  const mod = await import(pathToFileURL(resolve(i18nDir, fileName)).href);
+  for (const [exportName, value] of Object.entries(mod)) {
+    if (
+      value === null ||
+      typeof value !== "object" ||
+      Array.isArray(value) ||
+      !Object.hasOwn(value, "en") ||
+      !targetIds.some((id) => Object.hasOwn(value, id))
+    ) {
+      continue;
+    }
+    sidecarCount += 1;
+    for (const id of targetIds) {
+      if (!Object.hasOwn(value, id)) {
+        report(`${fileName}#${exportName}[${id}]`, "缺失交付语言分支");
+        continue;
+      }
+      compareTables(value.en, value[id], `${fileName}#${exportName}[${id}]`);
+    }
+  }
+}
+
 if (violations > 0) {
   console.error(`\ncheck-i18n-tables: ${violations} 处多表不一致`);
   process.exit(1);
 }
-console.log(`check-i18n-tables: OK — ${availableTargets.length} 个交付语言表与源表对齐`);
+console.log(
+  `check-i18n-tables: OK — ${availableTargets.length} 个交付语言表与 ${sidecarCount} 个分表全部对齐`,
+);

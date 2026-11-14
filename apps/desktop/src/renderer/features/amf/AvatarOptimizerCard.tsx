@@ -97,7 +97,7 @@ export function AvatarOptimizerCard({ port, run, disabled, ftLocked, onStarted, 
     {report !== null && <OptimizerReportBlock report={report} packageMissing={run.optimizer?.packageVersion === null} />}
     <div className="vua-n3__actions">
       <Button
-        variant={enabled ? "subtle" : "primary"}
+        variant={enabled ? "subtle" : "default"}
         disabled={disabled || updating || ftLocked}
         data-nav-id="workshop-optimizer-toggle"
         onClick={() => { void toggle(); }}

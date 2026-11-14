@@ -1,32 +1,34 @@
 # Freeze plan
 
-> Updated: 2026-10-30 (author's ruling)
+> Updated: 2026-11-14 (author's ruling)
 
-VUA is the first step of PH-R's serial order. The freeze is a temporary measure to ship v1.0.0,
-the first stable release that replaces the Beta, before PH-R headset work starts. The author can
-lift it at any time. This plan says what must be true before the freeze, what waits, and what may
-change while it lasts. It
-overrides the order in the [current plan](current-plan.md) until the freeze release is published;
-the [N sequence](../development-outline.md) keeps its acceptance rows.
+The author lifted the v1.0.0 freeze on 2026-11-14. This document is kept as the historical record
+of the freeze period that shipped [v1.0.0 Brave New World](../release/v1.0.0.md) (followed by
+[v1.1.0 Getting on Track](../release/v1.1.0.md)). The [current plan](current-plan.md) sets the
+slice order again, and the [N sequence](../development-outline.md) keeps its acceptance rows.
+
+During that stage, VUA was the first step of PH-R's serial order, and the freeze served as a
+temporary measure to ship v1.0.0 — the first stable release replacing the Beta — with a clear boundary
+on what had to be true beforehand, what waited, and what could change while it lasted.
 
 ## What the freeze means
 
-While the freeze lasts, VUA receives only:
+While the freeze lasted, VUA received only:
 
 - bug fixes, including fixes found by players;
 - security updates;
 - compatibility with new VRChat SDK, Unity, Steam, PICO and Electron versions;
 - native review of the five UI languages;
-- the Pharos settings and controls, when PH-R reaches that stage. This is the one planned
-  feature addition and gets its own plan.
+- the Pharos settings and controls, when PH-R reaches that stage (planned separately).
 
-Anything else is recorded under "After the freeze" and waits until the author lifts the freeze or
-admits it by a new decision.
+Anything else was recorded under "After the freeze" until the author lifted the freeze or admitted
+it by a new decision.
 
 ## Rule while the freeze is open
 
-No new slice starts unless it is a row in this plan. A slice prompt for another assistant names
-the row it serves. Work found along the way that is not a fix goes to "After the freeze".
+During the freeze period (ended on 2026-11-14 by the author's ruling), no new slice started unless
+it was a row in this plan, slice prompts named the row they served, and non-fix work found along
+the way went to "After the freeze".
 
 ## Before the freeze
 
@@ -173,8 +175,8 @@ The author's ruling of 2026-10-28 is part of v1.0.0:
 
 ## After the freeze
 
-These items wait while the freeze lasts. Each may come back through a new decision, or when the
-author lifts the freeze.
+These items waited while the freeze lasted. Following the 2026-11-14 unfreeze, they have been
+folded back into the order table in [current-plan.md](current-plan.md).
 
 | Slices | Item |
 | --- | --- |

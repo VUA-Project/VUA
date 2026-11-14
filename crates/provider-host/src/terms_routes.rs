@@ -162,6 +162,18 @@ mod tests {
                 json!({"schemaVersion":"0.1","presetId":"vrchat_personal","productIds":["booth:1","booth:1"]}),
                 "vua.terms.invalid_params",
             ),
+            (
+                "terms.checkUse",
+                "query",
+                json!({"schemaVersion":"0.2","presetId":"vrchat_personal","productIds":["booth:1"]}),
+                "vua.terms.invalid_params",
+            ),
+            (
+                "terms.getProduct",
+                "query",
+                json!({"schemaVersion":"0.2","productId":"booth:1"}),
+                "vua.terms.invalid_params",
+            ),
         ] {
             let FrameOutcome::Response(reply) = request(
                 None,

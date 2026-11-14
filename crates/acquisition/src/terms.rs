@@ -139,6 +139,19 @@ impl TermsService {
         Ok(json!({"schemaVersion":"0.1","taskId":accepted.task_id}))
     }
     fn cache(&self, kind: &str, id: &str, hash: &str, bytes: &[u8]) -> Result<(), AppErrorV1> {
+        if !matches!(kind, "drive" | "docs" | "vn3")
+            || id.is_empty()
+            || id.len() > 128
+            || !id
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_'))
+            || hash.len() != 64
+            || !hash
+                .bytes()
+                .all(|b| b.is_ascii_digit() || matches!(b, b'a'..=b'f'))
+        {
+            return Err(error("cache_failed"));
+        }
         let mut directory = self.root.clone();
         for component in [None, Some(kind), Some(id)] {
             if let Some(component) = component {
@@ -215,7 +228,32 @@ pub struct TermsDetail {
 }
 
 pub fn product_detail(store: &BdlStore, id: &str) -> Result<TermsDetail, BdlStoreError> {
-    let product = store.product_terms(id)?;
+    Ok(detail_from_product_terms(store.product_terms(id)?))
+}
+
+pub fn all_product_details(
+    store: &BdlStore,
+) -> Result<std::collections::HashMap<String, TermsDetail>, BdlStoreError> {
+    Ok(store
+        .all_product_terms()?
+        .into_iter()
+        .map(|(id, terms)| (id, detail_from_product_terms(terms)))
+        .collect())
+}
+
+pub fn product_details_for_ids(
+    store: &BdlStore,
+    ids: &[String],
+) -> Result<std::collections::HashMap<String, TermsDetail>, BdlStoreError> {
+    Ok(store
+        .product_terms_for_ids(ids)?
+        .into_iter()
+        .map(|(id, terms)| (id, detail_from_product_terms(terms)))
+        .collect())
+}
+
+pub fn detail_from_product_terms(product: ProductTerms) -> TermsDetail {
+    let id = product.product_id.clone();
     let documents: Vec<_> = product
         .sources
         .iter()
@@ -239,7 +277,7 @@ pub fn product_detail(store: &BdlStore, id: &str) -> Result<TermsDetail, BdlStor
         warnings.extend(document.warnings.clone());
         if let Some(note) = document.special_note.as_ref().filter(|n| !n.is_empty()) {
             special_notes.push(SpecialNote {
-                product_id: id.into(),
+                product_id: id.clone(),
                 source_id: (*source).clone(),
                 language: document.language.clone(),
                 text: note.clone(),
@@ -260,7 +298,7 @@ pub fn product_detail(store: &BdlStore, id: &str) -> Result<TermsDetail, BdlStor
                 })
             {
                 special_notes.push(SpecialNote {
-                    product_id: id.into(),
+                    product_id: id.clone(),
                     source_id: (*source).clone(),
                     language: document.language.clone(),
                     text: note.clone(),
@@ -299,14 +337,14 @@ pub fn product_detail(store: &BdlStore, id: &str) -> Result<TermsDetail, BdlStor
             item: None,
         });
     }
-    Ok(TermsDetail {
+    TermsDetail {
         product,
         effective_language,
         effective_items,
         warnings,
         has_special_note: !special_notes.is_empty(),
         special_notes,
-    })
+    }
 }
 
 #[derive(Deserialize)]
@@ -420,11 +458,20 @@ pub fn check_use(
         .iter()
         .find(|p| p.id == preset)
         .ok_or(BdlStoreError::InvalidObservation("preset"))?;
+    let bulk = (ids.len() > 1)
+        .then(|| product_details_for_ids(store, ids))
+        .transpose()?;
     let mut products = Vec::new();
     let mut matching_product_ids = Vec::new();
     let mut combination = decision(Vec::new());
     for id in ids {
-        let detail = product_detail(store, id)?;
+        let detail = match &bulk {
+            Some(map) => map
+                .get(id)
+                .cloned()
+                .unwrap_or_else(|| detail_from_product_terms(ProductTerms::not_observed(id))),
+            None => product_detail(store, id)?,
+        };
         let mut result = decision(detail.special_notes);
         if detail.product.state != "parsed" {
             block(&mut result, id, None, "unknown", &detail.product.state);

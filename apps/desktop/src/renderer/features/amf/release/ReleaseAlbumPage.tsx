@@ -16,6 +16,7 @@ import { onRequestRevealed } from "../../ai-requests/ai-request-reveal.ts";
 import { ReleaseAlbum, type AlbumSpread } from "./ReleaseAlbum.tsx";
 import { ReleaseStage, StagePhoto } from "./ReleaseStage.tsx";
 import { ReleaseSheet } from "./ReleaseSheet.tsx";
+import { CreatorCredits } from "./CreatorCredits.tsx";
 import { LineTerms } from "./LineTerms.tsx";
 import { ReleaseUploadDialog } from "./ReleaseUploadDialog.tsx";
 import { baseName, finishedRunIds, lastStep, proposedUploadName, runBusy, runningLocalTest, runningUpload, sdkReviewView, uploadedAvatarId, uploadedAvatarIds } from "./release-model.ts";
@@ -248,6 +249,7 @@ function Album({ production, release, checksEnabled, onNavigate }: {
       </div> : <p className="vua-text-secondary">{copy.loading}</p>,
       right: live => run ? <>
         <ReleaseSheet run={run} title={title} state={state} number={at + 1} live={live} notice={live ? notice : null}
+          credits={live && list ? <CreatorCredits run={run} sources={list.sources} /> : null}
           terms={live && list && !projectGone ? <LineTerms run={run} sources={list.sources} onOpenMaterials={() => onNavigate("warehouse")} /> : null} actions={{
           ...(projectGone ? {
             onNewLine: () => { requestNewProductionLine(run.sources.map(item => item.sourceId)); onNavigate("workshop"); },

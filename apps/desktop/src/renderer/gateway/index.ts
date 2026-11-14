@@ -288,6 +288,7 @@ export { AMF_UPLOAD_STAGES, AMF_LOCAL_TEST_STAGES, AMF_LOCAL_TEST_REASONS } from
 export type { VrchatPort, VrchatStatus, VrchatSignInOutcome, VrchatAvatarCheck, VrchatAvatarEntry, VrchatAvatarList, VrchatTwoFactorMethod, VrchatAccountView } from "./vrchat-port.ts";
 export { VRCHAT_TWO_FACTOR_METHODS } from "./vrchat-port.ts";
 export type { TermsPort } from "./terms-port.ts";
+export { createLivePoseGraphPort, type PoseGraphPort } from "./pose-graph-port.ts";
 export { AmfProductionError } from "./amf-production-port.ts";
 export type { AmfProductionPort, AmfProductionRun, AmfProductionPlan, AmfProductionRestorePlan, AmfProductionRevisionKind, AmfProductionRevisionSummary, AmfProductionRevisionSummaryItem, AmfProductionRevisionPlan, AmfFitObject, AmfProductionFitChanges, AmfProductionAvailableFit, AmfFitSummary, AmfFitSaved, AmfProductionSource, AmfProductionList, AmfQueuedWork, AmfRunPhase, AmfPrefab, AmfSavedRecipe, AmfRecipeSummary, AmfRecipeImage, AmfRecipeSharePlan, AmfRecipeShareExport, AmfRecipeApplyPlan, AmfProductionAccepted, AmfPreviewImage, AmfStep, AmfUsualDurations, AmfRunProgress, AmfProductionProgress, AmfSdkReview, AmfSdkIssue, AmfSdkStat, AmfSdkRating, AmfLightingPlan, AmfPlanPrediction, AmfPlanPredictionRow, AmfPlanPredictionTotal } from "./amf-production-port.ts";
 export type { AmfOptimizerMetrics, AmfOptimizerReport, AmfOptimizerState } from "@vua/contracts";

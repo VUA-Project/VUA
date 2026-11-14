@@ -236,10 +236,13 @@ pub struct EnvironmentConfig {
 
 struct EnvironmentServices {
     roots: EnvironmentRoots,
+    manager_launcher: vua_project_manager::manager_apps::ManagerAppLauncher,
     play: vua_project_manager::play_session::PlayService,
     tools: HashMap<&'static str, vua_orchestrator::external_tools::ToolService>,
     installer_tools: HashMap<&'static str, vua_orchestrator::external_tools::InstallerToolService>,
     network: vua_orchestrator::network::NetworkService,
+    local_diagnostics: vua_orchestrator::local_diagnostics::LocalDiagnosticsService,
+    pose_graph: vua_orchestrator::pose_graph::PoseGraphService,
     deployment: vua_orchestrator::deployment::DeploymentService,
     engine: EnvironmentEngine,
 }
@@ -1002,11 +1005,24 @@ pub fn run_provider_host_with_legacy(
     let environment = environment.map(|config| -> Result<_, SqliteStoreError> {
         Ok(Arc::new(EnvironmentServices {
             roots: config.roots.clone(),
+            manager_launcher: vua_project_manager::manager_apps::ManagerAppLauncher::windows(
+                config.roots.clone(),
+            ),
             play: vua_project_manager::play_session::PlayService::windows(config.roots.clone()),
             tools: vua_orchestrator::external_tools::STEAM_TOOLS.iter().map(|spec| (spec.tool_id, vua_orchestrator::external_tools::ToolService::new(Arc::new(vua_project_manager::steam_tools::SteamToolPlatform::new(config.roots.clone(), spec)), Arc::new(SystemClock), spec.tool_id))).collect(),
             installer_tools: vua_orchestrator::external_tools::INSTALLER_TOOLS.iter().map(|spec| (spec.tool_id, vua_orchestrator::external_tools::InstallerToolService::new(Arc::new(vua_project_manager::tool_install::WindowsInstallerToolPlatform::new(config.roots.registry.clone(), spec)), Arc::new(SystemClock), spec.tool_id))).collect(),
             network: vua_orchestrator::network::NetworkService::new(
                 Arc::new(vua_project_manager::network_probe::HttpsNetworkProbe),
+                Arc::new(SystemClock),
+            ),
+            local_diagnostics: vua_orchestrator::local_diagnostics::LocalDiagnosticsService::new(
+                config.roots.clone(),
+                Arc::new(vua_project_manager::local_diagnostics_win::WindowsLocalDiagnosticsProbe),
+                Arc::new(SystemClock),
+            ),
+            pose_graph: vua_orchestrator::pose_graph::PoseGraphService::new(
+                config.roots.clone(),
+                Arc::new(vua_project_manager::pose_graph_win::WindowsPoseProcessProbe),
                 Arc::new(SystemClock),
             ),
             deployment: vua_orchestrator::deployment::DeploymentService::new(
@@ -1652,6 +1668,14 @@ fn handle_application_request(state: &mut HostState, request: &Value) -> FrameOu
             correlation_id,
         );
     }
+    if method == "environment.openManagerApp" {
+        return crate::play_session_routes::open_manager_app(
+            state.environment.as_ref().map(|s| &s.manager_launcher),
+            request,
+            request_id,
+            correlation_id,
+        );
+    }
     if matches!(
         method,
         "environment.observePlay" | "environment.startPlay" | "environment.stopPlay"
@@ -1674,6 +1698,29 @@ fn handle_application_request(state: &mut HostState, request: &Value) -> FrameOu
     if matches!(method, "tools.observeInstaller" | "tools.actInstaller") {
         return crate::external_tool_routes::installer_request(
             state.environment.as_ref().map(|s| &s.installer_tools),
+            request,
+            request_id,
+            correlation_id,
+        );
+    }
+    if matches!(
+        method,
+        "diagnostics.observeLocal"
+            | "diagnostics.diagnoseSymptom"
+            | "diagnostics.clearOscAvatarCache"
+            | "diagnostics.updateClientConfig"
+    ) {
+        return crate::local_diagnostics_routes::request(
+            state.environment.as_ref().map(|s| &s.local_diagnostics),
+            method,
+            request,
+            request_id,
+            correlation_id,
+        );
+    }
+    if method == "environment.observePoseGraph" {
+        return crate::pose_graph_routes::request(
+            state.environment.as_ref().map(|s| &s.pose_graph),
             request,
             request_id,
             correlation_id,
@@ -2005,11 +2052,17 @@ fn served_capabilities(state: &HostState) -> Value {
         {"operationId": "environment.testWebsites", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
         {"operationId": "environment.observeGameWindow", "availability": "available"},
         {"operationId": "environment.inspectManagerApps", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "environment.openManagerApp", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
         {"operationId": "environment.observePlay", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
         {"operationId": "tools.observeConnection", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
         {"operationId": "tools.actConnection", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
         {"operationId": "tools.observeInstaller", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
         {"operationId": "tools.actInstaller", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "diagnostics.observeLocal", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "diagnostics.diagnoseSymptom", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "diagnostics.clearOscAvatarCache", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "diagnostics.updateClientConfig", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "environment.observePoseGraph", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
         {"operationId": "environment.startPlay", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
         {"operationId": "environment.stopPlay", "availability": if state.environment.is_some() { "available" } else { "unavailable" }},
         deployment_capability(state, "environment.planDeployment"),
@@ -2063,6 +2116,7 @@ fn served_capabilities(state: &HostState) -> Value {
         {"operationId": "recipeDraft.legacyCensus", "availability": if state.warehouse.is_some() && state.use_cases.is_some() { "available" } else { "unavailable" }},
         {"operationId": "recipeDraft.migrateLegacy", "availability": if state.warehouse.is_some() && state.use_cases.is_some() { "available" } else { "unavailable" }},
         {"operationId": "library.productFiles", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
+        {"operationId": "library.inspectGlb", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "recipeDraft.list", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "recipeDraft.get", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
         {"operationId": "recipeDraft.save", "availability": if state.warehouse.is_some() { "available" } else { "unavailable" }},
@@ -6166,7 +6220,10 @@ fn library_download_request(
             ),
         });
     }
-    if method == "library.list" || method == "library.productFiles" {
+    if matches!(
+        method,
+        "library.list" | "library.productFiles" | "library.inspectGlb"
+    ) {
         if request["kind"] != "query" {
             return FrameOutcome::Response(application_error(
                 request_id,
@@ -6177,20 +6234,25 @@ fn library_download_request(
             ));
         }
         let params = request.get("params").cloned().unwrap_or(Value::Null);
-        let result = if method == "library.list" {
-            vua_acquisition::library_view::list(
+        let result = match method {
+            "library.list" => vua_acquisition::library_view::list(
                 &warehouse.bdl,
                 &warehouse.warehouse_root,
                 warehouse.global_default,
                 &warehouse.library_downloads,
                 params,
-            )
-        } else {
-            vua_acquisition::library_view::product_files(
+            ),
+            "library.inspectGlb" => vua_acquisition::glb_inspection::inspect_glb(
+                &warehouse.bdl,
+                &warehouse.warehouse_root,
+                &warehouse.library_downloads,
+                params,
+            ),
+            _ => vua_acquisition::library_view::product_files(
                 &warehouse.bdl,
                 &warehouse.warehouse_root,
                 params,
-            )
+            ),
         };
         return FrameOutcome::Response(match result {
             Ok(value) => application_success(request_id, value),

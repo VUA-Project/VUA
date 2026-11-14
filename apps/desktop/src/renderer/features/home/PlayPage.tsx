@@ -1,6 +1,6 @@
 /** Launch: what to play and how, then the next step. The chosen combination is one card; its left half opens the
  * choices and the steps, its right half is the one button. A player who has chosen sees just the card. */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PLAY_ROUTES, type PlayRoute } from "@vua/contracts";
 import { currentLocale, strings } from "../../i18n/index.ts";
 import { playFlowCopy } from "../../i18n/play-flow-copy.ts";
@@ -111,7 +111,9 @@ export function PlayPage({ onAccounts }: { onAccounts: () => void }) {
   const [steps, setSteps] = useState<Partial<Record<PlayRoute, PlayFlowStep>>>({});
   const [guidedStep, setGuidedStep] = useState<PlayFlowStep | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
-  const close = useCallback(() => setExpanded(false), []);
+  const dismissed = useRef(false);
+  const close = useCallback(() => { dismissed.current = true; setExpanded(false); }, []);
+  const toggleDetails = useCallback(() => setExpanded(value => { const nextValue = !value; dismissed.current = !nextValue; return nextValue; }), []);
   const live = usePlaySessions();
   const scan = useDeviceScan();
   const detected = scan.devices.map(item => item.id);
@@ -132,16 +134,18 @@ export function PlayPage({ onAccounts }: { onAccounts: () => void }) {
   const picoStep = useCallback((step: PlayFlowStep) => setSteps(p => ({ ...p, pico_pcvr: step })), []);
   const step = route !== null ? steps[route] : engine.kind === "tool" ? guidedStep ?? undefined : undefined;
   const next = () => {
+    dismissed.current = false;
     if (engine.kind === "headset") { setExpanded(true); return; }
     if (!step || (step.needsDetails && !expanded)) { setExpanded(true); return; }
     if (step.phase === "launch") { rememberPlaySetup(setup); setChosen(true); }
     step.act();
   };
-  // A failure or an official page to open is explained in the details, so they open with it.
+  // A failure or an official page to open is explained in the details, so they open with it
+  // unless the player explicitly dismissed the drawer.
   const phase = step?.phase;
   const issue = route !== null ? live.sessions[route]?.issue : undefined;
-  useEffect(() => { if (phase === "retry" || phase === "handoff" || issue) setExpanded(true); }, [phase, issue]);
-  const refresh = () => { void scan.run(); void live.refresh(); setRefreshToken(value => value + 1); };
+  useEffect(() => { if (!dismissed.current && (phase === "retry" || phase === "handoff" || issue)) setExpanded(true); }, [phase, issue]);
+  const refresh = () => { dismissed.current = false; void scan.run(); void live.refresh(); setRefreshToken(value => value + 1); };
   const device = playDevice(setup.device);
   const title = setupTitle(setup);
   const otherRunning = PLAY_ROUTES.filter(other => other !== route && live.sessions[other]?.canStop);
@@ -159,7 +163,7 @@ export function PlayPage({ onAccounts }: { onAccounts: () => void }) {
         action={headset ? "unknown" : stepAction(phase)} actionIcon={phase === "launch" || phase === "stop" ? undefined : step?.icon} phase={phase}
         status={headset ? "" : label} actionText={headset ? words.inHeadset : undefined} actionHint={headset ? words.inHeadset : phase === "launch" || phase === "stop" ? undefined : label}
         spinning={!headset && (step === undefined || step.spinning)} disabled={!headset && (step === undefined || step.disabled)} primary={stepIsPrimary(step)} progress={step?.percent}
-        warning={issue !== undefined && issue !== null} selected={expanded} onDetails={() => setExpanded(value => !value)} onAction={next} />
+        warning={issue !== undefined && issue !== null} selected={expanded} onDetails={toggleDetails} onAction={next} />
     </div>
     {otherRunning.map(other => <p key={other} className="vua-setup-other" role="status">
       <span>{other === "desktop_play" ? deviceName(playDevice("pc")) : "PICO"} · {strings.toolConnection.running}</span>

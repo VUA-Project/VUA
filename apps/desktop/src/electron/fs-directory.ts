@@ -58,17 +58,23 @@ export function mapFsError(error: unknown): DesktopFsErrorV1 {
   return "failed";
 }
 
+const WINDOWS_RESERVED_DEVICE_STEM = /^(CON|PRN|AUX|NUL|(COM|LPT)[1-9\u00B9\u00B2\u00B3])$/i;
+
 /** 新建目录名校验(契约面 invalid_name 判据,渲染层同款预判据在
- *  folder-picker-model):非空、非 "." ".."、不含 "/" "\" 分隔符、
- *  不含控制字符(0x00–0x1F)、长度 ≤ 100 */
+ *  folder-picker-model):非空、非 "." ".."、不含 "/" "\" 及 Windows
+ *  保留路径字符、不含控制字符(0x00–0x1F / 0x7F)、不以空格或句点结尾、
+ *  非 Windows 保留设备名、长度 ≤ 100 */
 export function isValidNewDirectoryName(name: string): boolean {
   if (name.length === 0 || name.length > 100) return false;
   if (name === "." || name === "..") return false;
-  if (name.includes("/") || name.includes("\\")) return false;
+  if (name.endsWith(" ") || name.endsWith(".")) return false;
+  if (/[<>:"/\\|?*]/.test(name)) return false;
   for (let index = 0; index < name.length; index += 1) {
     const code = name.charCodeAt(index);
-    if (code < 0x20) return false;
+    if (code < 0x20 || code === 0x7f) return false;
   }
+  const stem = (name.split(".")[0] ?? "").trim();
+  if (WINDOWS_RESERVED_DEVICE_STEM.test(stem)) return false;
   return true;
 }
 

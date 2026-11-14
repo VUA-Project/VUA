@@ -3,11 +3,15 @@ import { isLibraryListParamsV03, type LibraryListParamsV03 } from "./library-vie
 import { isUnityLicenseParams, type UnityLicenseRequestV1 } from "./unity-license-v01.js";
 import { isDeploymentCommandId, isDeploymentParams, type DeploymentPlanParams, type DeploymentExecuteParams } from "./environment-deployment.js";
 import { isTermsParams, type TermsRequestV1 } from "./terms-v01.js";
+import { isObservePoseGraphParamsV01, type PoseGraphGatewayRequestV1 } from "./pose-graph-v01.js";
+import { isInspectGlbParamsV01, type InspectGlbGatewayRequestV1 } from "./glb-inspection-v01.js";
 import { isAmfProductionParams, type AmfProductionRequestV1 } from "./amf-production-v01.js";
 import { isScenarioEnvironmentParams, type ScenarioEnvironmentRequestV1 } from "./scenario-environment.js";
 import { isPlayCommandId, isPlayParams, type PlayRoute } from "./play-session.js";
+import { isOpenManagerAppParamsV02, type ManagerAppId } from "./manager-apps.js";
 import { isExternalToolParams, type ExternalToolAction, type ExternalToolId } from "./external-tool.js";
 import { isInstallerToolParams, type InstallerToolAction, type InstallerToolId } from "./installer-tool.js";
+import { isLocalDiagnosticsParams, type LocalDiagnosticsGatewayRequestV1 } from "./local-diagnostics-v01.js";
 import { isNetworkParams, type NetworkIntent } from "./environment-network.js";
 import { isWebsiteTestParams, type WebsiteTestParams } from "./website-test.js";
 import type {
@@ -1108,15 +1112,19 @@ export type VrchatGatewayValueV1 = VrchatStatusValueV1 | VrchatSignInValueV1 | V
 
 export type DesktopGatewayRequestV1 =
   | TermsRequestV1
+  | PoseGraphGatewayRequestV1
+  | InspectGlbGatewayRequestV1
   | UnityLicenseRequestV1
   | AmfProductionRequestV1
   | ScenarioEnvironmentRequestV1
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.inspectManagerApps"; readonly params: Readonly<Record<string, never>> }
+  | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.openManagerApp"; readonly params: { readonly managerId: ManagerAppId; readonly commandId: string } }
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.observePlay"; readonly params: { readonly route: PlayRoute } }
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "tools.observeConnection"; readonly params: { readonly toolId: ExternalToolId } }
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "tools.actConnection"; readonly params: { readonly toolId: ExternalToolId; readonly action: ExternalToolAction; readonly commandId: string } }
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "tools.observeInstaller"; readonly params: { readonly toolId: InstallerToolId } }
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "tools.actInstaller"; readonly params: { readonly toolId: InstallerToolId; readonly action: InstallerToolAction; readonly commandId: string } }
+  | LocalDiagnosticsGatewayRequestV1
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.startPlay" | "environment.stopPlay"; readonly params: { readonly route: PlayRoute; readonly commandId: string } }
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.checkNetwork"; readonly params: { readonly intent: NetworkIntent } }
   | { readonly schemaVersion: 1; readonly requestId: string; readonly method: "environment.testWebsites"; readonly params: WebsiteTestParams }
@@ -1224,7 +1232,14 @@ export const DESKTOP_GATEWAY_METHOD_KINDS = {
   "tools.actConnection": "command",
   "tools.observeInstaller": "query",
   "tools.actInstaller": "command",
+  "diagnostics.observeLocal": "query",
+  "diagnostics.diagnoseSymptom": "query",
+  "diagnostics.clearOscAvatarCache": "command",
+  "diagnostics.updateClientConfig": "command",
   "environment.inspectManagerApps": "query",
+  "environment.openManagerApp": "command",
+  "environment.observePoseGraph": "query",
+  "library.inspectGlb": "query",
   "environment.startPlay": "command",
   "environment.stopPlay": "command",
   "environment.executeDeployment": "command",
@@ -1874,6 +1889,8 @@ export interface SystemResourceUsageV2 extends Omit<SystemResourceUsageV1, "sche
   readonly gpuUsagePercent: number | null;
   readonly gpuName: string | null;
   readonly gpuKind: "discrete" | "integrated" | "unknown" | null;
+  /** Read-only local SteamVR process observation (`vrserver.exe` / `vrmonitor.exe` / `vrcompositor.exe`); null when unavailable or stale. */
+  readonly steamVrRunning?: boolean | null;
 }
 
 export interface DesktopSystemApiV2 extends DesktopSystemApiV1 {
@@ -2090,8 +2107,20 @@ export function isDesktopGatewayRequestV1(value: unknown): value is DesktopGatew
     case "tools.actInstaller":
       return hasExactKeys(value, REQUEST_KEYS) && hasExactKeys(value.params, ["toolId", "action", "commandId"])
         && isPlayCommandId(value.params.commandId) && isInstallerToolParams({ toolId: value.params.toolId, action: value.params.action }, true);
+    case "diagnostics.observeLocal":
+    case "diagnostics.diagnoseSymptom":
+    case "diagnostics.clearOscAvatarCache":
+    case "diagnostics.updateClientConfig":
+      return hasExactKeys(value, REQUEST_KEYS) && isLocalDiagnosticsParams(value.method, value.params, true);
     case "environment.inspectManagerApps":
       return hasExactKeys(value, REQUEST_KEYS) && hasExactKeys(value.params, []);
+    case "environment.openManagerApp":
+      return hasExactKeys(value, REQUEST_KEYS) && hasExactKeys(value.params, ["managerId", "commandId"])
+        && isPlayCommandId(value.params.commandId) && isOpenManagerAppParamsV02({ managerId: value.params.managerId });
+    case "environment.observePoseGraph":
+      return hasExactKeys(value, REQUEST_KEYS) && isObservePoseGraphParamsV01(value.params);
+    case "library.inspectGlb":
+      return hasExactKeys(value, REQUEST_KEYS) && isInspectGlbParamsV01(value.params);
     case "environment.startPlay": case "environment.stopPlay":
       return hasExactKeys(value, REQUEST_KEYS) && hasExactKeys(value.params, ["route", "commandId"])
         && isPlayCommandId(value.params.commandId) && isPlayParams({ route: value.params.route });

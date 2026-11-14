@@ -4,6 +4,8 @@ import {
   activeTaskCount,
   canDismiss,
   isTerminalStatus,
+  notificationBellAlert,
+  pruneDismissedIds,
   scrollClosesPanel,
   taskRowOpenTarget,
   visibleNotifications,
@@ -167,4 +169,58 @@ test("tasks reaching terminal during the session no longer show (F2)", () => {
   const persistent: TaskItem = { ...finished, notifyOnComplete: true };
   assert.equal(visibleNotifications([persistent], new Set()).length, 1);
   assert.equal(visibleNotifications([persistent], new Set(["t-run"])).length, 0);
+});
+
+test("multi-family retention preserves the latest terminal receipt per notifyFamily, prunes stale dismissed IDs, and computes bell alerts", () => {
+  const syncOld: TaskItem = { id: "sync-1", title: "Sync", status: "completed", originPage: "warehouse", cancellable: false, notifyOnComplete: true, notifyFamily: "library:sync" };
+  const syncNew: TaskItem = { id: "sync-2", title: "Sync", status: "completed", originPage: "warehouse", cancellable: false, notifyOnComplete: true, notifyFamily: "library:sync" };
+  const uploadFail: TaskItem = { id: "upload-1", title: "Upload", status: "failed", originPage: "release", cancellable: false, notifyOnComplete: true, notifyFamily: "amf:upload" };
+  const visible = visibleNotifications([syncOld, syncNew, uploadFail], new Set());
+  assert.deepEqual(visible.map((t) => t.id), ["sync-2", "upload-1"]);
+
+  assert.equal(notificationBellAlert(visible, 0, new Set()), "failed");
+  assert.equal(notificationBellAlert(visible, 0, new Set(["upload-1"])), "unseen");
+  assert.equal(notificationBellAlert(visible, 0, new Set(["upload-1", "sync-2"])), null);
+  assert.equal(notificationBellAlert(visible, 1, new Set(["upload-1", "sync-2"])), "unseen");
+
+  const pruned = pruneDismissedIds(new Set(["id-1", "id-2", "id-3", "id-4"]), 2);
+  assert.deepEqual([...pruned], ["id-3", "id-4"]);
+  const untouched = pruneDismissedIds(new Set(["id-1", "id-2"]), 2);
+  assert.equal(untouched.size, 2);
+  assert.deepEqual([...untouched], ["id-1", "id-2"]);
+});
+
+test("AMF partial snapshot during startup/restart never resurrects dismissed failed AMF notifications", () => {
+  const hostSync: TaskItem = {
+    id: "host-sync-1",
+    title: "Library sync",
+    status: "completed",
+    originPage: "warehouse",
+    cancellable: false,
+    notifyOnComplete: true,
+    notifyFamily: "library:sync",
+  };
+  const amfFailed: TaskItem = {
+    id: "amf-assemble-9",
+    title: "Assemble Avatar",
+    status: "failed",
+    originPage: "workshop",
+    cancellable: false,
+    notifyOnComplete: true,
+    notifyFamily: "amf:production",
+  };
+
+  // Player dismisses both terminal receipts while full snapshot is present.
+  let dismissed = pruneDismissedIds(new Set(["host-sync-1", "amf-assemble-9"]));
+  assert.equal(visibleNotifications([hostSync, amfFailed], dismissed).length, 0);
+
+  // AMF restarts or times out: task.list temporarily returns only host tasks.
+  dismissed = pruneDismissedIds(dismissed);
+  assert.equal(dismissed.has("amf-assemble-9"), true);
+  assert.equal(visibleNotifications([hostSync], dismissed).length, 0);
+
+  // AMF recovers and returns amf-assemble-9 again: must stay dismissed and bell stays quiet.
+  const recoveredVisible = visibleNotifications([hostSync, amfFailed], dismissed);
+  assert.deepEqual(recoveredVisible, []);
+  assert.equal(notificationBellAlert(recoveredVisible, 0, new Set()), null);
 });

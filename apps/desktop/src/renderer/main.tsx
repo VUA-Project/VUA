@@ -2,17 +2,37 @@ import { installLocaleSync } from "./i18n/locale-sync.ts";
 import { StrictMode, Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App.tsx";
-import { ShowcasePage } from "./dev/ShowcasePage.tsx";
-import { TutorialSurface } from "./features/tutorial/TutorialSurface.tsx";
-import { DesktopOverlaySurface } from "./features/overlay/DesktopOverlaySurface.tsx";
-import { VrOverlaySurface } from "./features/overlay/VrOverlaySurface.tsx";
-import { ReaderSurface } from "./features/reader/ReaderSurface.tsx";
-import { GameGuideSurface } from "./features/game-guide/GameGuideSurface.tsx";
 import { currentLocale } from "./i18n/index.ts";
 import { BootSplash } from "./components/splash/BootSplash.tsx";
 import "@vua/design-system/tokens.css";
 import "@vua/design-system/base.css";
 import "./app-shell.css";
+
+const TutorialSurface = lazy(() =>
+  import("./features/tutorial/TutorialSurface.tsx").then((m) => ({
+    default: m.TutorialSurface,
+  })),
+);
+const DesktopOverlaySurface = lazy(() =>
+  import("./features/overlay/DesktopOverlaySurface.tsx").then((m) => ({
+    default: m.DesktopOverlaySurface,
+  })),
+);
+const VrOverlaySurface = lazy(() =>
+  import("./features/overlay/VrOverlaySurface.tsx").then((m) => ({
+    default: m.VrOverlaySurface,
+  })),
+);
+const ReaderSurface = lazy(() =>
+  import("./features/reader/ReaderSurface.tsx").then((m) => ({
+    default: m.ReaderSurface,
+  })),
+);
+const GameGuideSurface = lazy(() =>
+  import("./features/game-guide/GameGuideSurface.tsx").then((m) => ({
+    default: m.GameGuideSurface,
+  })),
+);
 
 /**
  * 表面分流(应用初始化最早阶段):教程伴随窗口只渲染 TutorialSurface,
@@ -31,10 +51,18 @@ document.documentElement.dataset.vuaSurface = surface ?? "main";
  * Unity 工程,需本机 vite 配置 fs.allow 放行——按本仓纪律不携带机器
  * 绝对路径)。import.meta.env.DEV 守卫,生产构建中 devView 恒为 null,
  * 分支被 Rollup 剔除(与 resolve-scenario 同一防线模式,check-leak 验证);
- * preview-lab 懒加载,three 不进主 chunk。
+ * showcase 与 preview-lab 懒加载,不进主 chunk。
  */
 const devView = import.meta.env.DEV
   ? new URLSearchParams(window.location.search).get("dev")
+  : null;
+
+const ShowcasePage = import.meta.env.DEV
+  ? lazy(() =>
+      import("./dev/ShowcasePage.tsx").then((m) => ({
+        default: m.ShowcasePage,
+      })),
+    )
   : null;
 
 const PreviewLabPage = import.meta.env.DEV
@@ -55,17 +83,29 @@ createRoot(document.getElementById("root")!).render(
     {surface === "splash" ? (
       <BootSplash />
     ) : surface === "tutorial" ? (
-      <TutorialSurface />
+      <Suspense fallback={null}>
+        <TutorialSurface />
+      </Suspense>
     ) : surface === "overlay-desktop" ? (
-      <DesktopOverlaySurface />
+      <Suspense fallback={null}>
+        <DesktopOverlaySurface />
+      </Suspense>
     ) : surface === "overlay-vr" ? (
-      <VrOverlaySurface />
+      <Suspense fallback={null}>
+        <VrOverlaySurface />
+      </Suspense>
     ) : surface === "reader" ? (
-      <ReaderSurface />
+      <Suspense fallback={null}>
+        <ReaderSurface />
+      </Suspense>
     ) : surface === "game-guide" ? (
-      <GameGuideSurface />
-    ) : devView === "showcase" ? (
-      <ShowcasePage />
+      <Suspense fallback={null}>
+        <GameGuideSurface />
+      </Suspense>
+    ) : devView === "showcase" && ShowcasePage !== null ? (
+      <Suspense fallback={null}>
+        <ShowcasePage />
+      </Suspense>
     ) : devView === "preview-lab" && PreviewLabPage !== null ? (
       <Suspense fallback={null}>
         <PreviewLabPage />

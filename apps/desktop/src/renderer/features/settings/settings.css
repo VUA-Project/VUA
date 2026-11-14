@@ -143,6 +143,12 @@
 }
 
 /* 资源节约模式:按钮+状态行与勾选行的横向排布(复用通用间距 token) */
+.vua-settings-saver {
+  display: grid;
+  gap: var(--vua-space-2);
+  justify-items: end;
+}
+
 .vua-settings-row {
   display: flex;
   align-items: center;
@@ -150,14 +156,20 @@
 }
 
 .vua-settings-check {
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  min-height: 28px;
   gap: var(--vua-space-2);
+  font: var(--vua-font-caption);
+  color: var(--vua-text-secondary);
   cursor: pointer;
   user-select: none;
 }
 
 .vua-settings-check input {
+  margin: 0;
+  width: 16px;
+  height: 16px;
   accent-color: var(--vua-accent);
 }
 
@@ -256,7 +268,7 @@
   padding: 0 var(--vua-space-2);
   border: 1px solid var(--vua-border);
   border-radius: var(--vua-radius-control);
-  background: var(--vua-bg);
+  background: var(--vua-bg-canvas);
   color: var(--vua-text-strong);
 }
 
@@ -352,5 +364,6 @@
 @media (max-width: 760px) {
   .vua-preference-row { grid-template-columns: minmax(0, 1fr); gap: 12px; padding: 16px; }
   .vua-preference-row .vua-theme-choice { width: min(100%, 300px); }
+  .vua-preference-row .vua-settings-saver { justify-items: start; }
   .vua-preference-row .vua-settings-row { justify-content: flex-start; }
 }

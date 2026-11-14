@@ -57,6 +57,19 @@ pub struct VrcGetLibBackend {
     cached_metadata: bool,
 }
 
+const PACKAGE_CONNECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
+const PACKAGE_READ_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
+
+fn build_package_http_client(
+    connect_timeout: std::time::Duration,
+    read_timeout: std::time::Duration,
+) -> Result<reqwest::Client, reqwest::Error> {
+    reqwest::Client::builder()
+        .connect_timeout(connect_timeout)
+        .read_timeout(read_timeout)
+        .build()
+}
+
 impl VrcGetLibBackend {
     /// VCC-compatible environment root by default (ALCOM/vrc-get/VCC all
     /// read the same settings location).
@@ -82,9 +95,19 @@ impl VrcGetLibBackend {
                 )
                 .with_param("reason", ParamValue::Text(error.to_string()))
             })?;
+        let http = build_package_http_client(PACKAGE_CONNECT_TIMEOUT, PACKAGE_READ_TIMEOUT)
+            .map_err(|error| {
+                AppErrorV1::new(
+                    error_codes::BACKEND_UNAVAILABLE,
+                    ErrorCategory::Unavailable,
+                    "errors.vpm.backendUnavailable",
+                    "corr-vpm-lib-init",
+                )
+                .with_param("reason", ParamValue::Text(error.to_string()))
+            })?;
         Ok(Self {
             runtime,
-            http: reqwest::Client::new(),
+            http,
             catalog_http,
             environment_root: default_environment_root(),
             offline,
@@ -143,8 +166,19 @@ impl VrcGetLibBackend {
         )
         .map_err(|e| repo_fetch_failed(e.to_string()))?;
         fs::rename(pending, target).map_err(|e| repo_fetch_failed(e.to_string()))?;
-        fs::write(self.environment_root.join("vua-sdk-source.json"), serde_json::to_vec(&json!({"schemaVersion":"0.1","fetchedFrom":SOURCE,"repositoryId":"com.vrchat.repos.official"})).expect("SDK source serialization"))
-            .map_err(|e| repo_fetch_failed(e.to_string()))?;
+        let sdk_source = self.environment_root.join("vua-sdk-source.json");
+        let sdk_source_pending = sdk_source.with_extension("pending");
+        fs::write(
+            &sdk_source_pending,
+            serde_json::to_vec(&json!({
+                "schemaVersion": "0.1",
+                "fetchedFrom": SOURCE,
+                "repositoryId": "com.vrchat.repos.official"
+            }))
+            .expect("SDK source serialization"),
+        )
+        .map_err(|e| repo_fetch_failed(e.to_string()))?;
+        fs::rename(sdk_source_pending, sdk_source).map_err(|e| repo_fetch_failed(e.to_string()))?;
         Ok(())
     }
 
@@ -184,10 +218,7 @@ impl VrcGetLibBackend {
     /// metadata. Package bodies still download online; offline mode is separate.
     pub fn with_cached_metadata(mut self) -> Result<Self, AppErrorV1> {
         self.cached_metadata = true;
-        self.http = reqwest::Client::builder()
-            .connect_timeout(std::time::Duration::from_secs(20))
-            .timeout(std::time::Duration::from_secs(600))
-            .build()
+        self.http = build_package_http_client(PACKAGE_CONNECT_TIMEOUT, PACKAGE_READ_TIMEOUT)
             .map_err(|e| repo_fetch_failed(e.to_string()))?;
         Ok(self)
     }
@@ -2976,5 +3007,85 @@ mod sdk_bootstrap_tests {
         let error = backend.download_repository_metadata(&url).unwrap_err();
         assert!(format!("{:?}", error.params).contains("metadata budget"));
         server.join().unwrap();
+    }
+
+    #[test]
+    fn package_http_client_uses_per_read_timeout_without_overall_wall_clock_cap() {
+        assert_eq!(PACKAGE_CONNECT_TIMEOUT, std::time::Duration::from_secs(15));
+        assert_eq!(PACKAGE_READ_TIMEOUT, std::time::Duration::from_secs(60));
+
+        // Verify both default and cached-metadata backends construct cleanly and stream.
+        let cached_backend = VrcGetLibBackend::new(false)
+            .unwrap()
+            .with_cached_metadata()
+            .unwrap();
+        let (meta_url, meta_server) = serve(b"{\"repository\":\"cached\"}".to_vec());
+        assert_eq!(
+            cached_backend
+                .download_repository_metadata(&meta_url)
+                .unwrap(),
+            b"{\"repository\":\"cached\"}"
+        );
+        meta_server.join().unwrap();
+
+        let serve_dripped = |chunks: usize, gap: std::time::Duration| {
+            let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+            let url = format!("http://{}/pkg.zip", listener.local_addr().unwrap());
+            let thread = std::thread::spawn(move || {
+                let (mut stream, _) = listener.accept().unwrap();
+                stream
+                    .set_read_timeout(Some(std::time::Duration::from_secs(5)))
+                    .unwrap();
+                let mut req = [0u8; 2048];
+                let mut seen = 0;
+                while seen < req.len() {
+                    let n = stream.read(&mut req[seen..]).unwrap_or(0);
+                    if n == 0 {
+                        break;
+                    }
+                    seen += n;
+                    if req[..seen].windows(4).any(|w| w == b"\r\n\r\n") {
+                        break;
+                    }
+                }
+                let total_len = chunks * 4;
+                let _ = write!(
+                    stream,
+                    "HTTP/1.1 200 OK\r\nContent-Length: {total_len}\r\nConnection: close\r\n\r\n"
+                );
+                let _ = stream.flush();
+                for _ in 0..chunks {
+                    std::thread::sleep(gap);
+                    if stream.write_all(b"part").is_err() || stream.flush().is_err() {
+                        break;
+                    }
+                }
+            });
+            (url, thread)
+        };
+
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let client = build_package_http_client(
+            std::time::Duration::from_secs(2),
+            std::time::Duration::from_millis(250),
+        )
+        .unwrap();
+
+        // 5 chunks * 90 ms = ~450 ms total wall-clock (> 250 ms read_timeout),
+        // yet each inter-chunk pause < 250 ms, so streaming succeeds without a total timeout cap.
+        let (slow_url, slow_server) = serve_dripped(5, std::time::Duration::from_millis(90));
+        let body = rt
+            .block_on(async { client.get(&slow_url).send().await?.bytes().await })
+            .expect("steady slow transfer should succeed past single read_timeout duration");
+        assert_eq!(&body[..], b"partpartpartpartpart");
+        slow_server.join().unwrap();
+
+        // A single stall exceeding read_timeout (450 ms > 250 ms) aborts with timeout.
+        let (stalled_url, stalled_server) = serve_dripped(2, std::time::Duration::from_millis(450));
+        let err = rt
+            .block_on(async { client.get(&stalled_url).send().await?.bytes().await })
+            .expect_err("stalled transfer must time out on read_timeout");
+        assert!(err.is_timeout(), "expected timeout error, got: {err}");
+        stalled_server.join().unwrap();
     }
 }

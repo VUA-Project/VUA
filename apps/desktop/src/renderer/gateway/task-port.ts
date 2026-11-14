@@ -30,6 +30,8 @@ export interface TaskItem {
   readonly errorText?: string;
   /** 终态后仍显示为通知直到手动清除(登记身份时声明;见 task-identity) */
   readonly notifyOnComplete?: boolean;
+  /** 同族保留键(缺省归入 "default" 族;不同族各自保留最新一条未清除终态通知) */
+  readonly notifyFamily?: string;
 }
 
 export interface TaskCenterView {

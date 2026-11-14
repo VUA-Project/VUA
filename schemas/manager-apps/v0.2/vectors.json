@@ -1,0 +1,88 @@
+{
+  "validRequests": [
+    {
+      "contractVersion": "0.1",
+      "requestId": "req-open-alcom",
+      "correlationId": "corr-open-alcom",
+      "kind": "command",
+      "method": "environment.openManagerApp",
+      "commandId": "cmd-open-alcom-1",
+      "params": {
+        "managerId": "alcom"
+      }
+    },
+    {
+      "contractVersion": "0.1",
+      "requestId": "req-open-hub",
+      "correlationId": "corr-open-hub",
+      "kind": "command",
+      "method": "environment.openManagerApp",
+      "commandId": "cmd.open:hub_02",
+      "params": {
+        "managerId": "unity_hub"
+      }
+    }
+  ],
+  "invalidRequests": [
+    {
+      "contractVersion": "0.1",
+      "requestId": "req-bad-kind",
+      "correlationId": "corr-bad-kind",
+      "kind": "query",
+      "method": "environment.openManagerApp",
+      "commandId": "cmd-1",
+      "params": {
+        "managerId": "alcom"
+      }
+    },
+    {
+      "contractVersion": "0.1",
+      "requestId": "req-extra-path",
+      "correlationId": "corr-extra-path",
+      "kind": "command",
+      "method": "environment.openManagerApp",
+      "commandId": "cmd-2",
+      "params": {
+        "managerId": "alcom",
+        "path": "C:/Program Files/ALCOM/ALCOM.exe"
+      }
+    },
+    {
+      "contractVersion": "0.1",
+      "requestId": "req-unknown-manager",
+      "correlationId": "corr-unknown-manager",
+      "kind": "command",
+      "method": "environment.openManagerApp",
+      "commandId": "cmd-3",
+      "params": {
+        "managerId": "steam"
+      }
+    }
+  ],
+  "validResults": [
+    {
+      "managerAppLaunch": {
+        "schemaVersion": "vua.manager-apps/v0.2",
+        "managerId": "alcom",
+        "launchedAt": "2026-11-14T03:00:00Z"
+      }
+    }
+  ],
+  "invalidResults": [
+    {
+      "managerAppLaunch": {
+        "schemaVersion": "vua.manager-apps/v0.1",
+        "managerId": "alcom",
+        "launchedAt": "2026-11-14T03:00:00Z"
+      }
+    },
+    {
+      "managerAppLaunch": {
+        "schemaVersion": "vua.manager-apps/v0.2",
+        "managerId": "alcom",
+        "launchedAt": "2026-11-14T03:00:00Z",
+        "path": "C:/Users/Alice/AppData/Local/Programs/ALCOM/ALCOM.exe"
+      }
+    }
+  ]
+}

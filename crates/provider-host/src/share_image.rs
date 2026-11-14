@@ -298,9 +298,12 @@ pub fn decorate(
     }
     let scale = (image.width() / 1024).max(1);
     let padding = ((image.width().min(image.height()) * 8 / 100) / 8) * 8;
-    let logo = image::load_from_memory(include_bytes!("../assets/vua-mark.png"))
-        .map_err(|_| "share_image_encode")?
-        .into_rgba8();
+    static BASE_LOGO: std::sync::LazyLock<Option<RgbaImage>> = std::sync::LazyLock::new(|| {
+        image::load_from_memory(include_bytes!("../assets/vua-mark.png"))
+            .ok()
+            .map(|img| img.into_rgba8())
+    });
+    let logo = BASE_LOGO.as_ref().ok_or("share_image_encode")?;
     let size = 48 * scale;
     let (plate_width, plate_height) = if code.is_some() {
         (304 * scale, 128 * scale)
@@ -315,7 +318,7 @@ pub fn decorate(
         Position::TopLeft | Position::TopRight => padding,
         _ => image.height() - plate_height - padding,
     };
-    let logo = image::imageops::resize(&logo, size, size, image::imageops::FilterType::Lanczos3);
+    let logo = image::imageops::resize(logo, size, size, image::imageops::FilterType::Lanczos3);
     image::imageops::overlay(
         &mut output,
         &logo,

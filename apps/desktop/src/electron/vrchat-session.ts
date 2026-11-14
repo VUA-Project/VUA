@@ -139,7 +139,9 @@ export interface VrchatSessionService {
   sdkSession(): VrchatSdkSession | null;
   /** Registers a handoff file for later cleanup, including after an unexpected exit. */
   noteSdkHandoff(file: string): void;
-  /** Deletes every SDK handoff file still on record (rejected upload, sign-out, forget, quit). */
+  /** Deletes one specific SDK handoff file (or all recorded handoffs when omitted). */
+  discardSdkHandoff(file?: string): void;
+  /** Deletes every SDK handoff file still on record (sign-out, forget, quit). */
   clearSdkHandoffs(): void;
 }
 
@@ -569,12 +571,23 @@ export function vrchatSession(deps: VrchatSessionDeps): VrchatSessionService {
     saveHandoffs();
   }
 
+  function discardSdkHandoff(file?: string): void {
+    if (file === undefined) {
+      clearSdkHandoffs();
+      return;
+    }
+    if (!isHandoffPath(file)) return;
+    try { fs.rmSync(file, { force: true }); } catch { /* the Editor already deleted it */ }
+    if (handoffFiles.delete(file)) saveHandoffs();
+  }
+
   return {
     handle,
     snapshot: () => ({ experimentalEnabled: account.enabled, signedIn: session !== null }),
     refresh: () => serialize(refreshSession),
     sdkSession: () => (session !== null ? { username: session.user.username, auth: session.cookies.auth, twoFactorAuth: session.cookies.twoFactorAuth } : null),
     noteSdkHandoff: file => { if (isHandoffPath(file)) { handoffFiles.add(file); saveHandoffs(); } },
+    discardSdkHandoff,
     clearSdkHandoffs,
   };
 }

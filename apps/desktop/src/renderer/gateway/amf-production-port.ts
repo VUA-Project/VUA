@@ -126,10 +126,21 @@ export interface AmfPlanPredictionRow {
   readonly physBones: number; readonly parameterBits: number | null;
   readonly uncompressedBytes: number; readonly complete: boolean;
 }
+export type AmfPredictedPerformanceRank = "excellent" | "good" | "medium" | "poor" | "very_poor";
+export type AmfPredictedLimitingMetric = "triangles" | "skinnedMeshes" | "basicMeshes" | "materialSlots" | "textureBytes" | "physBones";
+export interface AmfPredictedPlatformRank {
+  readonly rank: AmfPredictedPerformanceRank;
+  readonly limitingMetrics: readonly AmfPredictedLimitingMetric[];
+}
+export interface AmfPredictedPerformanceRanks {
+  readonly pc: AmfPredictedPlatformRank;
+  readonly android: AmfPredictedPlatformRank;
+}
 export interface AmfPlanPredictionTotal {
   readonly triangles: number; readonly materialSlots: number; readonly textureBytes: number;
   readonly physBones: number; readonly parameterBits: number | null;
   readonly uncompressedBytes: number; readonly complete: boolean;
+  readonly performanceRanks?: AmfPredictedPerformanceRanks;
 }
 /** The plan's pre-assembly cost prediction; `available` is false when a selected candidate
  *  carries no observation, and the rows are then empty. */
@@ -312,9 +323,21 @@ const prefab = (v: unknown): v is AmfPrefab => record(v) && [v.sourceId, v.path,
   && (v.objectPaths === undefined || (texts(v.objectPaths) && v.objectPaths.length <= 2048 && v.objectPaths.every(p => p.length <= 512) && new Set(v.objectPaths).size === v.objectPaths.length));
 const ratings: readonly string[] = AMF_SDK_RATINGS;
 const count = (v: unknown, max: number): v is number => Number.isSafeInteger(v) && Number(v) >= 0 && Number(v) <= max;
+const predictedRanks = ["excellent", "good", "medium", "poor", "very_poor"];
+const predictedMetrics = ["triangles", "skinnedMeshes", "basicMeshes", "materialSlots", "textureBytes", "physBones"];
+const predictedPlatformRank = (v: unknown): v is AmfPredictedPlatformRank => record(v)
+  && Object.keys(v).length === 2
+  && typeof v.rank === "string" && predictedRanks.includes(v.rank)
+  && Array.isArray(v.limitingMetrics) && v.limitingMetrics.length <= 6
+  && v.limitingMetrics.every(m => typeof m === "string" && predictedMetrics.includes(m))
+  && new Set(v.limitingMetrics).size === v.limitingMetrics.length;
+const predictedPerformanceRanks = (v: unknown): v is AmfPredictedPerformanceRanks => record(v)
+  && Object.keys(v).length === 2
+  && predictedPlatformRank(v.pc) && predictedPlatformRank(v.android);
 const predictionTotal = (v: unknown): v is AmfPlanPredictionTotal => record(v)
   && [v.triangles, v.materialSlots, v.textureBytes, v.physBones, v.uncompressedBytes].every(n => count(n, 1 << 40))
-  && (v.parameterBits === null || count(v.parameterBits, 1 << 20)) && typeof v.complete === "boolean";
+  && (v.parameterBits === null || count(v.parameterBits, 1 << 20)) && typeof v.complete === "boolean"
+  && (v.performanceRanks === undefined || predictedPerformanceRanks(v.performanceRanks));
 const predictionRow = (v: unknown): v is AmfPlanPredictionRow => record(v) && text(v.sourceId) && text(v.name)
   && (v.role === "avatar" || v.role === "outfit")
   && [v.triangles, v.materialSlots, v.textureBytes, v.physBones, v.uncompressedBytes].every(n => count(n, 1 << 40))
@@ -434,7 +457,7 @@ export function createAmfProductionPort(client: GatewayClient): AmfProductionPor
   };
   const accepted = (value: unknown, title: string): AmfProductionAccepted => {
     if (!record(value) || value.schemaVersion !== "0.1" || !text(value.runId) || !text(value.taskId) || !value.taskId) throw new Error("amf_production_receipt_invalid");
-    registerTaskIdentity(value.taskId, { title, originPage: "workshop", notifyOnComplete: true });
+    registerTaskIdentity(value.taskId, { title, originPage: "workshop", notifyOnComplete: true, notifyFamily: "amf:production" });
     return { runId: value.runId, taskId: value.taskId };
   };
   return {

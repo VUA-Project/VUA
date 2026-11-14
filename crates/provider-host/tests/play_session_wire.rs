@@ -80,3 +80,24 @@ fn manager_app_query_is_read_only_and_rejects_paths_and_commands() {
         );
     }
 }
+#[test]
+fn open_manager_app_command_pins_v02_vectors_and_rejects_paths() {
+    let vectors: Value = serde_json::from_str(include_str!(
+        "../../../schemas/manager-apps/v0.2/vectors.json"
+    ))
+    .unwrap();
+    for valid in vectors["validRequests"].as_array().unwrap() {
+        assert_eq!(
+            invoke(valid.clone())["error"]["code"],
+            "vua.manager_apps.unavailable",
+            "{valid}"
+        );
+    }
+    for invalid in vectors["invalidRequests"].as_array().unwrap() {
+        assert_eq!(
+            invoke(invalid.clone())["error"]["code"],
+            "vua.manager_apps.invalid_params",
+            "{invalid}"
+        );
+    }
+}

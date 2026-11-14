@@ -479,11 +479,10 @@ details[open] > summary:not(.vua-encyclopedia-tree summary, .vua-control__menu s
   margin: 0;
   background-color: var(--vua-accent);
   background-image: var(--vua-accent-gradient);
-  background-size: 220% 100%;
+  background-size: 100% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation: vua-hero-shimmer 12s linear infinite;
 }
 
 .vua-page__stack {
@@ -639,8 +638,8 @@ details[open] > summary:not(.vua-encyclopedia-tree summary, .vua-control__menu s
 /* The directory's badge sits in the item's end padding; the item keeps its size. */
 .vua-shell__sidebar-item:has(.vua-directory-badge) { padding-inline-end: 40px; }
 .vua-directory-badge { position: absolute; inset-inline-end: var(--vua-space-2); top: 50%; translate: 0 -50%; display: inline-grid; place-items: center; min-width: 16px; height: 16px; padding-inline: 4px; border-radius: var(--vua-corners-indicator, 2px); font: var(--vua-font-caption); font-weight: var(--vua-weight-strong); font-variant-numeric: tabular-nums; line-height: 16px; }
-.vua-directory-badge[data-tone="attention"] { background: var(--vua-error); color: var(--vua-bg-canvas); }
-.vua-directory-badge[data-tone="waiting"] { background: var(--vua-warning); color: var(--vua-bg-canvas); }
+.vua-directory-badge[data-tone="attention"] { background: var(--vua-error); color: var(--vua-on-error); }
+.vua-directory-badge[data-tone="waiting"] { background: var(--vua-warning); color: var(--vua-on-status); }
 .vua-directory-badge[data-tone="running"] { min-width: 8px; width: 8px; height: 8px; padding: 0; border-radius: 50%; background: var(--vua-accent); animation: vua-directory-pulse 1.6s ease-in-out infinite; }
 .vua-directory-badge__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .vua-shell__sidebar-item[aria-current="page"]:has(.vua-directory-badge)::after { display: none; }

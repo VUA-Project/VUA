@@ -19,9 +19,14 @@ describe("AI requests are confirmed on the page they change", () => {
     expect(requestPage(upload)).toBe("release");
     expect(requestRunId(upload)).toBe("n3-run");
   });
-  it("routes play, tools and installation by what they prepare", () => {
+  it("routes play, tools, materials and installation by what they prepare", () => {
     expect(requestPage(request("vua_request_play", { route: "pico_pcvr" }))).toBe("env-play");
     expect(requestPage(request("vua_request_tool", { toolId: "vrcft" }))).toBe("tools-discover");
+    expect(requestPage(request("vua_request_library_import_groups", { groups: [] }))).toBe("warehouse");
+    expect(requestPage(request("vua_request_amf_texture_apply", { runId: "n3-run" }))).toBe("workshop");
+    expect(requestPage(request("vua_request_amf_lighting_apply", { runId: "n3-run" }))).toBe("workshop");
+    expect(requestPage(request("vua_request_amf_outfit_remove", { runId: "n3-run" }))).toBe("workshop");
+    expect(requestPage(request("vua_request_update_client_config", { cacheSizeGb: 30 }))).toBe("help-ai");
     expect(requestPage(request("vua_request_installation", { intent: { purposes: ["desktop_play", "pico_pcvr"] } }))).toBe("env-play");
     expect(requestPage(request("vua_request_installation", { intent: { purposes: ["desktop_play", "pc_avatar"] } }))).toBe("env-create");
     expect(requestPage(request("vua_request_installation", {}))).toBe("env-create");

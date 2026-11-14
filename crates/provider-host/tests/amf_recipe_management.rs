@@ -43,8 +43,10 @@ fn invoke(root: &Path, method: &str, kind: &str, params: Value) -> Value {
         .clone()
 }
 fn fixture() -> PathBuf {
+    static NEXT_FIXTURE_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+    let seq = NEXT_FIXTURE_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let root = std::env::temp_dir().join(format!(
-        "vua-recipe-manage-wire-{}-{}",
+        "vua-recipe-manage-wire-{}-{}-{seq}",
         std::process::id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)

@@ -1,0 +1,269 @@
+{
+  "requests": [
+    {
+      "name": "observeLocal valid query",
+      "valid": true,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "req-1",
+        "correlationId": "req-1",
+        "kind": "query",
+        "method": "diagnostics.observeLocal",
+        "params": { "schemaVersion": "0.1" }
+      }
+    },
+    {
+      "name": "diagnoseSymptom valid query",
+      "valid": true,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "req-2",
+        "correlationId": "req-2",
+        "kind": "query",
+        "method": "diagnostics.diagnoseSymptom",
+        "params": { "schemaVersion": "0.1", "symptom": "osc_or_face_tracking_not_responding" }
+      }
+    },
+    {
+      "name": "diagnoseSymptom rejects unknown symptom",
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "req-3",
+        "correlationId": "req-3",
+        "kind": "query",
+        "method": "diagnostics.diagnoseSymptom",
+        "params": { "schemaVersion": "0.1", "symptom": "invented_symptom" }
+      }
+    },
+    {
+      "name": "clearOscAvatarCache valid command",
+      "valid": true,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "req-4",
+        "correlationId": "req-4",
+        "kind": "command",
+        "method": "diagnostics.clearOscAvatarCache",
+        "commandId": "diag-clear-1",
+        "params": { "schemaVersion": "0.1" }
+      }
+    },
+    {
+      "name": "updateClientConfig valid command",
+      "valid": true,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "req-5",
+        "correlationId": "req-5",
+        "kind": "command",
+        "method": "diagnostics.updateClientConfig",
+        "commandId": "diag-cfg-1",
+        "params": { "schemaVersion": "0.1", "cacheSizeGb": 30, "cacheExpiryDelayDays": 60 }
+      }
+    },
+    {
+      "name": "updateClientConfig rejects empty update",
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "req-6",
+        "correlationId": "req-6",
+        "kind": "command",
+        "method": "diagnostics.updateClientConfig",
+        "commandId": "diag-cfg-2",
+        "params": { "schemaVersion": "0.1" }
+      }
+    },
+    {
+      "name": "updateClientConfig rejects out-of-bounds cacheSizeGb",
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "req-7",
+        "correlationId": "req-7",
+        "kind": "command",
+        "method": "diagnostics.updateClientConfig",
+        "commandId": "diag-cfg-3",
+        "params": { "schemaVersion": "0.1", "cacheSizeGb": 500 }
+      }
+    },
+    {
+      "name": "updateClientConfig rejects below-30 cacheSizeGb",
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "req-8",
+        "correlationId": "req-8",
+        "kind": "command",
+        "method": "diagnostics.updateClientConfig",
+        "commandId": "diag-cfg-4",
+        "params": { "schemaVersion": "0.1", "cacheSizeGb": 10, "cacheExpiryDelayDays": 7 }
+      }
+    }
+  ],
+  "snapshots": [
+    {
+      "name": "healthy snapshot with bound UDP 9000",
+      "valid": true,
+      "value": {
+        "localDiagnostics": {
+          "schemaVersion": "vua.local-diagnostics/v0.1",
+          "capturedAt": "2026-11-14T00:00:00Z",
+          "clientRunning": true,
+          "clientConfig": {
+            "presence": "found",
+            "cacheDirectoryCustom": true,
+            "cacheSizeGb": 30,
+            "cacheExpiryDelayDays": 30,
+            "cameraResWidth": 1920,
+            "cameraResHeight": 1080,
+            "screenshotResWidth": 3840,
+            "screenshotResHeight": 2160,
+            "fpvSteadycamFov": 65
+          },
+          "clientCache": {
+            "presence": "found",
+            "totalBytes": 12884901888,
+            "truncated": false,
+            "capturedAt": "2026-11-14T00:00:00Z",
+            "driveFreeBytes": 107374182400,
+            "driveTotalBytes": 536870912000
+          },
+          "osc": {
+            "avatarCachePresence": "found",
+            "avatarConfigCount": 14,
+            "avatarCacheBytes": 57344,
+            "newestModifiedAt": "2026-11-13T23:50:00Z",
+            "udp9000": { "state": "bound", "ownerPid": 4242, "ownerProcess": "vrchat.exe" },
+            "udp9001": { "state": "bound", "ownerPid": 4343, "ownerProcess": "vrcfacetracking.exe" },
+            "oscQuery": {
+              "state": "found",
+              "httpPort": 54321,
+              "advertisedOscPort": 9000,
+              "ownerProcess": "vrchat.exe"
+            }
+          },
+          "steamvrSettings": {
+            "presence": "found",
+            "renderTargetMultiplier": 1.2,
+            "motionSmoothing": false,
+            "vrchatResolutionScale": 1.0,
+            "safeModeEnabled": false,
+            "blockedDrivers": ["01spacecalibrator"]
+          },
+          "audioEndpoints": {
+            "state": "observed",
+            "defaultCaptureRole": "physical_or_usb",
+            "virtualMicHijack": "none",
+            "communicationsMismatch": false
+          },
+          "streamingSettings": {
+            "questLink": {
+              "presence": "found",
+              "encodeResolutionWidth": 3664,
+              "encodeBitrateMbps": 350,
+              "dynamicBitrate": true,
+              "linkSharpening": 1
+            },
+            "picoConnect": {
+              "presence": "missing",
+              "preset": null,
+              "bitrateMbps": null
+            }
+          },
+          "systemTuning": {
+            "hardwareGpuScheduling": true,
+            "powerPlanRole": "high_or_ultimate",
+            "ovrAdvancedSettingsInstalled": true
+          },
+          "recentClientLog": {
+            "classification": "clean_or_inconclusive",
+            "newestModifiedAt": "2026-11-13T23:59:00Z"
+          }
+        }
+      }
+    },
+    {
+      "name": "rejects full path in udp ownerProcess",
+      "valid": false,
+      "value": {
+        "localDiagnostics": {
+          "schemaVersion": "vua.local-diagnostics/v0.1",
+          "capturedAt": "2026-11-14T00:00:00Z",
+          "clientRunning": false,
+          "clientConfig": {
+            "presence": "missing",
+            "cacheDirectoryCustom": false,
+            "cacheSizeGb": null,
+            "cacheExpiryDelayDays": null,
+            "cameraResWidth": null,
+            "cameraResHeight": null,
+            "screenshotResWidth": null,
+            "screenshotResHeight": null,
+            "fpvSteadycamFov": null
+          },
+          "clientCache": {
+            "presence": "missing",
+            "totalBytes": null,
+            "truncated": false,
+            "capturedAt": null,
+            "driveFreeBytes": null,
+            "driveTotalBytes": null
+          },
+          "osc": {
+            "avatarCachePresence": "missing",
+            "avatarConfigCount": 0,
+            "avatarCacheBytes": 0,
+            "newestModifiedAt": null,
+            "udp9000": { "state": "bound", "ownerPid": 100, "ownerProcess": "C:\\Users\\Alice\\app.exe" },
+            "udp9001": { "state": "unbound", "ownerPid": null, "ownerProcess": null },
+            "oscQuery": {
+              "state": "not_detected",
+              "httpPort": null,
+              "advertisedOscPort": null,
+              "ownerProcess": null
+            }
+          },
+          "steamvrSettings": {
+            "presence": "missing",
+            "renderTargetMultiplier": null,
+            "motionSmoothing": null,
+            "vrchatResolutionScale": null,
+            "safeModeEnabled": null,
+            "blockedDrivers": []
+          },
+          "audioEndpoints": {
+            "state": "observed",
+            "defaultCaptureRole": "unknown",
+            "virtualMicHijack": "none",
+            "communicationsMismatch": false
+          },
+          "streamingSettings": {
+            "questLink": {
+              "presence": "missing",
+              "encodeResolutionWidth": null,
+              "encodeBitrateMbps": null,
+              "dynamicBitrate": null,
+              "linkSharpening": null
+            },
+            "picoConnect": {
+              "presence": "missing",
+              "preset": null,
+              "bitrateMbps": null
+            }
+          },
+          "systemTuning": {
+            "hardwareGpuScheduling": null,
+            "powerPlanRole": "unknown",
+            "ovrAdvancedSettingsInstalled": false
+          },
+          "recentClientLog": {
+            "classification": "no_logs",
+            "newestModifiedAt": null
+          }
+        }
+      }
+    }
+  ]
+}

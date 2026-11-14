@@ -21,6 +21,15 @@ pub enum RegistryHive {
 pub trait RegistrySource: Send + Sync + std::fmt::Debug {
     fn get_string(&self, hive: RegistryHive, subkey: &str, value: &str) -> Option<String>;
 
+    /// Reads a 32-bit unsigned integer (`REG_DWORD`), falling back to decimal string parsing
+    /// for synthetic test registries or string-typed overrides.
+    fn get_u32(&self, hive: RegistryHive, subkey: &str, value: &str) -> Option<u32> {
+        self.get_string(hive, subkey, value)?
+            .trim()
+            .parse::<u32>()
+            .ok()
+    }
+
     /// Names of the direct child keys of `subkey`; an absent key has none.
     fn subkeys(&self, _hive: RegistryHive, _subkey: &str) -> Vec<String> {
         Vec::new()
@@ -34,6 +43,12 @@ pub struct WindowsRegistrySource;
 impl RegistrySource for WindowsRegistrySource {
     fn get_string(&self, hive: RegistryHive, subkey: &str, value: &str) -> Option<String> {
         windows_get_string(hive, subkey, value)
+    }
+
+    fn get_u32(&self, hive: RegistryHive, subkey: &str, value: &str) -> Option<u32> {
+        windows_get_u32(hive, subkey, value).or_else(|| {
+            windows_get_string(hive, subkey, value).and_then(|s| s.trim().parse::<u32>().ok())
+        })
     }
 
     fn subkeys(&self, hive: RegistryHive, subkey: &str) -> Vec<String> {
@@ -57,6 +72,10 @@ impl FakeRegistrySource {
         self.entries
             .insert((hive, subkey.to_owned(), value.to_owned()), data.to_owned());
         self
+    }
+
+    pub fn with_u32(self, hive: RegistryHive, subkey: &str, value: &str, data: u32) -> Self {
+        self.with(hive, subkey, value, &data.to_string())
     }
 
     pub fn with_subkey(mut self, hive: RegistryHive, parent: &str, child: &str) -> Self {
@@ -188,5 +207,50 @@ fn windows_get_string(hive: RegistryHive, subkey: &str, value: &str) -> Option<S
 
 #[cfg(not(windows))]
 fn windows_get_string(_hive: RegistryHive, _subkey: &str, _value: &str) -> Option<String> {
+    None
+}
+
+#[cfg(windows)]
+fn windows_get_u32(hive: RegistryHive, subkey: &str, value: &str) -> Option<u32> {
+    use windows_sys::Win32::System::Registry::{
+        RegGetValueW, HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, RRF_RT_REG_DWORD,
+    };
+
+    const ERROR_SUCCESS: u32 = 0;
+
+    let hkey = match hive {
+        RegistryHive::LocalMachine => HKEY_LOCAL_MACHINE,
+        RegistryHive::CurrentUser => HKEY_CURRENT_USER,
+    };
+    let wide = |text: &str| -> Vec<u16> {
+        use std::os::windows::ffi::OsStrExt as _;
+        std::ffi::OsStr::new(text)
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect()
+    };
+    let subkey_wide = wide(subkey);
+    let value_wide = wide(value);
+    let mut out: u32 = 0;
+    let mut byte_length = std::mem::size_of::<u32>() as u32;
+    let status = unsafe {
+        RegGetValueW(
+            hkey,
+            subkey_wide.as_ptr(),
+            value_wide.as_ptr(),
+            RRF_RT_REG_DWORD,
+            std::ptr::null_mut(),
+            (&mut out as *mut u32).cast(),
+            &mut byte_length,
+        )
+    };
+    if status != ERROR_SUCCESS || byte_length != std::mem::size_of::<u32>() as u32 {
+        return None;
+    }
+    Some(out)
+}
+
+#[cfg(not(windows))]
+fn windows_get_u32(_hive: RegistryHive, _subkey: &str, _value: &str) -> Option<u32> {
     None
 }

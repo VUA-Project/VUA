@@ -20,8 +20,9 @@ impl ProviderJobGuard {
         Self::contain(false)
     }
 
-    /// Host-only external apps may explicitly break away. Ordinary workers still
-    /// inherit containment; AMF keeps the stricter default above.
+    /// Allows explicit `CREATE_BREAKAWAY_FROM_JOB` handoffs (such as interactive
+    /// Unity SDK upload editors, Unity Hub, or external tools) while ordinary
+    /// batch workers still inherit kill-on-job-close containment.
     pub fn contain_host_process_tree() -> Result<Self, std::io::Error> {
         Self::contain(true)
     }

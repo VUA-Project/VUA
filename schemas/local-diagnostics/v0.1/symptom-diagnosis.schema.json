@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vua.local/schemas/local-diagnostics/v0.1/symptom-diagnosis.schema.json",
+  "title": "SymptomDiagnosisResultV01",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["symptomDiagnosis"],
+  "properties": {
+    "symptomDiagnosis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "symptom",
+        "capturedAt",
+        "snapshot",
+        "findings",
+        "sopSteps",
+        "suggestedHelper"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "vua.local-diagnostics/v0.1" },
+        "symptom": {
+          "enum": [
+            "audio_silent_or_wrong_mic",
+            "osc_or_face_tracking_not_responding",
+            "low_fps_or_vram_pressure",
+            "disk_cache_full",
+            "crash_or_eac_block",
+            "avatar_hidden_or_grey_robot",
+            "cannot_upload_avatar",
+            "streaming_blurry_or_compression",
+            "playspace_drag_or_height_offset",
+            "fbt_drift_or_calibration"
+          ]
+        },
+        "capturedAt": { "type": "string", "minLength": 1 },
+        "snapshot": { "$ref": "snapshot.schema.json#/$defs/snapshot" },
+        "findings": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "severity", "layer"],
+            "properties": {
+              "code": {
+                "enum": [
+                  "audio_virtual_mic_hijack_detected",
+                  "audio_communications_default_mismatch",
+                  "osc_port_9000_unbound_while_client_running",
+                  "osc_port_9000_conflict",
+                  "oscquery_port_mismatch",
+                  "osc_port_9001_unbound",
+                  "osc_avatar_cache_present",
+                  "steamvr_driver_blocked_by_safe_mode",
+                  "steamvr_high_supersampling",
+                  "steamvr_app_overscaled",
+                  "streaming_high_bitrate_or_encode_width",
+                  "streaming_low_bitrate_or_sharpening_off",
+                  "windows_hags_enabled_vr_stutter_risk",
+                  "windows_power_saver_active",
+                  "ovr_advanced_settings_installed_offset_check",
+                  "client_cache_near_limit",
+                  "drive_free_space_low",
+                  "client_config_malformed",
+                  "log_eac_violation_detected",
+                  "log_disk_full_detected",
+                  "log_d3d11_crash_detected",
+                  "log_osc_conflict_detected",
+                  "log_openvr_init_failed"
+                ]
+              },
+              "severity": { "enum": ["info", "warning", "attention"] },
+              "layer": {
+                "enum": [
+                  "hardware_os",
+                  "steamvr_openxr",
+                  "companion_osc",
+                  "client_config_cache",
+                  "avatar_sdk"
+                ]
+              }
+            }
+          }
+        },
+        "sopSteps": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["stepId", "layer", "title", "instruction"],
+            "properties": {
+              "stepId": { "type": "string", "minLength": 1, "maxLength": 80 },
+              "layer": {
+                "enum": [
+                  "hardware_os",
+                  "steamvr_openxr",
+                  "companion_osc",
+                  "client_config_cache",
+                  "avatar_sdk"
+                ]
+              },
+              "title": { "type": "string", "minLength": 1, "maxLength": 240 },
+              "instruction": { "type": "string", "minLength": 1, "maxLength": 1000 }
+            }
+          }
+        },
+        "suggestedHelper": {
+          "enum": ["none", "clear_osc_avatar_cache", "update_client_config"]
+        }
+      }
+    }
+  }
+}

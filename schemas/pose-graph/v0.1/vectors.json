@@ -1,0 +1,86 @@
+{
+  "validRequests": [
+    {
+      "schemaVersion": "0.1"
+    }
+  ],
+  "invalidRequests": [
+    {},
+    {
+      "schemaVersion": "0.2"
+    },
+    {
+      "schemaVersion": "0.1",
+      "extra": true
+    }
+  ],
+  "validResults": [
+    {
+      "poseGraph": {
+        "schemaVersion": "vua.pose-graph/v0.1",
+        "capturedAt": "2026-11-14T00:00:00Z",
+        "openxr": {
+          "presence": "found",
+          "runtimeName": "SteamVR"
+        },
+        "steamvrDrivers": ["space_calibrator", "slimevr", "mocopi"],
+        "blockedSteamvrDrivers": ["space_calibrator"],
+        "fbtDriverConflictRisk": "multiple_openvr_fbt_drivers",
+        "lastHeadsetHint": "PICO 4 Ultra",
+        "poseSources": [
+          { "sourceId": "headset_6dof", "state": "ready", "detailCode": "openxr_ready" },
+          { "sourceId": "slimevr", "state": "active", "detailCode": "process_running" },
+          { "sourceId": "pico_motion", "state": "installed", "detailCode": "app_installed" },
+          { "sourceId": "lighthouse", "state": "ready", "detailCode": "calibrator_registered" },
+          { "sourceId": "space_calibrator", "state": "installed", "detailCode": "blocked_by_safe_mode" },
+          { "sourceId": "mocopi", "state": "installed", "detailCode": "driver_registered" },
+          { "sourceId": "haritorax", "state": "not_detected", "detailCode": null },
+          { "sourceId": "rebocap", "state": "not_detected", "detailCode": null },
+          { "sourceId": "eye_face_osc", "state": "not_detected", "detailCode": null }
+        ]
+      }
+    }
+  ],
+  "invalidResults": [
+    {
+      "poseGraph": {
+        "schemaVersion": "vua.pose-graph/v0.1",
+        "capturedAt": "2026-11-14T00:00:00Z",
+        "openxr": {
+          "presence": "found",
+          "runtimeName": "C:\\Program Files\\Steam\\steamxr_win64.json"
+        },
+        "steamvrDrivers": [],
+        "blockedSteamvrDrivers": [],
+        "fbtDriverConflictRisk": "none",
+        "lastHeadsetHint": null,
+        "poseSources": []
+      }
+    },
+    {
+      "poseGraph": {
+        "schemaVersion": "vua.pose-graph/v0.1",
+        "capturedAt": "2026-11-14T00:00:00Z",
+        "openxr": {
+          "presence": "missing",
+          "runtimeName": null
+        },
+        "steamvrDrivers": ["slimevr", "slimevr"],
+        "blockedSteamvrDrivers": [],
+        "fbtDriverConflictRisk": "none",
+        "lastHeadsetHint": null,
+        "poseSources": [
+          { "sourceId": "headset_6dof", "state": "not_detected", "detailCode": null },
+          { "sourceId": "slimevr", "state": "not_detected", "detailCode": null },
+          { "sourceId": "pico_motion", "state": "not_detected", "detailCode": null },
+          { "sourceId": "lighthouse", "state": "not_detected", "detailCode": null },
+          { "sourceId": "space_calibrator", "state": "not_detected", "detailCode": null },
+          { "sourceId": "mocopi", "state": "not_detected", "detailCode": null },
+          { "sourceId": "haritorax", "state": "not_detected", "detailCode": null },
+          { "sourceId": "rebocap", "state": "not_detected", "detailCode": null },
+          { "sourceId": "eye_face_osc", "state": "not_detected", "detailCode": null }
+        ]
+      }
+    }
+  ]
+}

@@ -26,6 +26,9 @@ import { avatarOptimizerCopy } from "./avatar-optimizer-copy.ts";
 import { guideChannelCopy } from "./guide-channel-copy.ts";
 import { recipeDraftFlowCopy } from "./recipe-draft-flow-copy.ts";
 import { installerToolCopy } from "./installer-tool-copy.ts";
+import { localDiagnosticsCopy } from "./local-diagnostics-copy.ts";
+import { poseGraphCopy } from "./pose-graph-copy.ts";
+import { glbInspectionCopy } from "./glb-inspection-copy.ts";
 import type { Strings } from "./strings.en.ts";
 
 /**
@@ -63,6 +66,9 @@ export const strings: Strings = {
   guideChannel: guideChannelCopy["ja"],
   recipeDraftFlow: recipeDraftFlowCopy["ja"],
   installerTool: installerToolCopy["ja"],
+  localDiagnostics: localDiagnosticsCopy["ja"],
+  poseGraph: poseGraphCopy["ja"],
+  glbInspection: glbInspectionCopy["ja"],
   websiteTests: {
     title: "接続テスト", test: "テスト", testAll: "すべてテスト", testing: "テスト中…",
     add: "サイトを追加", edit: "サイトを編集", editSite: "{name} を編集", testSite: "{name} をテスト",
@@ -211,6 +217,8 @@ export const strings: Strings = {
     progress: "{done}/{total}",
     openAria: "通知センターを開く（実行中 {count} 件）",
     closeAria: "通知センターを閉じる",
+    pinAria: "通知センターをピン留めする",
+    unpinAria: "通知センターのピン留めを解除する",
     empty: "通知はありません",
     unlabeledTask: "バックグラウンド処理",
   },
@@ -236,6 +244,13 @@ export const strings: Strings = {
     unavailable: "取得できません",
     gpuKinds: {"discrete":"専用 GPU","integrated":"内蔵 GPU","unknown":"種類不明"},
     sharedMemory: "システムメモリを共有する構成のため、専用 VRAM の数値はありません",
+    trend60s: "直近 60 秒のピーク推移",
+    steamVrRunningNote: "SteamVR の起動を検出しました",
+    capacity: {
+      comfortable: "空きメモリ {freeRam} GB · Unity ビルドの並行実行に余裕があります",
+      single: "空きメモリ {freeRam} GB · Unity ビルドは 1 件ずつの実行をおすすめします",
+      tight: "空きメモリ {freeRam} GB · Unity ビルドの前に重いアプリを閉じると安心です",
+    },
     closeAria: "リソース詳細を閉じる",
   },
   nav: {

@@ -1,5 +1,11 @@
 import type { GatewayClient } from "./gateway-client.ts";
-import { isManagerAppsResult, type ManagerAppsResult } from "@vua/contracts";
+import {
+  isManagerAppLaunchResultV02,
+  isManagerAppsResult,
+  type ManagerAppId,
+  type ManagerAppLaunchResultV02,
+  type ManagerAppsResult,
+} from "@vua/contracts";
 export interface CreatorEditor { readonly version: string; readonly path: string; readonly classification: string }
 export interface CreatorManagers {
   readonly editors: readonly CreatorEditor[];
@@ -13,6 +19,7 @@ function record(v: unknown): v is Record<string, unknown> { return v !== null &&
 export interface CreatorInventoryPort {
   inspect(options?: { refresh?: boolean }): Promise<CreatorManagers>;
   peek?(): CreatorManagers | null;
+  openManager?(managerId: ManagerAppId): Promise<ManagerAppLaunchResultV02["managerAppLaunch"]>;
 }
 export function createCreatorInventoryPort(client: GatewayClient): CreatorInventoryPort {
   let cached: CreatorManagers | null = null;
@@ -55,11 +62,26 @@ export function createCreatorInventoryPort(client: GatewayClient): CreatorInvent
     }
     return { editors, editorsKnown, vcc, alcom, apps };
   };
-  return { peek: () => cached, inspect(options) {
-    if (pending) return pending;
-    if (cached && !options?.refresh) return Promise.resolve(cached);
-    if (options?.refresh) cached = null;
-    pending = inspect().then(value => { cached = value; return value; }).finally(() => { pending = null; });
-    return pending;
-  } };
+  return {
+    peek: () => cached,
+    inspect(options) {
+      if (pending) return pending;
+      if (cached && !options?.refresh) return Promise.resolve(cached);
+      if (options?.refresh) cached = null;
+      pending = inspect().then(value => { cached = value; return value; }).finally(() => { pending = null; });
+      return pending;
+    },
+    async openManager(managerId) {
+      const reply = await client.invoke({
+        schemaVersion: 1,
+        requestId: crypto.randomUUID(),
+        method: "environment.openManagerApp",
+        params: { managerId, commandId: `open-mgr-${crypto.randomUUID()}` },
+      });
+      if (!reply.ok || !isManagerAppLaunchResultV02(reply.value)) {
+        throw new Error("manager_app_launch_failed");
+      }
+      return reply.value.managerAppLaunch;
+    },
+  };
 }

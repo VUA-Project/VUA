@@ -10,10 +10,15 @@ export function requestPage(request: AiActionRequestV01, taskOrigin: (taskId: st
   const params = parameters(request);
   if (request.tool === "vua_request_amf_upload") return "release";
   if (request.tool.startsWith("vua_request_amf_")) return "workshop";
+  if (request.tool === "vua_request_library_import_groups") return "warehouse";
   if (request.tool === "vua_request_play") return "env-play";
-  if (request.tool === "vua_request_tool") return "tools-discover";
+  if (request.tool === "vua_request_open_manager") return "env-create";
+  if (request.tool === "vua_request_tool" || request.tool === "vua_request_installer_tool") return "tools-discover";
   if (request.tool === "vua_request_installation") {
-    const purposes = record(params.intent) && Array.isArray(params.intent.purposes) ? params.intent.purposes : [];
+    const intent = record(params.intent) ? params.intent : {};
+    const purposes = Array.isArray(intent.purposes) ? intent.purposes : [];
+    const tools = Array.isArray(intent.tools) ? intent.tools : [];
+    if (purposes.length === 0 && tools.length > 0) return "tools-discover";
     return purposes.length > 0 && purposes.every(purpose => PLAY_PURPOSES.has(String(purpose))) ? "env-play" : "env-create";
   }
   if (request.tool === "vua_request_cancel_task" && typeof params.taskId === "string") return taskOrigin(params.taskId) ?? "help-ai";

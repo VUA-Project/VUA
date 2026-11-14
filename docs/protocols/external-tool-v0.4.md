@@ -1,9 +1,9 @@
 # External tool connection v0.4
 
-> Document version: 0.1.0
+> Document version: 0.1.1
 > Status: Candidate
 > Owner: Environment
-> Updated: 2026-11-11
+> Updated: 2026-11-14
 > Schemas: [request](../../schemas/external-tool/v0.4/request.schema.json), [result](../../schemas/external-tool/v0.4/result.schema.json), [vectors](../../schemas/external-tool/v0.4/vectors.json)
 
 This N2 face connects twelve fixed official Steam applications and supports reinstalling through Steam. It
@@ -29,7 +29,7 @@ module packages from Renderer.
 | `fpsvr` | fpsVR | 908520 | fpsVR | fpsVR.exe | paid Steam application; in-VR frame-time and hardware monitor |
 
 Store-access notes mirror the [N2 tool table](../development-outline.md); show the current
-store offer rather than relying on this table for pricing. XSOverlay (`1173510`) and LIV (`75540`)
+store offer rather than relying on this table for pricing. XSOverlay (`1173510`) and LIV (`755540`)
 remain out of this Steam face until their installed Steam layout and main executable are verified on
 a real installation; official-installer tools (SlimeVR Server, VRCT, VRCX and VRCS) use
 [deployment v0.1](environment-deployment-v0.1.md) and [installer-tool v0.1](installer-tool-v0.1.md)
@@ -85,4 +85,5 @@ vectors.
 
 ## Document changelog
 
+- 0.1.1 (2026-11-14): fix LIV's planned Steam App ID note (`75540` → `755540`) to match `THIRD_PARTY_NOTICES.md`.
 - 0.1.0 (2026-11-11): add Desktop+ (`desktopplus`, `1494460`) and fpsVR (`fpsvr`, `908520`) to the fixed Steam set and pin snapshots to `vua.external-tool/v0.4`, superseding v0.3.

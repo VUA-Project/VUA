@@ -1,19 +1,22 @@
 # Desktop resource usage v0.2
 
-> Document version: 1.0.0
+> Document version: 1.1.0
 > Status: Candidate
 > Scope: Read-only local Main/preload resource snapshot; independent of Provider RPC
-> Updated: 2026-10-10
+> Updated: 2026-11-14
 
 `DesktopSystemApiV2.readResourceUsageV2()` uses the local-only
 `vua:system:resource-usage-v2` IPC. Main applies the same local sender check as the
 retained V1 port. V1's method and six-field shape remain available unchanged.
 
 `SystemResourceUsageV2` has `schemaVersion: 2`, the retained RAM/VRAM byte fields and
-`sampledAt`, plus nullable `cpuUsagePercent`, `gpuUsagePercent`, `gpuName` and `gpuKind`
-(`discrete`, `integrated`, `unknown`, or null). Percentages are finite 0–100 observations.
-Unavailable, unsupported, invalid or stale readings are null, never guessed zeroes.
-The timestamp is not displayed in the panel.
+`sampledAt`, plus nullable `cpuUsagePercent`, `gpuUsagePercent`, `gpuName`, `gpuKind`
+(`discrete`, `integrated`, `unknown`, or null), and optional nullable `steamVrRunning`
+(`boolean | null`, reporting whether any local SteamVR runtime process — `vrserver.exe`,
+`vrmonitor.exe` or `vrcompositor.exe` — is currently running so the desktop shell can
+drive automatic resource saving without opening foreign process memory). Percentages are
+finite 0–100 observations. Unavailable, unsupported, invalid or stale readings are null,
+never guessed zeroes or false liveness claims. The timestamp is not displayed in the panel.
 
 ## Observation and selection
 
@@ -60,4 +63,5 @@ Sources: [Microsoft GPU aggregation explanation](https://devblogs.microsoft.com/
 
 ## Document changelog
 
+- 1.1.0 (2026-11-14): add optional nullable `steamVrRunning` read-only process observation on `SystemResourceUsageV2` for automatic resource saving while keeping V1's six-field shape unchanged.
 - 1.0.0 (2026-10-10): add the V2 utilization snapshot, one-card memory pairing, conservative fallback/freshness and the qualified resource-headroom summary while retaining V1.

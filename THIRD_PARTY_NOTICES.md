@@ -107,22 +107,27 @@ complete authorization, license selection and agreement acceptance through Unity
 The [deployment direction](docs/architecture/unity-deployment.md) specifies acquisition, native
 installation and official CLI registration. Unity Hub is optional.
 
-## Optional external integrations (N2)
+## Optional external integrations (N2 and creator tools)
 
-The planned N2 adapters discover and launch independently installed applications through a shared
-Steam connection; the two tracking tools also receive hardware/setup guidance.
-These applications and their dependencies are not bundled with VUA under this delivery model. Users
-obtain official distributions from Steam or upstream; those distributions retain their own terms.
-This describes the selected integration model, not completed runtime acceptance. The tracking
-license references below were checked on 2026-09-30; the additional official distribution entries
-were checked on 2026-10-03. They are moving references, not release pins.
+The N2 and creator-tool adapters discover and launch independently installed applications through
+Steam, verified official installers, or local creator-manager locations. None of these applications
+or their Unity VPM packages are bundled inside VUA's installer or repository; users obtain official
+distributions from Steam, GitHub releases, or upstream VPM feeds, and those distributions retain
+their own terms. License references below were checked through 2026-11-14 as moving upstream
+references rather than vendored release pins.
 
-| Application | Upstream license / attribution | Planned VUA connection |
+| Application | Upstream license / attribution | VUA connection |
 | --- | --- | --- |
-| [VRCFaceTracking](https://github.com/benaclejames/VRCFaceTracking) | [Apache-2.0](https://github.com/benaclejames/VRCFaceTracking/blob/master/LICENSE); copyright 2024 benaclejames | Discover, guide official installation, launch, and explain hardware-module/OSC setup; no source or binary redistribution |
-| [hyblocker/OpenVR-SpaceCalibrator](https://github.com/hyblocker/OpenVR-SpaceCalibrator) | [MIT core with separately licensed third-party components](https://github.com/hyblocker/OpenVR-SpaceCalibrator/blob/develop/LICENSE); copyright 2023–2026 Hyblocker and contributors, 2020–2022 Justin Li and contributors | Discover, guide official installation, launch, and explain device selection/calibration in the upstream UI; no modified build or bundled driver |
+| [VRCFaceTracking](https://github.com/benaclejames/VRCFaceTracking) | [Apache-2.0](https://github.com/benaclejames/VRCFaceTracking/blob/master/LICENSE); copyright 2024 benaclejames | Discover, guide official Steam installation, launch, and explain hardware-module/OSC setup; no source or binary redistribution |
+| [hyblocker/OpenVR-SpaceCalibrator](https://github.com/hyblocker/OpenVR-SpaceCalibrator) | [MIT core with separately licensed third-party components](https://github.com/hyblocker/OpenVR-SpaceCalibrator/blob/develop/LICENSE); copyright 2023–2026 Hyblocker and contributors, 2020–2022 Justin Li and contributors | Discover, guide official Steam installation, launch, and explain device selection/calibration in the upstream UI; no modified build or bundled driver |
+| [Desktop+](https://github.com/elvissteinjr/DesktopPlus) | [GPL-3.0](https://github.com/elvissteinjr/DesktopPlus/blob/master/LICENSE); copyright elvissteinjr | Out-of-process Steam discovery and launch (`external-tool v0.4`); no linked code or binary redistribution |
+| [SlimeVR Server](https://github.com/SlimeVR/SlimeVR-Server) | [MIT OR Apache-2.0](https://github.com/SlimeVR/SlimeVR-Server/blob/main/LICENSE-MIT); installer [MIT](https://github.com/SlimeVR/SlimeVR-Installer/blob/main/LICENSE) | Official-installer download/verification (`environment-deployment v0.1`) and out-of-process launch/stop (`installer-tool v0.1`) |
+| [VRCT](https://github.com/misyaguziya/VRCT) | [MIT](https://github.com/misyaguziya/VRCT/blob/main/LICENSE) (excluding upstream's proprietary 3D chat-bubble model asset) | Official GitHub release installer download/verification and out-of-process launch/stop; no asset extraction or bundling |
+| [VRCX](https://github.com/vrcx-team/VRCX) | [MIT](https://github.com/vrcx-team/VRCX/blob/master/LICENSE); copyright VRCX contributors | Official GitHub release installer download/verification and out-of-process launch/stop; VRCX retains its own sign-in |
+| [VRCS](https://github.com/Dreaminko/VRCS) | [AGPL-3.0](https://github.com/Dreaminko/VRCS/blob/main/LICENSE) | Out-of-process official release installer download/verification and detached launch/stop (`installer-tool v0.1`); no code linking, modification, or network-service hosting |
+| [ALCOM (`vrc-get`)](https://github.com/vrc-get/vrc-get) | [MIT](https://github.com/vrc-get/vrc-get/blob/master/LICENSE); copyright anatawa12 and contributors | Local presence detection and zero-argument breakaway launch (`manager-apps v0.2`); external projects remain read-only |
 
-The following connections use the same official Steam purchase/install and external-launch path.
+The following connections use official Steam store/launch handoffs or official creator distributions.
 Their distributions retain their own upstream terms, license notices and dependency inventories;
 VUA does not copy their source or binaries. Paid/free availability is separate from source licensing.
 
@@ -132,14 +137,21 @@ VUA does not copy their source or binaries. Paid/free availability is separate f
 | [OVR Advanced Settings](https://store.steampowered.com/app/1009850/) | Discover and launch the paid Steam distribution of the VR settings utility |
 | [OVR Toolkit](https://store.steampowered.com/app/1068820/) | Discover and launch the paid desktop-overlay application |
 | [OyasumiVR](https://store.steampowered.com/app/2538150/) | Discover and launch the free VR sleep utility; its account/automation settings remain upstream |
-| [LIV](https://store.steampowered.com/app/755540/) | Discover and launch the free Steam base application for capture/streaming; no LIV SDK integration into VRChat |
+| [fpsVR](https://store.steampowered.com/app/908520/) | Discover and launch the paid Steam VR performance monitor (`external-tool v0.4`) |
+| [ChilloutVR](https://store.steampowered.com/app/661130/) / [Reborn](https://store.steampowered.com/app/2522420/) | Optional social VR platform entries via official Steam install/launch handoffs |
+| [LIV](https://store.steampowered.com/app/755540/) | Planned free Steam base application card for capture/streaming; no LIV SDK integration into VRChat |
+| [VRChat Creator Companion (VCC)](https://vrchat.com/home/download) | Local presence detection and zero-argument breakaway launch (`manager-apps v0.2`); external projects remain read-only |
 
-VUA guides users to add these applications to their Steam library, install them through Steam,
-and launch their independent installations through supported external entry points. Upstream
-applications retain their own features, dependencies and license inventories; Space Calibrator's
-full distribution has terms beyond its MIT core. Those terms are distinct from VUA's Apache-2.0.
+AMF package management and isolated work-project preparation also resolve unbundled upstream Unity
+VPM packages directly from their official feeds when requested by materials, explicit player opt-in,
+or saved Recipes (full table and license URLs in [docs/development/known-packages.md](docs/development/known-packages.md)):
+`Modular Avatar` (MIT), `NDMF` (MIT), `AAO: Avatar Optimizer` (MIT), `lilycalInventory` (MIT),
+`lilAvatarUtils` (MIT), `lilNDMFMeshSimplifier` (MIT), `TexTransTool` (MIT), `FaceEmo` (MIT),
+`ComboGestureExpressions` (MIT), `FloorAdjuster` (Zlib), `VRCQuestTools` (MIT), `lilToon` (MIT),
+`Poiyomi Toon Shader` (MIT), `UnlitWF Shader` (Zlib), `VRM Converter for VRChat` (MPL-2.0, guide-only),
+and `UniVRM` (MIT, guide-only). VUA redistributes none of these VPM archives.
 
-If a later VUA release incorporates, modifies or redistributes source/binaries from either tool,
+If a later VUA release incorporates, modifies or redistributes source/binaries from any external tool,
 review the exact version and all included dependencies before release; preserve applicable license,
 copyright, attribution/NOTICE and modification notices. External connection alone is not permission
 to redistribute.

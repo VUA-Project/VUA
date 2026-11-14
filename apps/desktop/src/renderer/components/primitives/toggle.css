@@ -32,12 +32,16 @@
 
 .vua-toggle[data-on]::after {
   transform: translateX(24px);
-  background: #ffffff;
+  background: var(--vua-accent-contrast);
 }
 
 .vua-toggle[data-variant="danger"][data-on] {
   border-color: var(--vua-error);
   background: var(--vua-error);
+}
+
+.vua-toggle[data-variant="danger"][data-on]::after {
+  background: var(--vua-on-error);
 }
 
 .vua-toggle:disabled {

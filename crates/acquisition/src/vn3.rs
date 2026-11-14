@@ -199,8 +199,13 @@ pub fn parse_text(raw: &str, sha: &str) -> TermsDocument {
         .field(start, metadata[6], metadata[7])
         .map(|s| normalize(&s));
     if let Some(tags) = text.field(start, metadata[4], metadata[5]) {
-        let regex = Regex::new(r"#[\p{L}\p{M}\p{N}_]+").expect("hashtag regex");
-        out.hashtags = regex.find_iter(&tags).map(|m| m.as_str().into()).collect();
+        static HASHTAG_REGEX: std::sync::LazyLock<Regex> = std::sync::LazyLock::new(|| {
+            Regex::new(r"#[\p{L}\p{M}\p{N}_]+").expect("hashtag regex")
+        });
+        out.hashtags = HASHTAG_REGEX
+            .find_iter(&tags)
+            .map(|m| m.as_str().into())
+            .collect();
         if out.hashtags.is_empty() && !empty_special_note(&tags) {
             warning(&mut out, "unrecognized_hashtags", None);
         }
@@ -212,8 +217,9 @@ pub fn parse_text(raw: &str, sha: &str) -> TermsDocument {
     let items_start = text.flat[start..end]
         .find(metadata[1])
         .map_or(start, |at| start + at + metadata[1].len());
-    let tags = Regex::new(r"([A-X])\.").expect("item regex");
-    let mut marks: Vec<_> = tags
+    static ITEM_HEADING_REGEX: std::sync::LazyLock<Regex> =
+        std::sync::LazyLock::new(|| Regex::new(r"([A-X])\.").expect("item regex"));
+    let mut marks: Vec<_> = ITEM_HEADING_REGEX
         .captures_iter(&text.flat[items_start..end])
         .map(|c| {
             (

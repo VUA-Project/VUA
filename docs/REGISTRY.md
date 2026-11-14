@@ -1,6 +1,6 @@
 # Contract and decision registry
 
-> Updated: 2026-11-13
+> Updated: 2026-11-14
 
 Contracts, schema directories and decisions with their version, status, owner and last review date. [Documentation governance](meta/documentation-governance.md) defines the statuses and when a row changes. Earlier registry contents, including other document versions, remain in Git history and [the archive](archive/2026-09-29/registry-before-simplification.md).
 
@@ -12,9 +12,9 @@ Contracts, schema directories and decisions with their version, status, owner an
 | docs/decisions/path-configuration.md | ADR | Accepted | Integration | 2026-09-12 |
 | docs/decisions/vua-instance-identity.md | ADR | Accepted | Integration | 2026-09-06 |
 | docs/decisions/warehouse-layout.md | ADR | Accepted | Integration | 2026-09-06 |
-| docs/development/known-packages.md | — | Implementation baseline | AMF | 2026-11-11 |
-| docs/protocols/ai-tools-v0.1.md | 0.15.0 | Candidate | Integration | 2026-11-12 |
-| docs/protocols/amf-production-v0.1.md | 0.43.0 | Candidate | AMF | 2026-11-12 |
+| docs/development/known-packages.md | — | Implementation baseline | AMF | 2026-11-14 |
+| docs/protocols/ai-tools-v0.1.md | 0.19.0 | Candidate | Integration | 2026-11-14 |
+| docs/protocols/amf-production-v0.1.md | 0.44.0 | Candidate | AMF | 2026-11-14 |
 | docs/protocols/amf-recipe-v0.4.md | 0.6.0 | Candidate | AMF | 2026-10-24 |
 | docs/protocols/amf-recipe-v0.5.md | 0.2.1 | Candidate | AMF | 2026-11-11 |
 | docs/protocols/amf-recipe-v0.6.md | 0.1.0 | Candidate | AMF | 2026-11-11 |
@@ -34,7 +34,7 @@ Contracts, schema directories and decisions with their version, status, owner an
 | docs/protocols/catalog-orders-v0.1.md | 0.1 | Implementation baseline | AMF | 2026-11-07 |
 | docs/protocols/desktop-browser-v0.1.md | 1.1.0 | Candidate | Desktop | 2026-10-11 |
 | docs/protocols/desktop-library-v0.1.md | 1.4.0 | Candidate | Desktop | 2026-10-12 |
-| docs/protocols/desktop-resource-v0.2.md | 1.0.0 | Candidate | Desktop | 2026-10-10 |
+| docs/protocols/desktop-resource-v0.2.md | 1.1.0 | Candidate | Desktop | 2026-11-14 |
 | docs/protocols/desktop-startup-v0.1.md | 1.0.0 | Candidate | Desktop | 2026-10-10 |
 | docs/protocols/desktop-window-v0.2.md | 1.0.2 | Candidate | Desktop | 2026-10-10 |
 | docs/protocols/download-events-v0.1.md | 0.1 | Frozen | Data | 2026-09-06 |
@@ -44,11 +44,13 @@ Contracts, schema directories and decisions with their version, status, owner an
 | docs/protocols/external-tool-v0.1.md | 0.1 | Superseded (→ docs/protocols/external-tool-v0.2.md) | Environment | 2026-10-10 |
 | docs/protocols/external-tool-v0.2.md | 0.1.2 | Superseded (→ docs/protocols/external-tool-v0.3.md) | Environment | 2026-10-14 |
 | docs/protocols/external-tool-v0.3.md | 0.1.0 | Superseded (→ docs/protocols/external-tool-v0.4.md) | Environment | 2026-11-11 |
-| docs/protocols/external-tool-v0.4.md | 0.1.0 | Candidate | Environment | 2026-11-11 |
+| docs/protocols/external-tool-v0.4.md | 0.1.1 | Candidate | Environment | 2026-11-14 |
+| docs/protocols/glb-inspection-v0.1.md | 0.1.0 | Candidate | AMF | 2026-11-14 |
 | docs/protocols/guide-content-v0.1.md | 0.1.0 | Candidate | Desktop | 2026-11-11 |
 | docs/protocols/inspection-evidence-v0.1.md | 0.1 | Frozen | Production | 2026-09-13 |
 | docs/protocols/inspection-queries-v0.1.md | 0.1 | Frozen | Data | 2026-09-13 |
 | docs/protocols/installer-tool-v0.1.md | 0.1.0 | Candidate | Environment | 2026-11-11 |
+| docs/protocols/local-diagnostics-v0.1.md | 0.1.0 | Candidate | Environment | 2026-11-14 |
 | docs/protocols/library-download-v0.1.md | 0.1 | Implementation baseline | AMF | 2026-10-08 |
 | docs/protocols/library-entry-metadata-v0.1.md | 0.1 | Implementation baseline | AMF | 2026-10-09 |
 | docs/protocols/library-intake-v0.1.md | 0.1 | Implementation baseline | AMF | 2026-10-09 |
@@ -59,7 +61,8 @@ Contracts, schema directories and decisions with their version, status, owner an
 | docs/protocols/library-records-v0.2.md | 0.2 | Implementation baseline | AMF | 2026-10-12 |
 | docs/protocols/library-view-v0.1.md | 0.8 | Implementation baseline | AMF | 2026-10-12 |
 | docs/protocols/library-view-v0.2.md | 0.2.1 | Candidate | AMF | 2026-11-06 |
-| docs/protocols/library-view-v0.3.md | 0.3.0 | Candidate | AMF | 2026-11-07 |
+| docs/protocols/library-view-v0.3.md | 0.4.0 | Candidate | AMF | 2026-11-14 |
+| docs/protocols/manager-apps-v0.2.md | 0.1.0 | Candidate | Environment | 2026-11-14 |
 | docs/protocols/material-intake-v0.1.md | 0.1 | Implementation baseline | Production | 2026-09-06 |
 | docs/protocols/material-intake-v0.2.md | 0.2.1 | Frozen | Core | 2026-09-21 |
 | docs/protocols/packages-catalog-v0.2.md | 0.2 | Frozen | Core | 2026-09-17 |
@@ -75,6 +78,7 @@ Contracts, schema directories and decisions with their version, status, owner an
 | docs/protocols/packages-repos-catalog-v0.1.md | 0.1 | Frozen | Core | 2026-09-17 |
 | docs/protocols/packages-repos-v0.2.md | 0.2.1 | Frozen | Core | 2026-09-21 |
 | docs/protocols/packages-templates-v0.1.md | 0.1.1 | Frozen | Core | 2026-09-20 |
+| docs/protocols/pose-graph-v0.1.md | 0.1.0 | Candidate | Environment | 2026-11-14 |
 | docs/protocols/production-evidence-v0.1.md | 0.1 | Frozen | Data | 2026-09-08 |
 | docs/protocols/production-use-case-v0.1.md | 0.1 | Frozen | Core | 2026-09-07 |
 | docs/protocols/production-use-case-v0.2.md | 0.2 | Frozen | Core | 2026-09-09 |
@@ -84,7 +88,7 @@ Contracts, schema directories and decisions with their version, status, owner an
 | docs/protocols/recipe-image-share-v0.1.md | 0.1.0 | Candidate | AMF | 2026-10-29 |
 | docs/protocols/recipe-export-v0.1.md | 0.1.2 | Frozen | Core | 2026-09-22 |
 | docs/protocols/recipe-selection-draft-v0.1.md | 0.2.0 | Implementation baseline | AMF | 2026-11-11 |
-| docs/protocols/share-links-v0.1.md | 0.1.0 | Candidate | AMF / Hosting | 2026-10-28 |
+| docs/protocols/share-links-v0.1.md | 0.1.2 | Candidate | AMF / Hosting | 2026-11-14 |
 | docs/protocols/release-handoff-v0.1.md | 0.1 | Frozen | Core | 2026-09-16 |
 | docs/protocols/release-handoff-v0.2.md | 0.2 | Frozen | Core | 2026-09-21 |
 | docs/protocols/scenario-environment-v0.1.md | 0.1.0 | Candidate | Environment | 2026-10-13 |
@@ -149,7 +153,9 @@ Contracts, schema directories and decisions with their version, status, owner an
 | schemas/external-tool/v0.3/ | 0.3 | Superseded (→ schemas/external-tool/v0.4/) | Environment | 2026-11-06 |
 | schemas/external-tool/v0.4/ | 0.4 | Candidate | Environment | 2026-11-11 |
 | schemas/installer-tool/v0.1/ | 0.1 | Candidate | Environment | 2026-11-11 |
+| schemas/local-diagnostics/v0.1/ | 0.1 | Candidate | Environment | 2026-11-14 |
 | schemas/game-window-observe/v0.1/ | 0.1 | Candidate | Environment | 2026-10-08 |
+| schemas/glb-inspection/v0.1/ | 0.1 | Candidate | AMF | 2026-11-14 |
 | schemas/guide-content/v0.1/ | 0.1 | Candidate | Desktop | 2026-11-11 |
 | schemas/inspection-queries/v0.1 | 0.1 | Frozen | Data | 2026-09-13 |
 | schemas/library-download/v0.1 | 0.1 | Implementation baseline | AMF | 2026-10-08 |
@@ -163,6 +169,7 @@ Contracts, schema directories and decisions with their version, status, owner an
 | schemas/library-view/v0.2 | 0.2 | Candidate | AMF | 2026-10-29 |
 | schemas/library-view/v0.3 | 0.3 | Candidate | AMF | 2026-11-06 |
 | schemas/manager-apps/v0.1/ | 0.1 | Candidate | Environment | 2026-10-09 |
+| schemas/manager-apps/v0.2/ | 0.2 | Candidate | Environment | 2026-11-14 |
 | schemas/packages-catalog/v0.1 | 0.1 | Frozen | Core | 2026-09-17 |
 | schemas/packages-catalog/v0.2 | 0.2 | Frozen | Core | 2026-09-17 |
 | schemas/packages-ops/v0.1 | 0.1 | Frozen | Core | 2026-09-19 |
@@ -179,6 +186,7 @@ Contracts, schema directories and decisions with their version, status, owner an
 | schemas/packages-templates/v0.1 | 0.1 | Frozen | Core | 2026-09-20 |
 | schemas/play-session/v0.1/ | 0.1 | Superseded (→ schemas/play-session/v0.2/) | Environment | 2026-10-09 |
 | schemas/play-session/v0.2/ | 0.2 | Candidate | Environment | 2026-10-09 |
+| schemas/pose-graph/v0.1/ | 0.1 | Candidate | Environment | 2026-11-14 |
 | schemas/project-inspection/v0.1 | 0.1 | Superseded | Environment | 2026-09-09 |
 | schemas/project-ops/v0.1 | 0.1 | Superseded | Environment | 2026-09-12 |
 | schemas/project-ops/v0.2 | 0.2 | Frozen | Core | 2026-09-12 |

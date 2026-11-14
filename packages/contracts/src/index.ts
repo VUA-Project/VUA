@@ -53,3 +53,7 @@ export * from "./share-links-v01.js";
 export * from "./library-view-v02.js";
 export * from "./library-view-v03.js";
 export * from "./guide-content.js";
+export * from "./local-diagnostics-v01.js";
+export * from "./pose-graph-v01.js";
+export * from "./glb-inspection-v01.js";
+export * from "./tool-catalog-v01.js";

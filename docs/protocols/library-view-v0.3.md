@@ -1,8 +1,8 @@
 # Unified library view v0.3
 
-> Document version: 0.3.0
+> Document version: 0.4.0
 > Status: Candidate
-> Updated: 2026-11-07
+> Updated: 2026-11-14
 > Owner: AMF
 
 This `library.list` face adds an order and a filter on VN3 items to the local library projection.
@@ -18,6 +18,7 @@ reverse-description-link, offset and limit fields of v0.1. The purpose fields of
 | Field | Values | Omitted |
 | --- | --- | --- |
 | `sort` | `added_desc`, `added_asc`, `title_asc`, `title_desc`, `shop_asc`, `price_asc`, `price_desc`, `published_desc`, `size_desc`, `size_asc` | The order of v0.1 |
+| `format` | `vrm_or_glb`, `unitypackage` | Every row, regardless of observed file extensions |
 | `vn3` | Object with optional `state`, `items` and `includeContact` | No terms read, no annotation |
 
 `vn3.state` is `readable`, `no_vn3`, `unread` or `unreadable`. `vn3.items` lists distinct letters from
@@ -77,8 +78,12 @@ requests; **Read terms** stays an explicit command.
 ## Row facts
 
 Every row adds `addedAt`, `publishedAt` and `sizeBytes` as described above, so the interface shows the
-fact it sorted by. The [schemas and vectors](../../schemas/library-view/v0.3) are consumed by the
-TypeScript guards and the native library wire test.
+fact it sorted by. Each row may also carry `formats`, an ordered distinct array of observed package
+format tags (`unitypackage`, `vrm`, `glb`, `gltf`) derived strictly from in-memory downloadable and
+copy file names without touching disk archives. `format: "vrm_or_glb"` retains rows carrying `vrm`,
+`glb`, or `gltf`; `format: "unitypackage"` retains rows carrying `unitypackage`. The
+[schemas and vectors](../../schemas/library-view/v0.3) are consumed by the TypeScript guards and the
+native library wire test.
 
 ## Older providers
 
@@ -87,5 +92,7 @@ provider's order and hides the VN3 filter's counts, so the library stays usable 
 
 ## Changelog
 
+- 0.4.0 (2026-11-14): add optional in-memory `formats` (`unitypackage`, `vrm`, `glb`, `gltf`) on rows
+  and `format` (`vrm_or_glb`, `unitypackage`) query filtering without disk archive reads.
 - 0.3.0 (2026-11-06): add ordering and the VN3 item filter; the desktop library retires the purpose
   filter of v0.2.

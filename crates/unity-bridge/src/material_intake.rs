@@ -36,6 +36,9 @@ pub const MATERIAL_INTAKE_SCHEMA_VERSION: &str = "0.1";
 /// protocol book and the executor; the closed set stays nine members.
 pub const MATERIAL_PLAN_SCHEMA_VERSION: &str = "0.2";
 const MAX_PATHNAME_BYTES: u64 = 64 * 1024;
+const MAX_DECLARED_DEPENDENCIES_BYTES: u64 = 1024 * 1024;
+const MAX_UNITYPACKAGE_DECOMPRESSED_BYTES: u64 = 8 * 1024 * 1024 * 1024;
+const MAX_UNITYPACKAGE_TAR_ENTRIES: usize = 100_000;
 
 pub mod error_codes {
     pub const SOURCE_INVALID: &str = "vua.material.source_invalid";
@@ -396,8 +399,16 @@ fn read_declared_dependencies(source_folder: &Path) -> io::Result<Vec<DeclaredDe
     match File::open(&path) {
         Err(error) if error.kind() == io::ErrorKind::NotFound => return Ok(Vec::new()),
         Err(error) => return Err(error),
-        Ok(mut file) => {
-            file.read_to_string(&mut raw)?;
+        Ok(file) => {
+            let read = file
+                .take(MAX_DECLARED_DEPENDENCIES_BYTES + 1)
+                .read_to_string(&mut raw)?;
+            if read as u64 > MAX_DECLARED_DEPENDENCIES_BYTES {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "vua-dependencies.json exceeds 1 MiB limit",
+                ));
+            }
         }
     }
     let value: serde_json::Value = serde_json::from_str(&raw).map_err(|error| {
@@ -498,10 +509,18 @@ fn scan_unitypackage(
     asset_paths: &mut Vec<String>,
 ) -> io::Result<()> {
     let file = File::open(path)?;
-    let decoder = GzDecoder::new(file);
+    let decoder = GzDecoder::new(file).take(MAX_UNITYPACKAGE_DECOMPRESSED_BYTES);
     let mut archive = tar::Archive::new(decoder);
+    let mut entries_seen = 0usize;
     for entry in archive.entries()? {
-        let mut entry = entry?;
+        entries_seen += 1;
+        if entries_seen > MAX_UNITYPACKAGE_TAR_ENTRIES {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "unitypackage exceeds maximum tar entry count",
+            ));
+        }
+        let entry = entry?;
         let entry_path = entry.path()?.to_string_lossy().replace('\\', "/");
         if !entry_path.ends_with("/pathname") && entry_path != "pathname" {
             continue;
@@ -513,15 +532,21 @@ fn scan_unitypackage(
             ));
         }
         let mut logical_path = String::new();
-        entry.read_to_string(&mut logical_path)?;
+        entry
+            .take(MAX_PATHNAME_BYTES + 1)
+            .read_to_string(&mut logical_path)?;
         let logical_path = logical_path.trim().replace('\\', "/");
         validate_asset_path(&logical_path)?;
         // 第 150 批通道边界预检（操作者裁定）：含 `Packages/` 条目的包在
         // 检查面即如实阻断——素材直导通道不写 VPM 包域（`Packages/` 是
         // vpm-manifest 追踪的 VPM 通道领地），计划与确认因此根本不会形成。
-        // 按既有 `archive_invalid` 族上浮，零新码。判定与 C# 物化面/
-        // 解包面的 Ordinal 前缀同形。
-        if logical_path.starts_with("Packages/") {
+        // 按既有 `archive_invalid` 族上浮，零新码。Windows 文件系统大小写
+        // 不敏感，`packages/` 等变体同样阻断。
+        let first_segment = logical_path.split('/').next().unwrap_or("");
+        if first_segment
+            .trim_end_matches([' ', '.'])
+            .eq_ignore_ascii_case("Packages")
+        {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 format!("archive entry targets Packages/ (VPM channel boundary): {logical_path}"),
@@ -535,9 +560,19 @@ fn scan_unitypackage(
 
 fn validate_asset_path(path: &str) -> io::Result<()> {
     if path.is_empty()
+        || path.len() > 2048
         || path.starts_with('/')
         || path.contains(':')
-        || path.split('/').any(|part| part == ".." || part.is_empty())
+        || path.split('/').any(|part| {
+            part.is_empty()
+                || part == "."
+                || part == ".."
+                || part.ends_with(['.', ' '])
+                || part
+                    .chars()
+                    .any(|c| c.is_control() || matches!(c, '<' | '>' | '"' | '|' | '?' | '*'))
+                || is_windows_reserved_device_name(part)
+        })
     {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
@@ -545,6 +580,21 @@ fn validate_asset_path(path: &str) -> io::Result<()> {
         ));
     }
     Ok(())
+}
+
+fn is_windows_reserved_device_name(part: &str) -> bool {
+    let stem = part.split('.').next().unwrap_or("").to_ascii_uppercase();
+    matches!(
+        stem.as_str(),
+        "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$"
+    ) || ["COM", "LPT"].iter().any(|prefix| {
+        stem.strip_prefix(prefix).is_some_and(|suffix| {
+            matches!(
+                suffix,
+                "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "¹" | "²" | "³"
+            )
+        })
+    })
 }
 
 fn classify_risks(package_path: &str, asset_path: &str, output: &mut Vec<ExecutableRiskEvidence>) {

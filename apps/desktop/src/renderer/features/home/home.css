@@ -149,7 +149,7 @@
 /* Tools: logos share one column and names start at the same edge; a long name takes two lines. */
 .vua-tools-hub .vua-environment-card > .vua-environment-card__details { display: grid; grid-template-columns: 36px minmax(0, 1fr); justify-content: stretch; justify-items: start; align-items: center; column-gap: 12px; padding-inline: 20px; text-align: start; }
 .vua-tools-hub .vua-environment-card__details strong, .vua-other-platforms .vua-environment-card__details strong, .vua-card-entry[data-other] .vua-environment-card__details strong { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; overflow: hidden; font-size: var(--vua-text-body-size); line-height: var(--vua-text-body-leading); }
-.vua-tool-logo { display: block; width: 36px; height: 36px; object-fit: contain; border-radius: 6px; }
+.vua-tool-logo { display: block; width: 36px; height: 36px; object-fit: contain; border-radius: var(--vua-radius-control); }
 .vua-compact-environments .vua-environment-card__action > svg { width: 24px; height: 24px; }
 :is(.vua-play-page, .vua-home) .vua-environment-card > .vua-environment-card__details { display: grid; grid-template-columns: 36px minmax(0, 1fr); align-content: center; justify-content: stretch; justify-items: start; column-gap: 12px; text-align: start; }
 .vua-route-tile__icon > svg { min-width: 0; min-height: 0; }

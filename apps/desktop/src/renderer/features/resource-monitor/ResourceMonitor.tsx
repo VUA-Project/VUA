@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { SystemResourceUsageV2 } from "@vua/contracts";
 import { Icon } from "@vua/design-system";
 import { POPOVER_ENTER, POPOVER_EXIT, usePresenceMotion } from "../../components/primitives/motion.ts";
 import { format, strings } from "../../i18n/index.ts";
-import { formatGigabytes, usagePercents } from "./resource-monitor-model.ts";
+import { amfCapacityGuidance, formatGigabytes, sparklinePoints, usagePercents } from "./resource-monitor-model.ts";
+import { useResourceUsage } from "./resource-usage-store.ts";
 import "./resource-monitor.css";
 
 const copy = strings.resourceMonitor;
-const POLL_INTERVAL_MS = 2_000;
 function MeterRow({ label, percent, detail }: { label: string; percent: number | null; detail?: string | undefined }) {
   return <div className="vua-usage-panel__row">
     <span className="vua-usage-panel__label">{label}</span>
@@ -25,24 +24,11 @@ function MeterRow({ label, percent, detail }: { label: string; percent: number |
 /** Summary names the tightest resource with a three-step state (F6).
  * Detail is portalled outside the glass titlebar. */
 export function ResourceMonitor() {
-  const [snapshot, setSnapshot] = useState<SystemResourceUsageV2 | null>(null);
+  const { snapshot, history } = useResourceUsage();
   const [open, setOpen] = useState(false);
   const toggleRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const shown = usePresenceMotion(open, panelRef, POPOVER_ENTER, POPOVER_EXIT);
-  useEffect(() => {
-    const system = window.vua?.system;
-    if (system === undefined) return;
-    let alive = true;
-    const tick = () => {
-      const read = system.readResourceUsageV2 ? system.readResourceUsageV2() : system.readResourceUsage().then(value =>
-        ({ ...value, schemaVersion: 2 as const, cpuUsagePercent: null, gpuUsagePercent: null, gpuName: null, gpuKind: null }));
-      read.then(next => { if (alive) setSnapshot(next); }).catch(() => { if (alive) setSnapshot(null); });
-    };
-    tick();
-    const timer = window.setInterval(tick, POLL_INTERVAL_MS);
-    return () => { alive = false; window.clearInterval(timer); };
-  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -66,6 +52,8 @@ export function ResourceMonitor() {
 
   if (snapshot === null) return null;
   const view = usagePercents(snapshot);
+  const guidance = amfCapacityGuidance(snapshot);
+  const trendPolyline = sparklinePoints(history, 120, 24);
   const resourceNames = { cpu: copy.cpu, gpu: copy.gpu, ram: copy.ramShort, vram: copy.vramShort };
   const stateWords = { plenty: copy.statePlenty, gettingTight: copy.stateGettingTight, tight: copy.stateTight };
   const state = stateWords[view.loadState];
@@ -92,6 +80,16 @@ export function ResourceMonitor() {
       <MeterRow label={copy.ram} percent={view.ramPct} detail={formatGigabytes(snapshot.ramUsedBytes) + " / " + formatGigabytes(snapshot.ramTotalBytes) + " GB"} />
       <MeterRow label={copy.vram} percent={view.vramPct}
         detail={snapshot.vramUsedBytes !== null && snapshot.vramTotalBytes !== null ? formatGigabytes(snapshot.vramUsedBytes) + " / " + formatGigabytes(snapshot.vramTotalBytes) + " GB" : undefined} />
+      {trendPolyline ? (
+        <div className="vua-usage-panel__trend">
+          <span className="vua-usage-panel__label">{copy.trend60s}</span>
+          <svg className="vua-usage-panel__sparkline" viewBox="0 0 120 24" aria-hidden="true" data-audit-skip>
+            <polyline fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" points={trendPolyline} />
+          </svg>
+        </div>
+      ) : null}
+      {guidance ? <p className="vua-usage-panel__note">{format(copy.capacity[guidance.tier], { freeRam: guidance.availableRamGiB })}</p> : null}
+      {snapshot.steamVrRunning === true ? <p className="vua-usage-panel__note">{copy.steamVrRunningNote}</p> : null}
       {snapshot.gpuKind === "integrated" ? <p className="vua-usage-panel__note">{copy.sharedMemory}</p> : null}
     </div>, document.body) : null}
   </>;

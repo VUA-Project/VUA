@@ -1,8 +1,8 @@
 # Play environment sessions
 
 > Status: Candidate
-> Updated: 2026-11-07
-> Scope: Desktop/PICO software launch and card-scoped close; play-session v0.2
+> Updated: 2026-11-14
+> Scope: Desktop/PICO software launch and card-scoped close; play-session v0.2 and manager-apps v0.2
 
 Launch shows one card for the chosen combination. Its left half opens the choices and steps; its right half
 reports observed readiness and the current action. PC mode and PICO Connect are the combinations these sessions cover. Installation remains the reviewed
@@ -65,6 +65,13 @@ VCC and ALCOM. Hub reuses the narrow environment probe. The other managers use t
 LocalAppData/ProgramFiles product directories and known App Paths/Uninstall registry values;
 paths must resolve to a file. Nothing is installed, started, configured or registered by this
 query. A missing finding means not found in those locations, not proof of absence everywhere.
+
+`environment.openManagerApp` ([manager-apps v0.2](../protocols/manager-apps-v0.2.md),
+`schemas/manager-apps/v0.2/`) is an explicit command with `commandId` idempotency and closed
+`params: { managerId: "unity_hub" | "vcc" | "alcom" }`. It resolves the target path from a fresh
+local probe, verifies the Windows `MZ` executable header, strips sensitive/internal environment
+variables, and spawns the manager detached with `CREATE_BREAKAWAY_FROM_JOB` and zero command-line
+arguments so external projects stay untouched under Ruling U3.
 
 The frozen `project.environmentManagers` query separately supplies configuration records and
 editor directory candidates. The typed creator port verifies each editor candidate through

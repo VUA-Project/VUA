@@ -81,7 +81,7 @@
 .vua-graph__icon { color: var(--vua-text-strong); pointer-events: none; }
 .vua-graph__node[data-kind="outfit"] .vua-graph__icon, .vua-graph__node[data-kind="material"] .vua-graph__icon, .vua-graph__node[data-kind="package"] .vua-graph__icon { transform: translate(-6px, -6px) scale(0.75); }
 .vua-graph__count circle { fill: var(--kind); stroke: var(--vua-bg-canvas); stroke-width: 2; }
-.vua-graph__count text { fill: var(--vua-bg-canvas); font: var(--vua-font-caption); font-weight: var(--vua-weight-strong); text-anchor: middle; }
+.vua-graph__count text { fill: var(--vua-on-status); font: var(--vua-font-caption); font-weight: var(--vua-weight-strong); text-anchor: middle; }
 .vua-graph__label { position: absolute; left: 0; top: 0; box-sizing: border-box; max-width: 168px; padding: 1px var(--vua-space-1); overflow: hidden; border-radius: var(--vua-radius-sm, 2px); background: color-mix(in srgb, var(--vua-bg-canvas) 84%, transparent); color: var(--vua-text-strong); font: var(--vua-font-caption); white-space: nowrap; text-overflow: ellipsis; transition: opacity var(--vua-motion-fast) var(--vua-motion-ease); }
 .vua-graph__label[data-shown="false"] { visibility: hidden; }
 .vua-graph__label[data-dim] { opacity: 0.35; }
@@ -91,7 +91,7 @@
 .vua-control__legend li { display: inline-flex; align-items: center; gap: var(--vua-space-2); }
 .vua-control__mark { flex: none; overflow: visible; }
 .vua-control__mark .vua-graph__shape { stroke-width: 4; }
-.vua-control__shared-dot { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 0; background: var(--kind, var(--vua-text-secondary)); color: var(--vua-bg-canvas); font: var(--vua-font-caption); font-weight: var(--vua-weight-strong); }
+.vua-control__shared-dot { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 0; background: var(--kind, var(--vua-text-secondary)); color: var(--vua-on-status); font: var(--vua-font-caption); font-weight: var(--vua-weight-strong); }
 
 .vua-control__panel-head { display: grid; grid-template-columns: 1fr auto; gap: var(--vua-space-2); align-items: center; }
 .vua-control__panel-head h2 { grid-column: 1 / -1; }
@@ -113,6 +113,7 @@
 .vua-control__part small { color: var(--vua-text-secondary); font: var(--vua-font-caption); overflow-wrap: anywhere; }
 
 .vua-control__list { display: flex; flex-direction: column; gap: var(--vua-space-3); }
+.vua-control__list-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .vua-control__list ul.vua-recipe-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--vua-space-3); }
 .vua-recipe-card { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--vua-border); border-radius: var(--vua-radius-card); background: var(--vua-bg-panel); transition: border-color var(--vua-motion-fast) ease-out; }
 .vua-recipe-card:hover { border-color: var(--vua-border-strong); }
@@ -303,3 +304,13 @@ html[data-effects="off"] .vua-graph__edges line, html[data-effects="off"] .vua-g
 .vua-fits__actions { display: flex; gap: 8px; margin-inline-start: auto; }
 .vua-fits__error { flex-basis: 100%; }
 .vua-fits__error p { margin: 4px 0 0; }
+.vua-recipe-terms { display: grid; gap: 8px; padding-top: 8px; border-top: 1px solid var(--vua-border); min-width: 0; }
+.vua-recipe-terms h3, .vua-recipe-terms p { margin: 0; overflow-wrap: anywhere; }
+.vua-recipe-terms__use { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font: var(--vua-font-caption); color: var(--vua-text-secondary); }
+.vua-recipe-terms__use select { min-width: 0; max-width: 100%; min-height: var(--vua-control-height-sm); padding: 4px 8px; border: 1px solid var(--vua-border); border-radius: var(--vua-radius-control, 8px); background: var(--vua-bg-elevated); color: var(--vua-text-strong); font: var(--vua-font-caption); }
+.vua-recipe-terms__decision { font: var(--vua-font-body); font-weight: var(--vua-weight-strong); }
+.vua-recipe-terms__decision[data-decision="conforms"] { color: var(--vua-success-text); }
+.vua-recipe-terms__decision[data-decision="contact_licensor"] { color: var(--vua-warning-text); }
+.vua-recipe-terms__decision[data-decision="nonconforming"] { color: var(--vua-error-text); }
+.vua-recipe-terms__decision[data-decision="unknown"] { color: var(--vua-text-secondary); }
+.vua-recipe-terms__restriction { color: var(--vua-warning-text); }

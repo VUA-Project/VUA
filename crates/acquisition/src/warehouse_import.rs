@@ -152,6 +152,21 @@ pub struct MigrationGroupSource {
 pub const MIGRATION_GROUPS_LIMIT: usize = 200;
 pub const MIGRATION_FILES_LIMIT: usize = 20_000;
 
+fn is_windows_reserved_device_segment(segment: &str) -> bool {
+    let stem = segment.split('.').next().unwrap_or("").to_ascii_uppercase();
+    matches!(
+        stem.as_str(),
+        "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$"
+    ) || ["COM", "LPT"].iter().any(|prefix| {
+        stem.strip_prefix(prefix).is_some_and(|suffix| {
+            matches!(
+                suffix,
+                "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "¹" | "²" | "³"
+            )
+        })
+    })
+}
+
 /// A group's name becomes an entry folder name: no separators, reserved characters or edge
 /// spaces, and not empty after trimming.
 pub fn migration_group_name_valid(name: &str) -> bool {
@@ -162,6 +177,7 @@ pub fn migration_group_name_valid(name: &str) -> bool {
             c.is_control() || matches!(c, '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*')
         })
         && !name.ends_with('.')
+        && !is_windows_reserved_device_segment(name)
 }
 
 /// A recorded group path must stay inside its root and be representable in the warehouse.
@@ -171,9 +187,17 @@ pub fn migration_group_relative_valid(relative: &str) -> bool {
         && !relative.starts_with('/')
         && !relative.contains('\\')
         && !relative.contains(':')
-        && relative
-            .split('/')
-            .all(|part| !part.is_empty() && part != "." && part != ".." && part.len() <= 255)
+        && relative.split('/').all(|part| {
+            !part.is_empty()
+                && part != "."
+                && part != ".."
+                && part.len() <= 255
+                && !part.ends_with(['.', ' '])
+                && !part
+                    .chars()
+                    .any(|c| c.is_control() || matches!(c, '<' | '>' | '"' | '|' | '?' | '*'))
+                && !is_windows_reserved_device_segment(part)
+        })
 }
 
 impl<'a> WarehouseImporter<'a> {
@@ -316,10 +340,29 @@ impl<'a> WarehouseImporter<'a> {
         std::fs::create_dir_all(&self.warehouse_root)?;
         let canonical_root = std::fs::canonicalize(&self.warehouse_root)?;
         let mut sources = Vec::with_capacity(group.files.len());
-        for (relative, source) in &group.files {
-            if !migration_group_relative_valid(relative) {
+        let mut seen_lower = std::collections::HashSet::with_capacity(group.files.len());
+        for (relative, _) in &group.files {
+            if !migration_group_relative_valid(relative)
+                || !seen_lower.insert(relative.to_lowercase())
+            {
                 return Err(ImportError::InvalidGroupPath(relative.clone()));
             }
+        }
+        // Reject file-vs-parent-directory collisions inside the same group regardless of order.
+        for (relative, _) in &group.files {
+            let parts: Vec<_> = relative.split('/').collect();
+            let mut prefix = String::new();
+            for part in &parts[..parts.len() - 1] {
+                if !prefix.is_empty() {
+                    prefix.push('/');
+                }
+                prefix.push_str(part);
+                if seen_lower.contains(&prefix.to_lowercase()) {
+                    return Err(ImportError::InvalidGroupPath(relative.clone()));
+                }
+            }
+        }
+        for (relative, source) in &group.files {
             let metadata = std::fs::symlink_metadata(source)?;
             if crate::zip_intake::is_reparse(&metadata) || !metadata.is_file() {
                 return Err(std::io::Error::new(
@@ -401,15 +444,18 @@ impl<'a> WarehouseImporter<'a> {
                 std::fs::create_dir_all(parent)?;
             }
             let identity = if retain_all {
+                static IMPORT_SEQ: std::sync::atomic::AtomicU64 =
+                    std::sync::atomic::AtomicU64::new(0);
                 let mut input = std::fs::File::open(&source_path)?;
                 let stamp = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap_or_default()
                     .as_nanos();
+                let seq = IMPORT_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                 let prepared = destination
                     .parent()
                     .expect("destination parent")
-                    .join(format!(".vua-import-{stamp:x}"));
+                    .join(format!(".vua-import-{stamp:x}-{seq:x}"));
                 let result = (|| -> Result<String, ImportError> {
                     let mut output = std::fs::OpenOptions::new()
                         .write(true)
@@ -719,7 +765,7 @@ fn migration_import_job(
                                     ctx.emit_progress(serde_json::json!({
                                         "kind": "warehouse.import.generationSubmitFailed",
                                         "warehouseItemId": report.entry.warehouse_item_id,
-                                        "reason": format!("{error:?}"),
+                                        "reason": error.code,
                                     }));
                                 }
                             }
@@ -737,11 +783,12 @@ fn migration_import_job(
                     if matches!(error, ImportError::Cancelled) {
                         return Ok(TaskExit::Cancelled);
                     }
+                    let message = error.to_string();
                     let app = import_error_to_app(error, &spec.correlation_id, &group.root);
                     failures.push(MigrationGroupFailure {
                         name: group.name.clone(),
                         code: app.code.clone(),
-                        message: format!("{app:?}"),
+                        message,
                     });
                 }
             }
@@ -930,7 +977,7 @@ fn import_job(
                                 ctx.emit_progress(serde_json::json!({
                                     "kind": "warehouse.import.generationSubmitFailed",
                                     "warehouseItemId": report.entry.warehouse_item_id,
-                                    "reason": format!("{error:?}"),
+                                    "reason": error.code,
                                 }));
                             } else {
                                 ctx.emit_progress(serde_json::json!({

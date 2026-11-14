@@ -19,6 +19,9 @@ export const MCP_RETRYABLE_CODES: Readonly<Record<string, boolean>> = {
   review_pending_requests_first: false,
   installation_plan_changed: false,
   assembly_plan_changed: false,
+  texture_plan_changed: false,
+  lighting_plan_changed: false,
+  outfit_removal_plan_changed: false,
   material_or_editor_no_longer_available: false,
   recommendation_needs_player: false,
   result_too_large: false,
@@ -37,12 +40,15 @@ const MESSAGES: Readonly<Record<string, string>> = {
   review_pending_requests_first: "Four requests are already waiting or dispatching in VUA.",
   installation_plan_changed: "The installation plan changed. Read a fresh plan before requesting approval.",
   assembly_plan_changed: "The assembly plan changed. Read a fresh plan before requesting approval.",
+  texture_plan_changed: "The texture memory plan changed. Read a fresh texture plan before requesting approval.",
+  lighting_plan_changed: "The lighting alignment plan changed. Read a fresh lighting plan before requesting approval.",
+  outfit_removal_plan_changed: "The outfit removal plan changed. Read a fresh outfit removal plan before requesting approval.",
   material_or_editor_no_longer_available: "A selected material or Editor is no longer available.",
   recommendation_needs_player: "Several candidates need the player's choice before VUA can plan.",
   result_too_large: "The selected result exceeds the MCP response limit.",
 };
 export class AiToolFailure extends Error {
-  constructor(readonly code: string, readonly publicMessage?: string) { super(code); }
+  constructor(readonly code: string, readonly publicMessage?: string, readonly retryable?: boolean) { super(code); }
 }
 /** Error details are prose only: remove local paths, URLs and credential-shaped values. */
 export function safeErrorMessage(value: string, secrets: readonly string[] = []): string {
@@ -65,14 +71,16 @@ export function errorFields(error: unknown, secrets: readonly string[] = []) {
   const code = /^[a-z][a-z0-9_.-]{0,127}$/u.test(candidate) ? candidate : "request_failed";
   const detail = error instanceof AiToolFailure ? error.publicMessage : undefined;
   const fallback = typeof MESSAGES[code] === "string" ? MESSAGES[code] : "VUA could not complete this request. Read its current facts and recovery action.";
+  const retryable = MCP_RETRYABLE_CODES[code] === true && (!(error instanceof AiToolFailure) || error.retryable !== false);
   return { error: code, message: safeErrorMessage(detail ?? fallback, secrets),
     ...(code === "vua.amf_production.project_open" ? {suggestedAction:"amf.production.closeEditor"} : {}),
     nextAction: code === "vua.amf_production.project_open" ? "Request vua_request_amf_close_editor and wait for player approval, then inspect its task before retrying production."
+      : code === "vua.amf.unavailable" && !retryable ? "Ask the player to enable or repair the AMF module in VUA Settings → Modules, then retry."
       : code.includes("license") ? "Open VUA Settings → Accounts → Unity, activate a valid license in Hub, then reinspect retained AMF work."
       : code === "review_pending_requests_first" ? "Ask the player to decide waiting requests in VUA, or withdraw one with vua_withdraw_request."
-      : MCP_RETRYABLE_CODES[code] === true ? "Wait for the current work or connection to settle, then retry the same read or approval request."
+      : retryable ? "Wait for the current work or connection to settle, then retry the same read or approval request."
       : "Read current capabilities and facts, then correct the request or follow the recovery shown in VUA.",
-    mutationStarted: false, retryable: MCP_RETRYABLE_CODES[code] === true };
+    mutationStarted: false, retryable };
 }
 const pick = (value: Record<string, unknown>, keys: readonly string[]) => Object.fromEntries(keys.filter(key => key in value).map(key => [key, value[key]]));
 const rows = (value: unknown): Record<string, unknown>[] => Array.isArray(value) ? value.filter(isRecord) : [];
@@ -85,18 +93,20 @@ export function runSummary(value: unknown): unknown {
   const result = isRecord(value.result) ? value.result : null;
   const facts = result && isRecord(result.facts) ? result.facts : null;
   const sdk = facts && isRecord(facts.sdkReview) ? facts.sdkReview : null;
+  const ft = facts && isRecord(facts.faceTracking) ? facts.faceTracking : null;
   const issues = sdk ? rows(sdk.issues) : [];
   // A line keeps up to 50 revisions; the summary names the newest and the Resource holds them all.
-  return { ...pick(value, ["schemaVersion", "runId", "revision", "phase", "taskId", "createdAt", "completedAt", "selection", "error", "recovery", "progress", "usualDurations"]),
+  return { ...pick(value, ["schemaVersion", "runId", "revision", "phase", "taskId", "createdAt", "completedAt", "selection", "optimizer", "error", "recovery", "progress", "usualDurations"]),
     ...(isAmfEditorCloseResult(value.editorClose) ? {editorClose:{...value.editorClose,detail:safeErrorMessage(value.editorClose.detail)}} : {}),
     ...(Array.isArray(value.revisions) ? { revisionCount: value.revisions.length, revisions: value.revisions.slice(0, RUN_SUMMARY_REVISIONS) } : {}),
     sources: rows(value.sources).map(source => pick(source, ["sourceId", "role", "itemName"])),
     stepCount: count(value.steps), steps: rows(value.steps).slice(-20).map(step => pick(step, ["key", "name", "state", "startedAt", "endedAt"])),
     prefabs: prefabs(value.prefabs),
-    result: result ? { ...pick(result, ["officialSdkChecks", "visualReview", "packageVersions"]), diagnosticCount: count(result.diagnostics),
-      facts: facts ? { ...pick(facts, ["avatarGlobalObjectId", "avatarName", "projectFingerprint", "observedSelection"]),
+    result: result ? { ...pick(result, ["officialSdkChecks", "visualReview", "packageVersions", "parameterBudget"]), diagnosticCount: count(result.diagnostics),
+      facts: facts ? { ...pick(facts, ["avatarGlobalObjectId", "avatarName", "projectFingerprint", "observedSelection", "parameterBudget"]),
         prefabCount: count(facts.prefabs), previewCount: count(facts.previews),
         ...pick(facts, ["missingReferences", "hasMissingScripts", "sdkDescriptorRecognized", "sdkSignedIn", "officialSdkChecks", "visualReview"]),
+        ...(ft ? { faceTracking: { ...pick(ft, ["state", "truncated"]), menuCount: count(ft.menus) } } : {}),
         instanceCount: count(facts.instances), missingShaderMaterialCount: count(facts.missingShaderMaterials),
         sdkReview: sdk ? { ...pick(sdk, ["state", "platform", "overall"]), issueCount: count(sdk.issues),
           issuesByLevel: Object.fromEntries([...new Set(issues.map(issue => String(issue.level)))].map(level => [level, issues.filter(issue => issue.level === level).length])),
@@ -113,6 +123,16 @@ export function librarySummary(value: unknown, includeImages: boolean): unknown 
   const product = (value: unknown) => isRecord(value) ? { ...value, imageUrls: Array.isArray(value.imageUrls) ? value.imageUrls.slice(0, 1) : value.imageUrls } : value;
   return { ...value, items: rows(value.items).map(item => ({ ...item, ...(item.kind === "product" ? { product: product(item.product) } : {}),
     ...(isRecord(item.sourceMatch) ? { sourceMatch: { ...item.sourceMatch, product: product(item.sourceMatch.product) } } : {}) })) };
+}
+export function managerAppsSummary(value: unknown): unknown {
+  if (!isRecord(value) || !isRecord(value.managerApps)) return value;
+  const managerApps = value.managerApps;
+  return {
+    managerApps: {
+      ...pick(managerApps, ["schemaVersion", "capturedAt"]),
+      apps: rows(managerApps.apps).map(app => pick(app, ["component", "presence"])),
+    },
+  };
 }
 export function taskPage(value: unknown, limit = 20, states?: readonly unknown[]): Record<string, unknown> {
   const snapshot = isRecord(value) ? value : {};

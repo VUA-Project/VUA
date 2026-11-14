@@ -81,4 +81,17 @@ describe("creator inventory Gateway port", () => {
     invoke.mockResolvedValue(unavailable);
     await expect(createCreatorInventoryPort({ invoke, subscribe: () => () => {} }).inspect()).rejects.toThrow("creator_inventory_unavailable");
   });
+  it("dispatches environment.openManagerApp and validates the v0.2 launch receipt", async () => {
+    const invoke = vi.fn<GatewayClient["invoke"]>(async request =>
+      request.method === "environment.openManagerApp"
+        ? reply({ managerAppLaunch: { schemaVersion: "vua.manager-apps/v0.2", managerId: "alcom", launchedAt: "2026-11-14T03:00:00Z" } })
+        : unavailable);
+    const port = createCreatorInventoryPort({ invoke, subscribe: () => () => {} });
+    const launched = await port.openManager?.("alcom");
+    expect(launched).toEqual({ schemaVersion: "vua.manager-apps/v0.2", managerId: "alcom", launchedAt: "2026-11-14T03:00:00Z" });
+    expect(invoke).toHaveBeenCalledWith(expect.objectContaining({
+      method: "environment.openManagerApp",
+      params: expect.objectContaining({ managerId: "alcom" }),
+    }));
+  });
 });

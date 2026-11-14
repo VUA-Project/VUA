@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vua.local/schemas/pose-graph/v0.1/request.schema.json",
+  "title": "PoseGraphObserveRequestParamsV0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion"],
+  "properties": {
+    "schemaVersion": {
+      "const": "0.1"
+    }
+  }
+}

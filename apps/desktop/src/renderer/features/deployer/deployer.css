@@ -262,7 +262,7 @@
 }
 
 /* Purpose selection stays in document flow, with wrapping paths and explicit labels. */
-.vua-deployment { margin-block: var(--space-4, 16px); }
+.vua-deployment { margin-block: var(--vua-space-4); }
 .vua-deployment__choice { display: inline-flex; align-items: center; gap: 8px; margin: 8px 16px 8px 0; }
 .vua-deployment__location { display: block; width: min(100%, 36rem); margin-block: 8px; }
 .vua-deployment code { overflow-wrap: anywhere; }
@@ -271,7 +271,7 @@
 .vua-unity-license-guide > div { display: flex; gap: 12px; flex-wrap: wrap; }
 /* The observed license state sits above the guide, with its one next step. */
 .vua-unity-license-status { display: block; margin-block: 0 16px; padding: 12px 16px;
-  border: 1px solid var(--vua-border); border-left: 4px solid var(--vua-border-strong); border-radius: var(--vua-radius-md, 8px); background: var(--vua-bg-raised); }
+  border: 1px solid var(--vua-border); border-left: 4px solid var(--vua-border-strong); border-radius: var(--vua-radius-md, 8px); background: var(--vua-bg-elevated); }
 .vua-unity-license-status[data-state="active"] { border-left-color: var(--vua-success); }
 .vua-unity-license-status[data-state="attention"] { border-left-color: var(--vua-warning); }
 .vua-unity-license-status__title { font-weight: 600; margin: 0 0 4px; }

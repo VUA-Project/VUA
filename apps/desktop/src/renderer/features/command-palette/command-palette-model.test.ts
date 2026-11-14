@@ -38,3 +38,13 @@ test("光标循环:到头回卷,空列表恒 0,越界收敛末项", () => {
   assert.equal(moveCursor(5, 0, 3), 2);
   assert.equal(moveCursor(0, 1, 0), 0);
 });
+
+test("supports multi-token and full-width NFKC queries across label, hint, and keywords", () => {
+  const rich: CommandItem[] = [
+    { id: "pink", group: "guide", label: "Pink / broken materials", hint: "Avatars", keywords: "变粉 shader magenta", run: () => {} },
+    { id: "vrcft", group: "pages", label: "VRCFaceTracking", hint: "Tools", keywords: "face tracking 面捕", run: () => {} },
+  ];
+  assert.deepEqual(filterCommands(rich, "pink shader").map((c) => c.id), ["pink"]);
+  assert.deepEqual(filterCommands(rich, "变粉 avatars").map((c) => c.id), ["pink"]);
+  assert.deepEqual(filterCommands(rich, "ＶＲＣＦＴ　面捕").map((c) => c.id), ["vrcft"]);
+});

@@ -51,7 +51,7 @@ export function TextureMemoryCard({ port, run, level, disabled, onStarted, onErr
     {current ? <p>{format(copy.total, { size: (current.complete ? "" : "≥ ") + mib(current.totalBytes), rank: copy.ranks[current.rank] })}</p> : <p>{copy.inspect}</p>}
     <div className="vua-texture__controls">
       <label>{copy.platform}<select value={platform} disabled={starting} onChange={e => setPlatform(e.target.value as TexturePlatform)}>
-        <option value="pc">PC</option><option value="android">Android / Quest</option></select></label>
+        <option value="pc">{copy.platforms.pc}</option><option value="android">{copy.platforms.android}</option></select></label>
       <label>{copy.target}<select value={target} disabled={starting} onChange={e => setTarget(e.target.value as TextureTargetRank)}>
         {(["excellent", "good", "medium", "poor"] as const).map(r => <option key={r} value={r}>{copy.ranks[r]}</option>)}</select></label>
     </div>

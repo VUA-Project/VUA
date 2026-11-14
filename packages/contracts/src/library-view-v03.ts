@@ -3,15 +3,20 @@ import { isLibraryViewParamsV01, isLibraryListV01, type LibraryListParamsV01, ty
 /** How the library is ordered; each direction a player would ask for is its own word. */
 export const LIBRARY_SORTS = ["added_desc", "added_asc", "title_asc", "title_desc", "shop_asc", "price_asc", "price_desc", "published_desc", "size_desc", "size_asc"] as const;
 export type LibrarySort = typeof LIBRARY_SORTS[number];
+/** Observed file format families derived from captured BOOTH downloadables and local warehouse copies without disk reads. */
+export const LIBRARY_FORMATS = ["unitypackage", "vrm", "glb", "gltf"] as const;
+export type LibraryFormatV03 = typeof LIBRARY_FORMATS[number];
+export const LIBRARY_FORMAT_FILTERS = ["vrm_or_glb", "unitypackage"] as const;
+export type LibraryFormatFilterV03 = typeof LIBRARY_FORMAT_FILTERS[number];
 /** VN3 items a filter can require. X is the creator's free text, so it has no value to compare. */
 export const LIBRARY_VN3_ITEMS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W"] as const;
 export type LibraryVn3Item = typeof LIBRARY_VN3_ITEMS[number];
 export const LIBRARY_VN3_STATES = ["readable", "no_vn3", "unread", "unreadable"] as const;
 export type LibraryVn3State = typeof LIBRARY_VN3_STATES[number];
 export interface LibraryVn3FilterV03 { readonly state?: LibraryVn3State; readonly items?: readonly LibraryVn3Item[]; readonly includeContact?: boolean }
-export type LibraryListParamsV03 = Omit<LibraryListParamsV01, "schemaVersion"> & { readonly schemaVersion: "0.3"; readonly sort?: LibrarySort; readonly vn3?: LibraryVn3FilterV03 };
+export type LibraryListParamsV03 = Omit<LibraryListParamsV01, "schemaVersion"> & { readonly schemaVersion: "0.3"; readonly sort?: LibrarySort; readonly format?: LibraryFormatFilterV03; readonly vn3?: LibraryVn3FilterV03 };
 export interface LibraryVn3RowV03 { readonly state: LibraryVn3State; readonly match: "allowed" | "conditional" | "contact" | null; readonly hasSpecialNote: boolean }
-export type LibraryRowV03 = LibraryRowV01 & { readonly addedAt: string | null; readonly purchasedAt?: string | null; readonly publishedAt: string | null; readonly sizeBytes: number; readonly vn3?: LibraryVn3RowV03 };
+export type LibraryRowV03 = LibraryRowV01 & { readonly addedAt: string | null; readonly purchasedAt?: string | null; readonly publishedAt: string | null; readonly sizeBytes: number; readonly formats?: readonly LibraryFormatV03[]; readonly vn3?: LibraryVn3RowV03 };
 export interface LibraryVn3CountsV03 { readonly readable: number; readonly noVn3: number; readonly unread: number; readonly unreadable: number; readonly items: Readonly<Record<LibraryVn3Item, number>> }
 export type LibraryListV03 = Omit<LibraryListV01, "schemaVersion" | "items"> & { readonly schemaVersion: "0.3"; readonly items: readonly LibraryRowV03[]; readonly vn3Counts?: LibraryVn3CountsV03 };
 
@@ -25,11 +30,16 @@ function isVn3Filter(value: unknown): value is LibraryVn3FilterV03 {
   if (!Object.hasOwn(value, "items")) return true;
   return Array.isArray(value.items) && value.items.every(item => includes(LIBRARY_VN3_ITEMS, item)) && new Set(value.items).size === value.items.length;
 }
+function isFormatsRow(value: unknown): value is readonly LibraryFormatV03[] {
+  return Array.isArray(value) && value.length >= 1 && value.length <= LIBRARY_FORMATS.length
+    && value.every(item => includes(LIBRARY_FORMATS, item)) && new Set(value).size === value.length;
+}
 export function isLibraryListParamsV03(value: unknown): value is LibraryListParamsV03 {
   if (!record(value) || value.schemaVersion !== "0.3") return false;
-  const { sort, vn3, ...previous } = value;
+  const { sort, format, vn3, ...previous } = value;
   return isLibraryViewParamsV01("library.list", { ...previous, schemaVersion: "0.1" })
     && (!Object.hasOwn(value, "sort") || includes(LIBRARY_SORTS, sort))
+    && (!Object.hasOwn(value, "format") || includes(LIBRARY_FORMAT_FILTERS, format))
     && (!Object.hasOwn(value, "vn3") || isVn3Filter(vn3));
 }
 function isVn3Row(value: unknown): value is LibraryVn3RowV03 {
@@ -47,8 +57,10 @@ export function isLibraryListV03(value: unknown): value is LibraryListV03 {
   if (Object.hasOwn(value, "vn3Counts") && !isVn3Counts(vn3Counts)) return false;
   const items: unknown[] = [];
   for (const row of value.items) {
-    if (!record(row) || !date(row.addedAt) || (Object.hasOwn(row, "purchasedAt") && !date(row.purchasedAt)) || !date(row.publishedAt) || !count(row.sizeBytes) || (Object.hasOwn(row, "vn3") && !isVn3Row(row.vn3))) return false;
-    const { addedAt: _added, purchasedAt: _purchased, publishedAt: _published, sizeBytes: _size, vn3: _vn3, ...previous } = row;
+    if (!record(row) || !date(row.addedAt) || (Object.hasOwn(row, "purchasedAt") && !date(row.purchasedAt)) || !date(row.publishedAt) || !count(row.sizeBytes)
+      || (Object.hasOwn(row, "formats") && !isFormatsRow(row.formats))
+      || (Object.hasOwn(row, "vn3") && !isVn3Row(row.vn3))) return false;
+    const { addedAt: _added, purchasedAt: _purchased, publishedAt: _published, sizeBytes: _size, formats: _formats, vn3: _vn3, ...previous } = row;
     items.push(previous);
   }
   return isLibraryListV01({ ...list, schemaVersion: "0.1", items });

@@ -13,7 +13,7 @@ import type { CatalogBrowserPort } from "./catalog-browser-port.ts";
  *   不发起任何请求。本函数是唯一替换点,页面零重写。
  */
 export function createCatalogBrowser(): CatalogBrowserPort {
-  return window.vua !== undefined
+  return typeof window !== "undefined" && window.vua !== undefined
     ? createLiveCatalogBrowser(createGatewayClient(window.vua))
     : createEmptyCatalogBrowser();
 }

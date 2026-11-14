@@ -257,9 +257,11 @@ export class ModuleProvider implements OrchestratorProviderV01 {
   }
 
   #unavailable(request: ApplicationRequestV01): ApplicationResponseV01 {
+    const state = this.moduleSnapshot().state;
+    const retryable = state === "starting" || state === "stopping" || this.#changing;
     return { contractVersion: this.contractVersion, requestId: request.requestId, ok: false,
       error: { contractVersion: this.contractVersion, code: "vua.amf.unavailable", category: "unavailable",
-        messageKey: "errors.amf.unavailable", recoverable: true, retryable: true, correlationId: request.correlationId } };
+        messageKey: "errors.amf.unavailable", recoverable: true, retryable, correlationId: request.correlationId } };
   }
 
   /** Snapshot merges wait briefly; an AMF operation the player asked for may read the whole work
@@ -328,6 +330,11 @@ export class ModuleProvider implements OrchestratorProviderV01 {
       // tick, so rows keep their place while concurrent downloads run.
       const tasks = [...hostTasks, ...amfTasks];
       for (const task of tasks) if (!this.#taskFirstSeen.has(task.taskId)) this.#taskFirstSeen.set(task.taskId, task.updatedAt);
+      if ((!this.#enabled || optional?.ok) && (this.#taskFirstSeen.size > 2_048 || this.#taskOwners.size > 2_048)) {
+        const liveIds = new Set(tasks.map(task => task.taskId));
+        for (const id of this.#taskFirstSeen.keys()) if (!liveIds.has(id)) this.#taskFirstSeen.delete(id);
+        for (const id of this.#taskOwners.keys()) if (!liveIds.has(id)) this.#taskOwners.delete(id);
+      }
       const firstSeen = (task: TaskSnapshotV01) => this.#taskFirstSeen.get(task.taskId) ?? task.updatedAt;
       return { ...core, value: { contractVersion: this.contractVersion,
         revision: this.#nextRevision(core.value.revision, optional?.ok && "revision" in optional.value ? optional.value.revision : 0),

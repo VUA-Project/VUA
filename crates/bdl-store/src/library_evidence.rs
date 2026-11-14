@@ -207,6 +207,21 @@ impl BdlStore {
         Ok(owners)
     }
 
+    /// Recorded owned file labels (`anchor_text`) paired with their owning `product_id`,
+    /// used as deterministic read-model hints when reconciling local archive filenames (Slice 45).
+    pub fn library_downloadable_names(&self) -> Result<Vec<(String, String)>, BdlStoreError> {
+        let connection = self.connection.lock().expect("SQLite connection poisoned");
+        let mut statement = connection.prepare(
+            "SELECT product_id,anchor_text FROM product_downloadables
+             WHERE TRIM(anchor_text) != ''
+             ORDER BY product_id,downloadable_id",
+        )?;
+        let rows = statement.query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })?;
+        rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
+    }
+
     pub fn library_copy_evidence(&self) -> Result<Vec<LibraryCopyEvidence>, BdlStoreError> {
         let connection = self.connection.lock().expect("SQLite connection poisoned");
         let mut statement = connection.prepare(

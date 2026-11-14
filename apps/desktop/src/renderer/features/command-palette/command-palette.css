@@ -6,7 +6,7 @@
 .vua-palette__backdrop {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: var(--vua-z-dialog);
   display: flex;
   align-items: flex-start;
   justify-content: center;
@@ -47,17 +47,39 @@
   list-style: none;
 }
 
+.vua-palette__list:empty {
+  padding: 0;
+}
+
 .vua-palette__option {
   display: flex;
   align-items: center;
   gap: var(--vua-space-3);
+  min-height: 36px;
   padding: var(--vua-space-2) var(--vua-space-3);
   border-radius: var(--vua-radius-control);
   cursor: pointer;
 }
 
-.vua-palette__option span {
-  min-width: 40px;
+.vua-palette__group {
+  flex-shrink: 0;
+  min-width: 56px;
+}
+
+.vua-palette__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vua-palette__hint {
+  flex-shrink: 0;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .vua-palette__option:hover {
@@ -72,7 +94,14 @@
 }
 
 .vua-palette__empty {
-  padding: var(--vua-space-4) var(--vua-space-3);
+  margin: 0;
+  padding: var(--vua-space-4);
+}
+
+[data-effects="off"] .vua-palette__backdrop,
+[data-effects="off"] .vua-palette {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* forced-colors:关闭模糊,边界交给系统色边框 */

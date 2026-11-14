@@ -51,8 +51,16 @@ pub fn stage_original_source(
     command_id: &str,
     expected_artifact_sha256: &str,
 ) -> Result<StagedSource, PlanFileError> {
-    if command_id.is_empty() {
-        return Err(PlanFileError("command_id 必填".to_string()));
+    if command_id.is_empty()
+        || command_id.len() > 128
+        || command_id == "."
+        || command_id == ".."
+        || command_id.ends_with(['.', ' '])
+        || command_id.chars().any(|c| {
+            c.is_control() || matches!(c, '/' | '\\' | ':' | '<' | '>' | '"' | '|' | '?' | '*')
+        })
+    {
+        return Err(PlanFileError("command_id 非法或为空".to_string()));
     }
     let archive_digest = crate::material_exec::sha256_file(archive_path)
         .map_err(|error| PlanFileError(format!("来源物读取失败：{error}")))?;

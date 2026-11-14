@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vua.local/schemas/local-diagnostics/v0.1/osc-cache-clear-receipt.schema.json",
+  "title": "OscCacheClearReceiptResultV01",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["oscCacheClearReceipt"],
+  "properties": {
+    "oscCacheClearReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "clearedAt", "removedFileCount", "freedBytes"],
+      "properties": {
+        "schemaVersion": { "const": "vua.local-diagnostics/v0.1" },
+        "clearedAt": { "type": "string", "minLength": 1 },
+        "removedFileCount": { "type": "integer", "minimum": 0 },
+        "freedBytes": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

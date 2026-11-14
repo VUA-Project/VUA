@@ -33,7 +33,7 @@ export function BulkRemoveFilesDialog({ items, onClose, onChanged, onInspect }: 
     return () => { active = false; };
   }, [items, refresh]);
   const record = (intent: RemovalIntent, snapshot: LibraryRemovalSnapshotV01) => {
-    registerTaskIdentity(snapshot.taskId, { title: `${removal.title} · ${intent.item.title}`, originPage: "warehouse", notifyOnComplete: true });
+    registerTaskIdentity(snapshot.taskId, { title: `${removal.title} · ${intent.item.title}`, originPage: "warehouse", notifyOnComplete: true, notifyFamily: "library:removeFiles" });
     setReceipts(previous => new Map(previous).set(intent.id, { snapshot })); onChanged();
   };
   const submit = async (requests: readonly RemovalIntent[]) => {

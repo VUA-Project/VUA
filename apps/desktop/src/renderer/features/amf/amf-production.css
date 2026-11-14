@@ -122,7 +122,7 @@ html[data-effects="off"] .vua-n3__material { transition: none; }
 /* Texture memory: platform and target sit side by side, sized to their choices. */
 .vua-texture__controls { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-block: 8px; }
 .vua-texture__controls label { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; font: var(--vua-font-caption); color: var(--vua-text-secondary); }
-.vua-texture__controls select { min-width: 150px; padding: var(--vua-space-2) var(--vua-space-2); border: 1px solid var(--vua-border); border-radius: var(--vua-radius-control); background: var(--vua-bg-panel); color: var(--vua-text-primary); font: var(--vua-font-body); }
+.vua-texture__controls select { min-width: 150px; padding: var(--vua-space-2) var(--vua-space-2); border: 1px solid var(--vua-border); border-radius: var(--vua-radius-control); background: var(--vua-bg-panel); color: var(--vua-text-strong); font: var(--vua-font-body); }
 /* The plan's materials with their product images, read beside the sentence. */
 .vua-plan-images { display: flex; flex-wrap: wrap; gap: 12px; margin: 4px 0 12px; padding: 0; list-style: none; }
 .vua-plan-images li { display: flex; align-items: center; gap: var(--vua-space-2); max-width: 280px; padding: var(--vua-space-2) 12px var(--vua-space-2) var(--vua-space-2); border: 1px solid var(--vua-border); border-radius: var(--vua-radius-md); background: var(--vua-bg-panel); }

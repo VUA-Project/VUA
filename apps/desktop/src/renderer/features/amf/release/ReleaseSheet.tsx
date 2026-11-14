@@ -272,8 +272,10 @@ function UploadResult({ upload, onCheckAgain, check, onRefreshCheck, onOpenOnVrc
 }
 
 /** The right page. A turning page shows the same content without its controls. */
-export function ReleaseSheet({ run, title, state, number, live, actions, notice, terms, avatarCheck, onRefreshAvatarCheck, onOpenOnVrchat }: {
+export function ReleaseSheet({ run, title, state, number, live, actions, notice, credits, terms, avatarCheck, onRefreshAvatarCheck, onOpenOnVrchat }: {
   run: AmfProductionRun; title: string; state: AmfReleaseState | null; number: number; live: boolean; actions?: SheetActions; notice?: ReactNode;
+  /** Creator attribution and BOOTH links for the line's materials. */
+  credits?: ReactNode;
   /** The terms check of the line's materials, shown before the upload. */
   terms?: ReactNode;
   avatarCheck?: VrchatAvatarCheck | null; onRefreshAvatarCheck?: () => void;
@@ -363,6 +365,7 @@ export function ReleaseSheet({ run, title, state, number, live, actions, notice,
         <Icon name={check.state === "ok" ? "check" : check.state === "attention" ? "warning" : "question"} size={16} />{checkText(check)}</li>)}</ul>
     </section>}
     {!actions?.onNewLine && <SdkReviewBlock run={run} busy={!live || !actions || actions.busy} {...(live && actions ? { onCheckAgain: actions.onCheckAgain } : {})} {...(live && actions?.onSdkFix ? { onFix: actions.onSdkFix } : {})} />}
+    {credits}
     {terms}
     {!actions?.onNewLine && <UploadGuide />}
   </div>;

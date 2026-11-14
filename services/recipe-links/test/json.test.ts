@@ -11,9 +11,9 @@ test("RFC 8785 primitive serialization and UTF-16 key ordering", () => {
   assert.notEqual(canonicalize("é"), canonicalize("e\u0301"));
 });
 
-test("fixed cross-client vectors include both Recipe versions and both selections", () => {
+test("fixed cross-client vectors include Recipe v0.4, v0.5, v0.6 and both selections", () => {
   const vectors = JSON.parse(readFileSync(new URL("../../test-vectors/codes.json", import.meta.url), "utf8")) as { declaration: Json; canonical: string; code: string }[];
-  assert.equal(vectors.length, 4);
+  assert.equal(vectors.length, 5);
   for (const vector of vectors) {
     assert.equal(canonicalize(vector.declaration), vector.canonical);
     assert.equal(shareCode(vector.canonical), vector.code);

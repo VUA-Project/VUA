@@ -24,7 +24,8 @@ function useDecisions(port: TermsPort, productId: string, terms: ProductTermsV01
     setUses({});
     if (terms === null || (terms.state !== "parsed" && terms.state !== "partial")) return;
     let alive = true;
-    void Promise.all(TERMS_PRESET_IDS.map(presetId => port.checkUse(presetId, [productId]).then(check => [presetId, check.combination] as const, () => null)))
+    const requests = TERMS_PRESET_IDS.map(presetId => port.checkUse(presetId, [productId]).then(check => [presetId, check.combination] as const, () => null));
+    void Promise.all(requests)
       .then(read => { if (alive) setUses(Object.fromEntries(read.filter(entry => entry !== null))); });
     return () => { alive = false; };
   }, [port, productId, terms]);

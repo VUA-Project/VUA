@@ -108,6 +108,11 @@ html[data-vua-surface="game-guide"] body {
   color: var(--vua-text-strong);
 }
 
+.vua-game-guide__chrome:focus-visible {
+  outline: 2px solid var(--vua-border-focus);
+  outline-offset: 2px;
+}
+
 /* 跟随条(§4 自动跟随):开关与诚实状态提示一行;标题栏是拖拽区,
  * 本条不参与拖拽,交互元素天然可点 */
 .vua-game-guide__followbar {

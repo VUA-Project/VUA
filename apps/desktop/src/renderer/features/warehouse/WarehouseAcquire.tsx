@@ -43,6 +43,7 @@ import { useCardSpotlight } from "./use-card-spotlight.ts";
 import { DetailAlbum } from "./WarehouseAlbum.tsx";
 import { LibraryDetailLayout, LibraryDetailLoading, sharedFacts } from "./LibraryDetail.tsx";
 import { ProductTerms } from "./ProductTerms.tsx";
+import { GlbInspectionSection } from "./GlbInspectionSection.tsx";
 import { confirmedLibraryProductId } from "../../gateway/index.ts";
 import { libraryViewCopy } from "../../i18n/library-view-copy.ts";
 import { Icon } from "@vua/design-system";
@@ -260,6 +261,7 @@ export function EntryDetail({
         {surfaces ? <><Badge tone="neutral">{copy.mode[mode.effective]}</Badge><Badge tone="neutral">{mode.overridden ? copy.modeOverride : copy.modeFollowGlobal}</Badge></> : null}
       </>}>
       {productId !== null ? <ProductTerms productId={productId} title={title} {...(onTermsUpdated ? { onUpdated: onTermsUpdated } : {})} /> : null}
+      <GlbInspectionSection target={{ entryId: entry.warehouseItemId }} revision={reloadKey} />
       <section className="vua-warehouse-detail__section">
         <h3>{libraryViewCopy.detail.files}</h3>
         <ul className="vua-warehouse-detail__files">{entry.artifacts.map(artifact => <li key={artifact.artifactSha256 + artifact.relativePath} data-state={artifact.state}>

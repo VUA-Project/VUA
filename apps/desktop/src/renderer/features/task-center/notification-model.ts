@@ -22,28 +22,72 @@ export function isTerminalStatus(status: TaskStatus): boolean {
   return TERMINAL.includes(status);
 }
 
-/** 通知列表投影:活动任务恒显;终态任务仅 notifyOnComplete 保留的最新一条可见 */
+/** 通知列表投影:活动任务恒显;终态任务按 notifyFamily 各族保留最新一条未清除通知 */
 export function visibleNotifications(
   tasks: readonly TaskItem[],
   dismissed: ReadonlySet<string>,
 ): readonly TaskItem[] {
-  // notifyOnComplete(用户裁决 2026-10-02):短任务的完成通知保留到手动
-  // 清除——默认"终态不显示"对秒级完成的任务是零反馈。同族只保留最新
-  // 一条:一次会话多次短任务(如反复库同步)不该堆出完成通知山;旧任务
-  // 事实仍可经任务列表/详情面查询(清除的是通知,不是事实)。
-  const persistent = tasks
-    .filter((task) => task.notifyOnComplete === true && !dismissed.has(task.id))
-    .sort((a, b) => (a.id < b.id ? 1 : -1));
-  const latestPersistentId = persistent[0]?.id ?? null;
+  // notifyOnComplete(用户裁决 2026-10-02 + Slice 40 多族保留):短任务的完成
+  // 通知保留到手动清除;按 notifyFamily(缺省 "default")分族各保留最新一条,
+  // 避免库同步覆盖构建/许可证/上传回执,同时同族反复操作不堆出通知山。
+  const byFamily = new Map<string, TaskItem[]>();
+  for (const task of tasks) {
+    if (task.notifyOnComplete !== true || !isTerminalStatus(task.status) || dismissed.has(task.id)) continue;
+    const family = task.notifyFamily ?? "default";
+    const list = byFamily.get(family);
+    if (list) list.push(task);
+    else byFamily.set(family, [task]);
+  }
+  const latestPersistentIds = new Set<string>();
+  for (const list of byFamily.values()) {
+    list.sort((a, b) => (a.id < b.id ? 1 : -1));
+    if (list[0]) latestPersistentIds.add(list[0].id);
+  }
   return tasks.filter((task) => {
     if (dismissed.has(task.id)) return false;
-    if (task.notifyOnComplete === true) return !isTerminalStatus(task.status) || task.id === latestPersistentId;
+    if (task.notifyOnComplete === true) return !isTerminalStatus(task.status) || latestPersistentIds.has(task.id);
     if (isTerminalStatus(task.status)) {
       // 终态即不显示(F2 移除「显示已完成」);任务事实仍可经任务列表查询
       return false;
     }
     return true;
   });
+}
+
+export type NotificationBellAlert = "failed" | "unseen" | null;
+
+/** Computes bell attention state for unseen terminal task receipts or pending AI approvals. */
+export function notificationBellAlert(
+  notifications: readonly TaskItem[],
+  pendingAiCount: number,
+  seenTerminalIds: ReadonlySet<string>,
+): NotificationBellAlert {
+  let hasUnseenTerminal = false;
+  for (const task of notifications) {
+    if (!isTerminalStatus(task.status) || seenTerminalIds.has(task.id)) continue;
+    if (task.status === "failed") return "failed";
+    hasUnseenTerminal = true;
+  }
+  if (pendingAiCount > 0 || hasUnseenTerminal) return "unseen";
+  return null;
+}
+
+export const MAX_DISMISSED_IDS = 512;
+
+/**
+ * Evicts only the oldest dismissed IDs when exceeding `maxEntries`.
+ * Never prunes by `task.list` snapshot membership, because partial snapshots
+ * during AMF startup, restart, or timeout omit AMF tasks and would otherwise
+ * resurrect dismissed AMF notifications (including failed red alerts) once AMF recovers.
+ */
+export function pruneDismissedIds(
+  dismissed: ReadonlySet<string>,
+  maxEntries: number = MAX_DISMISSED_IDS,
+): ReadonlySet<string> {
+  const cap = Math.max(1, Math.trunc(maxEntries));
+  if (dismissed.size <= cap) return dismissed;
+  const items = [...dismissed];
+  return new Set(items.slice(items.length - cap));
 }
 
 /** 清除动作的合法性:仅终态通知可清除(活动任务不可清除,取消走任务取消) */
@@ -92,7 +136,10 @@ export function loadDismissedIds(): ReadonlySet<string> {
     if (raw === null) return new Set();
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return new Set();
-    return new Set(parsed.filter((id): id is string => typeof id === "string"));
+    const loaded = new Set(parsed.filter((id): id is string => typeof id === "string"));
+    const pruned = pruneDismissedIds(loaded);
+    if (pruned !== loaded) persistDismissedSet(pruned);
+    return pruned;
   } catch {
     return new Set();
   }
@@ -100,11 +147,17 @@ export function loadDismissedIds(): ReadonlySet<string> {
 
 export function saveDismissedId(taskId: string): ReadonlySet<string> {
   const next = new Set(loadDismissedIds());
+  next.delete(taskId);
   next.add(taskId);
+  const pruned = pruneDismissedIds(next);
+  persistDismissedSet(pruned);
+  return pruned;
+}
+
+export function persistDismissedSet(ids: ReadonlySet<string>): void {
   try {
-    window.localStorage.setItem(storageKeys.notificationDismissed, JSON.stringify([...next]));
+    window.localStorage.setItem(storageKeys.notificationDismissed, JSON.stringify([...ids]));
   } catch {
     /* 存储不可用时仅本次会话生效 */
   }
-  return next;
 }

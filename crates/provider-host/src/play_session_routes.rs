@@ -48,6 +48,66 @@ pub(crate) fn manager_apps(
         )),
     }
 }
+pub(crate) fn open_manager_app(
+    launcher: Option<&vua_project_manager::manager_apps::ManagerAppLauncher>,
+    request: &Value,
+    id: &str,
+    correlation: &str,
+) -> FrameOutcome {
+    let keys = [
+        "contractVersion",
+        "requestId",
+        "correlationId",
+        "kind",
+        "method",
+        "params",
+        "commandId",
+    ];
+    let command_id = request["commandId"].as_str().unwrap_or("");
+    let manager_id = request["params"]["managerId"]
+        .as_str()
+        .and_then(vua_project_manager::manager_apps::ManagerAppId::parse);
+    let valid = request
+        .as_object()
+        .is_some_and(|o| o.len() == keys.len() && keys.iter().all(|k| o.contains_key(*k)))
+        && request["contractVersion"] == "0.1"
+        && request["kind"] == "command"
+        && request["method"] == "environment.openManagerApp"
+        && ["requestId", "correlationId"]
+            .iter()
+            .all(|key| request[*key].as_str().is_some_and(|v| !v.is_empty()))
+        && request["params"]
+            .as_object()
+            .is_some_and(|p| p.len() == 1 && p.contains_key("managerId"))
+        && manager_id.is_some()
+        && vua_project_manager::manager_apps::valid_command_id(command_id);
+    let error = |code, category| {
+        FrameOutcome::Response(application_error(
+            id,
+            correlation,
+            code,
+            "errors.playSession.unavailable",
+            category,
+        ))
+    };
+    if !valid {
+        return error("vua.manager_apps.invalid_params", "validation");
+    }
+    let Some(launcher) = launcher else {
+        return error("vua.manager_apps.unavailable", "unavailable");
+    };
+    match launcher.open(manager_id.unwrap(), command_id) {
+        Ok(receipt) => FrameOutcome::Response(application_success(
+            id,
+            json!({ "managerAppLaunch": receipt }),
+        )),
+        Err("command_conflict") => error("vua.manager_apps.command_conflict", "conflict"),
+        Err("not_found") => error("vua.manager_apps.not_found", "precondition"),
+        Err("launch_failed") => error("vua.manager_apps.launch_failed", "external"),
+        Err("invalid_command") => error("vua.manager_apps.invalid_params", "validation"),
+        Err(_) => error("vua.manager_apps.unavailable", "unavailable"),
+    }
+}
 pub(crate) fn request(
     service: Option<&PlayService>,
     request: &Value,

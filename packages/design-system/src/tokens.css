@@ -263,11 +263,12 @@
   --vua-success: #107c10;
   --vua-error: #d13438;
   --vua-warning: #805900;
+  --vua-on-status: #ffffff;
   --vua-on-error: #ffffff;
   --vua-success-text: #0b650b;
   --vua-error-text: #9f1f29;
   --vua-warning-text: #6b4800;
-  --vua-info: #5f6b8a;
+  --vua-info: #4b5978;
   --vua-bg-canvas: #f6f6f9;
   --vua-bg-panel: #ffffff;
   --vua-bg-elevated: #ffffff;

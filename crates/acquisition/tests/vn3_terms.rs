@@ -327,6 +327,45 @@ fn combinations_take_the_strictest_item_and_unknown_is_never_a_match() {
     assert!(unknown.matching_product_ids.is_empty());
     assert_eq!(unknown.combination.decision, "unknown");
 }
+
+#[test]
+fn check_use_queries_requested_slice_and_handles_duplicates_and_large_batches() {
+    let store = BdlStore::open_in_memory().unwrap();
+    let doc = parsed(EN);
+    for index in 1..=55 {
+        let id = format!("booth:{index}");
+        product(&store, &id, None);
+        attach(&store, &id, &format!("doc-{index}"), &doc);
+    }
+
+    // Small slice (avatar + two outfits, plus duplicate and unobserved ID) uses targeted IN (...) query.
+    let small = terms::check_use(
+        &store,
+        "vrchat_personal",
+        &[
+            "booth:1".into(),
+            "booth:2".into(),
+            "booth:3".into(),
+            "booth:1".into(),
+        ],
+    )
+    .unwrap();
+    assert_eq!(small.combination.decision, "conforms");
+    assert_eq!(small.products.len(), 4);
+    assert_eq!(
+        small.matching_product_ids,
+        ["booth:1", "booth:2", "booth:3", "booth:1"]
+    );
+
+    // Above 50 unique IDs seamlessly falls back to bulk loading without losing unobserved entries.
+    let mut large_ids: Vec<String> = (1..=55).map(|index| format!("booth:{index}")).collect();
+    large_ids.push("booth:999".into());
+    let large = terms::check_use(&store, "vrchat_personal", &large_ids).unwrap();
+    assert_eq!(large.products.len(), 56);
+    assert_eq!(large.matching_product_ids.len(), 55);
+    assert_eq!(large.combination.decision, "unknown");
+    assert_eq!(large.products[55].source_state, "not_observed");
+}
 #[test]
 fn japanese_selection_and_bilingual_conflicts_retain_both_sources() {
     let store = BdlStore::open_in_memory().unwrap();

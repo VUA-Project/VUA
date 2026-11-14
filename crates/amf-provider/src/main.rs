@@ -38,7 +38,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
     let database_path = vua_provider_host::runtime::database_path()?;
     #[cfg(windows)]
-    let _job = vua_provider_host::ProviderJobGuard::contain_current_process_tree()?;
+    let _job = vua_provider_host::ProviderJobGuard::contain_host_process_tree()?;
     // Production capability comes entirely from the environment: with
     // VUA_UNITY_EDITOR + VUA_PROVIDER_DATA set, the real material intake
     // executor serves production.*; without them every production method

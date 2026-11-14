@@ -731,8 +731,15 @@ impl SnapshotStore for FileSystemSnapshotStore {
     }
 
     fn restore(&self, project: &ProjectRef, snapshot: &SnapshotRef) -> Result<(), Self::Error> {
+        validate_identifier(&snapshot.id)?;
         let expected_parent = project.root.join(".vua/snapshots");
-        if snapshot.path.parent() != Some(expected_parent.as_path()) || !snapshot.path.is_dir() {
+        if snapshot.path.parent() != Some(expected_parent.as_path())
+            || !snapshot
+                .path
+                .file_name()
+                .is_some_and(|name| name == snapshot.id.as_str())
+            || !snapshot.path.is_dir()
+        {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "snapshot is outside this project",

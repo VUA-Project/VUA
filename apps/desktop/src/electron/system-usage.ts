@@ -13,7 +13,11 @@ export interface GpuSample {
   readonly dedicatedUsedBytes: number | null;
   readonly dedicatedTotalBytes: number | null;
 }
-interface NativeSample { readonly cpuUsagePercent: number | null; readonly gpus: readonly GpuSample[] }
+interface NativeSample {
+  readonly cpuUsagePercent: number | null;
+  readonly gpus: readonly GpuSample[];
+  readonly steamVrRunning?: boolean | null;
+}
 
 const finiteOrNull = (value: unknown, max = Number.MAX_SAFE_INTEGER): value is number | null =>
   value === null || (typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= max);
@@ -22,6 +26,7 @@ export function parseResourceSample(line: string): NativeSample | null {
   try {
     const value = JSON.parse(line) as NativeSample;
     if (!value || !finiteOrNull(value.cpuUsagePercent, 100) || !Array.isArray(value.gpus) || value.gpus.length > 64) return null;
+    if (value.steamVrRunning !== undefined && value.steamVrRunning !== null && typeof value.steamVrRunning !== "boolean") return null;
     const ids = new Set<string>();
     for (const gpu of value.gpus) {
       if (!gpu || typeof gpu.id !== "string" || !gpu.id.length || gpu.id.length > 256 || ids.has(gpu.id)
@@ -61,6 +66,7 @@ export class SystemUsageCollector {
   private sampledAt = 0;
   private child: ChildProcessWithoutNullStreams | null = null;
   private respawnTimer: ReturnType<typeof setTimeout> | null = null;
+  private paused = false;
   private stopped = false;
   private executable: string | null = null;
   private readonly platform: NodeJS.Platform;
@@ -73,9 +79,19 @@ export class SystemUsageCollector {
     this.now = options.now ?? Date.now;
   }
   start(executable?: string): void {
-    if (this.platform !== "win32" || !executable || this.child || this.stopped) return;
+    if (this.platform !== "win32" || !executable || this.stopped) return;
     this.executable = executable;
-    this.spawnSampler();
+    if (!this.paused && !this.child) this.spawnSampler();
+  }
+  pause(): void {
+    if (this.paused || this.stopped) return;
+    this.paused = true;
+    this.terminateChild();
+  }
+  resume(): void {
+    if (!this.paused || this.stopped) return;
+    this.paused = false;
+    if (this.platform === "win32" && this.executable && !this.child) this.spawnSampler();
   }
   snapshotV2(): SystemResourceUsageV2 {
     const fresh = this.sample !== null && this.now() - this.sampledAt <= RESOURCE_STALE_AFTER_MS ? this.sample : null;
@@ -86,6 +102,7 @@ export class SystemUsageCollector {
       gpuName: gpu?.name ?? null, gpuKind: gpu?.kind ?? null,
       vramUsedBytes: gpu?.kind === "discrete" ? gpu.dedicatedUsedBytes : null,
       vramTotalBytes: gpu?.kind === "discrete" ? gpu.dedicatedTotalBytes : null,
+      steamVrRunning: fresh?.steamVrRunning ?? null,
       sampledAt: new Date(this.now()).toISOString() };
   }
   snapshot(): SystemResourceUsageV1 {
@@ -95,22 +112,27 @@ export class SystemUsageCollector {
   }
   stop(): void {
     this.stopped = true;
+    this.terminateChild();
+  }
+  private terminateChild(): void {
     this.sample = null;
     if (this.respawnTimer !== null) { clearTimeout(this.respawnTimer); this.respawnTimer = null; }
-    this.child?.stdin.end();
-    this.child?.kill();
+    const child = this.child;
     this.child = null;
+    child?.stdin.end();
+    child?.kill();
   }
   private spawnSampler(): void {
-    if (this.stopped || !this.executable) return;
+    if (this.stopped || this.paused || !this.executable) return;
     let child: ChildProcessWithoutNullStreams;
     try { child = this.spawnImpl(this.executable, ["--observe-system-resources"], { windowsHide: true }) as ChildProcessWithoutNullStreams; }
     catch { this.scheduleRespawn(); return; }
     this.child = child;
+    child.stdout.setEncoding?.("utf8");
     let buffered = "";
     child.stdout.on("data", (chunk: Buffer | string) => {
-      if (this.stopped || this.child !== child) return;
-      buffered += String(chunk);
+      if (this.stopped || this.paused || this.child !== child) return;
+      buffered += typeof chunk === "string" ? chunk : chunk.toString("utf8");
       if (buffered.length > 65_536) { this.sample = null; buffered = ""; return; }
       const lines = buffered.split(/\r?\n/);
       buffered = lines.pop() ?? "";
@@ -129,7 +151,7 @@ export class SystemUsageCollector {
     });
   }
   private scheduleRespawn(): void {
-    if (this.stopped || this.respawnTimer !== null) return;
+    if (this.stopped || this.paused || this.respawnTimer !== null) return;
     this.respawnTimer = setTimeout(() => { this.respawnTimer = null; this.spawnSampler(); }, RESOURCE_RESPAWN_DELAY_MS);
     this.respawnTimer.unref();
   }

@@ -94,6 +94,13 @@
                 "size_asc"
               ]
             },
+            "format": {
+              "type": "string",
+              "enum": [
+                "vrm_or_glb",
+                "unitypackage"
+              ]
+            },
             "vn3": {
               "type": "object",
               "additionalProperties": false,

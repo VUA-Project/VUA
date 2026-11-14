@@ -1,8 +1,8 @@
 # Share links v0.1
 
-> Document version: 0.1.0
+> Document version: 0.1.2
 > Status: Candidate
-> Updated: 2026-10-28
+> Updated: 2026-11-14
 > Owner: AMF / Hosting
 
 An explicitly published Recipe declaration or BOOTH product selection is public under a
@@ -13,8 +13,8 @@ publication and receiving UI belong to separate slices.
 
 ## Documents and validation
 
-The service accepts the closed share schemas for [Recipe v0.4](../../schemas/amf-recipe/v0.4/share.schema.json)
-and [v0.5](../../schemas/amf-recipe/v0.5/share.schema.json), plus
+The service accepts the closed share schemas for [Recipe v0.4](../../schemas/amf-recipe/v0.4/share.schema.json),
+[v0.5](../../schemas/amf-recipe/v0.5/share.schema.json) and [v0.6](../../schemas/amf-recipe/v0.6/share.schema.json), plus
 [selection-share v0.1](../../schemas/selection-share/v0.1/share.schema.json). Dispatch uses
 `kind: "vua.selection"` for selections and `formatVersion` for each kind. Unknown kinds,
 versions and fields are refused without coercing, stripping or defaulting submitted values.
@@ -70,6 +70,7 @@ Each includes the complete declaration, exact canonical text, full digest and ex
 | --- | --- |
 | Recipe v0.4 | `3P3J7H0EGWP1` |
 | Recipe v0.5 with fit and shop | `NF5MQDQ4N075` |
+| Recipe v0.6 with Avatar Optimizer | `QTET2ZW9J8FD` |
 | Product selection | `4X82FFD451H4` |
 | Unicode product selection | `N5JWEY1QS9V2` |
 
@@ -157,9 +158,12 @@ assembly-plan label. Neither kind displays the player's title anywhere in HTML. 
 notice explains that recipients need their own materials, followed by `vua://share/<CODE>` and
 the official VUA download-page link. There is no fetching of product metadata.
 
-The page uses system fonts, no scripts, external resources, cookies or tracking. Its inline
-stylesheet is allowed by an exact CSP hash; other sources, framing, base changes and forms
-are blocked. All display strings are HTML-escaped. Layout supports narrow mobile screens,
+The page uses system fonts, no scripts, external resources, cookies or tracking. Its `<head>`
+includes `noindex,nofollow,noarchive` plus localized text-only OpenGraph (`og:type`, `og:site_name`,
+`og:title`, `og:description`) and Twitter (`twitter:card=summary`) preview tags derived strictly
+from item count and static localized copy, omitting player-supplied titles and external image URLs.
+Its inline stylesheet is allowed by an exact CSP hash; other sources, framing, base changes and
+forms are blocked. All display strings are HTML-escaped. Layout supports narrow mobile screens,
 keyboard focus and system light/dark preference. Generated translations await native review.
 
 ## Storage and deployment
@@ -178,4 +182,6 @@ Production installation and real phone/desktop end-to-end acceptance remain auth
 
 ## Document changelog
 
+- 0.1.2 (2026-11-14): add privacy-safe text-only OpenGraph/Twitter preview meta tags and `noarchive` robot directive to `materialPage`, never exposing player-supplied titles or external image links.
+- 0.1.1 (2026-11-14): add `recipe-v06` (`QTET2ZW9J8FD`) cross-client golden vector in `codes.json` and `schemas/share-links/v0.1/code-vectors.json`.
 - 0.1.0 (2026-10-28): Candidate service, selection format, golden vectors and Node implementation.

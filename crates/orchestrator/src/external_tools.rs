@@ -759,7 +759,15 @@ pub struct ToolService {
 }
 fn normalize_compare_path(path: &std::path::Path) -> String {
     let raw = path.to_string_lossy();
-    let stripped = raw.strip_prefix(r"\\?\").unwrap_or(&raw);
+    let stripped = if let Some(unc) = raw
+        .get(..8)
+        .filter(|prefix| prefix.eq_ignore_ascii_case(r"\\?\UNC\"))
+        .and_then(|_| raw.get(8..))
+    {
+        std::borrow::Cow::Owned(format!(r"\\{unc}"))
+    } else {
+        std::borrow::Cow::Borrowed(raw.strip_prefix(r"\\?\").unwrap_or(&raw))
+    };
     let mut normalized = stripped.replace('/', "\\");
     while normalized.len() > 3 && normalized.ends_with('\\') {
         normalized.pop();

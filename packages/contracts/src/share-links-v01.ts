@@ -42,6 +42,7 @@ export function shareCodeFromLink(text: string, origin: string): string | null {
     return match ? normalizeShareCode(match[1]!) : null;
   } catch { return null; }
 }
+
 export function isShareImageOptions(value: unknown): value is ShareImageOptions {
   if (!record(value) || Object.keys(value).some(key => !["runId","format","frameIndex","document","recipeId","publicConfirmed"].includes(key))
     || !id(value.runId) || (typeof value.format !== "string" || !["png","gif"].includes(value.format)) || !Number.isInteger(value.frameIndex)

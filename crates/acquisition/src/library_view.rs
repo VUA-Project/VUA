@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use vua_bdl_store::{ArtifactMode, BdlStore, CopyRole, LibraryCopyEvidence, LibraryProductDates};
 
-const SORTS: [&str; 9] = [
+const SORTS: [&str; 10] = [
     "added_desc",
     "added_asc",
     "title_asc",
@@ -16,7 +16,9 @@ const SORTS: [&str; 9] = [
     "price_desc",
     "published_desc",
     "size_desc",
+    "size_asc",
 ];
+const FORMAT_FILTERS: [&str; 2] = ["vrm_or_glb", "unitypackage"];
 const VN3_STATES: [&str; 4] = ["readable", "no_vn3", "unread", "unreadable"];
 /// X is the creator's free text, so it has no value to filter on.
 const VN3_ITEMS: &str = "ABCDEFGHIJKLMNOPQRSTUVW";
@@ -36,6 +38,7 @@ struct Vn3Filter {
 struct Query {
     schema_version: String,
     sort: Option<String>,
+    format: Option<String>,
     vn3: Option<Vn3Filter>,
     #[serde(rename = "use")]
     use_preset: Option<String>,
@@ -165,7 +168,7 @@ pub fn list(
     downloads: &LibraryDownloadService,
     params: Value,
 ) -> Result<Value, LibraryDownloadError> {
-    if ["use", "useMode", "sort", "vn3"]
+    if ["use", "useMode", "sort", "format", "vn3"]
         .iter()
         .any(|key| params.get(*key).is_some_and(Value::is_null))
         || params.get("availabilityStatus").is_some_and(Value::is_null)
@@ -179,11 +182,16 @@ pub fn list(
     if !["0.1", "0.2", "0.3"].contains(&query.schema_version.as_str())
         || (query.schema_version != "0.2"
             && (query.use_preset.is_some() || query.use_mode.is_some()))
-        || (query.schema_version != "0.3" && (query.sort.is_some() || query.vn3.is_some()))
+        || (query.schema_version != "0.3"
+            && (query.sort.is_some() || query.format.is_some() || query.vn3.is_some()))
         || query
             .sort
             .as_ref()
             .is_some_and(|sort| !SORTS.contains(&sort.as_str()))
+        || query
+            .format
+            .as_ref()
+            .is_some_and(|format| !FORMAT_FILTERS.contains(&format.as_str()))
         || query.vn3.as_ref().is_some_and(vn3_filter_invalid)
         || query
             .use_preset
@@ -327,6 +335,14 @@ pub fn list(
         .collect();
     let mut rows = Vec::new();
     let removed_products = bdl.removed_library_products()?;
+    let downloadable_names = bdl.library_downloadable_names()?;
+    let mut downloadables_by_product: HashMap<&str, Vec<&str>> = HashMap::new();
+    for (product_id, anchor_text) in &downloadable_names {
+        downloadables_by_product
+            .entry(product_id.as_str())
+            .or_default()
+            .push(anchor_text.as_str());
+    }
     for product in &mut products {
         if removed_products.contains(&product.product_id) {
             continue;
@@ -373,13 +389,31 @@ pub fn list(
                 .into_iter()
                 .flatten()
                 .min();
+            let formats = collect_formats(
+                attached
+                    .iter()
+                    .map(|copy| copy.copy.relative_path.as_str())
+                    .chain(
+                        downloadables_by_product
+                            .get(product.product_id.as_str())
+                            .into_iter()
+                            .flatten()
+                            .copied(),
+                    ),
+            );
             let row = rows.last_mut().expect("product row");
             row["addedAt"] = json!(added);
             row["publishedAt"] = json!(product_dates.published_at);
             row["sizeBytes"] = json!(present_size(attached, &presences));
+            if !formats.is_empty() {
+                row["formats"] = json!(formats);
+            }
         }
     }
-    let sources = crate::library_reconcile::SourceIndex::new(&products);
+    let sources = crate::library_reconcile::SourceIndex::with_downloadable_names(
+        &products,
+        &downloadable_names,
+    );
     for mut entry in entries {
         let unassociated: Vec<_> = copies_of_entry
             .get(entry.warehouse_item_id.as_str())
@@ -428,9 +462,24 @@ pub fn list(
             }
         }
         if current {
+            let formats = collect_formats(
+                unassociated
+                    .iter()
+                    .map(|copy| copy.copy.relative_path.as_str())
+                    .chain(
+                        row["entry"]["artifacts"]
+                            .as_array()
+                            .into_iter()
+                            .flatten()
+                            .filter_map(|artifact| artifact["relativePath"].as_str()),
+                    ),
+            );
             row["addedAt"] = json!(entry.created_at);
             row["publishedAt"] = Value::Null;
             row["sizeBytes"] = json!(present_size(&unassociated, &presences));
+            if !formats.is_empty() {
+                row["formats"] = json!(formats);
+            }
         }
         rows.push(row);
     }
@@ -522,6 +571,10 @@ pub fn list(
             && source_match
             && state_match
             && matches_text
+            && query
+                .format
+                .as_deref()
+                .is_none_or(|wanted| row_matches_format(row, wanted))
             && query.availability_status.as_ref().is_none_or(|word| {
                 if product {
                     row["product"]["availabilityStatus"] == *word
@@ -574,6 +627,54 @@ fn present_size(copies: &[&LibraryCopyEvidence], presences: &HashMap<String, &'s
         .filter(|copy| presences[&copy.copy.copy_id] == "present")
         .map(|copy| copy.size_bytes)
         .sum()
+}
+
+fn classify_format_from_name(name: &str) -> Option<&'static str> {
+    let trimmed = name.trim();
+    let ext = Path::new(trimmed).extension()?.to_str()?;
+    if ext.eq_ignore_ascii_case("unitypackage") {
+        Some("unitypackage")
+    } else if ext.eq_ignore_ascii_case("vrm") {
+        Some("vrm")
+    } else if ext.eq_ignore_ascii_case("glb") {
+        Some("glb")
+    } else if ext.eq_ignore_ascii_case("gltf") {
+        Some("gltf")
+    } else {
+        None
+    }
+}
+
+fn collect_formats<'a>(names: impl IntoIterator<Item = &'a str>) -> Vec<&'static str> {
+    let mut found = [false; 4];
+    for name in names {
+        match classify_format_from_name(name) {
+            Some("unitypackage") => found[0] = true,
+            Some("vrm") => found[1] = true,
+            Some("glb") => found[2] = true,
+            Some("gltf") => found[3] = true,
+            _ => {}
+        }
+    }
+    ["unitypackage", "vrm", "glb", "gltf"]
+        .into_iter()
+        .enumerate()
+        .filter_map(|(index, label)| found[index].then_some(label))
+        .collect()
+}
+
+fn row_matches_format(row: &Value, wanted: &str) -> bool {
+    row["formats"]
+        .as_array()
+        .is_some_and(|formats| match wanted {
+            "vrm_or_glb" => formats
+                .iter()
+                .any(|format| matches!(format.as_str(), Some("vrm" | "glb" | "gltf"))),
+            "unitypackage" => formats
+                .iter()
+                .any(|format| format.as_str() == Some("unitypackage")),
+            _ => false,
+        })
 }
 
 fn vn3_filter_invalid(filter: &Vn3Filter) -> bool {
@@ -835,7 +936,7 @@ fn annotate_vn3(
         .chars()
         .map(|letter| (letter.to_string(), 0))
         .collect();
-    let mut details: HashMap<String, crate::terms::TermsDetail> = HashMap::new();
+    let mut details = crate::terms::all_product_details(bdl)?;
     for row in rows.iter_mut() {
         let counted = category.is_none_or(|category| row["sourceCategory"] == *category);
         let Some(id) = terms_product_id(row).map(str::to_owned) else {
@@ -845,11 +946,11 @@ fn annotate_vn3(
             }
             continue;
         };
-        if !details.contains_key(&id) {
-            let detail = crate::terms::product_detail(bdl, &id)?;
-            details.insert(id.clone(), detail);
-        }
-        let detail = &details[&id];
+        let detail = details.entry(id).or_insert_with_key(|missing_id| {
+            crate::terms::detail_from_product_terms(
+                vua_bdl_store::terms::ProductTerms::not_observed(missing_id.clone()),
+            )
+        });
         let group = vn3_group(&detail.product.state);
         let matched = (!filter.items.is_empty())
             .then(|| vn3_match(detail, &filter.items, filter.include_contact))
@@ -1252,5 +1353,55 @@ mod added_tests {
             (&rows[0]["addedAt"], &rows[1]["addedAt"]),
             (&Value::Null, &json!("2026-09-01T00:00:00.000Z"))
         );
+    }
+
+    #[test]
+    fn size_asc_is_accepted_by_sorts_and_orders_smallest_first() {
+        assert!(SORTS.contains(&"size_asc"));
+        let mut a = product("booth:1", FIRST_SYNC);
+        a["sizeBytes"] = json!(5_000_000u64);
+        let mut b = product("booth:2", FIRST_SYNC);
+        b["sizeBytes"] = json!(120_000u64);
+        let mut c = product("booth:3", FIRST_SYNC);
+        c["sizeBytes"] = json!(900_000u64);
+        let mut rows = vec![a, b, c];
+        sort_rows(&mut rows, "size_asc", &HashMap::new());
+        let ids: Vec<_> = rows
+            .iter()
+            .filter_map(|r| r["product"]["productId"].as_str())
+            .collect();
+        assert_eq!(ids, ["booth:2", "booth:3", "booth:1"]);
+    }
+
+    #[test]
+    fn collect_formats_and_format_filter_classify_observed_extensions_only() {
+        assert_eq!(
+            collect_formats(["Avatar_VRM_v1.zip", "readme.txt"]),
+            Vec::<&str>::new()
+        );
+        assert_eq!(
+            collect_formats([
+                "nested/HeadProp.GLB",
+                "Avatar.vrm",
+                "Package.UnityPackage",
+                "Avatar2.vrm",
+                "Scene.gltf",
+            ]),
+            vec!["unitypackage", "vrm", "glb", "gltf"]
+        );
+
+        let vrm_row = json!({"formats": ["vrm"]});
+        let glb_row = json!({"formats": ["glb"]});
+        let unity_row = json!({"formats": ["unitypackage"]});
+        let dual_row = json!({"formats": ["unitypackage", "vrm"]});
+        let zip_only = json!({});
+
+        assert!(row_matches_format(&vrm_row, "vrm_or_glb"));
+        assert!(row_matches_format(&glb_row, "vrm_or_glb"));
+        assert!(!row_matches_format(&unity_row, "vrm_or_glb"));
+        assert!(row_matches_format(&dual_row, "vrm_or_glb"));
+        assert!(row_matches_format(&dual_row, "unitypackage"));
+        assert!(!row_matches_format(&zip_only, "vrm_or_glb"));
+        assert!(!row_matches_format(&zip_only, "unitypackage"));
     }
 }

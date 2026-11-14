@@ -663,8 +663,10 @@ function RecipeLibrarySection({
             <li key={entry.recipeId}>
               <button
                 type="button"
+                role="option"
+                aria-selected={selectedId === entry.recipeId}
+                className="vua-recipe-library__item"
                 onClick={() => setQueueSelect(entry)}
-                style={{ all: "unset", cursor: "pointer" }}
               >
                 <strong>{entry.title}</strong>{' '}
                 <span className="vua-caption vua-text-secondary">

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Badge } from "../../components/primitives/Badge.tsx";
 import { Button } from "../../components/primitives/Button.tsx";
+import { CopyableText } from "../../components/primitives/CopyableText.tsx";
 import { openExternalUrl } from "../../app/open-external.ts";
 import { strings } from "../../i18n/index.ts";
 import type { PackageRow } from "../../gateway/index.ts";
@@ -71,7 +72,13 @@ export function PackageDetailDrawer({
             </div>
             <div className="vua-packages__facts-row">
               <dt>{copy.drawer.idLabel}</dt>
-              <dd>{row.id}</dd>
+              <dd>
+                <CopyableText
+                  value={row.id}
+                  copyLabel={copy.drawer.idLabel}
+                  copiedLabel={strings.aiTools.copied}
+                />
+              </dd>
             </div>
           </dl>
         </section>

@@ -1,12 +1,12 @@
 # Current development plan
 
-> Updated: 2026-11-06
+> Updated: 2026-11-14
 
 This plan orders the next slices toward the [north star](../north-star.md). Each slice names the
 [Eval cases](../eval/cases.md) it moves and what counts as done. The
 [N sequence](../development-outline.md) keeps the acceptance rows; this plan sets the order.
-Until the freeze release is published, the [freeze plan](freeze-plan.md) sets the order instead
-and says which rows stop now.
+The freeze was lifted on 2026-11-14; the slice order follows this plan, and the record of the
+freeze period lives in [freeze-plan.md](freeze-plan.md).
 
 ## Where things stand
 
@@ -61,6 +61,21 @@ and says which rows stop now.
 - The author's order (2026-10-23): settle how AMF is operated first, then hold the appearance
   design session (slice 13); functional fixes go in parallel. Calibration against in-game Ping
   (38) and Eval runs (16) wait for a concrete need.
+- **v1.0.0 Brave New World** published on 2026-11-05 (VUA-Project/VUA#94, [release notes](../release/v1.0.0.md)):
+  shipped the first stable host release alongside AMF 0.3.0 Beta, including F1–F19 (plain AMF
+  station list, Grid/Aero/Tenshi/Jirai styles, library migration grouping, pre-assembly cost
+  predictions, VRCFury intake recognition, tightest-resource title bar, five-language minimal
+  guide, first-use notice and concept wizard, component updates and recovery, turntable/Recipe
+  sharing, and the Unity license scenario step).
+- **v1.1.0 Getting on Track** published on 2026-11-13 (VUA-Project/VUA#97, [release notes](../release/v1.1.0.md)):
+  merged slice 54 (`slice/ui-structure`), replaced the NSIS wizard with a native Per-Monitor DPI v2
+  Windows setup/uninstall card, added `windows-distribution v0.3` zstd component packs, introduced
+  scenario-first Launch (`scenario-environment v0.2`) with `external-tool v0.4` and
+  `installer-tool v0.1`, added opt-in Avatar Optimizer (`com.anatawa12.avatar-optimizer`), local
+  Avatar SDK test builds (`amf-production-flow v0.1`), `amf-recipe v0.6`, BOOTH order purchase
+  timestamps, `catalog-enrichment v0.1` and the signed `guide-content v0.1` channel.
+- On 2026-11-14, the author lifted the v1.0.0 freeze, folded the deferred post-freeze items back
+  into the order table below, and ruled on PR #98 (`slice/v1-2-holistic-evolution`).
 
 ## Order
 
@@ -74,21 +89,21 @@ and says which rows stop now.
 | 6 | SDK step for newcomers | P-02 | built: the sign-in guide, the SDK's own checks (Aran52/VUA#6), one-click fixes and plain-word messages (Aran52/VUA#12), the check read again after an upload (Aran52/VUA#44) and the build and upload guide (Aran52/VUA#59); the guide's four screenshots come from the author |
 | 7 | Permission modes and simpler choices | P-02, P-03 | built: permission modes (Aran52/VUA#11), stated recommendations (Aran52/VUA#16) and the plan confirmation with the materials' BOOTH images (Aran52/VUA#63); the author's P-02 runs in each mode remain |
 | 8 | Known packages | P-01, P-03 | built: the known-packages table (Aran52/VUA#21), multi-line Poiyomi copies with the preparation test (Aran52/VUA#55) and the package page by permission mode (Aran52/VUA#56); P-01 with a Poiyomi outfit awaits the author |
-| 9 | Material tuning | P-02, P-03 | in progress: item 2 with its entry (Aran52/VUA#29, #34) and item 1, texture memory on the quality-check station (Aran52/VUA#57); the author's checks in a dark world and on a P-02 rank remain |
+| 9 | Material tuning | P-02, P-03 | built: item 2 with its entry (Aran52/VUA#29, #34) and item 1, texture memory on the quality-check station (Aran52/VUA#57); the author's checks in a dark world and on a P-02 rank remain |
 | 10 | Face tracking add-on | P-03 | built: face tracking evidence and guarded creator-patch sessions (Aran52/VUA#47), the session limit and the pre-patch copy (Aran52/VUA#52), and the workshop station (Aran52/VUA#62); the Meiyun run in VRChat remains |
-| 11 | Unity sign-in and license | — | in progress: the detection and check engine and contracts (Aran52/VUA#28); the scenario step remains |
+| 11 | Unity sign-in and license | — | built: the detection and check engine and contracts (Aran52/VUA#28) and the scenario step in Avatar-editing preparation (Aran52/VUA#84); testing Hub's Unity CLI (item 3) and real license-failure recovery remain |
 | 12 | Managed upload | P-02 | done: first real upload on 2026-10-17 (Aran52/VUA#4), a second through the MCP round on 2026-10-19 |
-| 13 | Appearance and one-click styles | — | in progress: Grid/Aero and Tenshi/Jirai presets with the first original motif set in PR #68; extended scene art, custom fonts and package loader remain |
-| 14 | Player language and four-language review | P-02 | |
-| 15 | Versioned SOPs | A-03, B-02–B-05 | |
+| 13 | Appearance and one-click styles | — | built: Grid, Aero, Tenshi and Jirai presets shipped (F3, VUA-Project/VUA#94); styles beyond the four approved presets, extended scene art, custom fonts and package loader remain |
+| 14 | Player language and five-language review | P-02 | built: player-facing UI and minimal guides ship in five languages (`en`, `zh-CN`, `zh-TW`, `ja`, `ko`); native-speaker review of all five UI languages remains |
+| 15 | Versioned SOPs | A-03, B-02–B-05 | in progress: versioned diagnostic symptom SOPs landed in VUA-Project/VUA#98; remaining scenario SOP versioning continues |
 | 16 | Eval runs | all `ready` cases | when a concrete need arises (author, 2026-10-23) |
-| 17 | Complex production and Recipe reproduction | P-03, P-04 | |
-| 18 | Tool and package delivery by license | C-01, C-02 | |
+| 17 | Complex production and Recipe reproduction | P-03, P-04 | in progress: community P-03/P-04 checks and further complex-production coverage beyond P-03/P-04 remain |
+| 18 | Tool and package delivery by license | C-01, C-02 | built (VUA-Project/VUA#98): `tool-catalog v0.1`, `external-tool v0.4` and `installer-tool v0.1`, 10 VPM packages in `known-packages`, and tool goal/free filters; fresh-install, mainland-mirror and live VPM checks remain |
 | 19 | Experimental VRChat sign-in | P-02 | merged (Aran52/VUA#5); the upload check reads VRChat's real list shape since slice 26; awaits the real-account checks |
 | 20 | Start production from the materials room | P-02 | built (Aran52/VUA#19); local entry and saved-source display defects reproduced and corrected on 2026-10-27, with synthetic Chromium regression; the author's real-material run remains |
 | 21 | Faster project fingerprints | — | done (Aran52/VUA#7) |
 | 22 | Motion setting | — | needs the author's decision |
-| 23 | Base map art | — | with slice 13 |
+| 23 | Base map art | — | moot after F1 replaced the base map with the plain station list (Aran52/VUA#85) |
 | 24 | Finer usual durations | — | when the estimates prove too rough |
 | 25 | Production records in Settings | — | done (Aran52/VUA#13) |
 | 26 | VRChat Avatar list in the release room | P-02 | built (Aran52/VUA#17); awaits the author's real-account check |
@@ -97,36 +112,42 @@ and says which rows stop now.
 | 29 | Restore after an interrupted assembly | — | done (Aran52/VUA#15) |
 | 30 | Workshop stations and line management | P-02 | built (Aran52/VUA#20) with removing an outfit through a reviewed plan (Aran52/VUA#58); the material change and deletion were verified in the 2026-10-19 MCP round; the author's two-outfit removal check remains |
 | 31 | Change a finished line's base Avatar | P-02 | built (Aran52/VUA#27); awaits the author's real-run check |
-| 32 | Agent interface refinements | P-02, P-03 | planned from the [reference study](../research/reference-projects-2026-10-19.md); item 2 and the Resources of item 3 move to 44 |
-| 33 | Switch options and built-result evidence | P-02, P-03 | items 1 and 4 are in: switch options with saved state and main outfits worn one at a time (Aran52/VUA#64), and the synced parameter estimate (Aran52/VUA#60); the slider, built-result evidence and VRCFury remain |
+| 32 | Agent interface refinements | P-02, P-03 | planned from the [reference study](../research/reference-projects-2026-10-19.md); item 2 and the Resources of item 3 moved to 44; remaining agent interface refinements follow |
+| 33 | Switch options and built-result evidence | P-02, P-03 | in progress: items 1, 4 and 5 are built — switch options (Aran52/VUA#64), synced parameter estimate (Aran52/VUA#60) and VRCFury intake recognition + guide (F7, Aran52/VUA#89); the slider, built-result evidence and real VRCFury outfit check remain |
 | 34 | Evidence layers and toolchain profile | P-03, B-02 | planned from the reference study |
-| 35 | Start card, preflight and attribution | P-02, P-03 | planned from the reference study |
+| 35 | Start card, preflight and attribution | P-02, P-03 | in progress: item 2 pre-assembly prediction is built (F5, Aran52/VUA#87, extended with Skinned/Basic Mesh rank limits in VUA-Project/VUA#98); start card, release attribution, local lessons and P-02 prediction-tolerance check remain |
 | 36 | Licensed entry guide | — | design drafted; awaits the author's network verification |
-| 37 | Creator credits | P-02 | planned |
-| 38 | Steadier regional latency | — | built: three connections per region, the minimum value and the proxy note (Aran52/VUA#46), and the tile's tiers (Aran52/VUA#54); calibration against in-game Ping waits for a need (author, 2026-10-23) |
-| 39 | Resource panel that guides | P-02 | planned; items 1 and 2 need the author's decision |
-| 40 | Notification center redesign | P-02 | planned; a preview for the author comes first |
+| 37 | Creator credits | P-02 | built (VUA-Project/VUA#98): creator credits on the release album (`CreatorCredits`); author check on a real P-02 album remains |
+| 38 | Steadier regional latency | — | built: three connections per region, the minimum value and the proxy note (Aran52/VUA#46), and the tile's tiers (Aran52/VUA#54); latency calibration against in-game Ping waits for a need (author, 2026-10-23) |
+| 39 | Resource panel that guides | P-02 | built (VUA-Project/VUA#98): tightest-resource title bar (F6, Aran52/VUA#88), 1-minute in-memory sparkline trend chart and AMF RAM capacity hint; live P-02 and VRChat sampling-budget check remains |
+| 40 | Notification center redesign | P-02 | built (VUA-Project/VUA#98): ineffective "Show completed" setting removed (F2, Aran52/VUA#86), grouped notification center, unseen/failure bell alert and bounded dismissed-ID retention; author UI review remains |
 | 41 | VN3 terms and filtering by use | P-02 | built: the backend (Aran52/VUA#31), the library drawer and MCP reads (Aran52/VUA#37), and the release room's check (Aran52/VUA#38); the author's check with real products remains |
 | 42 | Line revisions and saved fits | P-02 | built: revisions (Aran52/VUA#40), saved fits (Aran52/VUA#45), the version list on the assembly station (Aran52/VUA#50) and the fit prompt and management (Aran52/VUA#51); the author's restore and fit checks remain |
 | 43 | Fixes from the MCP round | P-02 | built (Aran52/VUA#32, #63): items 1, 3, 4 and 5, the banner names the failing field, the workshop follows tasks started elsewhere, and one card per run; a real reproduction of the transient failure remains |
 | 44 | MCP result envelope | P-02 | done (Aran52/VUA#43): compact reads with Resources, the build in `vua_status`, and errors that say whether a retry is safe |
-| 45 | Source hints from owned file names | — | planned |
-| 46 | Library migration grouping | — | planned; executes the migration design |
-| 47 | Library migration through the player's agent | — | planned; after 46, sharing its manifest |
+| 45 | Source hints from owned file names | — | built (VUA-Project/VUA#98): source hints matched from owned BOOTH archive file names; real-account library check remains |
+| 46 | Library migration grouping | — | built (Aran52/VUA#94, F4): per-directory choices, loose-file grouping, confirmed/unassigned/excluded/unreadable areas, intake handoff and versioned migration manifest; author check on a real local collection remains |
+| 47 | Library migration through the player's agent | — | built (VUA-Project/VUA#98): MCP migration planning and guarded group-import request sharing 46's manifest; author real-collection agent run remains |
 | 48 | Identical content: the player's choice | — | planned; default keeps a separate copy for each item (author, 2026-10-21) |
-| 49 | Shareable turntable with a Recipe link | P-02, P-04 | planned: a "VUA inside" badge, a code hidden in the background and a short-link service (author, 2026-10-24); prompts turntable-share, share-link-service and product-pictures |
-| 50 | Optional AI connection | — | planned; not part of language-only first run (2026-10-27) |
-| 51 | Recipes creators trust | P-04 | planned: prompts recipe-booth-materials (Aran52/VUA#65), terms-everywhere, turntable-share, share-link-service; B by Claude |
+| 49 | Shareable turntable with a Recipe link | P-02, P-04 | built: "VUA inside" turntable sharing and the mainland China trial share-link service (Aran52/VUA#72, #73), plus OpenGraph metadata on recipe share pages in VUA-Project/VUA#98; refinements beyond the merged state and P-04 cross-machine check remain |
+| 50 | Optional AI connection | — | planned: optional AI connection changes (not part of first run, 2026-10-27) |
+| 51 | Recipes creators trust | P-04 | in progress: recipe-booth-materials (Aran52/VUA#65), contextual terms, turntable sharing and `amf-recipe v0.6` (VUA-Project/VUA#97) are built; creator-trusted Recipes beyond the merged state and P-04 real-machine proof remain |
 | 52 | Signed Windows releases | — | on hold (author, 2026-10-25): SignPath Foundation declined on 2026-10-24 for low public visibility; releases stay unsigned for now |
-| 53 | Consistent interface by audit | — | item 1 prompted (`design-audit`); items 2–3 follow its report |
-| 54 | [Interaction structure](../design/interaction-structure.md) | — | built on `slice/ui-structure`, second round from the author's 2026-11-06 notes; the author reviews it locally before any pull request |
+| 53 | Consistent interface by audit | — | in progress: item 1 (`design-audit`), first token pass (PR #67) and Grid normalization baseline landed; shared catalogue migration and area-by-area audit beyond the first report remain |
+| 54 | [Interaction structure](../design/interaction-structure.md) | — | built (VUA-Project/VUA#97): merged into `main` with v1.1.0 Getting on Track; human UI review remains |
+| 55 | Local diagnostics and symptom SOPs (`local-diagnostics v0.1`) | A-03 | built (VUA-Project/VUA#98): local config/cache/OSC/audio/SteamVR/log-category observation, 10 symptom SOPs, guarded offline OSC cache cleanup and `config.json` cache helper; author live-machine check (including `config.json` write) remains |
+| 56 | Pose and tracking topology (`pose-graph v0.1`) | B-02–B-05 | built (VUA-Project/VUA#98): OpenXR runtime, OpenVR external drivers, Safe Mode block and multi-driver FBT conflict detection; live hardware check remains |
+| 57 | VRM / GLB inspection and format filter (`glb-inspection v0.1`) | — | built (VUA-Project/VUA#98): pure-Rust header/JSON streaming inspection for `.glb` / `.vrm` (standalone and `.zip`), VRM bone/license facts and warehouse format filter; author check with real VRM/GLB archives remains |
+| 58 | Open external managers (`manager-apps v0.2`) | — | built (VUA-Project/VUA#98): detached launch for Unity Hub (standard and MSIX AUMID), VCC and ALCOM; author MSIX Unity Hub sign-in check remains |
+| 59 | Resource-saver mode while SteamVR runs (`desktop-resource v0.2`) | — | built (VUA-Project/VUA#98): automatic background saver mode while SteamVR is active; live VR session check remains |
 
-Suggested next order: with the workshop's operations in place (2026-10-24), the author's
-real-machine checks listed in each row come first, then 13's design session. Functional fixes go
-alongside; 35's start card and 33's built-result evidence are the next AMF features.
+Suggested next order: the author's real-machine checks listed in the rows above come first, while
+functional fixes and remaining slice items proceed alongside. All newly delivered code is recorded
+as `built`; acceptance continues to follow the [N sequence](../development-outline.md) and the
+author's real-machine verification.
 
-Every slice ships its player-facing text in the four UI languages; slice 14 reviews them together
-with the author.
+Every slice ships its player-facing text in the five UI languages; slice 14 covers native-speaker
+review across all five.
 
 ## 1 — Integrate
 
@@ -1051,8 +1072,13 @@ author approves the before-and-after sheets of each area.
 
 ## Scheduled after these slices
 
-Social discovery built on VRCX-0 (pain d), the remaining N1 physical rows, N5 real-account
-review, and N7 clean-machine installation.
+- N7's full illustrated user guide (following F8's minimal guide) and clean-machine installation.
+- Encrypting saved sign-in cookies, once the installer verifies a fused Electron runtime.
+- Development dependency upgrades proposed by Dependabot (VUA-Project/VUA#87, #89).
+- Social discovery built on VRCX-0 (pain d), the remaining N1 physical rows, and N5 real-account
+  review.
+- Platforms beyond Windows x64: Windows on Arm, Linux (Ubuntu, SteamOS), macOS, Android and iOS,
+  planned separately.
 
 ## Working arrangement
 

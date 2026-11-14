@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vua.local/schemas/glb-inspection/v0.1/result.schema.json",
+  "title": "GlbInspectionResultV0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "items", "truncated"],
+  "properties": {
+    "schemaVersion": {
+      "const": "vua.glb-inspection/v0.1"
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "copyId",
+          "fileName",
+          "sourceKind",
+          "containerFileName",
+          "sizeBytes",
+          "format",
+          "extensionsUsed",
+          "contentSummary",
+          "materialSummary",
+          "textureSummary",
+          "secondaryMotion",
+          "vrm",
+          "boundsMeters"
+        ],
+        "properties": {
+          "copyId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "fileName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "sourceKind": {
+            "enum": ["standalone_file", "zip_member"]
+          },
+          "containerFileName": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "format": {
+            "enum": ["vrm_1_0", "vrm_0_x", "glb_2_0", "invalid_glb"]
+          },
+          "extensionsUsed": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            }
+          },
+          "contentSummary": {
+            "oneOf": [
+              { "type": "null" },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "meshCount",
+                  "primitiveCount",
+                  "triangleEstimate",
+                  "skinCount",
+                  "nodeCount",
+                  "animationCount"
+                ],
+                "properties": {
+                  "meshCount": { "type": "integer", "minimum": 0, "maximum": 65536 },
+                  "primitiveCount": { "type": "integer", "minimum": 0, "maximum": 1000000 },
+                  "triangleEstimate": { "type": "integer", "minimum": 0, "maximum": 1000000000 },
+                  "skinCount": { "type": "integer", "minimum": 0, "maximum": 4096 },
+                  "nodeCount": { "type": "integer", "minimum": 0, "maximum": 65536 },
+                  "animationCount": { "type": "integer", "minimum": 0, "maximum": 4096 }
+                }
+              }
+            ]
+          },
+          "materialSummary": {
+            "oneOf": [
+              { "type": "null" },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "materialCount",
+                  "unlitMaterialCount",
+                  "mtoonMaterialCount"
+                ],
+                "properties": {
+                  "materialCount": { "type": "integer", "minimum": 0, "maximum": 16384 },
+                  "unlitMaterialCount": { "type": "integer", "minimum": 0, "maximum": 16384 },
+                  "mtoonMaterialCount": { "type": "integer", "minimum": 0, "maximum": 16384 }
+                }
+              }
+            ]
+          },
+          "textureSummary": {
+            "oneOf": [
+              { "type": "null" },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "textureCount",
+                  "embeddedImageCount",
+                  "externalUriTextureCount"
+                ],
+                "properties": {
+                  "textureCount": { "type": "integer", "minimum": 0, "maximum": 16384 },
+                  "embeddedImageCount": { "type": "integer", "minimum": 0, "maximum": 16384 },
+                  "externalUriTextureCount": { "type": "integer", "minimum": 0, "maximum": 16384 }
+                }
+              }
+            ]
+          },
+          "secondaryMotion": {
+            "oneOf": [
+              { "type": "null" },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "springBoneJointCount",
+                  "nodeConstraintCount",
+                  "expressionCount"
+                ],
+                "properties": {
+                  "springBoneJointCount": { "type": "integer", "minimum": 0, "maximum": 65536 },
+                  "nodeConstraintCount": { "type": "integer", "minimum": 0, "maximum": 65536 },
+                  "expressionCount": { "type": "integer", "minimum": 0, "maximum": 4096 }
+                }
+              }
+            ]
+          },
+          "vrm": {
+            "oneOf": [
+              { "type": "null" },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "specVersion",
+                  "hasHumanoidHeadBone",
+                  "hasFullBodyBones",
+                  "hasToeBones",
+                  "headBoneHeightMeters",
+                  "boneCount",
+                  "modelName",
+                  "authors",
+                  "avatarPermission",
+                  "commercialUsage",
+                  "modification",
+                  "licenseUrl"
+                ],
+                "properties": {
+                  "specVersion": { "type": ["string", "null"], "maxLength": 32 },
+                  "hasHumanoidHeadBone": { "type": "boolean" },
+                  "hasFullBodyBones": { "type": "boolean" },
+                  "hasToeBones": { "type": "boolean" },
+                  "headBoneHeightMeters": {
+                    "type": ["number", "null"],
+                    "minimum": 0,
+                    "maximum": 10
+                  },
+                  "boneCount": { "type": "integer", "minimum": 0, "maximum": 512 },
+                  "modelName": { "type": ["string", "null"], "maxLength": 256 },
+                  "authors": {
+                    "type": "array",
+                    "maxItems": 32,
+                    "items": { "type": "string", "maxLength": 256 }
+                  },
+                  "avatarPermission": { "type": ["string", "null"], "maxLength": 64 },
+                  "commercialUsage": { "type": ["string", "null"], "maxLength": 64 },
+                  "modification": { "type": ["string", "null"], "maxLength": 64 },
+                  "licenseUrl": { "type": ["string", "null"], "maxLength": 2048 }
+                }
+              }
+            ]
+          },
+          "boundsMeters": {
+            "oneOf": [
+              { "type": "null" },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["size", "min", "max"],
+                "properties": {
+                  "size": {
+                    "type": "array",
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "items": { "type": "number", "minimum": 0 }
+                  },
+                  "min": {
+                    "type": "array",
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "items": { "type": "number" }
+                  },
+                  "max": {
+                    "type": "array",
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "items": { "type": "number" }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

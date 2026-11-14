@@ -3,6 +3,8 @@ import { isLibraryListParamsV03, type LibraryListParamsV03 } from "./library-vie
 import { isUnityLicenseParams } from "./unity-license-v01.js";
 import { isDeploymentCommandId, isDeploymentParams, type DeploymentPlanParams, type DeploymentExecuteParams, type DeploymentPlanResult, type ToolDeploymentPlanResult, type DeploymentAccepted } from "./environment-deployment.js";
 import { isTermsParams, type TermsPresetId, type ProductTermsV01, type TermsUseCheckV01, type TermsAcceptedV01 } from "./terms-v01.js";
+import { isObservePoseGraphParamsV01, type ObservePoseGraphParamsV01, type PoseGraphResultV01 } from "./pose-graph-v01.js";
+import { isInspectGlbParamsV01, type InspectGlbParamsV01, type GlbInspectionResultV01 } from "./glb-inspection-v01.js";
 import { isAmfProductionParams } from "./amf-production-v01.js";
 import { isScenarioEnvironmentParams } from "./scenario-environment.js";
 import { isNetworkParams, type NetworkIntent, type NetworkResult } from "./environment-network.js";
@@ -11,7 +13,21 @@ import { type GameWindowObservationResultV1 } from "./game-window.js";
 import { isPlayCommandId, isPlayParams, type PlayRoute, type PlaySessionResult } from "./play-session.js";
 import { isExternalToolParams, type ExternalToolAction, type ExternalToolId, type ExternalToolResult } from "./external-tool.js";
 import { isInstallerToolParams, type InstallerToolAction, type InstallerToolId, type InstallerToolResult } from "./installer-tool.js";
-import type { ManagerAppsResult } from "./manager-apps.js";
+import {
+  isLocalDiagnosticsParams,
+  type ClientConfigUpdateParamsV01,
+  type ClientConfigUpdateReceiptResultV01,
+  type LocalDiagnosticsResultV01,
+  type OscCacheClearReceiptResultV01,
+  type SymptomDiagnosisResultV01,
+  type SymptomIdV01,
+} from "./local-diagnostics-v01.js";
+import {
+  isOpenManagerAppParamsV02,
+  type ManagerAppLaunchResultV02,
+  type ManagerAppsResult,
+  type OpenManagerAppParamsV02,
+} from "./manager-apps.js";
 import { isDownloadEventV01 } from "./download-events.js";
 import { isCatalogSyncPageRequestV01, type CatalogSyncPageRequestV01 } from "./catalog-sync.js";
 import { isCatalogOrdersPageV01, type CatalogOrdersPageV01 } from "./catalog-orders.js";
@@ -2881,11 +2897,18 @@ export type ApplicationRequestV01 =
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "amf.production.list" | "amf.production.get" | "amf.production.plan" | "amf.production.rollbackPlan" | "amf.production.revisionPlan" | "amf.production.listRecipes" | "amf.production.recipeImage" | "amf.production.getRecipe" | "amf.production.recipeSharePlan" | "amf.production.recipeMaterialPlan" | "amf.production.recipeApplyPlan" | "amf.production.previewRecipeShare" | "amf.production.previewImage" | "amf.production.releaseState" | "amf.production.turntableFrame" | "amf.production.faceTrackingPlan" | "amf.production.planOutfitRemoval" | "amf.production.planLighting" | "amf.production.planTextureMemory" | "amf.production.listFits"; readonly params: Readonly<Record<string, unknown>> })
   | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly commandId: string; readonly method: "amf.production.prepare" | "amf.production.assemble" | "amf.production.reinspect" | "amf.production.open" | "amf.production.closeEditor" | "amf.production.rollback" | "amf.production.restoreRevision" | "amf.production.renameRecipe" | "amf.production.deleteRecipe" | "amf.production.saveRecipe" | "amf.production.prepareRecipe" | "amf.production.exportRecipe" | "amf.production.importRecipe" | "amf.production.applyRecipe" | "amf.production.localTest" | "amf.production.bakeTurntable" | "amf.production.upload" | "amf.production.faceTrackingPatch" | "amf.production.sdkFix" | "amf.production.changeSources" | "amf.production.delete" | "amf.production.setCapacity" | "amf.production.removeOutfit" | "amf.production.applyLighting" | "amf.production.setOptimizer" | "amf.production.applyTextureMemory" | "amf.production.saveFit" | "amf.production.renameFit" | "amf.production.deleteFit"; readonly params: Readonly<Record<string, unknown>> })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.inspectManagerApps"; readonly params: Readonly<Record<string, never>> })
+  | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly method: "environment.openManagerApp"; readonly commandId: string; readonly params: OpenManagerAppParamsV02 })
+  | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.observePoseGraph"; readonly params: ObservePoseGraphParamsV01 })
+  | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "library.inspectGlb"; readonly params: InspectGlbParamsV01 })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.observePlay"; readonly params: { readonly route: PlayRoute } })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "tools.observeConnection"; readonly params: { readonly toolId: ExternalToolId } })
   | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly method: "tools.actConnection"; readonly commandId: string; readonly params: { readonly toolId: ExternalToolId; readonly action: ExternalToolAction } })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "tools.observeInstaller"; readonly params: { readonly toolId: InstallerToolId } })
   | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly method: "tools.actInstaller"; readonly commandId: string; readonly params: { readonly toolId: InstallerToolId; readonly action: InstallerToolAction } })
+  | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "diagnostics.observeLocal"; readonly params: { readonly schemaVersion: "0.1" } })
+  | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "diagnostics.diagnoseSymptom"; readonly params: { readonly schemaVersion: "0.1"; readonly symptom: SymptomIdV01 } })
+  | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly method: "diagnostics.clearOscAvatarCache"; readonly commandId: string; readonly params: { readonly schemaVersion: "0.1" } })
+  | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly method: "diagnostics.updateClientConfig"; readonly commandId: string; readonly params: ClientConfigUpdateParamsV01 })
   | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly method: "environment.startPlay" | "environment.stopPlay"; readonly commandId: string; readonly params: { readonly route: PlayRoute } })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.checkNetwork"; readonly params: { readonly intent: NetworkIntent } })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.testWebsites"; readonly params: WebsiteTestParams })
@@ -3059,9 +3082,16 @@ export interface DemoTaskStartedV01 {
 export type ApplicationSuccessValueV01 =
   | ProductTermsV01 | TermsUseCheckV01 | TermsAcceptedV01
   | ManagerAppsResult
+  | ManagerAppLaunchResultV02
+  | PoseGraphResultV01
+  | GlbInspectionResultV01
   | PlaySessionResult
   | ExternalToolResult
   | InstallerToolResult
+  | LocalDiagnosticsResultV01
+  | SymptomDiagnosisResultV01
+  | OscCacheClearReceiptResultV01
+  | ClientConfigUpdateReceiptResultV01
   | NetworkResult
   | WebsiteTestResult
   | GameWindowObservationResultV1
@@ -3324,6 +3354,16 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
   }
   if (value.method === "environment.inspectManagerApps") return value.kind === "query"
     && hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"]) && hasExactKeys(value.params, []);
+  if (value.method === "environment.openManagerApp") return value.kind === "command"
+    && hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params", "commandId"])
+    && isPlayCommandId(value.commandId)
+    && isOpenManagerAppParamsV02(value.params);
+  if (value.method === "environment.observePoseGraph") return value.kind === "query"
+    && hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
+    && isObservePoseGraphParamsV01(value.params);
+  if (value.method === "library.inspectGlb") return value.kind === "query"
+    && hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
+    && isInspectGlbParamsV01(value.params);
   if (value.method === "tools.observeConnection" || value.method === "tools.actConnection") {
     const command = value.method === "tools.actConnection";
     return value.kind === (command ? "command" : "query") && hasExactKeys(value, command ? ["contractVersion", "requestId", "correlationId", "kind", "method", "params", "commandId"] : ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
@@ -3333,6 +3373,20 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
     const command = value.method === "tools.actInstaller";
     return value.kind === (command ? "command" : "query") && hasExactKeys(value, command ? ["contractVersion", "requestId", "correlationId", "kind", "method", "params", "commandId"] : ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
       && isInstallerToolParams(value.params, command) && (!command || isPlayCommandId(value.commandId));
+  }
+  if (
+    value.method === "diagnostics.observeLocal"
+    || value.method === "diagnostics.diagnoseSymptom"
+    || value.method === "diagnostics.clearOscAvatarCache"
+    || value.method === "diagnostics.updateClientConfig"
+  ) {
+    const command = value.method === "diagnostics.clearOscAvatarCache" || value.method === "diagnostics.updateClientConfig";
+    return value.kind === (command ? "command" : "query")
+      && hasExactKeys(value, command
+        ? ["contractVersion", "requestId", "correlationId", "kind", "method", "params", "commandId"]
+        : ["contractVersion", "requestId", "correlationId", "kind", "method", "params"])
+      && isLocalDiagnosticsParams(value.method, value.params, false)
+      && (!command || isPlayCommandId(value.commandId));
   }
   if (value.method === "environment.observePlay" || value.method === "environment.startPlay" || value.method === "environment.stopPlay") {
     const command = value.method !== "environment.observePlay";

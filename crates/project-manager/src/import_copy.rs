@@ -260,6 +260,13 @@ fn uppercase_drive_letter(path: PathBuf) -> PathBuf {
 #[cfg(windows)]
 fn strip_verbatim(path: PathBuf) -> PathBuf {
     let text = path.as_os_str().to_string_lossy();
+    if let Some(unc) = text
+        .get(..8)
+        .filter(|prefix| prefix.eq_ignore_ascii_case(r"\\?\UNC\"))
+        .and_then(|_| text.get(8..))
+    {
+        return PathBuf::from(format!(r"\\{unc}"));
+    }
     match text.strip_prefix(r"\\?\") {
         Some(stripped) => PathBuf::from(stripped.to_owned()),
         None => path,
@@ -332,11 +339,17 @@ fn measure_copy_scope(dir: &Path, top_levels: &mut Vec<String>) -> std::io::Resu
         if EXCLUDED_ENTRIES.iter().any(|excluded| *excluded == name) {
             continue;
         }
-        let metadata = entry.metadata()?;
+        let metadata = std::fs::symlink_metadata(entry.path())?;
+        if metadata.file_type().is_symlink() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("links/junctions inside source project are refused: {name}"),
+            ));
+        }
         if metadata.is_dir() {
             total += measure_copy_scope(&entry.path(), &mut Vec::new())?;
             top_levels.push(name);
-        } else {
+        } else if metadata.is_file() {
             total += metadata.len();
             top_levels.push(name);
         }
@@ -495,9 +508,16 @@ fn copy_with_exclusions(
             continue;
         }
         let destination = target.join(&name);
-        if entry.metadata()?.is_dir() {
+        let metadata = std::fs::symlink_metadata(entry.path())?;
+        if metadata.file_type().is_symlink() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                format!("links/junctions inside source project are refused: {name}"),
+            ));
+        }
+        if metadata.is_dir() {
             total += copy_with_exclusions(&entry.path(), &destination, &mut Vec::new())?;
-        } else {
+        } else if metadata.is_file() {
             total += std::fs::copy(entry.path(), &destination)?;
         }
         top_levels.push(name);

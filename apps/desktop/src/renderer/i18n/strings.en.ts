@@ -26,6 +26,9 @@ import { avatarOptimizerCopy } from "./avatar-optimizer-copy.ts";
 import { guideChannelCopy } from "./guide-channel-copy.ts";
 import { recipeDraftFlowCopy } from "./recipe-draft-flow-copy.ts";
 import { installerToolCopy } from "./installer-tool-copy.ts";
+import { localDiagnosticsCopy } from "./local-diagnostics-copy.ts";
+import { poseGraphCopy } from "./pose-graph-copy.ts";
+import { glbInspectionCopy } from "./glb-inspection-copy.ts";
 /**
  * VUA UI string table (en) — SOURCE language.
  * - This table is the structural source of truth: the widened Strings type
@@ -69,6 +72,9 @@ export const strings = {
   guideChannel: guideChannelCopy["en"],
   recipeDraftFlow: recipeDraftFlowCopy["en"],
   installerTool: installerToolCopy["en"],
+  localDiagnostics: localDiagnosticsCopy["en"],
+  poseGraph: poseGraphCopy["en"],
+  glbInspection: glbInspectionCopy["en"],
   websiteTests: {
     title: "Website connectivity", test: "Test", testAll: "Test all", testing: "Testing…",
     add: "Add website", edit: "Edit website", editSite: "Edit {name}", testSite: "Test {name}",
@@ -218,6 +224,8 @@ export const strings = {
     progress: "{done}/{total}",
     openAria: "Open Notification Center ({count} active)",
     closeAria: "Close Notification Center",
+    pinAria: "Keep Notification Center open",
+    unpinAria: "Unpin Notification Center",
     empty: "No notifications",
     unlabeledTask: "Background task",
   },
@@ -243,6 +251,13 @@ export const strings = {
     unavailable: "Unavailable",
     gpuKinds: {"discrete":"Dedicated GPU","integrated":"Integrated GPU","unknown":"Unknown type"},
     sharedMemory: "GPU shares system memory — no dedicated VRAM figure",
+    trend60s: "60s peak trend",
+    steamVrRunningNote: "SteamVR runtime detected",
+    capacity: {
+      comfortable: "{freeRam} GB free RAM — comfortable for concurrent Unity builds",
+      single: "{freeRam} GB free RAM — best to run one Unity build at a time",
+      tight: "{freeRam} GB free RAM — close heavy apps before starting a Unity build",
+    },
     closeAria: "Close resource details",
   },
   nav: {

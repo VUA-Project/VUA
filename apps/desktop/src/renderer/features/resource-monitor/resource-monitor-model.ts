@@ -51,3 +51,50 @@ export function usagePercents(snapshot: SystemResourceUsageV2): ResourceUsagePer
 export function formatGigabytes(bytes: number): string {
   return (bytes / 1024 ** 3).toFixed(1);
 }
+
+export type AmfCapacityTier = "comfortable" | "single" | "tight";
+
+export interface AmfCapacityGuidance {
+  readonly tier: AmfCapacityTier;
+  readonly availableRamGiB: string;
+}
+
+const GIB = 1024 ** 3;
+const COMFORTABLE_FREE_RAM_GIB = 12;
+const SINGLE_BUILD_FREE_RAM_GIB = 6;
+
+/** Grounded capacity hint from observed free system RAM for headless Unity Avatar builds. */
+export function amfCapacityGuidance(snapshot: SystemResourceUsageV2): AmfCapacityGuidance | null {
+  if (
+    !Number.isFinite(snapshot.ramUsedBytes) ||
+    !Number.isFinite(snapshot.ramTotalBytes) ||
+    snapshot.ramTotalBytes <= 0
+  ) {
+    return null;
+  }
+  const availableBytes = Math.max(0, snapshot.ramTotalBytes - snapshot.ramUsedBytes);
+  const freeGiB = availableBytes / GIB;
+  const tier: AmfCapacityTier =
+    freeGiB >= COMFORTABLE_FREE_RAM_GIB
+      ? "comfortable"
+      : freeGiB >= SINGLE_BUILD_FREE_RAM_GIB
+        ? "single"
+        : "tight";
+  return { tier, availableRamGiB: freeGiB.toFixed(1) };
+}
+
+/** Maps bounded 0..100 utilization samples into SVG polyline coordinates. */
+export function sparklinePoints(values: readonly number[], width = 120, height = 24): string {
+  if (values.length < 2 || width <= 0 || height <= 4) return "";
+  const pad = 2;
+  const innerHeight = height - pad * 2;
+  const stepX = width / (values.length - 1);
+  return values
+    .map((raw, index) => {
+      const clamped = Number.isFinite(raw) ? Math.min(100, Math.max(0, raw)) : 0;
+      const x = (index * stepX).toFixed(1);
+      const y = (pad + innerHeight * (1 - clamped / 100)).toFixed(1);
+      return `${x},${y}`;
+    })
+    .join(" ");
+}

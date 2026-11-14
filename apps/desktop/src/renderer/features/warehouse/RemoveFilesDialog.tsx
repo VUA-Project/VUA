@@ -58,7 +58,7 @@ export function RemoveFilesDialog({ item, onClose, onChanged }: {
         if (!active || currentIntent.current !== intent.id) return;
         if (value.target.kind !== item.target.kind || value.target.id !== item.target.id) throw new Error("wrong_target");
         setSnapshot(value); setFeedback(null);
-        registerTaskIdentity(value.taskId, { title: `${copy.title} · ${item.title}`, originPage: "warehouse", notifyOnComplete: true });
+        registerTaskIdentity(value.taskId, { title: `${copy.title} · ${item.title}`, originPage: "warehouse", notifyOnComplete: true, notifyFamily: "library:removeFiles" });
         if (value.revision !== revision) { revision = value.revision; changed.current(); }
         if (value.state !== "running") window.clearInterval(timer);
       } catch { if (active && currentIntent.current === intent.id) setFeedback(copy.resultUnknown); }
@@ -74,7 +74,7 @@ export function RemoveFilesDialog({ item, onClose, onChanged }: {
       // Keep the same authorized selection and identity when a receipt is lost.
       // The provider returns the accepted task before checking a fresh preview.
       const value = await libraryMaintenance.remove(request.id, request.preview); setSnapshot(value); setFeedback(null);
-      registerTaskIdentity(value.taskId, { title: `${copy.title} · ${item.title}`, originPage: "warehouse", notifyOnComplete: true });
+      registerTaskIdentity(value.taskId, { title: `${copy.title} · ${item.title}`, originPage: "warehouse", notifyOnComplete: true, notifyFamily: "library:removeFiles" });
       changed.current();
     } catch (error) {
       const refused = error instanceof LibraryMaintenanceError && ["vua.library.preview_changed", "vua.library.file_busy", "vua.library.target_not_found", "vua.library.copy_not_found", "vua.library.reference_read_failed"].includes(error.code);

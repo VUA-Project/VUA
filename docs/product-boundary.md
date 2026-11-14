@@ -1,7 +1,7 @@
 # VUA product boundary
 
 
-> Updated: 2026-11-07
+> Updated: 2026-11-14
 
 ## Product definition
 
@@ -570,6 +570,26 @@ User-adopted implementation boundary (2026-09-29), informed by the
   and a concrete policy review. This section grants no new API feature or execution permission.
 - State clearly that VUA has no VRChat Inc. affiliation or endorsement. Do not infer approval from
   the continued existence of VRCX or other tools, or promise blanket policy compliance.
+
+### Local client diagnostics (user ruling, 2026-11-14)
+
+- **Reads**: under `LocalLow\VRChat\VRChat`, `config.json`, the cache directory size, the count
+  and byte size of `OSC/usr_*/Avatars/*.json`, and the tail of the latest client log classified
+  into fixed categories (raw log text stays on the machine; MCP receives only the classification);
+  SteamVR settings, Windows default recording and communications devices, Hardware-Accelerated GPU
+  Scheduling (HAGS) and the active power plan, and whether OVR Advanced Settings is installed; the
+  local UDP and TCP port ownership tables; and OSCQuery `HOST_INFO` on the loopback address.
+- **Writes** are limited to two operations:
+  - `cache_size` and `cache_expiry_delay` in `config.json`, within VRChat's
+    [documented range](https://docs.vrchat.com/docs/configuration-file) (no less than 30 GB and
+    30 days);
+  - deleting `OSC/usr_*/Avatars/*.json`.
+- **Conditions for writes**: VRChat is confirmed not running, and when liveness cannot be confirmed
+  it is treated as running; the player confirms each operation individually, and MCP requests state
+  the exact values or file count on the approval card; before the first edit, VUA retains a backup
+  of the original `config.json`. All other fields and files stay read-only.
+
+Wire and implementation details live in [local diagnostics v0.1](protocols/local-diagnostics-v0.1.md).
 
 ## BOOTH library enrichment (user ruling, 2026-11-10)
 

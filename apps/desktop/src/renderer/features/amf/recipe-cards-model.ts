@@ -69,3 +69,71 @@ export function recipeProductIds(rows: readonly (readonly RecipeMaterialRow[])[]
 export function newestFirst<T extends { readonly updatedAt: string }>(items: readonly T[]): readonly T[] {
   return [...items].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
+
+export type RecipeReadinessFilter = "all" | "ready" | "attention";
+
+export interface RecipeSummaryFilterShape {
+  readonly recipeId: string;
+  readonly title: string;
+  readonly avatarName?: string | undefined;
+  readonly boothProductIds?: readonly string[] | undefined;
+}
+
+export interface RecipeFilterContext {
+  readonly query: string;
+  readonly readiness: RecipeReadinessFilter;
+  readonly recipes?: ReadonlyMap<string, AmfRecipeDocument> | undefined;
+  readonly rows?: ReadonlyMap<string, readonly RecipeMaterialRow[]> | undefined;
+  readonly plans?: ReadonlyMap<string, Pick<AmfRecipeMaterialPlan, "materials" | "ready">> | undefined;
+  readonly sources?: readonly RecipeMaterialSource[] | undefined;
+  readonly pictures?: ReadonlyMap<string, { readonly title: string | null }> | undefined;
+}
+
+/** Filters Recipe summaries by multi-token NFKC query (title, avatar, outfits, packages, BOOTH titles) and material readiness. */
+export function filterRecipeSummaries<T extends RecipeSummaryFilterShape>(
+  summaries: readonly T[],
+  context: RecipeFilterContext,
+): readonly T[] {
+  const tokens = context.query
+    .normalize("NFKC")
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (tokens.length === 0 && context.readiness === "all") return summaries;
+
+  const sources = context.sources ?? [];
+  return summaries.filter(summary => {
+    const doc = context.recipes?.get(summary.recipeId);
+    const plan = context.plans?.get(summary.recipeId);
+    if (context.readiness !== "all") {
+      const state = plan !== undefined ? recipeReadiness(plan) : doc ? fastDocumentReadiness(doc, sources) : null;
+      if (context.readiness === "ready" && state?.kind !== "ready") return false;
+      if (context.readiness === "attention" && (state === null || state.kind === "ready")) return false;
+    }
+    if (tokens.length === 0) return true;
+
+    const rows = context.rows?.get(summary.recipeId) ?? [];
+    const productIds = [
+      ...(summary.boothProductIds ?? []).map(id => (id.startsWith("booth:") ? id : `booth:${id}`)),
+      ...rows.flatMap(row => (row.productId ? [row.productId] : [])),
+    ];
+    const pictureTitles = productIds.flatMap(id => {
+      const title = context.pictures?.get(id)?.title;
+      return title ? [title] : [];
+    });
+    const docParts = doc
+      ? [
+          doc.avatar.prefabPath,
+          ...doc.materials.map(item => item.packageName),
+          ...doc.outfits.flatMap(outfit => [outfit.toggleName, outfit.prefabPath]),
+          ...Object.keys(doc.packages),
+        ]
+      : [];
+    const haystack = [summary.title, summary.avatarName ?? "", ...pictureTitles, ...docParts]
+      .join(" ")
+      .normalize("NFKC")
+      .toLowerCase();
+    return tokens.every(token => haystack.includes(token));
+  });
+}

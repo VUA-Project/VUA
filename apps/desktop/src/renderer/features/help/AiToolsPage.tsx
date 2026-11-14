@@ -65,7 +65,10 @@ export function AiToolsPage({ navigate }: { navigate: (page: PageId) => void }) 
     {snapshot?.enabled ? <Card>
       <h2>{copy.second}</h2>
       <textarea className="vua-ai-tools__prompt" rows={12} readOnly aria-label={copy.second} value={prompt} />
-      <Button disabled={busy || !prompt} onClick={() => { void act(async () => { await port.copyPrompt(currentLocale); toast(copy.copied, "success"); }); }}>{copy.copy}</Button>
+      <div className="vua-ai-tools__copy-actions">
+        <Button disabled={busy || !prompt} onClick={() => { void act(async () => { await port.copyPrompt(currentLocale); toast(copy.copied, "success"); }); }}>{copy.copy}</Button>
+        {port.copyConfig ? <Button variant="subtle" disabled={busy || !prompt} onClick={() => { void act(async () => { await port.copyConfig!(); toast(copy.copied, "success"); }); }}>{copy.copyConfig}</Button> : null}
+      </div>
       <p className="vua-caption">{copy.private}</p>
       <h3>{copy.third}</h3><p>{copy.thirdHint}</p>
     </Card> : null}

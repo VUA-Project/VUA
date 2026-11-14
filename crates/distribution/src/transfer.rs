@@ -116,6 +116,9 @@ impl Transfer {
     }
     /// Bounded sample probes test the exact object, never an ICMP or mirror homepage.
     async fn ranked_sources(&self, pack: &Pack) -> Vec<String> {
+        if pack.bytes == 0 {
+            return pack.sources.clone();
+        }
         let mut sources = Vec::new();
         let mut probes = tokio::task::JoinSet::new();
         for source in &pack.sources {

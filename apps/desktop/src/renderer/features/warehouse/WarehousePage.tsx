@@ -1,4 +1,4 @@
-import type { LibrarySort } from "@vua/contracts";
+import type { LibraryFormatFilterV03, LibrarySort } from "@vua/contracts";
 import { LibraryDetailBar, LibraryDetailLoading, ProductDetail } from "./LibraryDetail.tsx";
 import { LibraryVn3Filter } from "./LibraryVn3Filter.tsx";
 import { libraryViewCopy } from "../../i18n/library-view-copy.ts";
@@ -150,6 +150,8 @@ type DetailState =
 function LibraryBadges({ facts, compact = false }: { facts: LibraryCardFacts | undefined; compact?: boolean }) {
   if (facts === undefined) return null;
   return <>
+    {facts.formats?.includes("vrm") ? <Badge tone="neutral">{view.format.vrmBadge}</Badge> : null}
+    {facts.formats?.some(fmt => fmt === "glb" || fmt === "gltf") ? <Badge tone="neutral">{view.format.glbBadge}</Badge> : null}
     {facts.vn3?.match === "conditional" ? <Badge tone="neutral">{vn3Copy.conditional}</Badge> : facts.vn3?.match === "contact" ? <Badge tone="warning">{vn3Copy.contact}</Badge> : null}
     {facts.vn3?.hasSpecialNote ? <Badge tone="warning">{vn3Copy.special}</Badge> : null}
     {compact ? null : <Badge tone={facts.storage.state === "present" || facts.storage.state === "cloud_only" ? "neutral" : "warning"}>
@@ -415,6 +417,7 @@ export function WarehousePage({
   >(remembered.source);
   const [downloadState, setDownloadState] = useState<"all" | "downloaded" | "not-downloaded" | "missing" | "in_progress" | "attention">(remembered.downloadState);
   const [sourceCategory, setSourceCategory] = useState(remembered.sourceCategory);
+  const [formatFilter, setFormatFilter] = useState<"all" | LibraryFormatFilterV03>(remembered.format);
   const [vn3, setVn3] = useState<LibraryVn3Choice>(remembered.vn3);
   const [vn3Open, setVn3Open] = useState(false);
   const [libraryPage, setLibraryPage] = useState<LibraryPageView | null>(null);
@@ -560,6 +563,7 @@ export function WarehousePage({
         title: copy.catalogSync.taskTitle,
         originPage: "warehouse",
         notifyOnComplete: true,
+        notifyFamily: "library:sync",
       });
       setSyncRunId(outcome.runId);
       setSyncNotice("started");
@@ -859,24 +863,24 @@ export function WarehousePage({
   };
 
   const [adaptation, setAdaptation] = useState<{ productId: string; title: string; previous: {
-    query: WarehouseQueryState; source: typeof source; downloadState: typeof downloadState; sourceCategory: string; vn3: LibraryVn3Choice; wanted: number;
+    query: WarehouseQueryState; source: typeof source; downloadState: typeof downloadState; sourceCategory: string; formatFilter: typeof formatFilter; vn3: LibraryVn3Choice; wanted: number;
     viewMode: typeof viewMode; selectedIds: ReadonlySet<string>; selectedId: string | null; selectedLocalId: string | null; scrollTop: number; scrollLeft: number;
   } } | null>(null);
   const restoreScroll = useRef<{ top: number; left: number } | null>(remembered.scrollTop > 0 ? { top: remembered.scrollTop, left: 0 } : null);
   const changeFilters = (change: () => void) => { change(); setWanted(LIBRARY_BATCH); setSelectedIds(new Set()); wallEl?.scrollTo({ top: 0 }); };
   const showAdaptations = (product: { productId: string; title: string | null }) => {
     setAdaptation({ productId: product.productId, title: product.title ?? product.productId, previous: adaptation?.previous ?? {
-      query, source, downloadState, sourceCategory, vn3, wanted, viewMode, selectedIds: new Set(selectedIdsRef.current), selectedId, selectedLocalId,
+      query, source, downloadState, sourceCategory, formatFilter, vn3, wanted, viewMode, selectedIds: new Set(selectedIdsRef.current), selectedId, selectedLocalId,
       scrollTop: wallEl?.scrollTop ?? 0, scrollLeft: wallEl?.scrollLeft ?? 0,
     } });
-    restoreScroll.current = null; setQuery(emptyWarehouseQuery); setSource("all"); setDownloadState("all"); setSourceCategory("all"); setVn3(NO_VN3_CHOICE);
+    restoreScroll.current = null; setQuery(emptyWarehouseQuery); setSource("all"); setDownloadState("all"); setSourceCategory("all"); setFormatFilter("all"); setVn3(NO_VN3_CHOICE);
     setWanted(LIBRARY_BATCH); setSelectedIds(new Set()); setSelectedId(null); setSelectedLocalId(null); loaded.current = null; setLibraryPage(null); setListState({ kind: "loading" });
     if (wallEl) { wallEl.scrollTop = 0; wallEl.scrollLeft = 0; }
   };
   const cancelAdaptations = () => {
     if (!adaptation) return;
     const previous = adaptation.previous;
-    setQuery(previous.query); setSource(previous.source); setDownloadState(previous.downloadState); setSourceCategory(previous.sourceCategory); setVn3(previous.vn3);
+    setQuery(previous.query); setSource(previous.source); setDownloadState(previous.downloadState); setSourceCategory(previous.sourceCategory); setFormatFilter(previous.formatFilter); setVn3(previous.vn3);
     setWanted(previous.wanted); setViewMode(previous.viewMode); setSelectedIds(previous.selectedIds); setSelectedId(previous.selectedId); setSelectedLocalId(previous.selectedLocalId);
     restoreScroll.current = { top: previous.scrollTop, left: previous.scrollLeft };
     setAdaptation(null); loaded.current = null; setLibraryPage(null); setListState({ kind: "loading" });
@@ -888,14 +892,14 @@ export function WarehousePage({
     if (wall) { wall.scrollTop = scroll.top; wall.scrollLeft = scroll.left; restoreScroll.current = null; }
   }, [libraryPage, listState, adaptation]);
 
-  const listKey = JSON.stringify([dataSource, query.text.trim(), source, downloadState, sourceCategory, vn3, vn3Open, sort, adaptation?.productId ?? null]);
+  const listKey = JSON.stringify([dataSource, query.text.trim(), source, downloadState, sourceCategory, formatFilter, vn3, vn3Open, sort, adaptation?.productId ?? null]);
   // Ordinary filter changes retain old results. Entering/leaving link filtering
   // clears them so a previous page never poses as a reverse-link result.
   useEffect(() => {
     if (!connected) return;
     let active = true;
     setListState((prev) => (prev.kind === "loaded" ? prev : { kind: "loading" }));
-    const list = (offset: number, limit: number) => libraryBrowser.list({ schemaVersion: "0.3", sort, ...(vn3ChoiceActive(vn3) || vn3Open ? { vn3: vn3FilterWire(vn3) } : {}), source: source === "local" ? "imported" : source === "free" ? "free_downloads" : source,
+    const list = (offset: number, limit: number) => libraryBrowser.list({ schemaVersion: "0.3", sort, ...(formatFilter === "all" ? {} : { format: formatFilter }), ...(vn3ChoiceActive(vn3) || vn3Open ? { vn3: vn3FilterWire(vn3) } : {}), source: source === "local" ? "imported" : source === "free" ? "free_downloads" : source,
         state: downloadState === "not-downloaded" ? "cloud_only" : downloadState, text: query.text.trim(),
         ...(sourceCategory === "all" ? {} : { sourceCategory: sourceCategory === "unknown" ? null : sourceCategory.slice(9) }),
         ...(adaptation === null ? {} : { descriptionLinksTo: adaptation.productId }),
@@ -927,7 +931,7 @@ export function WarehousePage({
     return () => {
       active = false;
     };
-  }, [listKey, query, connected, reloadKey, source, downloadState, sourceCategory, vn3, vn3Open, sort, wanted, dataSource, adaptation]);
+  }, [listKey, query, connected, reloadKey, source, downloadState, sourceCategory, formatFilter, vn3, vn3Open, sort, wanted, dataSource, adaptation]);
   // Rows come in as the end of the wall nears, and a new batch can follow while it is still in reach.
   const loadedCount = libraryPage === null ? 0 : rowsLoaded(libraryPage);
   loadedCountRef.current = loadedCount;
@@ -947,7 +951,7 @@ export function WarehousePage({
   }, []);
   useEffect(() => window.vua?.events.subscribe((event) => {
     if ("taskId" in event && typeof event.payload === "object" && event.payload !== null && "operation" in event.payload && event.payload.operation === "library.reconcileSources") {
-      registerTaskIdentity(event.taskId, { title: copy.libraryState.reconciliationTitle, originPage: "warehouse", notifyOnComplete: true });
+      registerTaskIdentity(event.taskId, { title: copy.libraryState.reconciliationTitle, originPage: "warehouse", notifyOnComplete: true, notifyFamily: "library:reconcile" });
     }
     if (event.kind === "task.completed" || event.kind === "task.persistenceFailed") {
       setReloadKey((key) => key + 1); setDetailReloadKey((key) => key + 1);
@@ -1015,8 +1019,8 @@ export function WarehousePage({
     return () => window.removeEventListener("keydown", onKey);
   }, [resultsView, visibleLocalCards, cardMenu]);
 
-  const filtersActive = libraryFiltersActive({ text: query.text, source, downloadState, sourceCategory, vn3 });
-  const clearFilters = () => changeFilters(() => { setQuery(emptyWarehouseQuery); setSource("all"); setDownloadState("all"); setSourceCategory("all"); setVn3(NO_VN3_CHOICE); });
+  const filtersActive = libraryFiltersActive({ text: query.text, source, downloadState, sourceCategory, format: formatFilter, vn3 });
+  const clearFilters = () => changeFilters(() => { setQuery(emptyWarehouseQuery); setSource("all"); setDownloadState("all"); setSourceCategory("all"); setFormatFilter("all"); setVn3(NO_VN3_CHOICE); });
   /** Search/filter emptiness remains distinct from an empty account library. */
   const emptyCard = catalogEmptyCard({
     remoteBrowser,
@@ -1054,7 +1058,7 @@ export function WarehousePage({
         return;
       }
       toast(format(copy.cardMenu.downloadQueuedHint, { count: outcome.accepted }), "success");
-      registerTaskIdentity(outcome.taskId, { title: `${copy.cardMenu.download} · ${resultsView?.items.find((item) => item.productId === productId)?.title ?? productId}`, originPage: "warehouse", notifyOnComplete: true });
+      registerTaskIdentity(outcome.taskId, { title: `${copy.cardMenu.download} · ${resultsView?.items.find((item) => item.productId === productId)?.title ?? productId}`, originPage: "warehouse", notifyOnComplete: true, notifyFamily: "library:download" });
       setDownloadWatchBatch(outcome.batchId);
       setTransfers(prev => [...prev.filter(t => t.batchId !== outcome.batchId), { batchId: outcome.batchId, productId, paused: false }]);
       setReloadKey((key) => key + 1);
@@ -1372,8 +1376,8 @@ export function WarehousePage({
     return () => window.removeEventListener("keydown", onKey);
   });
   // Filters and place outlive a visit to another page in this session.
-  const sessionRef = useRef({ text: query.text, source, downloadState, sourceCategory, vn3, wanted });
-  sessionRef.current = { text: query.text, source, downloadState, sourceCategory, vn3, wanted };
+  const sessionRef = useRef({ text: query.text, source, downloadState, sourceCategory, format: formatFilter, vn3, wanted });
+  sessionRef.current = { text: query.text, source, downloadState, sourceCategory, format: formatFilter, vn3, wanted };
   const wallRef = useRef(wallEl); wallRef.current = wallEl;
   useEffect(() => () => { saveLibrarySession({ ...sessionRef.current, scrollTop: wallRef.current?.scrollTop ?? 0 }); }, []);
 
@@ -1445,8 +1449,21 @@ export function WarehousePage({
       <div className="vua-warehouse__filters" role="search" aria-label={copy.searchAria}>
         <label className="vua-warehouse__searchbox">
           <Icon name="search" size={16} />
-          <input type="search" className="vua-warehouse__search" aria-label={copy.searchAria} placeholder={view.search}
-            value={query.text} onChange={event => changeFilters(() => setQuery({ text: event.target.value }))} />
+          <input
+            type="search"
+            className="vua-warehouse__search"
+            aria-label={copy.searchAria}
+            placeholder={view.search}
+            value={query.text}
+            onChange={event => changeFilters(() => setQuery({ text: event.target.value }))}
+            onKeyDown={event => {
+              if (event.key === "Escape" && query.text !== "") {
+                event.preventDefault();
+                event.stopPropagation();
+                changeFilters(() => setQuery({ text: "" }));
+              }
+            }}
+          />
         </label>
         <div className="vua-warehouse__select">
           <select className="vua-warehouse__filter" aria-label={copy.filters.source} value={source} onChange={event => changeFilters(() => setSource(event.target.value as typeof source))}>
@@ -1472,6 +1489,13 @@ export function WarehousePage({
             <option value="all">{copy.filters.categoryAll}</option>
             <option value="unknown">{copy.filters.categoryUnknown}</option>
             {[...new Set([...(libraryPage?.sourceCategories ?? []), ...(sourceCategory.startsWith("category:") ? [sourceCategory.slice(9)] : [])])].sort((a, b) => boothCategoryLabel(a).localeCompare(boothCategoryLabel(b), currentLocale)).map(category => <option key={category} value={`category:${category}`}>{boothCategoryLabel(category)}</option>)}
+          </select>
+        </div>
+        <div className="vua-warehouse__select">
+          <select className="vua-warehouse__filter" aria-label={view.format.label} data-nav-id="warehouse-format" value={formatFilter} disabled={dataSource !== "live" || libraryPage?.older === true} onChange={event => changeFilters(() => setFormatFilter(event.target.value as "all" | LibraryFormatFilterV03))}>
+            <option value="all">{view.format.all}</option>
+            <option value="vrm_or_glb">{view.format.vrm_or_glb}</option>
+            <option value="unitypackage">{view.format.unitypackage}</option>
           </select>
         </div>
         <LibraryVn3Filter value={vn3} counts={libraryPage?.vn3Counts} disabled={dataSource !== "live" || libraryPage?.older === true} open={vn3Open} onOpenChange={setVn3Open}

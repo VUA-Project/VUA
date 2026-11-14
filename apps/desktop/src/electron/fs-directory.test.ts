@@ -52,7 +52,15 @@ test("isValidNewDirectoryName: 闭集校验——空/点/分隔符/控制字符/
   assert.equal(isValidNewDirectoryName("a\\b"), false);
   assert.equal(isValidNewDirectoryName("a\u0000b"), false, "控制字符非法");
   assert.equal(isValidNewDirectoryName("a\u001Fb"), false, "0x1F 控制字符非法");
+  assert.equal(isValidNewDirectoryName("a\u007Fb"), false, "0x7F DEL 控制字符非法");
   assert.equal(isValidNewDirectoryName("a\tb"), false, "TAB 属控制字符非法");
+  assert.equal(isValidNewDirectoryName("trailing "), false, "Windows 尾部空格会被静默剥除");
+  assert.equal(isValidNewDirectoryName("trailing."), false, "Windows 尾部句点会被静默剥除");
+  assert.equal(isValidNewDirectoryName("bad:stream"), false, "NTFS ADS 冒号非法");
+  assert.equal(isValidNewDirectoryName("bad*glob"), false, "通配符非法");
+  assert.equal(isValidNewDirectoryName("CON"), false, "Windows 保留设备名非法");
+  assert.equal(isValidNewDirectoryName("nul.pack"), false, "带扩展名的保留设备名非法");
+  assert.equal(isValidNewDirectoryName("COM1"), false, "COM 端口保留名非法");
 });
 
 test("listFsDirectory: 仅子目录进词表(文件不列),字母序,parent 如实", async () => {

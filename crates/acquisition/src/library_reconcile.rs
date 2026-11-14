@@ -385,6 +385,35 @@ fn normalized_name(name: &str) -> String {
         .to_lowercase()
 }
 
+fn is_generic_downloadable_label(normalized: &str) -> bool {
+    let stem = Path::new(normalized)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(normalized);
+    stem.len() < 3
+        || matches!(
+            stem,
+            "readme"
+                | "read me"
+                | "license"
+                | "licence"
+                | "manual"
+                | "changelog"
+                | "terms"
+                | "tos"
+                | "textures"
+                | "texture"
+                | "assets"
+                | "asset"
+                | "avatar"
+                | "package"
+                | "unitypackage"
+                | "files"
+                | "data"
+                | "main"
+        )
+}
+
 /// The products one library read matches its local entries against. Every entry
 /// asks, so the products are indexed once.
 pub(crate) struct SourceIndex<'a> {
@@ -392,16 +421,27 @@ pub(crate) struct SourceIndex<'a> {
     /// BOOTH ids by number, for numbers long enough to mean something inside a name.
     by_number: HashMap<&'a str, Vec<&'a str>>,
     by_title: HashMap<String, Vec<&'a str>>,
+    /// Owned downloadable file labels (`anchor_text`, Slice 45) mapped to owning product IDs.
+    by_downloadable_name: HashMap<String, HashSet<&'a str>>,
     booth_ids: Vec<&'a str>,
     other_ids: Vec<&'a str>,
 }
 
 impl<'a> SourceIndex<'a> {
+    #[cfg(test)]
     pub(crate) fn new(products: &'a [CatalogProductSummary]) -> Self {
+        Self::with_downloadable_names(products, &[])
+    }
+
+    pub(crate) fn with_downloadable_names(
+        products: &'a [CatalogProductSummary],
+        downloadable_names: &[(String, String)],
+    ) -> Self {
         let mut index = Self {
             by_id: HashMap::with_capacity(products.len()),
             by_number: HashMap::new(),
             by_title: HashMap::new(),
+            by_downloadable_name: HashMap::new(),
             booth_ids: Vec::new(),
             other_ids: Vec::new(),
         };
@@ -423,6 +463,32 @@ impl<'a> SourceIndex<'a> {
                     .entry(normalized_name(title))
                     .or_default()
                     .push(id);
+            }
+        }
+        for (product_id, anchor_text) in downloadable_names {
+            let Some((&owned_id, _)) = index.by_id.get_key_value(product_id.as_str()) else {
+                continue;
+            };
+            let normalized = normalized_name(anchor_text);
+            if normalized.is_empty() || is_generic_downloadable_label(&normalized) {
+                continue;
+            }
+            index
+                .by_downloadable_name
+                .entry(normalized.clone())
+                .or_default()
+                .insert(owned_id);
+            if let Some(stem) = Path::new(&normalized)
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .map(normalized_name)
+                .filter(|stem| *stem != normalized && !is_generic_downloadable_label(stem))
+            {
+                index
+                    .by_downloadable_name
+                    .entry(stem)
+                    .or_default()
+                    .insert(owned_id);
             }
         }
         index
@@ -500,25 +566,43 @@ pub(crate) fn source_hint(
         if let Some(id) = named.into_iter().next() {
             ("product_id", id.to_owned())
         } else {
-            let names: HashSet<_> = names
+            let candidate_names: HashSet<_> = names
                 .iter()
                 .flat_map(|name| {
                     let path = Path::new(name);
+                    let file_name = path.file_name().and_then(|s| s.to_str()).unwrap_or(name);
+                    let file_stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or(name);
                     [
                         normalized_name(name),
-                        normalized_name(path.file_stem().and_then(|s| s.to_str()).unwrap_or(name)),
+                        normalized_name(file_name),
+                        normalized_name(file_stem),
                     ]
                 })
                 .collect();
-            let matches: Vec<_> = names
+            let title_matches: HashSet<&str> = candidate_names
                 .iter()
                 .filter_map(|name| products.by_title.get(name))
                 .flatten()
+                .copied()
                 .collect();
-            if matches.len() != 1 {
+            let matched = if !title_matches.is_empty() {
+                title_matches
+            } else {
+                let mut dl_matches: HashSet<&str> = HashSet::new();
+                for name in &candidate_names {
+                    if let Some(ids) = products.by_downloadable_name.get(name) {
+                        if ids.len() > 1 {
+                            return None;
+                        }
+                        dl_matches.extend(ids.iter().copied());
+                    }
+                }
+                dl_matches
+            };
+            if matched.len() != 1 {
                 return None;
             }
-            ("name", (*matches[0]).to_owned())
+            ("name", matched.into_iter().next()?.to_owned())
         }
     };
     let content = if grouping.reference_hashes.get(&id).is_some_and(|hashes| {
@@ -594,5 +678,77 @@ mod source_index_tests {
             Some("booth:1234")
         );
         assert!(index.product("booth:9").is_none());
+    }
+
+    #[test]
+    fn owned_downloadable_filenames_reconcile_only_when_unambiguous() {
+        let mut p1 = product("booth:500001");
+        p1.title = Some("【3D衣装】マヌカ専用ドレス".to_owned());
+        let mut p2 = product("booth:500002");
+        p2.title = Some("【3D衣装】セレスティア専用ドレス".to_owned());
+        let products = [p1, p2];
+        let downloadable_names = vec![
+            (
+                "booth:500001".to_owned(),
+                "Manuka_Ribbon_Dress_v2.zip".to_owned(),
+            ),
+            ("booth:500001".to_owned(), "Shared_Addon.zip".to_owned()),
+            ("booth:500002".to_owned(), "Shared_Addon.zip".to_owned()),
+            ("booth:500001".to_owned(), "README.zip".to_owned()),
+        ];
+        let index = SourceIndex::with_downloadable_names(&products, &downloadable_names);
+        let grouping = Grouping {
+            assignments: HashMap::new(),
+            reference_hashes: HashMap::new(),
+        };
+        let make_entry = |display_name: &str| WarehouseEntryCard {
+            warehouse_item_id: "wh-1".to_owned(),
+            display_name: display_name.to_owned(),
+            folder_name: "wh-1".to_owned(),
+            kind: "imported_material".to_owned(),
+            created_at: "2026-11-14T00:00:00Z".to_owned(),
+            artifact_mode: None,
+            effective_artifact_mode: vua_bdl_store::ArtifactMode::UseOriginalUnitypackage,
+            artifacts: Vec::new(),
+        };
+
+        // Unique owned downloadable archive filename (no BOOTH digits, different from title) links cleanly.
+        assert_eq!(
+            source_hint(
+                &make_entry("Manuka_Ribbon_Dress_v2.zip"),
+                &[],
+                &index,
+                &grouping,
+                None
+            ),
+            Some(("name", "booth:500001".to_owned(), "unverified"))
+        );
+        // Extracted folder stem of that unique owned downloadable also links cleanly.
+        assert_eq!(
+            source_hint(
+                &make_entry("Manuka_Ribbon_Dress_v2"),
+                &[],
+                &index,
+                &grouping,
+                None
+            ),
+            Some(("name", "booth:500001".to_owned(), "unverified"))
+        );
+        // Ambiguous filename shared across two owned products never auto-links.
+        assert_eq!(
+            source_hint(
+                &make_entry("Shared_Addon.zip"),
+                &[],
+                &index,
+                &grouping,
+                None
+            ),
+            None
+        );
+        // Generic labels like README.zip never auto-link.
+        assert_eq!(
+            source_hint(&make_entry("README.zip"), &[], &index, &grouping, None),
+            None
+        );
     }
 }

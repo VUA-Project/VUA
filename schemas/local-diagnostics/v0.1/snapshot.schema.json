@@ -1,0 +1,228 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vua.local/schemas/local-diagnostics/v0.1/snapshot.schema.json",
+  "title": "LocalDiagnosticsResultV01",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["localDiagnostics"],
+  "properties": {
+    "localDiagnostics": { "$ref": "#/$defs/snapshot" }
+  },
+  "$defs": {
+    "udpPort": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "ownerPid", "ownerProcess"],
+      "properties": {
+        "state": { "enum": ["unbound", "bound", "probe_unavailable"] },
+        "ownerPid": { "type": ["integer", "null"], "minimum": 0 },
+        "ownerProcess": { "type": ["string", "null"], "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "oscQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "httpPort", "advertisedOscPort", "ownerProcess"],
+      "properties": {
+        "state": { "enum": ["found", "not_detected", "probe_unavailable"] },
+        "httpPort": { "type": ["integer", "null"], "minimum": 1, "maximum": 65535 },
+        "advertisedOscPort": { "type": ["integer", "null"], "minimum": 1, "maximum": 65535 },
+        "ownerProcess": { "type": ["string", "null"], "minLength": 1, "maxLength": 128 }
+      }
+    },
+    "snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "capturedAt",
+        "clientRunning",
+        "clientConfig",
+        "clientCache",
+        "osc",
+        "steamvrSettings",
+        "audioEndpoints",
+        "streamingSettings",
+        "systemTuning",
+        "recentClientLog"
+      ],
+      "properties": {
+        "schemaVersion": { "const": "vua.local-diagnostics/v0.1" },
+        "capturedAt": { "type": "string", "minLength": 1 },
+        "clientRunning": { "type": ["boolean", "null"] },
+        "clientConfig": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "presence",
+            "cacheDirectoryCustom",
+            "cacheSizeGb",
+            "cacheExpiryDelayDays",
+            "cameraResWidth",
+            "cameraResHeight",
+            "screenshotResWidth",
+            "screenshotResHeight",
+            "fpvSteadycamFov"
+          ],
+          "properties": {
+            "presence": { "enum": ["found", "missing", "malformed", "read_failed"] },
+            "cacheDirectoryCustom": { "type": "boolean" },
+            "cacheSizeGb": { "type": ["integer", "null"], "minimum": 0 },
+            "cacheExpiryDelayDays": { "type": ["integer", "null"], "minimum": 0 },
+            "cameraResWidth": { "type": ["integer", "null"], "minimum": 0 },
+            "cameraResHeight": { "type": ["integer", "null"], "minimum": 0 },
+            "screenshotResWidth": { "type": ["integer", "null"], "minimum": 0 },
+            "screenshotResHeight": { "type": ["integer", "null"], "minimum": 0 },
+            "fpvSteadycamFov": { "type": ["number", "null"] }
+          }
+        },
+        "clientCache": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["presence", "totalBytes", "truncated", "capturedAt", "driveFreeBytes", "driveTotalBytes"],
+          "properties": {
+            "presence": { "enum": ["found", "missing", "read_failed"] },
+            "totalBytes": { "type": ["integer", "null"], "minimum": 0 },
+            "truncated": { "type": "boolean" },
+            "capturedAt": { "type": ["string", "null"], "minLength": 1, "maxLength": 64 },
+            "driveFreeBytes": { "type": ["integer", "null"], "minimum": 0 },
+            "driveTotalBytes": { "type": ["integer", "null"], "minimum": 0 }
+          }
+        },
+        "osc": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "avatarCachePresence",
+            "avatarConfigCount",
+            "avatarCacheBytes",
+            "newestModifiedAt",
+            "udp9000",
+            "udp9001",
+            "oscQuery"
+          ],
+          "properties": {
+            "avatarCachePresence": { "enum": ["found", "missing", "read_failed"] },
+            "avatarConfigCount": { "type": "integer", "minimum": 0 },
+            "avatarCacheBytes": { "type": "integer", "minimum": 0 },
+            "newestModifiedAt": { "type": ["string", "null"], "minLength": 1 },
+            "udp9000": { "$ref": "#/$defs/udpPort" },
+            "udp9001": { "$ref": "#/$defs/udpPort" },
+            "oscQuery": { "$ref": "#/$defs/oscQuery" }
+          }
+        },
+        "steamvrSettings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "presence",
+            "renderTargetMultiplier",
+            "motionSmoothing",
+            "vrchatResolutionScale",
+            "safeModeEnabled",
+            "blockedDrivers"
+          ],
+          "properties": {
+            "presence": { "enum": ["found", "missing", "malformed", "read_failed"] },
+            "renderTargetMultiplier": { "type": ["number", "null"] },
+            "motionSmoothing": { "type": ["boolean", "null"] },
+            "vrchatResolutionScale": { "type": ["number", "null"] },
+            "safeModeEnabled": { "type": ["boolean", "null"] },
+            "blockedDrivers": {
+              "type": "array",
+              "maxItems": 32,
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1, "maxLength": 80 }
+            }
+          }
+        },
+        "audioEndpoints": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "defaultCaptureRole", "virtualMicHijack", "communicationsMismatch"],
+          "properties": {
+            "state": { "enum": ["observed", "probe_unavailable"] },
+            "defaultCaptureRole": {
+              "enum": ["vr_virtual", "physical_or_usb", "virtual_cable", "none", "unknown"]
+            },
+            "virtualMicHijack": {
+              "enum": ["none", "oculus_virtual", "steam_streaming", "pico_streaming", "virtual_desktop"]
+            },
+            "communicationsMismatch": { "type": "boolean" }
+          }
+        },
+        "streamingSettings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["questLink", "picoConnect"],
+          "properties": {
+            "questLink": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "presence",
+                "encodeResolutionWidth",
+                "encodeBitrateMbps",
+                "dynamicBitrate",
+                "linkSharpening"
+              ],
+              "properties": {
+                "presence": { "enum": ["found", "missing"] },
+                "encodeResolutionWidth": { "type": ["integer", "null"], "minimum": 1, "maximum": 16384 },
+                "encodeBitrateMbps": { "type": ["integer", "null"], "minimum": 1, "maximum": 2000 },
+                "dynamicBitrate": { "type": ["boolean", "null"] },
+                "linkSharpening": { "type": ["integer", "null"], "minimum": 0, "maximum": 10 }
+              }
+            },
+            "picoConnect": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["presence", "preset", "bitrateMbps"],
+              "properties": {
+                "presence": { "enum": ["found", "missing", "malformed", "read_failed"] },
+                "preset": { "type": ["string", "null"], "minLength": 1, "maxLength": 32 },
+                "bitrateMbps": { "type": ["integer", "null"], "minimum": 1, "maximum": 2000 }
+              }
+            }
+          }
+        },
+        "systemTuning": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "hardwareGpuScheduling",
+            "powerPlanRole",
+            "ovrAdvancedSettingsInstalled"
+          ],
+          "properties": {
+            "hardwareGpuScheduling": { "type": ["boolean", "null"] },
+            "powerPlanRole": {
+              "enum": ["power_saver", "balanced", "high_or_ultimate", "custom", "unknown"]
+            },
+            "ovrAdvancedSettingsInstalled": { "type": "boolean" }
+          }
+        },
+        "recentClientLog": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["classification", "newestModifiedAt"],
+          "properties": {
+            "classification": {
+              "enum": [
+                "no_logs",
+                "clean_or_inconclusive",
+                "eac_launch_violation",
+                "disk_full_write_error",
+                "d3d11_device_lost_or_oom",
+                "osc_socket_conflict",
+                "openvr_init_failed",
+                "read_failed"
+              ]
+            },
+            "newestModifiedAt": { "type": ["string", "null"], "minLength": 1 }
+          }
+        }
+      }
+    }
+  }
+}

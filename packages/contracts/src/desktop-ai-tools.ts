@@ -24,6 +24,8 @@ export interface DesktopAiToolsApiV01 {
   setEnabled(enabled:boolean):Promise<AiToolsSnapshotV01>;
   prompt(locale:AiConnectionLocale):Promise<string>;
   copyPrompt(locale:AiConnectionLocale):Promise<void>;
+  /** Copy only the JSON `mcpServers` block for direct paste into an MCP client config file. */
+  copyConfig?():Promise<void>;
   /** `confirmation` completes an upload request with the player's own rights confirmation. */
   resolve(id:string,decision:"approve"|"reject",confirmation?:AiUploadConfirmationV01):Promise<AiToolsSnapshotV01>;
   subscribe(listener:(snapshot:AiToolsSnapshotV01)=>void):()=>void;

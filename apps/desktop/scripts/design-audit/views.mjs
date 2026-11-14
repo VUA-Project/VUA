@@ -246,6 +246,8 @@ export const VIEWS = [
   { id: "env-create", fixture: "first-run", area: "environment", steps: ['await window.firstRunReview.previewEnvironment("create")'], settleMs: 600 },
   { id: "env-create-standard", fixture: "first-run", area: "environment", steps: ['await window.firstRunReview.previewEnvironment("create", "standard")'], settleMs: 600 },
   { id: "tools-hub", fixture: "first-run", area: "tools", steps: ["await window.firstRunReview.previewTools()"], settleMs: 600 },
+  { id: "help-diagnostics", fixture: "first-run", area: "help-diagnostics", steps: ["await window.firstRunReview.previewDiagnostics()"], settleMs: 600 },
+  { id: "command-palette-open", fixture: "first-run", area: "command-palette", steps: ["await window.firstRunReview.previewCommandPalette()"], settleMs: 600 },
 
   // Focused panels and dialogs.
   { id: "deployment-check", fixture: "deployment-check", area: "first-run-deployment", steps: ["await window.deploymentReview.run()"], settleMs: 600 },

@@ -47,7 +47,9 @@ export type IconName =
   | "signal"
   | "caret-down"
   | "search"
-  | "more";
+  | "more"
+  | "copy"
+  | "mic";
 
 const paths: Record<IconName, string> = {
   tools: "M14 4a5 5 0 0 0-6 6L3 15a3 3 0 0 0 4 4l5-5a5 5 0 0 0 6-6l-3 3-3-3 3-3ZM5 17l1-1",
@@ -101,6 +103,8 @@ const paths: Record<IconName, string> = {
   "caret-down": "M6 9h12l-6 7Z",
   search: "M10.5 4a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM20 20l-4.8-4.8",
   more: "M5.5 12h.01M12 12h.01M18.5 12h.01",
+  copy: "M9 3h9a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2ZM5 8H4a1 1 0 0 0-1 1v10a2 2 0 0 0 2 2h9a1 1 0 0 0 1-1v-1",
+  mic: "M12 3.5a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0v-5a3 3 0 0 0-3-3ZM6.5 11.5a5.5 5.5 0 0 0 11 0M12 17v3.5M9 20.5h6",
 };
 
 export interface IconProps {

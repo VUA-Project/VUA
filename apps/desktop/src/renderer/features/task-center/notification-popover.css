@@ -32,7 +32,7 @@
   min-width: 14px;
   height: 14px;
   padding: 0 3px;
-  border-radius: var(--vua-radius-md);
+  border-radius: var(--vua-radius-badge);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -41,6 +41,24 @@
   font: var(--vua-font-caption);
   font-size: var(--vua-text-caption-size);
   line-height: var(--vua-text-caption-leading);
+}
+
+.vua-shell__notify-badge[data-alert="failed"] {
+  background: var(--vua-error-text);
+}
+
+.vua-shell__notify-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--vua-radius-badge);
+  background: var(--vua-accent);
+}
+
+.vua-shell__notify-dot[data-alert="failed"] {
+  background: var(--vua-error-text);
 }
 
 /* 整屏毛玻璃:半透明暗化 + 模糊,让背后壳层失焦 */
@@ -120,6 +138,13 @@
   color: var(--vua-text-strong);
 }
 
+.vua-notify-panel__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--vua-space-1);
+}
+
+.vua-notify-panel__pin,
 .vua-notify-panel__close {
   display: inline-flex;
   align-items: center;
@@ -133,9 +158,15 @@
   cursor: pointer;
 }
 
+.vua-notify-panel__pin:hover,
 .vua-notify-panel__close:hover {
   background: color-mix(in srgb, var(--vua-text-strong) 6%, transparent);
   color: var(--vua-text-strong);
+}
+
+.vua-notify-panel__pin[aria-pressed="true"] {
+  background: var(--vua-accent-tint);
+  color: var(--vua-accent-text);
 }
 
 .vua-taskbar__empty {

@@ -102,12 +102,12 @@ test("no template embeds a product term (terms must flow via placeholders)", () 
   assert.deepEqual(walk(fixtureStrings, "fixtureStrings"), []);
 });
 
-test("deployer group copy is keyed by CHECK_GROUPS registry ids in all four tables", async () => {
+test("deployer group copy is keyed by CHECK_GROUPS registry ids in all five tables", async () => {
   // 2026-09-28 现场缺陷:词表键用驼峰 vrRuntime 而组注册表 id 是 snake_case
   // vr_runtime,查表恒 undefined → 组卡如实透传裸 id(标题/徽标/组结论全部
-  // 缺席)。此测试把"键与组注册表 id 对应"的词表纪律钉进机器检查,四语同查。
+  // 缺席)。此测试把"键与组注册表 id 对应"的词表纪律钉进机器检查,五语同查。
   const { CHECK_GROUPS } = await import("../features/deployer/deployer-model.ts");
-  const tableNames = ["en", "zh-CN", "ja", "ko"] as const;
+  const tableNames = ["en", "zh-CN", "zh-TW", "ja", "ko"] as const;
   const tables = await Promise.all(
     tableNames.map((name) => import(`./strings.${name}.ts`)),
   );

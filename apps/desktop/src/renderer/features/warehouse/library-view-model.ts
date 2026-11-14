@@ -1,5 +1,5 @@
 /** What the Materials page remembers and asks for: its order, view, VN3 filter and place in the wall. */
-import { LIBRARY_SORTS, type LibrarySort, type LibraryVn3FilterV03, type LibraryVn3Item, type LibraryVn3State } from "@vua/contracts";
+import { LIBRARY_SORTS, type LibraryFormatFilterV03, type LibrarySort, type LibraryVn3FilterV03, type LibraryVn3Item, type LibraryVn3State } from "@vua/contracts";
 import { storageKeys } from "../../app/storage-keys.ts";
 
 export type LibraryViewMode = "cards" | "list";
@@ -126,11 +126,11 @@ export function neighboursOf<T>(order: readonly T[], matches: (item: T) => boole
 export interface LibrarySession {
   readonly text: string; readonly source: "all" | "bought" | "gifts" | "free" | "local";
   readonly downloadState: "all" | "downloaded" | "not-downloaded" | "missing" | "in_progress" | "attention";
-  readonly sourceCategory: string; readonly vn3: LibraryVn3Choice; readonly wanted: number; readonly scrollTop: number;
+  readonly sourceCategory: string; readonly format: "all" | LibraryFormatFilterV03; readonly vn3: LibraryVn3Choice; readonly wanted: number; readonly scrollTop: number;
 }
-export const EMPTY_LIBRARY_SESSION: LibrarySession = { text: "", source: "all", downloadState: "all", sourceCategory: "all", vn3: NO_VN3_CHOICE, wanted: 100, scrollTop: 0 };
+export const EMPTY_LIBRARY_SESSION: LibrarySession = { text: "", source: "all", downloadState: "all", sourceCategory: "all", format: "all", vn3: NO_VN3_CHOICE, wanted: 100, scrollTop: 0 };
 let session = EMPTY_LIBRARY_SESSION;
 export const readLibrarySession = (): LibrarySession => session;
 export const saveLibrarySession = (next: LibrarySession): void => { session = next; };
-export const libraryFiltersActive = (value: Pick<LibrarySession, "text" | "source" | "downloadState" | "sourceCategory" | "vn3">): boolean =>
-  value.text.trim() !== "" || value.source !== "all" || value.downloadState !== "all" || value.sourceCategory !== "all" || vn3ChoiceActive(value.vn3);
+export const libraryFiltersActive = (value: Pick<LibrarySession, "text" | "source" | "downloadState" | "sourceCategory" | "format" | "vn3">): boolean =>
+  value.text.trim() !== "" || value.source !== "all" || value.downloadState !== "all" || value.sourceCategory !== "all" || value.format !== "all" || vn3ChoiceActive(value.vn3);

@@ -26,6 +26,9 @@ import { avatarOptimizerCopy } from "./avatar-optimizer-copy.ts";
 import { guideChannelCopy } from "./guide-channel-copy.ts";
 import { recipeDraftFlowCopy } from "./recipe-draft-flow-copy.ts";
 import { installerToolCopy } from "./installer-tool-copy.ts";
+import { localDiagnosticsCopy } from "./local-diagnostics-copy.ts";
+import { poseGraphCopy } from "./pose-graph-copy.ts";
+import { glbInspectionCopy } from "./glb-inspection-copy.ts";
 import type { Strings } from "./strings.en.ts";
 
 /**
@@ -67,6 +70,9 @@ export const strings: Strings = {
   guideChannel: guideChannelCopy["zh-CN"],
   recipeDraftFlow: recipeDraftFlowCopy["zh-CN"],
   installerTool: installerToolCopy["zh-CN"],
+  localDiagnostics: localDiagnosticsCopy["zh-CN"],
+  poseGraph: poseGraphCopy["zh-CN"],
+  glbInspection: glbInspectionCopy["zh-CN"],
   websiteTests: {
     title: "网站连通测试", test: "测试", testAll: "测试全部", testing: "测试中…",
     add: "添加网站", edit: "编辑网站", editSite: "编辑 {name}", testSite: "测试 {name}",
@@ -222,6 +228,8 @@ export const strings: Strings = {
     progress: "{done}/{total}",
     openAria: "打开通知中心（{count} 项进行中）",
     closeAria: "关闭通知中心",
+    pinAria: "固定通知中心（点击页面不自动收起）",
+    unpinAria: "取消固定通知中心",
     empty: "暂无通知",
     unlabeledTask: "后台任务",
   },
@@ -247,6 +255,13 @@ export const strings: Strings = {
     unavailable: "暂无法读取",
     gpuKinds: {"discrete":"独立显卡","integrated":"核显／集显","unknown":"类型未知"},
     sharedMemory: "显卡与系统共享内存，没有单独的显存占用读数",
+    trend60s: "近 60 秒峰值走势",
+    steamVrRunningNote: "已检测到 SteamVR 正在运行",
+    capacity: {
+      comfortable: "可用内存 {freeRam} GB · 可从容并行运行 Unity 构建",
+      single: "可用内存 {freeRam} GB · 建议每次只运行一项 Unity 构建",
+      tight: "可用内存 {freeRam} GB · 启动 Unity 构建前建议先关闭占用较高的软件",
+    },
     closeAria: "关闭资源详情",
   },
   nav: {

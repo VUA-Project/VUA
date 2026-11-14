@@ -30,6 +30,9 @@ export interface DesktopGatewayRouteContext {
   readonly productVersion: string;
   readonly platform: "win32" | "darwin" | "linux";
   readonly rendererUrl: string | undefined;
+  /** Explicit bypass for authenticated host-owned internal callers (e.g. local MCP server)
+   *  when mainWindow may be minimized to tray, closed, or reloading. */
+  readonly trustedInternalCaller?: boolean | undefined;
   /** 生产上下文解析(M3):refId → 四元组。sourceFolder 来自用户显式选取,
    *  projectRoot/artifactOutputRoot/projectId 是 VUA 管辖配置,渲染层不可见;
    *  未知引用返回 undefined。四元组随 startInspection 一次性转交,此后路径
@@ -44,9 +47,9 @@ export interface DesktopGatewayRouteContext {
     snapshot(): { experimentalEnabled: boolean; signedIn: boolean };
     /** 托管上传分发前:玩家已登录时把会话一次性交到该 run 的工作工程。
      *  尽力而为;失败时上传保持面板内登录的原路。 */
-    writeSdkHandoff(runId: string): Promise<void>;
-    /** 上传未被受理时立即删除已写出的交接文件。 */
-    discardSdkHandoff(): void;
+    writeSdkHandoff(runId: string): Promise<string | void>;
+    /** 上传未被受理时立即删除本次写出的交接文件。 */
+    discardSdkHandoff(file?: string): void;
   } | undefined;
 }
 
@@ -144,8 +147,24 @@ function toApplicationRequest(
       return { ...base, kind: "query", method: request.method, params: request.params };
     case "tools.actInstaller":
       return { ...base, kind: "command", method: request.method, commandId: request.params.commandId, params: { toolId: request.params.toolId, action: request.params.action } };
+    case "diagnostics.observeLocal":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "diagnostics.diagnoseSymptom":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "diagnostics.clearOscAvatarCache":
+      return { ...base, kind: "command", method: request.method, commandId: request.params.commandId, params: { schemaVersion: request.params.schemaVersion } };
+    case "diagnostics.updateClientConfig": {
+      const { commandId, ...params } = request.params;
+      return { ...base, kind: "command", method: request.method, commandId, params };
+    }
     case "environment.inspectManagerApps":
       return { ...base, kind: "query", method: request.method, params: {} };
+    case "environment.openManagerApp":
+      return { ...base, kind: "command", method: request.method, commandId: request.params.commandId, params: { managerId: request.params.managerId } };
+    case "environment.observePoseGraph":
+      return { ...base, kind: "query", method: request.method, params: request.params };
+    case "library.inspectGlb":
+      return { ...base, kind: "query", method: request.method, params: request.params };
     case "environment.startPlay": case "environment.stopPlay":
       return { ...base, kind: "command", method: request.method, commandId: request.params.commandId, params: { route: request.params.route } };
     case "environment.executeDeployment":
@@ -706,7 +725,7 @@ export async function routeDesktopGatewayInvoke(
   senderUrl: string,
   request: unknown,
 ): Promise<DesktopGatewayResponseV1> {
-  if (!isAllowedLocalSender(senderUrl, context.rendererUrl)) throw new Error("untrusted renderer origin");
+  if (!context.trustedInternalCaller && !isAllowedLocalSender(senderUrl, context.rendererUrl)) throw new Error("untrusted renderer origin");
 
   const requestId = requestIdFrom(request);
   if (requestByteLength(request) > DESKTOP_GATEWAY_MAX_REQUEST_BYTES || !isDesktopGatewayRequestV1(request)) {
@@ -728,8 +747,12 @@ export async function routeDesktopGatewayInvoke(
       };
     }
     // 托管上传开始前:玩家已在 VUA 登录时,把会话一次性交到工作工程的 Editor
+    let sdkHandoffFile: string | undefined;
     if ((request.method === "amf.production.upload" || request.method === "amf.production.localTest") && context.vrchat !== undefined) {
-      try { await context.vrchat.writeSdkHandoff(request.params.runId); } catch { /* 面板内登录保持可用 */ }
+      try {
+        const written = await context.vrchat.writeSdkHandoff(request.params.runId);
+        if (typeof written === "string") sdkHandoffFile = written;
+      } catch { /* 面板内登录保持可用 */ }
     }
     let applicationRequest: ApplicationRequestV01;
     try {
@@ -758,7 +781,7 @@ export async function routeDesktopGatewayInvoke(
       throw error;
     }
     const providerResponse = await context.provider.invoke(applicationRequest);
-    if (!providerResponse.ok && (request.method === "amf.production.upload" || request.method === "amf.production.localTest")) context.vrchat?.discardSdkHandoff();
+    if (!providerResponse.ok && (request.method === "amf.production.upload" || request.method === "amf.production.localTest")) context.vrchat?.discardSdkHandoff(sdkHandoffFile);
     if (!providerResponse.ok) {
       // 应用错误原样透传:本地化键、可重试与可恢复判定引用契约原值
       return {

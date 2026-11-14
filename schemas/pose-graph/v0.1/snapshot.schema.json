@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vua.local/schemas/pose-graph/v0.1/snapshot.schema.json",
+  "title": "PoseGraphSnapshotV0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "capturedAt",
+    "openxr",
+    "steamvrDrivers",
+    "blockedSteamvrDrivers",
+    "fbtDriverConflictRisk",
+    "lastHeadsetHint",
+    "poseSources"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "vua.pose-graph/v0.1"
+    },
+    "capturedAt": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "openxr": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["presence", "runtimeName"],
+      "properties": {
+        "presence": {
+          "enum": ["found", "missing", "unreadable"]
+        },
+        "runtimeName": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 80
+        }
+      }
+    },
+    "steamvrDrivers": {
+      "type": "array",
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "space_calibrator",
+          "slimevr",
+          "alvr",
+          "virtual_desktop",
+          "lighthouse",
+          "mocopi",
+          "haritorax",
+          "rebocap"
+        ]
+      }
+    },
+    "blockedSteamvrDrivers": {
+      "type": "array",
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "space_calibrator",
+          "slimevr",
+          "alvr",
+          "virtual_desktop",
+          "lighthouse",
+          "mocopi",
+          "haritorax",
+          "rebocap"
+        ]
+      }
+    },
+    "fbtDriverConflictRisk": {
+      "enum": ["none", "multiple_openvr_fbt_drivers"]
+    },
+    "lastHeadsetHint": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 80
+    },
+    "poseSources": {
+      "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sourceId", "state", "detailCode"],
+        "properties": {
+          "sourceId": {
+            "enum": [
+              "headset_6dof",
+              "slimevr",
+              "pico_motion",
+              "lighthouse",
+              "space_calibrator",
+              "mocopi",
+              "haritorax",
+              "rebocap",
+              "eye_face_osc"
+            ]
+          },
+          "state": {
+            "enum": ["active", "ready", "installed", "not_detected"]
+          },
+          "detailCode": {
+            "type": ["string", "null"],
+            "minLength": 1,
+            "maxLength": 64
+          }
+        }
+      }
+    }
+  }
+}

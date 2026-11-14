@@ -340,3 +340,6 @@
 }
 .vua-recipe-workspace { padding-block: 8px; border-top: 1px solid var(--vua-border); }
 .vua-recipe-workspace > p { margin: 8px 0 20px; }
+.vua-recipe-library__item { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--vua-space-2); min-height: 28px; padding: var(--vua-space-1) var(--vua-space-2); border: 1px solid transparent; border-radius: var(--vua-radius-control); background: transparent; color: var(--vua-text-strong); font: var(--vua-font-body); cursor: pointer; text-align: start; }
+.vua-recipe-library__item:hover { background: var(--vua-bg-elevated); }
+.vua-recipe-library__item:focus-visible { outline: 2px solid var(--vua-border-focus); outline-offset: 2px; }

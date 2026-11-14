@@ -66,6 +66,10 @@ for (const [accept, lang, title] of [["en-US", "en", "Materials"], ["ja-JP", "ja
       assert.equal(response.headers.get("vary"), "Accept-Language");
       assert.ok(html.includes(`<html lang="${lang}">`));
       assert.ok(html.includes(`<h1>${title}</h1>`));
+      assert.ok(html.includes('<meta name="robots" content="noindex,nofollow,noarchive">'));
+      assert.ok(html.includes(`<meta property="og:title" content="${title} · VUA">`));
+      assert.ok(html.includes('<meta property="og:description" content="'));
+      assert.ok(html.includes('<meta name="twitter:card" content="summary">'));
       assert.ok(!html.includes("PLAYER_PRIVATE_TITLE_123"));
       assert.ok(html.includes("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;&amp;"));
       assert.ok(!/<(?:script|img|link)\b|@import|url\(/iu.test(html));

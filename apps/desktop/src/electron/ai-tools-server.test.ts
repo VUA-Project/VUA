@@ -338,16 +338,29 @@ describe("built-in MCP, using the official HTTP client", () => {
     const { client, calls } = await setup();
     for (const request of [
       { name: "execute_shell", arguments: { command: "anything" } },
+      { name: "vua_sop", arguments: {} },
+      { name: "vua_sop", arguments: { scenario: "desktop_play", selection: { platform: "vrchat", device: "pc", connection: null } } },
       { name: "vua_sop", arguments: { scenario: "desktop_play", connection: "wifi" } },
       { name: "vua_sop", arguments: { selection: { platform: "reborn", device: "pc", connection: null } } },
       { name: "vua_sop", arguments: { selection: { platform: "chilloutvr", device: "quest", connection: "standalone" } } },
       { name: "vua_check_environment", arguments: { intent: { purposes: ["desktop_play"], method: "anything" } } },
       { name: "vua_request_play", arguments: { route: "desktop", action: "start" } },
+      { name: "vua_glb_inspect", arguments: {} },
+      { name: "vua_glb_inspect", arguments: { productId: "booth:123", entryId: "entry-1" } },
     ]) expect((await client.callTool(request)).isError).toBe(true);
     expect(calls).toEqual([]);
-    for (const spec of AI_TOOLS.filter(spec => spec.method && !spec.command && !["vua_task", "vua_material_files", "vua_terms", "vua_terms_check", "vua_amf_run", "vua_recipe_materials", "vua_recipe_apply_plan", "vua_sop", "vua_check_environment", "vua_plan_installation", "vua_play_status", "vua_tool_status", "vua_amf_plan", "vua_amf_release"].includes(spec.name))) {
+    for (const spec of AI_TOOLS.filter(spec => spec.method && !spec.command && !["vua_task", "vua_material_files", "vua_glb_inspect", "vua_terms", "vua_terms_check", "vua_amf_run", "vua_recipe_materials", "vua_recipe_apply_plan", "vua_sop", "vua_check_environment", "vua_plan_installation", "vua_play_status", "vua_tool_status", "vua_installer_tool_status", "vua_diagnose_symptom", "vua_recipe", "vua_amf_face_tracking_plan", "vua_amf_texture_plan", "vua_amf_lighting_plan", "vua_amf_outfit_removal_plan", "vua_amf_plan", "vua_amf_release"].includes(spec.name))) {
       expect(() => aiGatewayRequest(spec, {}, "test")).not.toThrow();
     }
+    const { client: compatClient, calls: compatCalls } = await setup();
+    expect((await compatClient.callTool({ name: "vua_pose_graph", arguments: {} })).isError).toBeFalsy();
+    expect((await compatClient.callTool({ name: "vua_glb_inspect", arguments: { productId: "booth:12345" } })).isError).toBeFalsy();
+    expect((await compatClient.callTool({ name: "vua_terms_check", arguments: { presetId: "vrchat_personal", productIds: ["booth:12345"] } })).isError).toBeFalsy();
+    expect(compatCalls.map(c => [c.method, c.params])).toEqual([
+      ["environment.observePoseGraph", { schemaVersion: "0.1" }],
+      ["library.inspectGlb", { schemaVersion: "0.1", productId: "booth:12345" }],
+      ["terms.checkUse", { schemaVersion: "0.1", presetId: "vrchat_personal", productIds: ["booth:12345"] }],
+    ]);
   });
 });
 
@@ -461,7 +474,7 @@ describe("MCP result envelope", () => {
     expect(summary.items.at(-1)!.sourceMatch!.product.imageUrls).toHaveLength(1);
     expect(data(await client.callTool({ name: "vua_library", arguments: { includeImages: true } })).data).toEqual(library);
     expect(calls.every(call => !("includeImages" in call.params))).toBe(true);
-    expect(calls[0]!.params).toEqual({ schemaVersion: "0.1", limit: 25 });
+    expect(calls[0]!.params).toEqual({ schemaVersion: "0.3", limit: 25 });
     expect(reportLibrary.items[0]!.product.imageUrls).toHaveLength(28);
   });
   it("uses a conservative retry table and bounded, sanitized Gateway explanations in every error", async () => {
@@ -476,6 +489,14 @@ describe("MCP result envelope", () => {
     code = "vua.unknown.future";
     expect(data(await client.callTool({ name: "vua_status" }))).toMatchObject({ error: code, retryable: false });
     await expect(client.readResource({ uri: "vua://amf/runs/n3-test" })).rejects.toMatchObject({ data: { error: code, mutationStarted: false, retryable: false } });
+    const { client: disabledClient } = await setup(async request => ({ schemaVersion: 1, requestId: request.requestId, ok: false, error: { code: "application", application: {
+      contractVersion: "0.1", code: "vua.amf.unavailable", category: "unavailable", messageKey: "errors.amf.unavailable", recoverable: true, retryable: false, correlationId: request.requestId,
+    } } }));
+    expect(data(await disabledClient.callTool({ name: "vua_amf_materials" }))).toMatchObject({
+      error: "vua.amf.unavailable",
+      retryable: false,
+      nextAction: expect.stringContaining("Settings → Modules"),
+    });
     expect([...safeErrorMessage("x".repeat(800))]).toHaveLength(512);
     for (const message of ["Failed at /home/synthetic/private/project", "Failed at \\\\host\\share\\private", `Pairing ${token}`]) expect(safeErrorMessage(message, [token])).not.toMatch(/private|home|host|a{43}/u);
     expect(safeErrorMessage('Failed: {"password":"synthetic-password","access_token":"synthetic-token"}')).not.toMatch(/synthetic-password|synthetic-token/u);
@@ -581,5 +602,227 @@ describe("run summary", () => {
     expect(summary.revisionCount).toBe(50);
     expect(summary.revisions).toEqual(revisions.slice(0, 5));
     expect("revisions" in (runSummary({ runId: "n3-a", phase: "ready" }) as Record<string, unknown>)).toBe(false);
+  });
+
+  it("exposes local diagnostics, official-installer tools, Recipes, face-tracking plans, and library v0.3 filters", async () => {
+    const { client, calls, service } = await setup(async request => {
+      if (request.method === "environment.planDeployment") return envelope(request, { deploymentPlan: { digest } });
+      if (request.method === "diagnostics.observeLocal") return envelope(request, { localDiagnostics: { clientRunning: false, osc: { avatarConfigCount: 2 } } });
+      if (request.method === "diagnostics.diagnoseSymptom") return envelope(request, { symptomDiagnosis: { symptom: request.params.symptom, sopSteps: [{ stepId: "osc_enable_radial_menu" }] } });
+      if (request.method === "tools.observeInstaller") return envelope(request, { installerTool: { toolId: request.params.toolId, presence: "installed", running: false } });
+      if (request.method === "amf.production.listRecipes") return envelope(request, { recipes: [{ recipeId: "recipe-1", title: "Winter" }] });
+      if (request.method === "amf.production.getRecipe") return envelope(request, { recipe: { recipeId: request.params.recipeId, title: "Winter" } });
+      if (request.method === "amf.production.faceTrackingPlan") return envelope(request, { planDigest: digest, parameterBudget: { state: "fits", usedBits: 120, limitBits: 256 } });
+      return envelope(request, { ok: true });
+    });
+
+    expect((await client.callTool({ name: "vua_local_diagnostics", arguments: {} })).isError).toBeFalsy();
+    expect((await client.callTool({ name: "vua_diagnose_symptom", arguments: { symptom: "osc_or_face_tracking_not_responding" } })).isError).toBeFalsy();
+    expect((await client.callTool({ name: "vua_installer_tool_status", arguments: { toolId: "slimevr" } })).isError).toBeFalsy();
+    expect((await client.callTool({ name: "vua_plan_installation", arguments: { intent: { tools: ["slimevr", "vrcx"] } } })).isError).toBeFalsy();
+    expect((await client.callTool({ name: "vua_recipes", arguments: {} })).isError).toBeFalsy();
+    expect((await client.callTool({ name: "vua_recipe", arguments: { recipeId: "recipe-1" } })).isError).toBeFalsy();
+    expect((await client.callTool({ name: "vua_amf_face_tracking_plan", arguments: { runId: "n3-test", menuId: digest } })).isError).toBeFalsy();
+    expect((await client.callTool({ name: "vua_library", arguments: { sort: "added_desc", vn3: { state: "readable", items: ["C", "I"] } } })).isError).toBeFalsy();
+    expect(calls.find(c => c.method === "library.list")?.params).toEqual({
+      schemaVersion: "0.3",
+      limit: 25,
+      sort: "added_desc",
+      vn3: { state: "readable", items: ["C", "I"] },
+    });
+
+    // Approval-gated installer tool launch, manager launch and OSC cache clear review current facts first.
+    const instReq = await client.callTool({ name: "vua_request_installer_tool", arguments: { toolId: "vrcx", action: "start" } });
+    expect(instReq.isError).toBeFalsy();
+    const oscReq = await client.callTool({ name: "vua_request_clear_osc_cache", arguments: {} });
+    expect(oscReq.isError).toBeFalsy();
+    expect(service.snapshot().requests.map(r => r.tool)).toEqual(["vua_request_installer_tool", "vua_request_clear_osc_cache"]);
+  });
+
+  it("exposes sanitized manager-app presence and approval-gated breakaway launch without leaking local paths", async () => {
+    const rawManagers = {
+      managerApps: {
+        schemaVersion: "vua.manager-apps/v0.1",
+        capturedAt: "2026-11-14T00:00:00Z",
+        apps: [
+          { component: "unity_hub", presence: "found", path: "C:\\Program Files\\Unity Hub\\Unity Hub.exe" },
+          { component: "vcc", presence: "not_found", path: null },
+          { component: "alcom", presence: "found", path: "C:\\Users\\Alice\\AppData\\Local\\ALCOM\\ALCOM.exe" },
+        ],
+      },
+    };
+    const { client, calls, service } = await setup(async request => {
+      if (request.method === "environment.inspectManagerApps") return envelope(request, rawManagers);
+      if (request.method === "environment.openManagerApp") {
+        return envelope(request, {
+          managerAppLaunch: {
+            schemaVersion: "vua.manager-apps/v0.2",
+            managerId: request.params.managerId,
+            launchedAt: "2026-11-14T00:00:01Z",
+          },
+        });
+      }
+      return envelope(request, { ok: true });
+    });
+
+    const observed = await client.callTool({ name: "vua_manager_apps", arguments: {} });
+    expect(observed.isError).toBeFalsy();
+    expect(JSON.stringify(observed)).not.toContain("Alice");
+    expect(data(observed).data).toEqual({
+      managerApps: {
+        schemaVersion: "vua.manager-apps/v0.1",
+        capturedAt: "2026-11-14T00:00:00Z",
+        apps: [
+          { component: "unity_hub", presence: "found" },
+          { component: "vcc", presence: "not_found" },
+          { component: "alcom", presence: "found" },
+        ],
+      },
+    });
+
+    const queued = await client.callTool({ name: "vua_request_open_manager", arguments: { managerId: "alcom" } });
+    expect(queued.isError).toBeFalsy();
+    expect(JSON.stringify(queued)).not.toContain("Alice");
+    const pending = service.snapshot().requests[0]!;
+    expect(pending.tool).toBe("vua_request_open_manager");
+    await service.resolve(pending.id, "approve");
+    expect(calls.find(c => c.method === "environment.openManagerApp")?.params).toMatchObject({
+      managerId: "alcom",
+      commandId: expect.stringMatching(/^ai-/),
+    });
+  });
+
+  it("exposes tool catalog filtering, enriched library filters, grouped migration intake, client config update, and AMF texture/lighting/outfit-removal plans and guarded approvals", async () => {
+    let currentDigest = digest;
+    const { client, calls, service } = await setup(async request => {
+      if (request.method === "diagnostics.observeLocal") return envelope(request, { localDiagnostics: { clientRunning: false } });
+      if (request.method === "diagnostics.updateClientConfig") return envelope(request, { clientConfigReceipt: { backupWritten: true, backupRelativePath: "LocalLow/VRChat/VRChat/config.json.vua.bak", cacheSizeGb: 30, cacheExpiryDelayDays: 60 } });
+      if (request.method === "library.importGroups") return envelope(request, { schemaVersion: "0.1", operation: "library.importGroups", taskId: "migration-1", correlationId: "corr-1" });
+      if (request.method === "amf.production.planTextureMemory") return envelope(request, { schemaVersion: "0.1", runId: request.params.runId, planDigest: currentDigest, plan: { platform: request.params.platform, targetRank: request.params.targetRank } });
+      if (request.method === "amf.production.applyTextureMemory") return envelope(request, { operation: "amf.production", runId: request.params.runId, taskId: "tex-task" });
+      if (request.method === "amf.production.planLighting") return envelope(request, { schemaVersion: "0.1", runId: request.params.runId, planDigest: currentDigest });
+      if (request.method === "amf.production.applyLighting") return envelope(request, { operation: "amf.production", runId: request.params.runId, taskId: "light-task" });
+      if (request.method === "amf.production.planOutfitRemoval") return envelope(request, { schemaVersion: "0.1", runId: request.params.runId, planDigest: currentDigest });
+      if (request.method === "amf.production.removeOutfit") return envelope(request, { operation: "amf.production", runId: request.params.runId, taskId: "remove-task" });
+      return envelope(request, { items: [], total: 0 });
+    });
+
+    // 1. Static companion-tool catalog filter (no Gateway IPC call).
+    const freeTracking = data(await client.callTool({ name: "vua_tool_catalog", arguments: { goal: "tracking", freeOnly: true } }));
+    expect((freeTracking.data as { tools: { id: string }[] }).tools.map(t => t.id)).toEqual(["vrcft", "space", "slimevr"]);
+    expect(calls).toHaveLength(0);
+
+    // 2. Enriched library filters (source: "local", availabilityStatus, sourceCategory: null, descriptionLinksTo).
+    expect((await client.callTool({
+      name: "vua_library",
+      arguments: {
+        source: "local",
+        availabilityStatus: "available",
+        sourceCategory: null,
+        descriptionLinksTo: "booth:6082686",
+      },
+    })).isError).toBeFalsy();
+    expect(calls.at(-1)?.params).toEqual({
+      schemaVersion: "0.3",
+      limit: 25,
+      source: "local",
+      availabilityStatus: "available",
+      sourceCategory: null,
+      descriptionLinksTo: "booth:6082686",
+    });
+
+    // 3. Plan reads and digest-guarded approvals for texture memory, lighting, and outfit removal.
+    expect((await client.callTool({ name: "vua_amf_texture_plan", arguments: { runId: "n3-test", platform: "android", targetRank: "good" } })).isError).toBeFalsy();
+    expect((await client.callTool({ name: "vua_amf_lighting_plan", arguments: { runId: "n3-test" } })).isError).toBeFalsy();
+    expect((await client.callTool({ name: "vua_amf_outfit_removal_plan", arguments: { runId: "n3-test", sourceId: "coat-1" } })).isError).toBeFalsy();
+
+    // Digest drift fails closed before queueing approval.
+    currentDigest = "e".repeat(64);
+    const staleTex = await client.callTool({
+      name: "vua_request_amf_texture_apply",
+      arguments: { runId: "n3-test", platform: "android", targetRank: "good", planDigest: digest, textures: ["Assets/Outfit/MainTex.png"] },
+    });
+    expect(staleTex.isError).toBe(true);
+    expect(data(staleTex)).toMatchObject({ error: "texture_plan_changed", retryable: false });
+
+    currentDigest = digest;
+    expect((await client.callTool({
+      name: "vua_request_amf_texture_apply",
+      arguments: { runId: "n3-test", platform: "android", targetRank: "good", planDigest: digest, textures: ["Assets/Outfit/MainTex.png"] },
+    })).isError).toBeFalsy();
+    expect((await client.callTool({
+      name: "vua_request_amf_lighting_apply",
+      arguments: { runId: "n3-test", planDigest: digest, materials: ["Assets/Outfit/Coat.mat"] },
+    })).isError).toBeFalsy();
+    expect((await client.callTool({
+      name: "vua_request_amf_outfit_remove",
+      arguments: { runId: "n3-test", sourceId: "coat-1", planDigest: digest },
+    })).isError).toBeFalsy();
+
+    // Resolve the three AMF approvals so the four-pending bound has room for the remaining two.
+    for (const req of service.snapshot().requests) {
+      await service.resolve(req.id, "approve");
+    }
+    expect(calls.filter(c => ["amf.production.applyTextureMemory", "amf.production.applyLighting", "amf.production.removeOutfit"].includes(c.method)).map(c => c.method)).toEqual([
+      "amf.production.applyTextureMemory",
+      "amf.production.applyLighting",
+      "amf.production.removeOutfit",
+    ]);
+
+    // 4. Client config update + grouped library migration intake require local player approval.
+    expect((await client.callTool({ name: "vua_request_update_client_config", arguments: {} })).isError).toBe(true);
+    expect((await client.callTool({ name: "vua_request_update_client_config", arguments: { cacheSizeGb: 30, cacheExpiryDelayDays: 60 } })).isError).toBeFalsy();
+    expect((await client.callTool({
+      name: "vua_request_library_import_groups",
+      arguments: {
+        groups: [{
+          name: "Meiyun_Winter_Coat",
+          root: "D:/Downloads/Materials",
+          files: [{ path: "Meiyun_Coat.unitypackage", bytes: 4096, modifiedMs: 1700000000000 }],
+        }],
+        autoGenerate: false,
+      },
+    })).isError).toBeFalsy();
+
+    for (const req of service.snapshot().requests.filter(r => r.state === "pending")) {
+      await service.resolve(req.id, "approve");
+    }
+    expect(calls.find(c => c.method === "diagnostics.updateClientConfig")?.params).toMatchObject({
+      schemaVersion: "0.1",
+      cacheSizeGb: 30,
+      cacheExpiryDelayDays: 60,
+      commandId: expect.stringMatching(/^ai-/),
+    });
+    expect(calls.find(c => c.method === "library.importGroups")?.params).toMatchObject({
+      schemaVersion: "0.1",
+      autoGenerate: false,
+      commandId: expect.stringMatching(/^ai-/),
+    });
+
+    // 5. MCP prompts capability + format-filtered vua_library + standalone JSON config snippet.
+    expect(client.getServerCapabilities()?.prompts).toBeDefined();
+    const listedPrompts = await client.listPrompts();
+    expect(listedPrompts.prompts.map(p => p.name)).toEqual([
+      "vua-play-setup",
+      "vua-diagnose-symptom",
+      "vua-amf-assembly",
+      "vua-release-check",
+    ]);
+    const diagPrompt = await client.getPrompt({ name: "vua-diagnose-symptom", arguments: { symptom: "streaming_blurry_or_compression" } });
+    expect(diagPrompt.messages[0]?.content).toMatchObject({ type: "text", text: expect.stringContaining("streaming_blurry_or_compression") });
+    const releasePrompt = await client.getPrompt({ name: "vua-release-check", arguments: { runId: "n3-test-run", targetPlatform: "vrchat_quest" } });
+    expect(releasePrompt.messages[0]?.content).toMatchObject({ type: "text", text: expect.stringContaining("vrchat_quest") });
+    await expect(client.getPrompt({ name: "vua-diagnose-symptom", arguments: { symptom: "not_a_symptom" } })).rejects.toMatchObject({ code: -32602 });
+    await expect(client.getPrompt({ name: "vua-release-check", arguments: { runId: "../escape" } })).rejects.toMatchObject({ code: -32602 });
+    await expect(client.getPrompt({ name: "vua-unknown" })).rejects.toMatchObject({ code: -32602 });
+
+    expect((await client.callTool({ name: "vua_library", arguments: { format: "vrm_or_glb" } })).isError).toBeFalsy();
+    expect(calls.findLast(c => c.method === "library.list")?.params).toMatchObject({ schemaVersion: "0.3", format: "vrm_or_glb", limit: 25 });
+    expect((await client.callTool({ name: "vua_library", arguments: { format: "fbx" } })).isError).toBe(true);
+
+    const parsedConfig = JSON.parse(service.configJson()) as { mcpServers: { vua: { type: string; url: string; headers: { Authorization: string } } } };
+    expect(parsedConfig.mcpServers.vua.type).toBe("http");
+    expect(parsedConfig.mcpServers.vua.url).toBe(service.snapshot().endpoint);
+    expect(parsedConfig.mcpServers.vua.headers.Authorization).toMatch(/^Bearer /);
   });
 });

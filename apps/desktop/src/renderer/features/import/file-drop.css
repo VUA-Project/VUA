@@ -6,5 +6,5 @@
 }
 .vua-file-drop__label {
   display: flex; gap: var(--vua-space-3); align-items: center;
-  padding: var(--vua-space-5); color: var(--vua-text-primary);
+  padding: var(--vua-space-5); color: var(--vua-text-strong);
 }

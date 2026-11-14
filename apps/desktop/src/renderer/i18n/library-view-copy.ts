@@ -3,6 +3,7 @@ import { currentLocale } from "./current-table.ts";
 
 const en = {
   sort: { label: "Sort", added_desc: "Recently added", added_asc: "Oldest added", title_asc: "Name (A–Z)", title_desc: "Name (Z–A)", shop_asc: "Shop name", price_asc: "Price: low to high", price_desc: "Price: high to low", published_desc: "Newest on BOOTH", size_desc: "Largest on disk", size_asc: "Smallest on disk" },
+  format: { label: "Format", all: "All formats", vrm_or_glb: "VRM / GLB", unitypackage: "Unity package", vrmBadge: "VRM", glbBadge: "GLB" },
   view: { label: "View", cards: "Grid", list: "List" },
   search: "Search materials",
   loadingMore: "Loading more…",
@@ -39,6 +40,7 @@ const tables: Record<"en" | "zh-CN" | "zh-TW" | "ja" | "ko", Copy> = {
   en,
   "zh-CN": {
     sort: { label: "排序", added_desc: "最近添加", added_asc: "最早添加", title_asc: "名称 A–Z", title_desc: "名称 Z–A", shop_asc: "按店铺名", price_asc: "价格从低到高", price_desc: "价格从高到低", published_desc: "BOOTH 最新上架", size_desc: "占用空间从大到小", size_asc: "占用空间从小到大" },
+    format: { label: "文件格式", all: "全部格式", vrm_or_glb: "VRM / GLB", unitypackage: "Unity 素材包", vrmBadge: "VRM", glbBadge: "GLB" },
     view: { label: "视图", cards: "卡片", list: "列表" },
     search: "搜索素材",
     loadingMore: "正在加载更多…",
@@ -71,6 +73,7 @@ const tables: Record<"en" | "zh-CN" | "zh-TW" | "ja" | "ko", Copy> = {
   },
   "zh-TW": {
     sort: { label: "排序", added_desc: "最近新增", added_asc: "最早新增", title_asc: "名稱 A–Z", title_desc: "名稱 Z–A", shop_asc: "依商店名稱", price_asc: "價格由低到高", price_desc: "價格由高到低", published_desc: "BOOTH 最新上架", size_desc: "占用空間由大到小", size_asc: "占用空間由小到大" },
+    format: { label: "檔案格式", all: "全部格式", vrm_or_glb: "VRM / GLB", unitypackage: "Unity 素材包", vrmBadge: "VRM", glbBadge: "GLB" },
     view: { label: "檢視", cards: "卡片", list: "清單" },
     search: "搜尋素材",
     loadingMore: "正在載入更多…",
@@ -103,6 +106,7 @@ const tables: Record<"en" | "zh-CN" | "zh-TW" | "ja" | "ko", Copy> = {
   },
   ja: {
     sort: { label: "並べ替え", added_desc: "追加が新しい順", added_asc: "追加が古い順", title_asc: "名前（昇順）", title_desc: "名前（降順）", shop_asc: "ショップ名順", price_asc: "価格が安い順", price_desc: "価格が高い順", published_desc: "BOOTH 公開が新しい順", size_desc: "容量が大きい順", size_asc: "容量が小さい順" },
+    format: { label: "ファイル形式", all: "すべての形式", vrm_or_glb: "VRM / GLB", unitypackage: "Unity パッケージ", vrmBadge: "VRM", glbBadge: "GLB" },
     view: { label: "表示", cards: "カード", list: "リスト" },
     search: "素材を検索",
     loadingMore: "さらに読み込み中…",
@@ -135,6 +139,7 @@ const tables: Record<"en" | "zh-CN" | "zh-TW" | "ja" | "ko", Copy> = {
   },
   ko: {
     sort: { label: "정렬", added_desc: "최근 추가순", added_asc: "오래된 추가순", title_asc: "이름순(A–Z)", title_desc: "이름 역순(Z–A)", shop_asc: "상점 이름순", price_asc: "낮은 가격순", price_desc: "높은 가격순", published_desc: "BOOTH 최신 등록순", size_desc: "용량 큰 순", size_asc: "용량 작은 순" },
+    format: { label: "파일 형식", all: "모든 형식", vrm_or_glb: "VRM / GLB", unitypackage: "Unity 패키지", vrmBadge: "VRM", glbBadge: "GLB" },
     view: { label: "보기", cards: "카드", list: "목록" },
     search: "소재 검색",
     loadingMore: "더 불러오는 중…",

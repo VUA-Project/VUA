@@ -15,6 +15,7 @@ or capability-bounded VUA plugin.
 - [Face tracking](face-tracking.md)
 - [Motion tracking](motion-tracking.md)
 - [Avatar optimizer](avatar-optimizer.md)
+- [NDMF companion & VRM avatar packages](ndmf-companion-packages.md)
 - [ALCOM / VCC (VRChat Creator Companion)](alcom-vcc.md)
 - [SlimeVR Server](slimevr-server.md)
 - [VRCT](vrct.md)

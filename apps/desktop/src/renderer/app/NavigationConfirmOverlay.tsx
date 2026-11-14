@@ -47,7 +47,7 @@ export function NavigationConfirmOverlay() {
   const body = external ? copy.externalBody : copy.offAllowlistBody;
 
   return (
-    <div className="vua-nav-confirm__backdrop" role="dialog" aria-modal="true" aria-label={title}>
+    <div className="vua-nav-confirm__backdrop" data-vua-native-occluder="" role="dialog" aria-modal="true" aria-label={title}>
       <Card>
         <div className="vua-page__stack">
           <h2 className="vua-title">{title}</h2>
