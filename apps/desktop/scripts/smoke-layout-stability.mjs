@@ -118,21 +118,45 @@ async function creatorNarrow(theme) {
 async function creatorMotion(theme) {
   const motion = await evaluate(`(async () => {
     const results=[];
+    const getGridAnims=async drawer=>{
+      await new Promise(resolve=>setTimeout(resolve,0));
+      drawer.getBoundingClientRect();
+      let anims=drawer.getAnimations().filter(animation=>animation.transitionProperty==='grid-template-rows');
+      if (anims.length===0) {
+        await new Promise(resolve=>requestAnimationFrame(resolve));
+        anims=drawer.getAnimations().filter(animation=>animation.transitionProperty==='grid-template-rows');
+      }
+      return anims;
+    };
+    const sampleMidpoint=anims=>{
+      for (const anim of anims) {
+        anim.pause();
+        const duration=Number(anim.effect?.getTiming?.().duration)||240;
+        anim.currentTime=duration/2;
+      }
+    };
+    const finishAnims=async anims=>{
+      for (const anim of anims) anim.finish();
+      await new Promise(resolve=>requestAnimationFrame(resolve));
+    };
     for (const control of document.querySelectorAll('.vua-creator-page .vua-route-tile:not(:disabled)')) {
       const drawer=document.getElementById(control.getAttribute('aria-controls'));
       if (!drawer) continue;
       const height=()=>drawer.getBoundingClientRect().height;
       control.click();
-      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-      const opening=drawer.getAnimations().some(animation=>animation.transitionProperty==='grid-template-rows');
-      await new Promise(resolve=>setTimeout(resolve,70)); const middle=height();
-      await new Promise(resolve=>setTimeout(resolve,300)); const expanded=height();
+      const openAnims=await getGridAnims(drawer);
+      const opening=openAnims.length>0;
+      sampleMidpoint(openAnims);
+      const middle=height();
+      await finishAnims(openAnims);
+      const expanded=height();
       control.click();
-      await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-      const closing=drawer.getAnimations().some(animation=>animation.transitionProperty==='grid-template-rows');
+      const closeAnims=await getGridAnims(drawer);
+      const closing=closeAnims.length>0;
       const inaccessible=drawer.inert&&drawer.getAttribute('aria-hidden')==='true';
-      await new Promise(resolve=>setTimeout(resolve,70)); const closingMiddle=height();
-      await new Promise(resolve=>setTimeout(resolve,300));
+      sampleMidpoint(closeAnims);
+      const closingMiddle=height();
+      await finishAnims(closeAnims);
       results.push({id:control.dataset.navId,opening,closing,inaccessible,middle,expanded,closingMiddle,closed:height()});
     }
     return results;
