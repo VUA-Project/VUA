@@ -111,8 +111,8 @@ repeating filesystem writes; replaying the same command ID with different parame
 - `diagnostics.clearOscAvatarCache` walks `VRChat/VRChat/OSC/usr_*/Avatars` under `local_low`,
   skips symlinks and reparse points, removes regular `.json` files only, and returns
   `{ removedFileCount, freedBytes, clearedAt }`.
-- `diagnostics.updateClientConfig` requires at least one of `cacheSizeGb` (`1..=200` integer) or
-  `cacheExpiryDelayDays` (`1..=365` integer). If `VRChat/VRChat/config.json` exists and is not a
+- `diagnostics.updateClientConfig` requires at least one of `cacheSizeGb` (`30..=200` integer) or
+  `cacheExpiryDelayDays` (`30..=365` integer). If `VRChat/VRChat/config.json` exists and is not a
   JSON object, it fails with `vua.diagnostics.config_malformed` without modifying the file.
   Otherwise it preserves all existing JSON properties, writes `config.json.vua.bak` when updating
   an existing file, syncs a sibling temporary file to disk, and atomically renames it into place.

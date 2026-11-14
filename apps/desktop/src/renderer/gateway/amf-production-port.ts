@@ -127,7 +127,7 @@ export interface AmfPlanPredictionRow {
   readonly uncompressedBytes: number; readonly complete: boolean;
 }
 export type AmfPredictedPerformanceRank = "excellent" | "good" | "medium" | "poor" | "very_poor";
-export type AmfPredictedLimitingMetric = "triangles" | "materialSlots" | "textureBytes" | "physBones";
+export type AmfPredictedLimitingMetric = "triangles" | "skinnedMeshes" | "basicMeshes" | "materialSlots" | "textureBytes" | "physBones";
 export interface AmfPredictedPlatformRank {
   readonly rank: AmfPredictedPerformanceRank;
   readonly limitingMetrics: readonly AmfPredictedLimitingMetric[];
@@ -324,11 +324,11 @@ const prefab = (v: unknown): v is AmfPrefab => record(v) && [v.sourceId, v.path,
 const ratings: readonly string[] = AMF_SDK_RATINGS;
 const count = (v: unknown, max: number): v is number => Number.isSafeInteger(v) && Number(v) >= 0 && Number(v) <= max;
 const predictedRanks = ["excellent", "good", "medium", "poor", "very_poor"];
-const predictedMetrics = ["triangles", "materialSlots", "textureBytes", "physBones"];
+const predictedMetrics = ["triangles", "skinnedMeshes", "basicMeshes", "materialSlots", "textureBytes", "physBones"];
 const predictedPlatformRank = (v: unknown): v is AmfPredictedPlatformRank => record(v)
   && Object.keys(v).length === 2
   && typeof v.rank === "string" && predictedRanks.includes(v.rank)
-  && Array.isArray(v.limitingMetrics) && v.limitingMetrics.length <= 4
+  && Array.isArray(v.limitingMetrics) && v.limitingMetrics.length <= 6
   && v.limitingMetrics.every(m => typeof m === "string" && predictedMetrics.includes(m))
   && new Set(v.limitingMetrics).size === v.limitingMetrics.length;
 const predictedPerformanceRanks = (v: unknown): v is AmfPredictedPerformanceRanks => record(v)

@@ -149,23 +149,41 @@ impl OscQueryLoopbackObservation {
     }
 }
 
-fn decode_http_chunked_body(raw: &str) -> Option<String> {
+fn decode_http_chunked_body(raw: &[u8]) -> Option<String> {
     let mut rest = raw;
-    let mut out = String::new();
+    let mut out = Vec::new();
     loop {
-        let (size_line, after_line) = rest.split_once("\r\n").or_else(|| rest.split_once('\n'))?;
+        let nl = rest.iter().position(|&b| b == b'\n')?;
+        let size_line_bytes = if nl > 0 && rest[nl - 1] == b'\r' {
+            &rest[..nl - 1]
+        } else {
+            &rest[..nl]
+        };
+        let after_line = &rest[nl + 1..];
+        let size_line = std::str::from_utf8(size_line_bytes).ok()?;
         let hex_part = size_line.split(';').next()?.trim();
         let chunk_len = usize::from_str_radix(hex_part, 16).ok()?;
         if chunk_len == 0 {
-            return Some(out);
+            return String::from_utf8(out).ok();
         }
         if after_line.len() < chunk_len {
             return None;
         }
-        out.push_str(&after_line[..chunk_len]);
+        out.extend_from_slice(&after_line[..chunk_len]);
         rest = after_line[chunk_len..]
-            .strip_prefix("\r\n")
-            .or_else(|| after_line[chunk_len..].strip_prefix('\n'))?;
+            .strip_prefix(b"\r\n")
+            .or_else(|| after_line[chunk_len..].strip_prefix(b"\n"))?;
+    }
+}
+
+fn split_http_head_and_body(raw_http: &[u8]) -> Option<(&[u8], &[u8])> {
+    let crlf = raw_http.windows(4).position(|w| w == b"\r\n\r\n");
+    let lf = raw_http.windows(2).position(|w| w == b"\n\n");
+    match (crlf, lf) {
+        (Some(c), Some(l)) if l < c => Some((&raw_http[..l], &raw_http[l + 2..])),
+        (Some(c), _) => Some((&raw_http[..c], &raw_http[c + 4..])),
+        (None, Some(l)) => Some((&raw_http[..l], &raw_http[l + 2..])),
+        (None, None) => None,
     }
 }
 
@@ -175,10 +193,8 @@ pub fn parse_oscquery_host_info(raw_http: &[u8]) -> Option<Option<u16>> {
     if raw_http.len() > 64 * 1024 {
         return None;
     }
-    let text = std::str::from_utf8(raw_http).ok()?;
-    let (head, body) = text
-        .split_once("\r\n\r\n")
-        .or_else(|| text.split_once("\n\n"))?;
+    let (head_bytes, body_bytes) = split_http_head_and_body(raw_http)?;
+    let head = std::str::from_utf8(head_bytes).ok()?;
     let status_line = head.lines().next()?.trim();
     if !status_line.starts_with("HTTP/1.1 200") && !status_line.starts_with("HTTP/1.0 200") {
         return None;
@@ -191,10 +207,10 @@ pub fn parse_oscquery_host_info(raw_http: &[u8]) -> Option<Option<u16>> {
     });
     let decoded_chunked;
     let json_payload = if is_chunked {
-        decoded_chunked = decode_http_chunked_body(body)?;
+        decoded_chunked = decode_http_chunked_body(body_bytes)?;
         decoded_chunked.trim()
     } else {
-        body.trim()
+        std::str::from_utf8(body_bytes).ok()?.trim()
     };
     let Value::Object(obj) = serde_json::from_str::<Value>(json_payload).ok()? else {
         return None;
@@ -571,7 +587,15 @@ impl LocalDiagnosticsService {
             SymptomId::OscOrFaceTrackingNotResponding if snapshot.osc.avatar_config_count > 0 => {
                 "clear_osc_avatar_cache"
             }
-            SymptomId::DiskCacheFull if snapshot.client_config.presence != "malformed" => {
+            SymptomId::DiskCacheFull
+                if snapshot.client_config.presence != "malformed"
+                    && (!findings.iter().any(|f| {
+                        matches!(f.code, "drive_free_space_low" | "log_disk_full_detected")
+                    }) || snapshot
+                        .client_config
+                        .cache_size_gb
+                        .is_some_and(|gb| gb > 30)) =>
+            {
                 "update_client_config"
             }
             _ => "none",
@@ -640,12 +664,12 @@ impl LocalDiagnosticsService {
             return Err(LocalDiagnosticsError::InvalidParams);
         }
         if let Some(size) = input.cache_size_gb {
-            if !(1..=200).contains(&size) {
+            if !(30..=200).contains(&size) {
                 return Err(LocalDiagnosticsError::InvalidParams);
             }
         }
         if let Some(days) = input.cache_expiry_delay_days {
-            if !(1..=365).contains(&days) {
+            if !(30..=365).contains(&days) {
                 return Err(LocalDiagnosticsError::InvalidParams);
             }
         }
@@ -1964,7 +1988,7 @@ fn collect_findings_for_symptom(
         let cap_bytes = snapshot
             .client_config
             .cache_size_gb
-            .unwrap_or(20)
+            .unwrap_or(30)
             .saturating_mul(GIB);
         if let Some(total) = snapshot.client_cache.total_bytes {
             if cap_bytes > 0 && total >= cap_bytes.saturating_mul(9) / 10 {
@@ -2157,20 +2181,25 @@ fn build_sop_steps(
             });
         }
         SymptomId::DiskCacheFull => {
-            if has("drive_free_space_low") || has("log_disk_full_detected") {
-                steps.push(DiagnosticSopStep {
-                    step_id: "disk_free_system_drive_space",
-                    layer: "hardware_os",
-                    title: "Free space on the cache drive immediately",
-                    instruction: "Less than 10 GiB remains on the drive holding Cache-WindowsPlayer (or a disk-full write error occurred). Free disk space or relocate cache_directory in config.json to a larger SSD.",
-                });
-            }
-            steps.push(DiagnosticSopStep {
+            let clear_step = DiagnosticSopStep {
                 step_id: "disk_tune_client_cache_limits",
                 layer: "client_config_cache",
-                title: "Adjust cache_size and cache_expiry_delay in config.json",
-                instruction: "With VRChat closed, set a bounded cache_size (GB) and cache_expiry_delay (days) using VUA's offline client config helper, or clear world/avatar cache inside VRChat Settings -> Debug.",
-            });
+                title: "Clear downloaded content cache inside VRChat",
+                instruction: "Open VRChat Settings -> Debug -> Clear Content Cache to reclaim space immediately (VRChat's minimum cache_size is 30 GB; if you previously raised cache_size above 30 GB, you can step it back toward 30 GB while VRChat is closed).",
+            };
+            let move_step = DiagnosticSopStep {
+                step_id: "disk_free_system_drive_space",
+                layer: "hardware_os",
+                title: "Move cache_directory in config.json to a drive with more space",
+                instruction: "With VRChat closed, set cache_directory in LocalLow/VRChat/VRChat/config.json to a folder on a larger SSD so Cache-WindowsPlayer stops filling your system drive.",
+            };
+            if has("drive_free_space_low") || has("log_disk_full_detected") {
+                steps.push(move_step);
+                steps.push(clear_step);
+            } else {
+                steps.push(clear_step);
+                steps.push(move_step);
+            }
         }
         SymptomId::CrashOrEacBlock => {
             if has("log_eac_violation_detected") {
@@ -2803,5 +2832,110 @@ mod tests {
             .iter()
             .any(|f| f.code == "windows_power_saver_active"));
         assert!(!fbt.sop_steps.is_empty());
+    }
+
+    #[test]
+    fn update_client_config_enforces_vrchat_minimum_30_and_default_threshold_uses_30_gib() {
+        let temp = TestTempDir::new();
+        let roots = test_roots(temp.path());
+        let svc = LocalDiagnosticsService::new(
+            roots,
+            Arc::new(FakeProbe {
+                running: Ok(false),
+                udp9000: UdpPortObservation::unbound(),
+                udp9001: UdpPortObservation::unbound(),
+                osc_query: OscQueryLoopbackObservation::not_detected(),
+            }),
+            Arc::new(FixedClock::new(&["2026-11-14T05:00:00.000Z"])),
+        );
+
+        assert_eq!(
+            svc.update_client_config(
+                "cfg-too-small-size",
+                ClientConfigUpdateInput {
+                    cache_size_gb: Some(10),
+                    cache_expiry_delay_days: None,
+                },
+            ),
+            Err(LocalDiagnosticsError::InvalidParams)
+        );
+        assert_eq!(
+            svc.update_client_config(
+                "cfg-too-small-days",
+                ClientConfigUpdateInput {
+                    cache_size_gb: None,
+                    cache_expiry_delay_days: Some(7),
+                },
+            ),
+            Err(LocalDiagnosticsError::InvalidParams)
+        );
+        let ok = svc
+            .update_client_config(
+                "cfg-min-valid",
+                ClientConfigUpdateInput {
+                    cache_size_gb: Some(30),
+                    cache_expiry_delay_days: Some(30),
+                },
+            )
+            .unwrap();
+        assert_eq!(ok.cache_size_gb, Some(30));
+        assert_eq!(ok.cache_expiry_delay_days, Some(30));
+
+        let mut base_snap = svc.observe_local();
+        base_snap.client_config.cache_size_gb = None;
+        base_snap.client_cache.presence = "found";
+        base_snap.client_cache.total_bytes = Some(18 * GIB);
+        let findings_18 = collect_findings_for_symptom(SymptomId::DiskCacheFull, &base_snap);
+        assert!(
+            !findings_18
+                .iter()
+                .any(|f| f.code == "client_cache_near_limit"),
+            "18 GiB must not trigger near-limit against VRChat's 30 GiB default"
+        );
+
+        base_snap.client_cache.total_bytes = Some(27 * GIB);
+        let findings_27 = collect_findings_for_symptom(SymptomId::DiskCacheFull, &base_snap);
+        assert!(findings_27
+            .iter()
+            .any(|f| f.code == "client_cache_near_limit"));
+    }
+
+    #[test]
+    fn chunked_oscquery_host_info_handles_multibyte_japanese_split_and_invalid_bounds() {
+        let full_json = "{\"NAME\":\"\u{3042}\u{3044}\",\"OSC_PORT\":9000}";
+        let bytes = full_json.as_bytes();
+        // Split right inside the 3-byte UTF-8 sequence of 'あ' (0xE3 0x81 | 0x82 ...).
+        let a_pos = full_json.find('\u{3042}').unwrap();
+        let split_at = a_pos + 2;
+        let part1 = &bytes[..split_at];
+        let part2 = &bytes[split_at..];
+
+        let mut raw_http = Vec::new();
+        raw_http.extend_from_slice(
+            b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nContent-Type: application/json\r\n\r\n",
+        );
+        raw_http.extend_from_slice(format!("{:x}\r\n", part1.len()).as_bytes());
+        raw_http.extend_from_slice(part1);
+        raw_http.extend_from_slice(b"\r\n");
+        raw_http.extend_from_slice(format!("{:x}\r\n", part2.len()).as_bytes());
+        raw_http.extend_from_slice(part2);
+        raw_http.extend_from_slice(b"\r\n0\r\n\r\n");
+
+        assert_eq!(parse_oscquery_host_info(&raw_http), Some(Some(9000)));
+
+        // Miscounted chunk length landing inside a multi-byte UTF-8 character in a valid UTF-8 buffer must return None without panicking.
+        let malformed_mid_char = format!(
+            "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n{:x}\r\n{}\r\n0\r\n\r\n",
+            split_at, full_json
+        );
+        assert_eq!(
+            parse_oscquery_host_info(malformed_mid_char.as_bytes()),
+            None
+        );
+
+        // Declared chunk length beyond buffer bounds returns None cleanly.
+        let out_of_bounds =
+            b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\nff\r\n{\"OSC_PORT\":9000}\r\n0\r\n\r\n";
+        assert_eq!(parse_oscquery_host_info(out_of_bounds), None);
     }
 }

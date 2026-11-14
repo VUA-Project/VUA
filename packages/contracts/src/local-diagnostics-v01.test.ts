@@ -59,6 +59,20 @@ describe("local-diagnostics v0.1 Candidate wire", () => {
       params: { schemaVersion: "0.1", commandId: "cmd-cfg-2" },
     })).toBe(false);
 
+    expect(isDesktopGatewayRequestV1({
+      schemaVersion: 1,
+      requestId: "r-below-min-size",
+      method: "diagnostics.updateClientConfig",
+      params: { schemaVersion: "0.1", cacheSizeGb: 10, commandId: "cmd-cfg-3" },
+    })).toBe(false);
+
+    expect(isDesktopGatewayRequestV1({
+      schemaVersion: 1,
+      requestId: "r-below-min-days",
+      method: "diagnostics.updateClientConfig",
+      params: { schemaVersion: "0.1", cacheExpiryDelayDays: 7, commandId: "cmd-cfg-4" },
+    })).toBe(false);
+
     const validSnapshot = vectors.snapshots[0]!.value.localDiagnostics;
     expect(isSymptomDiagnosisResultV01({
       symptomDiagnosis: {

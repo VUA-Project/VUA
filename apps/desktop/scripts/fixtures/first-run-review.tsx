@@ -85,7 +85,7 @@ function syntheticDiagnosticsSnapshot(): LocalDiagnosticsSnapshotV01 {
     clientConfig: {
       presence: "found",
       cacheDirectoryCustom: false,
-      cacheSizeGb: 20,
+      cacheSizeGb: 30,
       cacheExpiryDelayDays: 30,
       cameraResWidth: null,
       cameraResHeight: null,

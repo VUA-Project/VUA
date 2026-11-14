@@ -145,10 +145,10 @@ VUA does not copy their source or binaries. Paid/free availability is separate f
 AMF package management and isolated work-project preparation also resolve unbundled upstream Unity
 VPM packages directly from their official feeds when requested by materials, explicit player opt-in,
 or saved Recipes (full table and license URLs in [docs/development/known-packages.md](docs/development/known-packages.md)):
-`Modular Avatar` (MIT), `NDMF` (MIT), `AAO: Avatar Optimizer` (MIT), `LilyCalInventory` (MIT),
-`lilAvatarUtils` (MIT), `NDMF Mesh Simplifier` (MIT), `TexTransTool` (MIT), `FaceEmo` (MIT),
+`Modular Avatar` (MIT), `NDMF` (MIT), `AAO: Avatar Optimizer` (MIT), `lilycalInventory` (MIT),
+`lilAvatarUtils` (MIT), `lilNDMFMeshSimplifier` (MIT), `TexTransTool` (MIT), `FaceEmo` (MIT),
 `ComboGestureExpressions` (MIT), `FloorAdjuster` (Zlib), `VRCQuestTools` (MIT), `lilToon` (MIT),
-`Poiyomi Toon Shader` (MIT), `UnlitWF Shader` (Zlib), `VRM Converter for VRChat` (MIT, guide-only),
+`Poiyomi Toon Shader` (MIT), `UnlitWF Shader` (Zlib), `VRM Converter for VRChat` (MPL-2.0, guide-only),
 and `UniVRM` (MIT, guide-only). VUA redistributes none of these VPM archives.
 
 If a later VUA release incorporates, modifies or redistributes source/binaries from any external tool,

@@ -134,14 +134,14 @@ pub(crate) fn request(
             let cache_size_gb = match params.get("cacheSizeGb") {
                 None => None,
                 Some(v) => match v.as_u64() {
-                    Some(n) if (1..=200).contains(&n) => Some(n),
+                    Some(n) if (30..=200).contains(&n) => Some(n),
                     _ => return map_err(LocalDiagnosticsError::InvalidParams),
                 },
             };
             let cache_expiry_delay_days = match params.get("cacheExpiryDelayDays") {
                 None => None,
                 Some(v) => match v.as_u64() {
-                    Some(n) if (1..=365).contains(&n) => Some(n),
+                    Some(n) if (30..=365).contains(&n) => Some(n),
                     _ => return map_err(LocalDiagnosticsError::InvalidParams),
                 },
             };

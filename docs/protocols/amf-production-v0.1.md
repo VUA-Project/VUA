@@ -877,10 +877,13 @@ values stay.
 
 `total` also carries optional `performanceRanks: { pc, android }`, each with
 `rank` (`"excellent" | "good" | "medium" | "poor" | "very_poor"`) and `limitingMetrics`
-(`"triangles" | "materialSlots" | "textureBytes" | "physBones"` exceeding `Good`), computed from the
-summed `triangles`, `materialSlots`, `textureBytes` and `physBones` against VRChat's published PC
-and Android/Quest performance thresholds. Plans from older builds without `performanceRanks` remain
-valid.
+(`"triangles" | "skinnedMeshes" | "basicMeshes" | "materialSlots" | "textureBytes" | "physBones"`
+exceeding `Good`), computed from the summed `triangles`, `skinnedMeshes`,
+`basicMeshes` (`meshes - skinnedMeshes`), `materialSlots`, `textureBytes` and `physBones` against
+VRChat's published PC and Android/Quest performance thresholds. Metrics not collected during
+pre-assembly prefab inspection — bone count, PhysBone affected transforms and colliders, contacts,
+particle systems, lights, audio sources, cloth and animators — are evaluated only by the VRChat
+SDK's post-build check. Plans from older builds without `performanceRanks` remain valid.
 
 `available` is false, with no rows and no total, when a selected candidate carries no footprint
 observation, which happens for a run inspected by an AMF build that predates it; the page then

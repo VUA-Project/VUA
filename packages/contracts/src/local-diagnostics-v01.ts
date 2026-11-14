@@ -297,8 +297,8 @@ export function isLocalDiagnosticsParams(method: string, params: unknown, gatewa
       const hasSize = Object.hasOwn(params, "cacheSizeGb");
       const hasExpiry = Object.hasOwn(params, "cacheExpiryDelayDays");
       if (!hasSize && !hasExpiry) return false;
-      if (hasSize && (!nonNegInt(params.cacheSizeGb) || params.cacheSizeGb < 1 || params.cacheSizeGb > 200)) return false;
-      if (hasExpiry && (!nonNegInt(params.cacheExpiryDelayDays) || params.cacheExpiryDelayDays < 1 || params.cacheExpiryDelayDays > 365)) return false;
+      if (hasSize && (!nonNegInt(params.cacheSizeGb) || params.cacheSizeGb < 30 || params.cacheSizeGb > 200)) return false;
+      if (hasExpiry && (!nonNegInt(params.cacheExpiryDelayDays) || params.cacheExpiryDelayDays < 30 || params.cacheExpiryDelayDays > 365)) return false;
       return true;
     }
     default:
@@ -456,6 +456,6 @@ export function isClientConfigUpdateReceiptResultV01(v: unknown): v is ClientCon
   return r.schemaVersion === LOCAL_DIAGNOSTICS_SCHEMA
     && nonEmptyString(r.updatedAt, 64)
     && typeof r.backupWritten === "boolean"
-    && (r.cacheSizeGb === null || (nonNegInt(r.cacheSizeGb) && r.cacheSizeGb >= 1 && r.cacheSizeGb <= 200))
-    && (r.cacheExpiryDelayDays === null || (nonNegInt(r.cacheExpiryDelayDays) && r.cacheExpiryDelayDays >= 1 && r.cacheExpiryDelayDays <= 365));
+    && (r.cacheSizeGb === null || (nonNegInt(r.cacheSizeGb) && r.cacheSizeGb >= 30 && r.cacheSizeGb <= 200))
+    && (r.cacheExpiryDelayDays === null || (nonNegInt(r.cacheExpiryDelayDays) && r.cacheExpiryDelayDays >= 30 && r.cacheExpiryDelayDays <= 365));
 }

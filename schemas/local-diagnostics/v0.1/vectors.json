@@ -87,6 +87,19 @@
         "commandId": "diag-cfg-3",
         "params": { "schemaVersion": "0.1", "cacheSizeGb": 500 }
       }
+    },
+    {
+      "name": "updateClientConfig rejects below-30 cacheSizeGb",
+      "valid": false,
+      "value": {
+        "contractVersion": "0.1",
+        "requestId": "req-8",
+        "correlationId": "req-8",
+        "kind": "command",
+        "method": "diagnostics.updateClientConfig",
+        "commandId": "diag-cfg-4",
+        "params": { "schemaVersion": "0.1", "cacheSizeGb": 10, "cacheExpiryDelayDays": 7 }
+      }
     }
   ],
   "snapshots": [

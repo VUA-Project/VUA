@@ -555,6 +555,9 @@ export class AiToolsServer {
     } else if (request.method === "amf.production.removeOutfit") {
       reviewed = await this.invoke({ schemaVersion: 1, requestId: `review-${randomUUID()}`, method: "amf.production.planOutfitRemoval", params: { schemaVersion: "0.1", runId: request.params.runId, sourceId: request.params.sourceId } });
       if (!record(reviewed) || reviewed.planDigest !== request.params.planDigest) throw new Error("outfit_removal_plan_changed");
+      const run = await this.invoke({ schemaVersion: 1, requestId: `review-${randomUUID()}`, method: "amf.production.get", params: { schemaVersion: "0.1", runId: request.params.runId } }).catch(() => null);
+      const outfitSource = record(run) && Array.isArray(run.sources) ? run.sources.find(v => record(v) && v.sourceId === request.params.sourceId) : undefined;
+      if (record(outfitSource)) reviewed = { ...reviewed, outfitSource };
     } else if (request.method === "amf.production.prepare") {
       reviewed = await this.invoke({ schemaVersion: 1, requestId: `review-${randomUUID()}`, method: "amf.production.list", params: { schemaVersion: "0.1" } });
       if (!record(reviewed) || !Array.isArray(reviewed.sources) || !Array.isArray(reviewed.editors)) throw new Error("material_or_editor_no_longer_available");

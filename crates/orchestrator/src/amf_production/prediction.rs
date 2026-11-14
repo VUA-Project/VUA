@@ -45,12 +45,15 @@ pub fn validate_prefab_footprints(prefabs: &[PrefabCandidate]) -> Result<(), App
     Ok(())
 }
 
-/// What one candidate contributes: the six values plus whether every one of them was decided.
+/// What one candidate contributes: the six table values, mesh breakdown for rank prediction,
+/// plus whether every table value was decided.
 struct PredictedRow {
     source_id: String,
     name: String,
     role: &'static str,
     triangles: u64,
+    skinned_meshes: u32,
+    basic_meshes: u32,
     material_slots: u32,
     texture_bytes: u64,
     phys_bones: u32,
@@ -69,32 +72,43 @@ impl PredictedRow {
     }
 }
 
-/// Official VRChat SDK PC performance thresholds (triangles, materialSlots, textureBytes, physBones).
+/// Official VRChat SDK PC performance thresholds across observed footprint metrics
+/// (`triangles`, `skinnedMeshes`, `basicMeshes`, `materialSlots`, `textureBytes`, `physBones`).
 fn predict_pc_rank(
     triangles: u64,
+    skinned_meshes: u32,
+    basic_meshes: u32,
     material_slots: u32,
     texture_bytes: u64,
     phys_bones: u32,
 ) -> serde_json::Value {
     let rank = if triangles <= 32_000
+        && skinned_meshes <= 1
+        && basic_meshes <= 4
         && material_slots <= 4
         && texture_bytes <= (40 << 20)
         && phys_bones <= 4
     {
         "excellent"
     } else if triangles <= 70_000
+        && skinned_meshes <= 2
+        && basic_meshes <= 8
         && material_slots <= 8
         && texture_bytes <= (75 << 20)
         && phys_bones <= 8
     {
         "good"
     } else if triangles <= 70_000
+        && skinned_meshes <= 8
+        && basic_meshes <= 16
         && material_slots <= 16
         && texture_bytes <= (110 << 20)
         && phys_bones <= 16
     {
         "medium"
     } else if triangles <= 70_000
+        && skinned_meshes <= 16
+        && basic_meshes <= 24
         && material_slots <= 32
         && texture_bytes <= (150 << 20)
         && phys_bones <= 32
@@ -106,6 +120,12 @@ fn predict_pc_rank(
     let mut limiting = Vec::new();
     if triangles > 70_000 {
         limiting.push("triangles");
+    }
+    if skinned_meshes > 2 {
+        limiting.push("skinnedMeshes");
+    }
+    if basic_meshes > 8 {
+        limiting.push("basicMeshes");
     }
     if material_slots > 8 {
         limiting.push("materialSlots");
@@ -122,32 +142,43 @@ fn predict_pc_rank(
     })
 }
 
-/// Official VRChat SDK Android / Quest / PICO performance thresholds.
+/// Official VRChat SDK Android / Quest / PICO performance thresholds across observed footprint
+/// metrics (`triangles`, `skinnedMeshes`, `basicMeshes`, `materialSlots`, `textureBytes`, `physBones`).
 fn predict_android_rank(
     triangles: u64,
+    skinned_meshes: u32,
+    basic_meshes: u32,
     material_slots: u32,
     texture_bytes: u64,
     phys_bones: u32,
 ) -> serde_json::Value {
     let rank = if triangles <= 7_500
+        && skinned_meshes <= 1
+        && basic_meshes <= 1
         && material_slots <= 1
         && texture_bytes <= (10 << 20)
         && phys_bones == 0
     {
         "excellent"
     } else if triangles <= 10_000
+        && skinned_meshes <= 1
+        && basic_meshes <= 1
         && material_slots <= 1
         && texture_bytes <= (18 << 20)
         && phys_bones <= 4
     {
         "good"
     } else if triangles <= 15_000
+        && skinned_meshes <= 2
+        && basic_meshes <= 2
         && material_slots <= 2
         && texture_bytes <= (25 << 20)
         && phys_bones <= 6
     {
         "medium"
     } else if triangles <= 20_000
+        && skinned_meshes <= 2
+        && basic_meshes <= 2
         && material_slots <= 4
         && texture_bytes <= (40 << 20)
         && phys_bones <= 8
@@ -159,6 +190,12 @@ fn predict_android_rank(
     let mut limiting = Vec::new();
     if triangles > 10_000 {
         limiting.push("triangles");
+    }
+    if skinned_meshes > 1 {
+        limiting.push("skinnedMeshes");
+    }
+    if basic_meshes > 1 {
+        limiting.push("basicMeshes");
     }
     if material_slots > 1 {
         limiting.push("materialSlots");
@@ -240,11 +277,17 @@ pub fn plan_prediction(run: &ProductionRun, selection: &AssemblySelection) -> se
         } else {
             outfit_bits.next()
         };
+        // Unity Bridge's `ObserveFootprint` increments `meshes` for every renderer with a mesh
+        // (`SkinnedMeshRenderer` + non-skinned `MeshRenderer`) and `skinnedMeshes` only for
+        // `SkinnedMeshRenderer`, so basic meshes are `meshes - skinnedMeshes`.
+        let basic_meshes = footprint.meshes.saturating_sub(footprint.skinned_meshes);
         rows.push(PredictedRow {
             source_id: prefab.source_id.clone(),
             name: prefab.name.clone(),
             role,
             triangles: footprint.triangles,
+            skinned_meshes: footprint.skinned_meshes,
+            basic_meshes,
             material_slots: footprint.material_slots,
             texture_bytes: footprint.texture_bytes,
             phys_bones: footprint.phys_bones,
@@ -266,6 +309,8 @@ pub fn plan_prediction(run: &ProductionRun, selection: &AssemblySelection) -> se
             bits.map(|bits| total.saturating_add(bits))
         });
     let total_triangles = sum(|row| row.triangles);
+    let total_skinned_meshes = rows.iter().map(|row| row.skinned_meshes).sum::<u32>();
+    let total_basic_meshes = rows.iter().map(|row| row.basic_meshes).sum::<u32>();
     let total_material_slots = rows.iter().map(|row| row.material_slots).sum::<u32>();
     let total_texture_bytes = sum(|row| row.texture_bytes);
     let total_phys_bones = rows.iter().map(|row| row.phys_bones).sum::<u32>();
@@ -280,12 +325,16 @@ pub fn plan_prediction(run: &ProductionRun, selection: &AssemblySelection) -> se
         "performanceRanks": {
             "pc": predict_pc_rank(
                 total_triangles,
+                total_skinned_meshes,
+                total_basic_meshes,
                 total_material_slots,
                 total_texture_bytes,
                 total_phys_bones,
             ),
             "android": predict_android_rank(
                 total_triangles,
+                total_skinned_meshes,
+                total_basic_meshes,
                 total_material_slots,
                 total_texture_bytes,
                 total_phys_bones,
@@ -526,12 +575,19 @@ mod tests {
         assert_eq!(ranks["pc"]["rank"], "very_poor");
         assert_eq!(
             ranks["pc"]["limitingMetrics"],
-            serde_json::json!(["triangles", "textureBytes", "physBones"])
+            serde_json::json!(["triangles", "skinnedMeshes", "textureBytes", "physBones"])
         );
         assert_eq!(ranks["android"]["rank"], "very_poor");
         assert_eq!(
             ranks["android"]["limitingMetrics"],
-            serde_json::json!(["triangles", "materialSlots", "textureBytes", "physBones"])
+            serde_json::json!([
+                "triangles",
+                "skinnedMeshes",
+                "basicMeshes",
+                "materialSlots",
+                "textureBytes",
+                "physBones"
+            ])
         );
 
         let light_run = run_of(vec![
@@ -590,16 +646,102 @@ mod tests {
             serde_json::json!([])
         );
 
-        // PC exceeding 70k triangles immediately falls to VeryPoor even if other metrics are Good.
-        assert_eq!(predict_pc_rank(70_001, 4, 20 << 20, 2)["rank"], "very_poor");
-        assert_eq!(predict_pc_rank(70_000, 12, 80 << 20, 8)["rank"], "medium");
-        assert_eq!(predict_pc_rank(70_000, 24, 120 << 20, 20)["rank"], "poor");
-        assert_eq!(predict_android_rank(10_000, 1, 18 << 20, 4)["rank"], "good");
+        // Avatar (1 SkinnedMesh) + 1 outfit (1 SkinnedMesh) with very low triangles/textures:
+        // SDK gives PC Good (2 SkinnedMeshes <= 2) and Android Medium (2 SkinnedMeshes > 1, <= 2).
+        let two_skinned_run = run_of(vec![
+            candidate(
+                "avatar",
+                "LightAvatar",
+                true,
+                Some(CandidateFootprint {
+                    triangles: 4_000,
+                    material_slots: 1,
+                    meshes: 1,
+                    skinned_meshes: 1,
+                    texture_bytes: 4 << 20,
+                    texture_complete: true,
+                    mesh_bytes: 1 << 20,
+                    mesh_complete: true,
+                    phys_bones: 0,
+                    phys_bones_known: true,
+                }),
+                Some(budget(&[])),
+            ),
+            candidate(
+                "outfit",
+                "LightJacket",
+                false,
+                Some(CandidateFootprint {
+                    triangles: 2_000,
+                    material_slots: 0,
+                    meshes: 1,
+                    skinned_meshes: 1,
+                    texture_bytes: 2 << 20,
+                    texture_complete: true,
+                    mesh_bytes: 512 << 10,
+                    mesh_complete: true,
+                    phys_bones: 0,
+                    phys_bones_known: true,
+                }),
+                Some(budget(&[])),
+            ),
+        ]);
+        let two_skinned_plan =
+            plan_prediction(&two_skinned_run, &selection(&[("outfit", "LightJacket")]));
         assert_eq!(
-            predict_android_rank(15_000, 2, 25 << 20, 6)["rank"],
+            two_skinned_plan["total"]["performanceRanks"]["pc"]["rank"],
+            "good"
+        );
+        assert_eq!(
+            two_skinned_plan["total"]["performanceRanks"]["pc"]["limitingMetrics"],
+            serde_json::json!([])
+        );
+        assert_eq!(
+            two_skinned_plan["total"]["performanceRanks"]["android"]["rank"],
             "medium"
         );
-        assert_eq!(predict_android_rank(20_000, 4, 40 << 20, 8)["rank"], "poor");
+        assert_eq!(
+            two_skinned_plan["total"]["performanceRanks"]["android"]["limitingMetrics"],
+            serde_json::json!(["skinnedMeshes"])
+        );
+
+        // PC exceeding 70k triangles immediately falls to VeryPoor even if other metrics are Good.
+        assert_eq!(
+            predict_pc_rank(70_001, 1, 0, 4, 20 << 20, 2)["rank"],
+            "very_poor"
+        );
+        assert_eq!(
+            predict_pc_rank(70_000, 2, 9, 8, 40 << 20, 4),
+            serde_json::json!({"rank": "medium", "limitingMetrics": ["basicMeshes"]})
+        );
+        assert_eq!(
+            predict_pc_rank(70_000, 17, 4, 8, 40 << 20, 4)["rank"],
+            "very_poor"
+        );
+        assert_eq!(
+            predict_pc_rank(70_000, 2, 8, 24, 120 << 20, 20)["rank"],
+            "poor"
+        );
+        assert_eq!(
+            predict_android_rank(10_000, 1, 1, 1, 18 << 20, 4)["rank"],
+            "good"
+        );
+        assert_eq!(
+            predict_android_rank(7_000, 1, 2, 1, 8 << 20, 0),
+            serde_json::json!({"rank": "medium", "limitingMetrics": ["basicMeshes"]})
+        );
+        assert_eq!(
+            predict_android_rank(15_000, 2, 2, 2, 25 << 20, 6)["rank"],
+            "medium"
+        );
+        assert_eq!(
+            predict_android_rank(20_000, 2, 2, 4, 40 << 20, 8)["rank"],
+            "poor"
+        );
+        assert_eq!(
+            predict_android_rank(7_000, 3, 0, 1, 8 << 20, 0)["rank"],
+            "very_poor"
+        );
     }
 
     #[test]

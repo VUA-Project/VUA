@@ -96,8 +96,8 @@
           "minProperties": 2,
           "properties": {
             "schemaVersion": { "const": "0.1" },
-            "cacheSizeGb": { "type": "integer", "minimum": 1, "maximum": 200 },
-            "cacheExpiryDelayDays": { "type": "integer", "minimum": 1, "maximum": 365 }
+            "cacheSizeGb": { "type": "integer", "minimum": 30, "maximum": 200 },
+            "cacheExpiryDelayDays": { "type": "integer", "minimum": 30, "maximum": 365 }
           }
         }
       }

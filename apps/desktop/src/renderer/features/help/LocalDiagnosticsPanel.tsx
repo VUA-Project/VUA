@@ -162,7 +162,7 @@ export function LocalDiagnosticsPanel({
     if (copyTimerRef.current !== null) window.clearTimeout(copyTimerRef.current);
   }, []);
 
-  const [cacheSizeInput, setCacheSizeInput] = useState("20");
+  const [cacheSizeInput, setCacheSizeInput] = useState("30");
   const [cacheExpiryInput, setCacheExpiryInput] = useState("30");
   const [oscBusy, setOscBusy] = useState(false);
   const [oscFeedback, setOscFeedback] = useState<string | null>(null);
@@ -170,7 +170,7 @@ export function LocalDiagnosticsPanel({
   const [cfgFeedback, setCfgFeedback] = useState<string | null>(null);
 
   const syncConfigInputs = (next: LocalDiagnosticsSnapshotV01) => {
-    setCacheSizeInput(String(next.clientConfig.cacheSizeGb ?? 20));
+    setCacheSizeInput(String(next.clientConfig.cacheSizeGb ?? 30));
     setCacheExpiryInput(String(next.clientConfig.cacheExpiryDelayDays ?? 30));
   };
 
@@ -248,10 +248,10 @@ export function LocalDiagnosticsPanel({
     const expiryNum = Number.parseInt(cacheExpiryInput.trim(), 10);
     if (
       !Number.isInteger(sizeNum)
-      || sizeNum < 1
+      || sizeNum < 30
       || sizeNum > 200
       || !Number.isInteger(expiryNum)
-      || expiryNum < 1
+      || expiryNum < 30
       || expiryNum > 365
     ) {
       setCfgFeedback(copy.configInvalidRange);
@@ -368,7 +368,7 @@ export function LocalDiagnosticsPanel({
                 {snapshot.clientConfig.cacheSizeGb !== null
                   || snapshot.clientConfig.cacheExpiryDelayDays !== null
                   ? format(copy.cards.cacheLimit, {
-                      gb: snapshot.clientConfig.cacheSizeGb ?? 20,
+                      gb: snapshot.clientConfig.cacheSizeGb ?? 30,
                       days: snapshot.clientConfig.cacheExpiryDelayDays ?? 30,
                     })
                   : copy.cards.cacheDefaultLimit}
@@ -668,7 +668,7 @@ export function LocalDiagnosticsPanel({
                     <input
                       id="diag-cache-size"
                       type="number"
-                      min={1}
+                      min={30}
                       max={200}
                       disabled={!canRunOfflineHelpers || cfgBusy}
                       value={cacheSizeInput}
@@ -680,7 +680,7 @@ export function LocalDiagnosticsPanel({
                     <input
                       id="diag-cache-expiry"
                       type="number"
-                      min={1}
+                      min={30}
                       max={365}
                       disabled={!canRunOfflineHelpers || cfgBusy}
                       value={cacheExpiryInput}

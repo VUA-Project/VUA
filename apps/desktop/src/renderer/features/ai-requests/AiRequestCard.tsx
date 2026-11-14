@@ -32,7 +32,7 @@ function outcome(request: AiActionRequestV01): string {
   return copy.outcomes[keys[request.tool] ?? "cancel"];
 }
 /** File or folder name without directories or extension: "Meiyun_v2.1.0/Meiyun.unitypackage" → "Meiyun". */
-const baseName = (value: unknown) => String(value ?? "").split(/[\\/]/).pop()!.replace(/\.(unitypackage|zip|prefab)$/i, "");
+const baseName = (value: unknown) => String(value ?? "").replace(/[\\/]+$/, "").split(/[\\/]/).pop()!.replace(/\.(unitypackage|zip|prefab)$/i, "");
 const roleLabel = (role: unknown) => strings.aiTools.roles[role as keyof typeof strings.aiTools.roles] ?? strings.aiTools.roles.material;
 /** One material line: its role, the package name, and the download it came from when that name differs. */
 function Material({ role, name, item }: { role: unknown; name: unknown; item: unknown }) {
@@ -53,9 +53,34 @@ function Review({ request }: { request: AiActionRequestV01 }) {
   const inputs = Array.isArray(reviewed.inputs) ? reviewed.inputs.filter(record) : [];
   const selection = record(params.selection) ? params.selection : null;
   const outfits = selection && Array.isArray(selection.outfits) ? selection.outfits.filter(record) : [];
-  const materials = sources.length > 0
-    ? sources.map(source => ({ source, fact: knownSources.find(s => s.sourceId === source.sourceId) }))
+  const materials = request.tool === "vua_request_amf_outfit_remove" ? []
+    : sources.length > 0 ? sources.map(source => ({ source, fact: knownSources.find(s => s.sourceId === source.sourceId) }))
     : params.runId ? knownSources.map(fact => ({ source: fact, fact })) : [];
+  const cacheSizeGb = typeof params.cacheSizeGb === "number" ? params.cacheSizeGb : null;
+  const cacheExpiryDelayDays = typeof params.cacheExpiryDelayDays === "number" ? params.cacheExpiryDelayDays : null;
+  const oscFacts = record(reviewed.localDiagnostics) && record(reviewed.localDiagnostics.osc) ? reviewed.localDiagnostics.osc : null;
+  const oscFilesCount = oscFacts && typeof oscFacts.avatarConfigCount === "number" ? oscFacts.avatarConfigCount : null;
+  const importGroups = Array.isArray(params.groups) ? params.groups.filter(record) : [];
+  const importRoots = [...new Set(importGroups.map(g => typeof g.root === "string" ? g.root : "").filter(Boolean))];
+  const importGroupCount = typeof reviewed.groupCount === "number" ? reviewed.groupCount : importGroups.length;
+  const importFileCount = typeof reviewed.fileCount === "number"
+    ? reviewed.fileCount
+    : importGroups.reduce((sum, g) => sum + (Array.isArray(g.files) ? g.files.length : 0), 0);
+  const importGroupNames = Array.isArray(reviewed.groupNames)
+    ? reviewed.groupNames.filter((n): n is string => typeof n === "string")
+    : importGroups.slice(0, 20).map(g => String(g.name ?? "")).filter(Boolean);
+  const outfitSource = record(reviewed.outfitSource) ? reviewed.outfitSource : null;
+  const removal = record(reviewed.removal) ? reviewed.removal : null;
+  const removalRootId = removal && Array.isArray(removal.roots)
+    ? removal.roots.filter(record).find(r => r.kind === "outfit")?.globalObjectId
+    : undefined;
+  const removalRootObj = removal && typeof removalRootId === "string" && Array.isArray(removal.objects)
+    ? removal.objects.filter(record).find(o => o.globalObjectId === removalRootId)
+    : undefined;
+  const outfitRemoveName = outfitSource?.name ?? removalRootObj?.path ?? params.sourceId;
+  const outfitRemoveItem = outfitSource?.itemName ?? null;
+  const textureList = Array.isArray(params.textures) ? params.textures : [];
+  const lightingMaterials = Array.isArray(params.materials) ? params.materials : [];
   return <div className="vua-ai-review">
     {steps.length > 0 ? <><h4>{copy.software}</h4><ul>{steps.map((step, i) => <li key={i}>
       <strong>{strings.deployment.components[step.component as keyof typeof strings.deployment.components] ?? String(step.component)}</strong>
@@ -67,6 +92,35 @@ function Review({ request }: { request: AiActionRequestV01 }) {
     {(INSTALLER_TOOL_IDS as readonly unknown[]).includes(params.toolId) ? <p><strong>{INSTALLER_TOOL_NAMES[params.toolId as InstallerToolId]}</strong></p> : null}
     {(MANAGER_APP_IDS as readonly unknown[]).includes(params.managerId) ? <p><strong>{MANAGER_APP_NAMES[params.managerId as ManagerAppId]}</strong></p> : null}
     {params.action ? <p>{copy.actions[params.action as keyof typeof copy.actions] ?? String(params.action)}</p> : null}
+    {request.tool === "vua_request_update_client_config" && (cacheSizeGb !== null || cacheExpiryDelayDays !== null) ? <>
+      <h4>{copy.clientConfigHeading}</h4>
+      <ul>
+        {cacheSizeGb !== null ? <li>{format(copy.cacheSizeTarget, { gb: cacheSizeGb })}</li> : null}
+        {cacheExpiryDelayDays !== null ? <li>{format(copy.cacheExpiryTarget, { days: cacheExpiryDelayDays })}</li> : null}
+      </ul>
+    </> : null}
+    {request.tool === "vua_request_clear_osc_cache" && oscFilesCount !== null ? <p>{format(copy.oscFilesToDelete, { count: oscFilesCount })}</p> : null}
+    {request.tool === "vua_request_library_import_groups" && importGroupCount > 0 ? <>
+      {importRoots.length > 0 ? <p><strong>{copy.importSourceRoot}</strong>{" · "}{importRoots.map(baseName).join(", ")}</p> : null}
+      <p>{format(copy.importSummaryCounts, { groups: importGroupCount, files: importFileCount })}</p>
+      {importGroupNames.length > 0 ? <><h4>{copy.importGroupsHeading}</h4><ul>{importGroupNames.map((name, i) => <li key={i}>{name}</li>)}</ul></> : null}
+    </> : null}
+    {request.tool === "vua_request_amf_outfit_remove" && outfitRemoveName ? <>
+      <h4>{copy.outfitToRemove}</h4>
+      <ul><Material role="outfit" name={outfitRemoveName} item={outfitRemoveItem} /></ul>
+    </> : null}
+    {request.tool === "vua_request_amf_texture_apply" && textureList.length > 0 ? <>
+      <h4>{copy.texturePlanHeading}</h4>
+      <p>{format(copy.texturePlanSummary, {
+        platform: copy.texturePlatforms[params.platform as keyof typeof copy.texturePlatforms] ?? String(params.platform ?? ""),
+        rank: copy.textureRanks[params.targetRank as keyof typeof copy.textureRanks] ?? String(params.targetRank ?? ""),
+        count: textureList.length,
+      })}</p>
+    </> : null}
+    {request.tool === "vua_request_amf_lighting_apply" && lightingMaterials.length > 0 ? <>
+      <h4>{copy.lightingPlanHeading}</h4>
+      <p>{format(copy.lightingPlanSummary, { count: lightingMaterials.length })}</p>
+    </> : null}
     {materials.length > 0 ? <><h4>{copy.materials}</h4><ul>{materials.map(({ source, fact }, i) => fact
       ? <Material key={i} role={fact.role ?? source.role} name={fact.name} item={fact.itemName} />
       : <Material key={i} role={source.role} name={source.sourceId} item={null} />)}</ul></> : null}
@@ -88,6 +142,9 @@ function TechnicalDetails({ request }: { request: AiActionRequestV01 }) {
   const reviewed = record(request.details.reviewed) ? request.details.reviewed : {};
   const plan = record(reviewed.deploymentPlan) ? reviewed.deploymentPlan : null;
   const locations = plan && Array.isArray(plan.steps) ? plan.steps.filter(record).filter(step => step.location) : [];
+  const importRoots = Array.isArray(params.groups)
+    ? [...new Set(params.groups.filter(record).map(g => typeof g.root === "string" ? g.root : "").filter(Boolean))]
+    : [];
   return <details className="vua-ai-review"><summary>{copy.technical}</summary>
     {locations.map((step, i) => <p key={i}>{strings.deployment.components[step.component as keyof typeof strings.deployment.components] ?? String(step.component)}: <code>{String(step.location)}</code></p>)}
     {plan && record(plan.downloadPolicy) ? <p className="vua-caption">
@@ -95,6 +152,7 @@ function TechnicalDetails({ request }: { request: AiActionRequestV01 }) {
       <br />{strings.deployment.downloadOrder}: {Array.isArray(plan.downloadPolicy.sources) ? plan.downloadPolicy.sources.map(source => strings.deployment.downloadSources[source as keyof typeof strings.deployment.downloadSources]).join(" → ") : ""}
       {plan.downloadPolicy.editorEditions ? <><br />{strings.deployment.editorEditionOrder}</> : null}
     </p> : null}
+    {importRoots.map((root, i) => <p key={`import-root-${i}`}>{copy.importSourceRoot}: <code>{root}</code></p>)}
     {params.editorPath ? <p>{strings.amfProduction.editor}: <code>{String(params.editorPath)}</code></p> : null}
     {reviewed.projectRoot ? <p>{copy.project}: <code>{String(reviewed.projectRoot)}</code></p> : null}
     <pre>{JSON.stringify(params, null, 2)}</pre>

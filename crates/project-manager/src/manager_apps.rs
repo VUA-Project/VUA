@@ -62,44 +62,130 @@ pub struct ManagerAppLaunch {
     pub launched_at: String,
 }
 
+/// How to start a detected manager application.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum HubLaunch {
+    /// A packaged (MSIX) Hub starts through its application identity (`shell:AppsFolder\<AUMID>`),
+    /// so it runs inside its package and reaches its packaged login and license state.
+    Package {
+        app_user_model_id: String,
+    },
+    Executable(PathBuf),
+}
+
+/// Reads the launch target from the environment's `unity_hub` facts (`exe`, `via`, `package`).
+pub fn hub_launch(facts: &serde_json::Value) -> Option<HubLaunch> {
+    let exe = PathBuf::from(facts["exe"].as_str()?);
+    if facts["via"] != "package" {
+        return Some(HubLaunch::Executable(exe));
+    }
+    // Full name `Name_Version_Arch__PublisherId`; the family name is `Name_PublisherId`.
+    let full = facts["package"].as_str()?;
+    let (name, _) = full.split_once('_')?;
+    let (_, publisher) = full.rsplit_once("__")?;
+    if !valid_aumid_segment(name) || !valid_aumid_segment(publisher) {
+        return None;
+    }
+    let root = exe.parent()?.parent()?;
+    let app = application_id(root).unwrap_or_else(|| "UnityHub".into());
+    Some(HubLaunch::Package {
+        app_user_model_id: format!("{name}_{publisher}!{app}"),
+    })
+}
+
+fn valid_aumid_segment(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 256
+        && value
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b'_'))
+}
+
+fn application_id(package_root: &Path) -> Option<String> {
+    let manifest = std::fs::read_to_string(package_root.join("AppxManifest.xml")).ok()?;
+    let start = manifest.find("<Application ")?;
+    let rest = &manifest[start..];
+    let id = rest[rest.find("Id=\"")? + 4..].split('"').next()?;
+    valid_aumid_segment(id).then(|| id.to_owned())
+}
+
+#[cfg(windows)]
+pub fn spawn_hub_launch(launch: &HubLaunch) -> std::io::Result<()> {
+    use std::os::windows::process::CommandExt;
+    use windows_sys::Win32::System::Threading::{
+        CREATE_BREAKAWAY_FROM_JOB, CREATE_NEW_PROCESS_GROUP,
+    };
+
+    let build_command = |breakaway: bool| {
+        let mut command = match launch {
+            HubLaunch::Package { app_user_model_id } => {
+                let mut command = std::process::Command::new("explorer.exe");
+                command.arg(format!("shell:AppsFolder\\{app_user_model_id}"));
+                command
+            }
+            HubLaunch::Executable(exe) => {
+                let mut command = std::process::Command::new(exe);
+                if let Some(parent) = exe.parent() {
+                    command.current_dir(parent);
+                }
+                command
+            }
+        };
+        command
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null());
+        vua_orchestrator::strip_sensitive_env(&mut command);
+        let flags = if breakaway {
+            CREATE_BREAKAWAY_FROM_JOB | CREATE_NEW_PROCESS_GROUP
+        } else {
+            CREATE_NEW_PROCESS_GROUP
+        };
+        command.creation_flags(flags);
+        command
+    };
+
+    let mut child = match build_command(true).spawn() {
+        Ok(child) => child,
+        Err(err) if err.kind() == std::io::ErrorKind::PermissionDenied => {
+            build_command(false).spawn()?
+        }
+        Err(err) => return Err(err),
+    };
+    std::thread::spawn(move || {
+        let _ = child.wait();
+    });
+    Ok(())
+}
+
+#[cfg(not(windows))]
+pub fn spawn_hub_launch(_launch: &HubLaunch) -> std::io::Result<()> {
+    Err(std::io::ErrorKind::Unsupported.into())
+}
+
 pub trait ManagerProcessSpawner: Send + Sync {
-    fn spawn_detached(&self, executable: &Path) -> Result<(), &'static str>;
+    fn spawn_detached(&self, target: &HubLaunch) -> Result<(), &'static str>;
 }
 
 pub struct WindowsManagerProcessSpawner;
 
 impl ManagerProcessSpawner for WindowsManagerProcessSpawner {
-    fn spawn_detached(&self, executable: &Path) -> Result<(), &'static str> {
-        if !valid_pe_executable(executable).unwrap_or(false) {
-            return Err("not_found");
+    fn spawn_detached(&self, target: &HubLaunch) -> Result<(), &'static str> {
+        if let HubLaunch::Executable(executable) = target {
+            if !valid_pe_executable(executable).unwrap_or(false) {
+                return Err("not_found");
+            }
         }
-        let parent = executable.parent().ok_or("launch_failed")?;
-        let mut command = std::process::Command::new(executable);
-        vua_orchestrator::strip_sensitive_env(&mut command);
-        #[cfg(windows)]
-        {
-            use std::os::windows::process::CommandExt;
-            use windows_sys::Win32::System::Threading::CREATE_BREAKAWAY_FROM_JOB;
-            command.creation_flags(CREATE_BREAKAWAY_FROM_JOB);
-        }
-        command
-            .current_dir(parent)
-            .stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null());
-        let mut child = command.spawn().map_err(|_| "launch_failed")?;
-        std::thread::spawn(move || {
-            let _ = child.wait();
-        });
-        Ok(())
+        spawn_hub_launch(target).map_err(|_| "launch_failed")
     }
 }
 
-type ExecutableResolver = dyn Fn(&EnvironmentRoots, ManagerAppId) -> Option<PathBuf> + Send + Sync;
+type LaunchTargetResolver =
+    dyn Fn(&EnvironmentRoots, ManagerAppId) -> Option<HubLaunch> + Send + Sync;
 
 pub struct ManagerAppLauncher {
     roots: EnvironmentRoots,
-    resolver: Arc<ExecutableResolver>,
+    resolver: Arc<LaunchTargetResolver>,
     spawner: Arc<dyn ManagerProcessSpawner>,
     clock: Arc<dyn Clock>,
     launch_gate: Mutex<()>,
@@ -110,7 +196,7 @@ impl ManagerAppLauncher {
     pub fn windows(roots: EnvironmentRoots) -> Self {
         Self {
             roots,
-            resolver: Arc::new(resolve_executable_path),
+            resolver: Arc::new(resolve_launch_target),
             spawner: Arc::new(WindowsManagerProcessSpawner),
             clock: Arc::new(SystemClock),
             launch_gate: Mutex::new(()),
@@ -120,7 +206,7 @@ impl ManagerAppLauncher {
 
     pub fn with_dependencies(
         roots: EnvironmentRoots,
-        resolver: Arc<ExecutableResolver>,
+        resolver: Arc<LaunchTargetResolver>,
         spawner: Arc<dyn ManagerProcessSpawner>,
         clock: Arc<dyn Clock>,
     ) -> Self {
@@ -156,11 +242,13 @@ impl ManagerAppLauncher {
             }
         }
 
-        let executable = (self.resolver)(&self.roots, manager_id).ok_or("not_found")?;
-        if !valid_pe_executable(&executable).unwrap_or(false) {
-            return Err("not_found");
+        let target = (self.resolver)(&self.roots, manager_id).ok_or("not_found")?;
+        if let HubLaunch::Executable(executable) = &target {
+            if !valid_pe_executable(executable).unwrap_or(false) {
+                return Err("not_found");
+            }
         }
-        self.spawner.spawn_detached(&executable)?;
+        self.spawner.spawn_detached(&target)?;
 
         let receipt = ManagerAppLaunch {
             schema_version: "vua.manager-apps/v0.2",
@@ -200,6 +288,33 @@ fn valid_pe_executable(path: &Path) -> std::io::Result<bool> {
     Ok(header == *b"MZ")
 }
 
+pub fn resolve_launch_target(
+    roots: &EnvironmentRoots,
+    manager_id: ManagerAppId,
+) -> Option<HubLaunch> {
+    match manager_id {
+        ManagerAppId::UnityHub => {
+            let engine = EnvironmentEngine::new(
+                std::sync::Arc::new(vua_orchestrator::StdProcessRunner),
+                std::sync::Arc::new(SystemClock),
+                roots.clone(),
+                std::sync::Arc::new(crate::VccSettingsFileReader),
+            );
+            let hub = engine.inspect_unity_hub();
+            if hub.presence != EnvironmentPresence::Detected {
+                return None;
+            }
+            match hub_launch(&hub.facts)? {
+                launch @ HubLaunch::Package { .. } => Some(launch),
+                HubLaunch::Executable(exe) => exe.is_file().then_some(HubLaunch::Executable(exe)),
+            }
+        }
+        ManagerAppId::Vcc | ManagerAppId::Alcom => {
+            resolve_executable_path(roots, manager_id).map(HubLaunch::Executable)
+        }
+    }
+}
+
 pub fn resolve_executable_path(
     roots: &EnvironmentRoots,
     manager_id: ManagerAppId,
@@ -222,8 +337,11 @@ fn inspect_one(roots: &EnvironmentRoots, manager_id: ManagerAppId) -> ManagerApp
             );
             let hub = engine.inspect_unity_hub();
             let hub_path = hub.facts["exe"].as_str().map(PathBuf::from);
+            let packaged = hub.facts["via"] == "package" && hub_launch(&hub.facts).is_some();
             let hub_presence = match hub.presence {
-                EnvironmentPresence::Detected if hub_path.as_ref().is_some_and(|p| p.is_file()) => {
+                EnvironmentPresence::Detected
+                    if packaged || hub_path.as_ref().is_some_and(|p| p.is_file()) =>
+                {
                     "found"
                 }
                 EnvironmentPresence::NotDetected => "not_found",
@@ -324,12 +442,12 @@ mod tests {
     use vua_orchestrator::FakeRegistrySource;
 
     struct RecordingSpawner {
-        calls: Mutex<Vec<PathBuf>>,
+        calls: Mutex<Vec<HubLaunch>>,
     }
 
     impl ManagerProcessSpawner for RecordingSpawner {
-        fn spawn_detached(&self, executable: &Path) -> Result<(), &'static str> {
-            self.calls.lock().unwrap().push(executable.to_path_buf());
+        fn spawn_detached(&self, target: &HubLaunch) -> Result<(), &'static str> {
+            self.calls.lock().unwrap().push(target.clone());
             Ok(())
         }
     }
@@ -407,8 +525,8 @@ mod tests {
         let launcher = ManagerAppLauncher::with_dependencies(
             fake_roots(&root),
             Arc::new(move |_, id| match id {
-                ManagerAppId::Alcom => Some(good_clone.clone()),
-                ManagerAppId::Vcc => Some(bad_clone.clone()),
+                ManagerAppId::Alcom => Some(HubLaunch::Executable(good_clone.clone())),
+                ManagerAppId::Vcc => Some(HubLaunch::Executable(bad_clone.clone())),
                 ManagerAppId::UnityHub => None,
             }),
             spawner.clone(),
@@ -440,6 +558,69 @@ mod tests {
         assert_eq!(
             launcher.open(ManagerAppId::Vcc, "cmd-alcom-1"),
             Err("command_conflict")
+        );
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn packaged_msix_unity_hub_launches_via_aumid_without_pe_header_check() {
+        let root = std::env::temp_dir().join(format!("vua-manager-msix-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let pkg_root = root
+            .join("WindowsApps")
+            .join("UnityTechnologies.UnityHub_3.22.3.65535_x64__2vrhnee42bhxm");
+        std::fs::create_dir_all(pkg_root.join("app")).unwrap();
+        // Write a tiny non-PE stub (not starting with "MZ" and < 64 bytes) so any accidental PE validation fails.
+        std::fs::write(pkg_root.join("app").join("Unity Hub.exe"), b"msix-stub").unwrap();
+        std::fs::write(
+            pkg_root.join("AppxManifest.xml"),
+            "<Applications><Application Id=\"UnityHub\" Executable=\"app\\Unity Hub.exe\">",
+        )
+        .unwrap();
+
+        let repo_parent = r"Software\Classes\Local Settings\Software\Microsoft\Windows\CurrentVersion\AppModel\Repository\Packages";
+        let pkg_full = "UnityTechnologies.UnityHub_3.22.3.65535_x64__2vrhnee42bhxm";
+        let pkg_subkey = format!(r"{repo_parent}\{pkg_full}");
+
+        let mut roots = fake_roots(&root);
+        roots.registry = Arc::new(
+            FakeRegistrySource::new()
+                .with_subkey(RegistryHive::CurrentUser, repo_parent, pkg_full)
+                .with(
+                    RegistryHive::CurrentUser,
+                    &pkg_subkey,
+                    "PackageRootFolder",
+                    &pkg_root.to_string_lossy(),
+                ),
+        );
+
+        let snapshot = inspect(&roots);
+        let hub_entry = snapshot
+            .apps
+            .iter()
+            .find(|a| a.component == "unity_hub")
+            .unwrap();
+        assert_eq!(hub_entry.presence, "found");
+
+        let spawner = Arc::new(RecordingSpawner {
+            calls: Mutex::new(Vec::new()),
+        });
+        let launcher = ManagerAppLauncher::with_dependencies(
+            roots,
+            Arc::new(resolve_launch_target),
+            spawner.clone(),
+            Arc::new(FixedClock),
+        );
+        let receipt = launcher
+            .open(ManagerAppId::UnityHub, "cmd-msix-hub-1")
+            .unwrap();
+        assert_eq!(receipt.manager_id, "unity_hub");
+        assert_eq!(
+            *spawner.calls.lock().unwrap(),
+            vec![HubLaunch::Package {
+                app_user_model_id: "UnityTechnologies.UnityHub_2vrhnee42bhxm!UnityHub".to_owned(),
+            }]
         );
 
         let _ = std::fs::remove_dir_all(&root);

@@ -1,9 +1,10 @@
 //! Starts Unity Hub before Unity work. Batch-mode Unity reads the Editor license through Hub's
 //! licensing client; the packaged (MSIX) Hub keeps the license in its own package folder, which
 //! only that client reaches.
-use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
+
+pub(crate) use vua_project_manager::manager_apps::{hub_launch, spawn_hub_launch, HubLaunch};
 
 const LICENSING_CLIENT: &str = "Unity.Licensing.Client.exe";
 const START_TIMEOUT: Duration = Duration::from_secs(90);
@@ -11,52 +12,6 @@ const START_TIMEOUT: Duration = Duration::from_secs(90);
 const SETTLE: Duration = Duration::from_secs(5);
 // Serialize the client check, Hub launch and readiness wait across AMF projects.
 static HUB_START: Mutex<()> = Mutex::new(());
-
-/// How to start the detected Hub.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum HubLaunch {
-    /// A packaged Hub starts through its application identity, so it runs inside its package.
-    Package {
-        app_user_model_id: String,
-    },
-    Executable(PathBuf),
-}
-
-/// Reads the launch from the environment's `unity_hub` facts (`exe`, `via`, `package`).
-pub(crate) fn hub_launch(facts: &serde_json::Value) -> Option<HubLaunch> {
-    let exe = PathBuf::from(facts["exe"].as_str()?);
-    if facts["via"] != "package" {
-        return Some(HubLaunch::Executable(exe));
-    }
-    // Full name `Name_Version_Arch__PublisherId`; the family name is `Name_PublisherId`.
-    let full = facts["package"].as_str()?;
-    let (name, _) = full.split_once('_')?;
-    let (_, publisher) = full.rsplit_once("__")?;
-    if !valid_aumid_segment(name) || !valid_aumid_segment(publisher) {
-        return None;
-    }
-    let root = exe.parent()?.parent()?;
-    let app = application_id(root).unwrap_or_else(|| "UnityHub".into());
-    Some(HubLaunch::Package {
-        app_user_model_id: format!("{name}_{publisher}!{app}"),
-    })
-}
-
-fn valid_aumid_segment(value: &str) -> bool {
-    !value.is_empty()
-        && value.len() <= 256
-        && value
-            .bytes()
-            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b'_'))
-}
-
-fn application_id(package_root: &Path) -> Option<String> {
-    let manifest = std::fs::read_to_string(package_root.join("AppxManifest.xml")).ok()?;
-    let start = manifest.find("<Application ")?;
-    let rest = &manifest[start..];
-    let id = rest[rest.find("Id=\"")? + 4..].split('"').next()?;
-    valid_aumid_segment(id).then(|| id.to_owned())
-}
 
 /// Starts Hub when its licensing client is not running and waits for the client. Returns whether
 /// the client runs; without it Unity still tries its own licensing.
@@ -69,7 +24,7 @@ pub(crate) fn ensure_licensing_client(
         return true;
     }
     let Some(launch) = launch else { return false };
-    if start(&launch).is_err() {
+    if spawn_hub_launch(&launch).is_err() {
         return false;
     }
     let started = Instant::now();
@@ -137,53 +92,10 @@ pub(crate) fn running_processes() -> Option<Vec<String>> {
     }
 }
 
-#[cfg(windows)]
-fn start(launch: &HubLaunch) -> std::io::Result<()> {
-    use std::os::windows::process::CommandExt;
-    use windows_sys::Win32::System::Threading::{
-        CREATE_BREAKAWAY_FROM_JOB, CREATE_NEW_PROCESS_GROUP,
-    };
-
-    let build_command = |breakaway: bool| {
-        let mut command = match launch {
-            HubLaunch::Package { app_user_model_id } => {
-                let mut command = std::process::Command::new("explorer.exe");
-                command.arg(format!("shell:AppsFolder\\{app_user_model_id}"));
-                command
-            }
-            HubLaunch::Executable(exe) => std::process::Command::new(exe),
-        };
-        command
-            .stdin(std::process::Stdio::null())
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null());
-        vua_orchestrator::strip_sensitive_env(&mut command);
-        let flags = if breakaway {
-            CREATE_BREAKAWAY_FROM_JOB | CREATE_NEW_PROCESS_GROUP
-        } else {
-            CREATE_NEW_PROCESS_GROUP
-        };
-        command.creation_flags(flags);
-        command
-    };
-
-    match build_command(true).spawn() {
-        Ok(_) => Ok(()),
-        Err(err) if err.kind() == std::io::ErrorKind::PermissionDenied => {
-            build_command(false).spawn().map(drop)
-        }
-        Err(err) => Err(err),
-    }
-}
-
-#[cfg(not(windows))]
-fn start(_launch: &HubLaunch) -> std::io::Result<()> {
-    Err(std::io::ErrorKind::Unsupported.into())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn packaged_hub_starts_through_its_application_identity() {
