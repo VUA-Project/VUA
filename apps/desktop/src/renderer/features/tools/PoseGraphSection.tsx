@@ -112,82 +112,19 @@ export function PoseGraphSection({
             </div>
           ) : null}
 
-          <div className="vua-pose-graph__summary">
-            <div className="vua-pose-graph__panel">
-              <h3>{copy.openxrTitle}</h3>
-              <div className="vua-pose-graph__row">
-                <strong>{snapshot.openxr.runtimeName ?? copy.openxrUnset}</strong>
-                <Badge tone={snapshot.openxr.presence === "found" ? "success" : "neutral"}>
-                  {copy.openxrPresence[snapshot.openxr.presence]}
-                </Badge>
-              </div>
-              {snapshot.lastHeadsetHint ? (
-                <p className="vua-pose-graph__meta">
-                  {format(copy.headsetHint, { name: snapshot.lastHeadsetHint })}
-                </p>
-              ) : null}
+          <div className="vua-pose-graph__panel">
+            <h3>{copy.openxrTitle}</h3>
+            <div className="vua-pose-graph__row">
+              <strong>{snapshot.openxr.runtimeName ?? copy.openxrUnset}</strong>
+              <Badge tone={snapshot.openxr.presence === "found" ? "success" : "neutral"}>
+                {copy.openxrPresence[snapshot.openxr.presence]}
+              </Badge>
             </div>
-
-            <div className="vua-pose-graph__panel">
-              <h3>{copy.pharosTitle}</h3>
-              <div className="vua-pose-graph__row">
-                <span>
-                  {snapshot.pharosHub.activeModes.length > 0
-                    ? snapshot.pharosHub.activeModes.map((mode) => copy.pharosModes[mode]).join(" · ")
-                    : copy.pharosNoActiveModes}
-                </span>
-                <span className="vua-pose-graph__badges">
-                  <Badge tone={snapshot.pharosHub.state === "running" ? "success" : "neutral"}>
-                    {copy.pharosStates[snapshot.pharosHub.state]}
-                  </Badge>
-                  {snapshot.pharosHub.telemetryState !== "missing" ? (
-                    <Badge tone={snapshot.pharosHub.telemetryState === "live" ? "success" : "warning"}>
-                      {copy.pharosTelemetry[snapshot.pharosHub.telemetryState]}
-                    </Badge>
-                  ) : null}
-                  {snapshot.pharosHub.spatialAnchorReady ? (
-                    <Badge tone="success">{copy.pharosSpatialAnchorReady}</Badge>
-                  ) : null}
-                </span>
-              </div>
-              {snapshot.pharosHub.telemetryState === "live" ? (
-                <p className="vua-pose-graph__meta">
-                  {snapshot.pharosHub.stereoBaseStationCount !== null
-                  || snapshot.pharosHub.panoramicAnchorCount !== null
-                    ? `${format(copy.pharosStationsLine, {
-                        stereo: snapshot.pharosHub.stereoBaseStationCount ?? 0,
-                        anchors: snapshot.pharosHub.panoramicAnchorCount ?? 0,
-                      })} · ${copy.pharosCalibration[snapshot.pharosHub.calibrationState]}`
-                    : copy.pharosCalibration[snapshot.pharosHub.calibrationState]}
-                </p>
-              ) : null}
-              {snapshot.pharosHub.telemetryState === "live"
-              || snapshot.pharosHub.wearableNodes.some((node) => node.state === "connected") ? (
-                <div className="vua-pose-graph__badges">
-                  {snapshot.pharosHub.wearableNodes.map((node) => {
-                    if (node.state !== "connected") {
-                      return (
-                        <Badge key={node.slot} tone="neutral">
-                          {`${copy.pharosSlots[node.slot]} · ${copy.pharosSlotDisconnected}`}
-                        </Badge>
-                      );
-                    }
-                    const lowBattery = node.batteryPercent !== null && node.batteryPercent <= 20;
-                    const modeLabel = node.trackingMode ? ` · ${copy.pharosNodeModes[node.trackingMode]}` : "";
-                    const batteryLabel = node.batteryPercent !== null ? ` (${node.batteryPercent}%)` : "";
-                    const headingLabel = node.footHeadingAvailable ? ` · ${copy.pharosFootHeading}` : "";
-                    return (
-                      <Badge
-                        key={node.slot}
-                        tone={node.trackingMode === "passive_retroreflective" || lowBattery ? "warning" : "success"}
-                      >
-                        {`${copy.pharosSlots[node.slot]}${modeLabel}${batteryLabel}${headingLabel}`}
-                      </Badge>
-                    );
-                  })}
-                </div>
-              ) : null}
-            </div>
+            {snapshot.lastHeadsetHint ? (
+              <p className="vua-pose-graph__meta">
+                {format(copy.headsetHint, { name: snapshot.lastHeadsetHint })}
+              </p>
+            ) : null}
           </div>
 
           <div className="vua-pose-graph__panel">

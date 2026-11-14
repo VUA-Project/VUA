@@ -355,11 +355,11 @@ describe("built-in MCP, using the official HTTP client", () => {
     const { client: compatClient, calls: compatCalls } = await setup();
     expect((await compatClient.callTool({ name: "vua_pose_graph", arguments: {} })).isError).toBeFalsy();
     expect((await compatClient.callTool({ name: "vua_glb_inspect", arguments: { productId: "booth:12345" } })).isError).toBeFalsy();
-    expect((await compatClient.callTool({ name: "vua_terms_check", arguments: { presetId: "phr_personal_avatar", productIds: ["booth:12345"] } })).isError).toBeFalsy();
+    expect((await compatClient.callTool({ name: "vua_terms_check", arguments: { presetId: "vrchat_personal", productIds: ["booth:12345"] } })).isError).toBeFalsy();
     expect(compatCalls.map(c => [c.method, c.params])).toEqual([
       ["environment.observePoseGraph", { schemaVersion: "0.1" }],
       ["library.inspectGlb", { schemaVersion: "0.1", productId: "booth:12345" }],
-      ["terms.checkUse", { schemaVersion: "0.2", presetId: "phr_personal_avatar", productIds: ["booth:12345"] }],
+      ["terms.checkUse", { schemaVersion: "0.1", presetId: "vrchat_personal", productIds: ["booth:12345"] }],
     ]);
   });
 });
@@ -810,8 +810,8 @@ describe("run summary", () => {
     ]);
     const diagPrompt = await client.getPrompt({ name: "vua-diagnose-symptom", arguments: { symptom: "streaming_blurry_or_compression" } });
     expect(diagPrompt.messages[0]?.content).toMatchObject({ type: "text", text: expect.stringContaining("streaming_blurry_or_compression") });
-    const releasePrompt = await client.getPrompt({ name: "vua-release-check", arguments: { runId: "n3-test-run", targetPlatform: "phr_vrm" } });
-    expect(releasePrompt.messages[0]?.content).toMatchObject({ type: "text", text: expect.stringContaining("phr_vrm") });
+    const releasePrompt = await client.getPrompt({ name: "vua-release-check", arguments: { runId: "n3-test-run", targetPlatform: "vrchat_quest" } });
+    expect(releasePrompt.messages[0]?.content).toMatchObject({ type: "text", text: expect.stringContaining("vrchat_quest") });
     await expect(client.getPrompt({ name: "vua-diagnose-symptom", arguments: { symptom: "not_a_symptom" } })).rejects.toMatchObject({ code: -32602 });
     await expect(client.getPrompt({ name: "vua-release-check", arguments: { runId: "../escape" } })).rejects.toMatchObject({ code: -32602 });
     await expect(client.getPrompt({ name: "vua-unknown" })).rejects.toMatchObject({ code: -32602 });

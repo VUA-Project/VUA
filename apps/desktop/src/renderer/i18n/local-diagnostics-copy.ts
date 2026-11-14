@@ -288,9 +288,9 @@ export const localDiagnosticsCopy = {
         title: "Check SteamVR Manage Add-ons for blocked or competing FBT drivers",
         instruction: "Inspect Pose & Tracking Topology on VUA's Tools page: re-enable Space Calibrator if Safe Mode blocked it, and disable unused competing FBT drivers so virtual trackers do not collide.",
       },
-      fbt_space_calibrator_and_pharos_anchor: {
-        title: "Align hybrid tracking spaces or verify Pharos optical+IMU anchor",
-        instruction: "For mixed headset + external trackers, run Slow calibration in OpenVR Space Calibrator (or enable Continuous Calibration). For Pharos, confirm optical anchor visibility or run IMU yaw reset.",
+      fbt_space_calibrator: {
+        title: "Align hybrid tracking spaces in OpenVR Space Calibrator",
+        instruction: "For mixed headset + external trackers, run Slow calibration in OpenVR Space Calibrator (or enable Continuous Calibration with a reference tracker).",
       },
       fbt_reset_ovras_offset_and_tpose: {
         title: "Clear OVRAS playspace offsets before T-pose FBT calibration",
@@ -608,9 +608,9 @@ export const localDiagnosticsCopy = {
         title: "检查 SteamVR 加载项拦截与多套全身追踪驱动冲突",
         instruction: "前往 VUA 工具页「姿态与追踪拓扑」查看：若 Space Calibrator 被安全模式拦截请重新启用，并停用未在使用的其他全身追踪驱动以免虚拟追踪器抢槽位。",
       },
-      fbt_space_calibrator_and_pharos_anchor: {
-        title: "对齐跨定位空间或核对 Pharos 光学+IMU 空间锚基站",
-        instruction: "一体机混搭外部追踪器时，在 OpenVR Space Calibrator 中执行慢速校准（或开启连续校准）；使用 Pharos 时确认光学基站视野无遮挡或执行 IMU 航向归零。",
+      fbt_space_calibrator: {
+        title: "在 OpenVR Space Calibrator 中对齐跨定位空间",
+        instruction: "一体机混搭外部追踪器时，请在 OpenVR Space Calibrator 中选择头显或手柄与参考追踪器，执行慢速校准（或开启连续校准）。",
       },
       fbt_reset_ovras_offset_and_tpose: {
         title: "先清零 OVRAS 空间偏移，再在 VRChat 内执行 T-Pose 校准",
@@ -928,9 +928,9 @@ export const localDiagnosticsCopy = {
         title: "檢查 SteamVR 附加元件封鎖與多套全身追蹤驅動衝突",
         instruction: "前往 VUA 工具頁「姿態與追蹤拓撲」查看：若 Space Calibrator 被安全模式封鎖請重新啟用，並停用未使用的其他全身追蹤驅動以免虛擬追蹤器搶佔槽位。",
       },
-      fbt_space_calibrator_and_pharos_anchor: {
-        title: "對齊跨定位空間或確認 Pharos 光學+IMU 空間錨基地台",
-        instruction: "一體機混搭外部追蹤器時，在 OpenVR Space Calibrator 執行慢速校準（或開啟連續校準）；使用 Pharos 時確認光學基地台視野無遮擋或執行 IMU 航向歸零。",
+      fbt_space_calibrator: {
+        title: "在 OpenVR Space Calibrator 中對齊跨定位空間",
+        instruction: "一體機混搭外部追蹤器時，請在 OpenVR Space Calibrator 中選擇頭顯或控制器與參考追蹤器，執行慢速校準（或開啟連續校準）。",
       },
       fbt_reset_ovras_offset_and_tpose: {
         title: "先歸零 OVRAS 空間偏移，再於 VRChat 內執行 T-Pose 校準",
@@ -1248,9 +1248,9 @@ export const localDiagnosticsCopy = {
         title: "SteamVR アドオンのブロックと複数フルトラドライバーの競合を確認する",
         instruction: "VUA ツール画面の「ポーズ・トラッキング構成」を確認し、Space Calibrator のブロック解除と、未使用の他社フルトラドライバーの無効化を行います。",
       },
-      fbt_space_calibrator_and_pharos_anchor: {
-        title: "ハイブリッド空間の再キャリブレーションまたは Pharos 光学アンカーを確認する",
-        instruction: "単体 HMD と外部トラッカー併用時は OpenVR Space Calibrator で Slow キャリブレーション（または連続補正）を行い、Pharos 使用時は光学アンカーの視界または IMU ヨーリセットを確認します。",
+      fbt_space_calibrator: {
+        title: "OpenVR Space Calibrator でハイブリッド空間を再キャリブレーションする",
+        instruction: "単体 HMD と外部トラッカーを併用する場合は、OpenVR Space Calibrator で Slow キャリブレーション（または連続キャリブレーション）を実行します。",
       },
       fbt_reset_ovras_offset_and_tpose: {
         title: "OVRAS のオフセットを戻してから VRChat の T ポーズ補正を行う",
@@ -1568,9 +1568,9 @@ export const localDiagnosticsCopy = {
         title: "SteamVR 애드온 차단 및 중복 풀트래킹 드라이버 충돌 점검",
         instruction: "VUA 도구 페이지의 '포즈 및 트래킹 토폴로지'를 확인해 Space Calibrator 차단을 해제하고, 쓰지 않는 다른 풀트래킹 드라이버는 비활성화하세요.",
       },
-      fbt_space_calibrator_and_pharos_anchor: {
-        title: "혼합 트래킹 공간 재보정 또는 Pharos 광학+IMU 공간 앵커 확인",
-        instruction: "단독 헤드셋과 외부 트래커 혼용 시 OpenVR Space Calibrator에서 Slow 보정(또는 연속 보정)을 실행하고, Pharos 사용 시 광학 베이스스테이션 시야나 IMU 방향 리셋을 확인하세요.",
+      fbt_space_calibrator: {
+        title: "OpenVR Space Calibrator에서 혼합 트래킹 공간 재보정",
+        instruction: "단독 헤드셋과 외부 트래커 혼용 시 OpenVR Space Calibrator에서 Slow 보정(또는 연속 보정)을 실행하세요.",
       },
       fbt_reset_ovras_offset_and_tpose: {
         title: "OVRAS 공간 오프셋을 먼저 초기화한 뒤 VRChat T-포즈 보정 수행",

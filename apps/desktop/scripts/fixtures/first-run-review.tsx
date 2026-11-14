@@ -173,34 +173,19 @@ function syntheticPoseGraph(): PoseGraphSnapshotV01 {
     schemaVersion: "vua.pose-graph/v0.1",
     capturedAt: new Date().toISOString(),
     openxr: { presence: "found", runtimeName: "SteamVR" },
-    steamvrDrivers: ["pharos", "space_calibrator", "slimevr"],
+    steamvrDrivers: ["space_calibrator", "slimevr", "mocopi"],
     blockedSteamvrDrivers: ["space_calibrator"],
     fbtDriverConflictRisk: "multiple_openvr_fbt_drivers",
     lastHeadsetHint: "PICO 4 Pro",
     poseSources: POSE_SOURCE_IDS.map(sourceId => ({
       sourceId,
-      state: sourceId === "pharos" || sourceId === "headset_6dof"
+      state: sourceId === "headset_6dof" || sourceId === "slimevr"
         ? "active"
-        : sourceId === "slimevr" || sourceId === "space_calibrator"
+        : sourceId === "mocopi" || sourceId === "space_calibrator"
           ? "installed"
           : "not_detected",
       detailCode: sourceId === "space_calibrator" ? "blocked_by_safe_mode" : null,
     })),
-    pharosHub: {
-      state: "running",
-      telemetryState: "live",
-      calibrationState: "calibrated",
-      spatialAnchorReady: true,
-      activeModes: ["optical_stereo_2x2x2", "imu_fusion", "panoramic_spatial_anchor"],
-      wearableNodes: [
-        { slot: "left_foot", state: "connected", trackingMode: "optical_imu", batteryPercent: 86, footHeadingAvailable: true },
-        { slot: "right_foot", state: "connected", trackingMode: "passive_retroreflective", batteryPercent: null, footHeadingAvailable: false },
-        { slot: "waist", state: "connected", trackingMode: "optical_imu", batteryPercent: 92, footHeadingAvailable: false },
-        { slot: "chest", state: "not_connected", trackingMode: null, batteryPercent: null, footHeadingAvailable: false },
-      ],
-      stereoBaseStationCount: 2,
-      panoramicAnchorCount: 1,
-    },
   };
 }
 

@@ -1,6 +1,6 @@
 /** A product's VN3 terms in the library drawer: what each use allows, the creator's special note and every item. */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isTermsProductId, TERMS_PRESET_IDS, TERMS_PRESET_IDS_V02, type ProductTermsV01, type TermItem, type TermsPresetIdV02, type TermsUseDecision } from "@vua/contracts";
+import { isTermsProductId, TERMS_PRESET_IDS, type ProductTermsV01, type TermItem, type TermsPresetId, type TermsUseDecision } from "@vua/contracts";
 import { Button } from "../../components/primitives/Button.tsx";
 import { useGateway, type TermsPort } from "../../gateway/index.ts";
 import { format, strings } from "../../i18n/index.ts";
@@ -9,8 +9,7 @@ import { openExternalUrl } from "../../app/open-external.ts";
 
 const copy = strings.useTerms;
 const ENDED = ["completed", "completedWithWarnings", "failed", "cancelled"];
-type UseEntry = TermsUseDecision & { readonly platformRestrictionHint?: boolean };
-type Uses = Readonly<Partial<Record<TermsPresetIdV02, UseEntry>>>;
+type Uses = Readonly<Partial<Record<TermsPresetId, TermsUseDecision>>>;
 
 /** The value of one item in words, with its condition when it has one. */
 export function itemValue(item: TermItem): string {
@@ -25,9 +24,7 @@ function useDecisions(port: TermsPort, productId: string, terms: ProductTermsV01
     setUses({});
     if (terms === null || (terms.state !== "parsed" && terms.state !== "partial")) return;
     let alive = true;
-    const requests = port.checkUseV02
-      ? TERMS_PRESET_IDS_V02.map(presetId => port.checkUseV02!(presetId, [productId]).then(check => [presetId, check.combination] as const, () => null))
-      : TERMS_PRESET_IDS.map(presetId => port.checkUse(presetId, [productId]).then(check => [presetId, check.combination] as const, () => null));
+    const requests = TERMS_PRESET_IDS.map(presetId => port.checkUse(presetId, [productId]).then(check => [presetId, check.combination] as const, () => null));
     void Promise.all(requests)
       .then(read => { if (alive) setUses(Object.fromEntries(read.filter(entry => entry !== null))); });
     return () => { alive = false; };
@@ -82,7 +79,7 @@ export function ProductTerms({ productId, title, onUpdated }: { productId: strin
     {terms.state !== "parsed" && terms.state !== "not_observed" && <p className="vua-caption vua-text-secondary">{copy.state[terms.state]}</p>}
     {links.map(source => <button key={source.sourceId} type="button" className="vua-terms__link" onClick={() => { void openExternalUrl(source.sourceUrl); }}>{source.sourceUrl}</button>)}
     {readable && <>
-      <ul className="vua-terms__uses" aria-label={copy.uses}>{(port.checkUseV02 ? TERMS_PRESET_IDS_V02 : TERMS_PRESET_IDS).map(presetId => {
+      <ul className="vua-terms__uses" aria-label={copy.uses}>{TERMS_PRESET_IDS.map(presetId => {
         const use = uses[presetId];
         return <li key={presetId} data-decision={use?.decision ?? "pending"}>
           <span>{copy.presets[presetId]}</span>
@@ -90,7 +87,6 @@ export function ProductTerms({ productId, title, onUpdated }: { productId: strin
           {use && use.conditions.length > 0 && <small>{[...new Set(use.conditions.map(condition => copy.conditions[condition.condition]))].join(" · ")}</small>}
         </li>;
       })}</ul>
-      {Object.values(uses).some(use => use?.platformRestrictionHint === true) ? <p className="vua-terms__platform-hint" role="note">{copy.platformRestrictionNotice}</p> : null}
       {terms.specialNotes.map(note => <div key={note.sourceId} className="vua-terms__note"><p>{copy.special}</p><blockquote lang={note.language ?? undefined}>{note.text}</blockquote></div>)}
       <details className="vua-terms__items" open>
         <summary>{copy.items}</summary>

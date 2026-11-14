@@ -77,8 +77,8 @@ pub use dependencies_queries::{
 pub use editor_selection::{select_editor, EditorSelection, EditorSelectionGap};
 pub use editor_targets::{
     classify_editor, classify_version_string, codes as editor_target_codes,
-    editor_version_from_path, is_unity_63_lts, parse_editor_version, EditorClass,
-    ParsedEditorVersion, MIGRATION_SOURCES, PHR_UNITY_LTS_MAJOR_MINOR, PRODUCTION_TARGET,
+    editor_version_from_path, parse_editor_version, EditorClass, ParsedEditorVersion,
+    MIGRATION_SOURCES, PRODUCTION_TARGET,
 };
 pub use environment::{
     codes as env_managers_codes, error_codes as env_error_codes, installed_unity_editors,

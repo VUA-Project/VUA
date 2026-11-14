@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { GlbInspectionResultV01, PhrReadinessV01 } from "@vua/contracts";
+import type { GlbInspectionResultV01 } from "@vua/contracts";
 import { Icon } from "@vua/design-system";
 import { Badge } from "../../components/primitives/Badge.tsx";
 import { useGateway } from "../../gateway/index.ts";
@@ -9,12 +9,6 @@ const copy = strings.glbInspection;
 
 function formatMeters(value: number): string {
   return value.toFixed(2);
-}
-
-function readinessTone(readiness: PhrReadinessV01): "success" | "warning" | "neutral" {
-  if (readiness === "ready_vrm1_humanoid" || readiness === "ready_object_head") return "success";
-  if (readiness === "invalid_glb") return "warning";
-  return "neutral";
 }
 
 export function GlbInspectionSection({
@@ -51,22 +45,8 @@ export function GlbInspectionSection({
   }
 
   type InspectedItem = GlbInspectionResultV01["items"][number];
-  const isReadyItem = (item: InspectedItem): boolean =>
-    item.phrReadiness === "ready_vrm1_humanoid" || item.phrReadiness === "ready_object_head";
-
-  const visibleItems: InspectedItem[] = [];
-  const overflowItems: InspectedItem[] = [];
-  if (result.items.length <= 2) {
-    visibleItems.push(...result.items);
-  } else {
-    for (const item of result.items) {
-      if (!isReadyItem(item) || visibleItems.length < 2) {
-        visibleItems.push(item);
-      } else {
-        overflowItems.push(item);
-      }
-    }
-  }
+  const visibleItems = result.items.slice(0, 2);
+  const overflowItems = result.items.slice(2);
 
   const renderItem = (item: InspectedItem) => (
     <li key={`${item.copyId}:${item.sourceKind}:${item.fileName}`} className="vua-glb-inspection__item">
@@ -81,11 +61,8 @@ export function GlbInspectionSection({
               {format(copy.zipMemberBadge, { archive: item.containerFileName })}
             </Badge>
           ) : null}
-          <Badge tone={item.format === "vrm_1_0" ? "success" : item.format === "vrm_0_x" ? "warning" : "neutral"}>
+          <Badge tone={item.format === "vrm_1_0" ? "success" : item.format === "invalid_glb" ? "warning" : "neutral"}>
             {copy.formats[item.format]}
-          </Badge>
-          <Badge tone={readinessTone(item.phrReadiness)}>
-            {copy.readiness[item.phrReadiness]}
           </Badge>
         </span>
       </div>
@@ -95,7 +72,7 @@ export function GlbInspectionSection({
             <span>
               {format(copy.vrmMetaLine, {
                 title: item.vrm.modelName,
-                spec: item.vrm.specVersion ?? "1.0",
+                spec: item.vrm.specVersion ?? (item.format === "vrm_0_x" ? "0.x" : "1.0"),
               })}
             </span>
           ) : null}
@@ -107,22 +84,6 @@ export function GlbInspectionSection({
                 z: formatMeters(item.boundsMeters.size[2]),
               })}
             </span>
-          ) : null}
-          {item.format === "glb_2_0" && item.objectHeadClearance.mountOffsetCenterMeters ? (
-            <span>
-              {format(copy.mountCenterLine, {
-                x: formatMeters(item.objectHeadClearance.mountOffsetCenterMeters[0]),
-                y: formatMeters(item.objectHeadClearance.mountOffsetCenterMeters[1]),
-                z: formatMeters(item.objectHeadClearance.mountOffsetCenterMeters[2]),
-              })}
-            </span>
-          ) : null}
-          {item.objectHeadClearance.status !== "unknown" ? (
-            <span>{copy.clearance[item.objectHeadClearance.status]}</span>
-          ) : null}
-          {item.objectHeadClearance.status === "insufficient_margin"
-          || item.objectHeadClearance.status === "likely_unscaled" ? (
-            <span className="vua-glb-inspection__hint">{copy.clearanceActionHint}</span>
           ) : null}
           {item.contentSummary ? (
             <span>
@@ -160,7 +121,10 @@ export function GlbInspectionSection({
             <span>{format(copy.bonesLine, { bones: item.vrm.boneCount })}</span>
           ) : null}
           {item.vrm?.hasFullBodyBones ? (
-            <span>{item.vrm.hasToeBones ? copy.pharosFbtReady : copy.pharosFbtNoToes}</span>
+            <span>{copy.fullBodyBones}</span>
+          ) : null}
+          {item.vrm?.hasToeBones ? (
+            <span>{copy.toeBones}</span>
           ) : null}
           {item.vrm?.headBoneHeightMeters !== null && item.vrm?.headBoneHeightMeters !== undefined ? (
             <span>
@@ -168,6 +132,9 @@ export function GlbInspectionSection({
                 height: formatMeters(item.vrm.headBoneHeightMeters),
               })}
             </span>
+          ) : null}
+          {item.format === "vrm_1_0" || item.format === "vrm_0_x" ? (
+            <span className="vua-glb-inspection__hint">{copy.vrmConverterNote}</span>
           ) : null}
         </div>
       ) : null}

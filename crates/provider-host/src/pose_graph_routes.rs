@@ -102,7 +102,6 @@ mod tests {
             steam_common: vec![root.join("steam_common")],
             steam_install_candidates: Vec::new(),
             openvrpaths: Vec::new(),
-            pharos_status_candidates: Vec::new(),
             registry: Arc::new(FakeRegistrySource::new()),
             ..EnvironmentRoots::default()
         };
@@ -146,7 +145,7 @@ mod tests {
                         .as_array()
                         .unwrap()
                         .len(),
-                    10
+                    9
                 );
             }
             _ => panic!("expected response"),

@@ -12,8 +12,7 @@
     "blockedSteamvrDrivers",
     "fbtDriverConflictRisk",
     "lastHeadsetHint",
-    "poseSources",
-    "pharosHub"
+    "poseSources"
   ],
   "properties": {
     "schemaVersion": {
@@ -50,7 +49,6 @@
           "alvr",
           "virtual_desktop",
           "lighthouse",
-          "pharos",
           "mocopi",
           "haritorax",
           "rebocap"
@@ -68,7 +66,6 @@
           "alvr",
           "virtual_desktop",
           "lighthouse",
-          "pharos",
           "mocopi",
           "haritorax",
           "rebocap"
@@ -85,8 +82,8 @@
     },
     "poseSources": {
       "type": "array",
-      "minItems": 10,
-      "maxItems": 10,
+      "minItems": 9,
+      "maxItems": 9,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -95,7 +92,6 @@
           "sourceId": {
             "enum": [
               "headset_6dof",
-              "pharos",
               "slimevr",
               "pico_motion",
               "lighthouse",
@@ -114,97 +110,6 @@
             "minLength": 1,
             "maxLength": 64
           }
-        }
-      }
-    },
-    "pharosHub": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "state",
-        "telemetryState",
-        "calibrationState",
-        "spatialAnchorReady",
-        "activeModes",
-        "wearableNodes",
-        "stereoBaseStationCount",
-        "panoramicAnchorCount"
-      ],
-      "properties": {
-        "state": {
-          "enum": ["not_detected", "driver_registered", "running"]
-        },
-        "telemetryState": {
-          "enum": ["missing", "live", "stale", "malformed"]
-        },
-        "calibrationState": {
-          "enum": ["unknown", "uncalibrated", "calibrating", "calibrated"]
-        },
-        "spatialAnchorReady": {
-          "type": "boolean"
-        },
-        "activeModes": {
-          "type": "array",
-          "maxItems": 4,
-          "uniqueItems": true,
-          "items": {
-            "enum": [
-              "optical_stereo_2x2x2",
-              "imu_fusion",
-              "passive_retroreflective",
-              "panoramic_spatial_anchor"
-            ]
-          }
-        },
-        "wearableNodes": {
-          "type": "array",
-          "minItems": 4,
-          "maxItems": 4,
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "slot",
-              "state",
-              "trackingMode",
-              "batteryPercent",
-              "footHeadingAvailable"
-            ],
-            "properties": {
-              "slot": {
-                "enum": ["left_foot", "right_foot", "waist", "chest"]
-              },
-              "state": {
-                "enum": ["not_connected", "connected"]
-              },
-              "trackingMode": {
-                "oneOf": [
-                  { "type": "null" },
-                  {
-                    "enum": ["optical_imu", "passive_retroreflective", "imu_only"]
-                  }
-                ]
-              },
-              "batteryPercent": {
-                "type": ["integer", "null"],
-                "minimum": 0,
-                "maximum": 100
-              },
-              "footHeadingAvailable": {
-                "type": "boolean"
-              }
-            }
-          }
-        },
-        "stereoBaseStationCount": {
-          "type": ["integer", "null"],
-          "minimum": 0,
-          "maximum": 16
-        },
-        "panoramicAnchorCount": {
-          "type": ["integer", "null"],
-          "minimum": 0,
-          "maximum": 8
         }
       }
     }

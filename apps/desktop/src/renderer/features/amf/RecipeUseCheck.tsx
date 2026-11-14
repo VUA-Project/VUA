@@ -1,6 +1,6 @@
 import { readRecipeTerms } from "./recipe-terms-actions.ts";
 import { useEffect,useMemo,useState } from "react";
-import { TERMS_PRESET_IDS,TERMS_PRESET_IDS_V02,type AmfSharedRecipe,type TermsPresetId,type TermsPresetIdV02,type TermsUseCheckV01,type TermsUseCheckV02,type TermsBlockingItem } from "@vua/contracts";
+import { TERMS_PRESET_IDS,type AmfSharedRecipe,type TermsPresetId,type TermsUseCheckV01,type TermsBlockingItem } from "@vua/contracts";
 import { useGateway } from "../../gateway/index.ts";
 import { Button } from "../../components/primitives/Button.tsx";
 import { strings,termsEverywhereCopy as copy } from "../../i18n/index.ts";
@@ -11,12 +11,10 @@ export function RecipeUseCheck({document,onUpdated}:{document:AmfSharedRecipe;on
   const gateway=useGateway(),port=gateway.terms;
   const materials=useMemo(()=>recipeProducts(document.recipe,document.sources),[document]);
   const ids=useMemo(()=>[...new Set(materials.flatMap(v=>v.productId?[v.productId]:[]))],[materials]);
-  const presetOptions=port?.checkUseV02?TERMS_PRESET_IDS_V02:TERMS_PRESET_IDS;
-  const [preset,setPreset]=useState<TermsPresetIdV02>("vrchat_personal"),[check,setCheck]=useState<TermsUseCheckV01|TermsUseCheckV02|null>(null),[nonce,setNonce]=useState(0);
+  const [preset,setPreset]=useState<TermsPresetId>("vrchat_personal"),[check,setCheck]=useState<TermsUseCheckV01|null>(null),[nonce,setNonce]=useState(0);
   const [error,setError]=useState<string|null>(null),[reading,setReading]=useState<Readonly<Record<string,string>>>({});
   useEffect(()=>{let alive=true;setCheck(null);if(!port||!ids.length)return;
-    const req=port.checkUseV02?port.checkUseV02(preset,ids):port.checkUse(preset as TermsPresetId,ids);
-    void req.then(value=>{if(alive)setCheck(value);}).catch(()=>{if(alive)setError(copy.failed);});return()=>{alive=false;};
+    void port.checkUse(preset,ids).then(value=>{if(alive)setCheck(value);}).catch(()=>{if(alive)setError(copy.failed);});return()=>{alive=false;};
   },[port,preset,ids,nonce]);
   useEffect(()=>{if(!Object.keys(reading).length)return;let alive=true;
     const poll=()=>{void gateway.task.snapshot().then(view=>{if(!alive)return;const ended=Object.entries(reading).filter(([,taskId])=>view.tasks.some(task=>task.id===taskId&&["completed","completedWithWarnings","failed","cancelled"].includes(task.status)) || taskId!=="starting"&&!view.tasks.some(task=>task.id===taskId));
@@ -24,11 +22,9 @@ export function RecipeUseCheck({document,onUpdated}:{document:AmfSharedRecipe;on
       if(ended.some(([,id])=>!view.tasks.some(task=>task.id===id)||view.tasks.some(task=>task.id===id&&["failed","cancelled"].includes(task.status))))setError(copy.stopped);setNonce(value=>value+1);
     }).catch(()=>{if(alive)setError(copy.failed);});};const timer=setInterval(poll,1500);poll();return()=>{alive=false;clearInterval(timer);};
   },[gateway.task,reading]);
-  const hasPlatformRestriction=check!==null&&"platformRestrictionHint" in check.combination&&check.combination.platformRestrictionHint===true;
-  return <section className="vua-recipe-use"><h3>{copy.check}</h3><label className="vua-n3__field">{copy.use}<select value={preset} onChange={e=>{setPreset(e.target.value as TermsPresetIdV02);setError(null);}}>{presetOptions.map(id=><option key={id} value={id}>{terms.presets[id]}</option>)}</select></label>
+  return <section className="vua-recipe-use"><h3>{copy.check}</h3><label className="vua-n3__field">{copy.use}<select value={preset} onChange={e=>{setPreset(e.target.value as TermsPresetId);setError(null);}}>{TERMS_PRESET_IDS.map(id=><option key={id} value={id}>{terms.presets[id]}</option>)}</select></label>
     {!port?<p>{copy.unavailable}</p>:!ids.length?<p>{copy.noProducts}</p>:check?<>
       <p><strong>{copy.combined}: {copy[useStatus(check.combination)]}</strong></p>
-      {hasPlatformRestriction&&<p className="vua-caption" role="status">{terms.platformRestrictionNotice}</p>}
       <ul>{check.products.map(product=><li key={product.productId}>
         <strong>{materials.filter(m=>m.productId===product.productId).map(m=>m.packageName).join(" · ")} · BOOTH {product.productId.slice(6)}</strong>
         <span>{copy[product.sourceState==="no_vn3"?"no_terms":useStatus(product)]}</span>

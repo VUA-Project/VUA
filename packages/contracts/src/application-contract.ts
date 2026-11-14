@@ -3,7 +3,6 @@ import { isLibraryListParamsV03, type LibraryListParamsV03 } from "./library-vie
 import { isUnityLicenseParams } from "./unity-license-v01.js";
 import { isDeploymentCommandId, isDeploymentParams, type DeploymentPlanParams, type DeploymentExecuteParams, type DeploymentPlanResult, type ToolDeploymentPlanResult, type DeploymentAccepted } from "./environment-deployment.js";
 import { isTermsParams, type TermsPresetId, type ProductTermsV01, type TermsUseCheckV01, type TermsAcceptedV01 } from "./terms-v01.js";
-import { isTermsUseCheckParamsV02, type TermsUseCheckParamsV02, type TermsUseCheckV02 } from "./terms-v02.js";
 import { isObservePoseGraphParamsV01, type ObservePoseGraphParamsV01, type PoseGraphResultV01 } from "./pose-graph-v01.js";
 import { isInspectGlbParamsV01, type InspectGlbParamsV01, type GlbInspectionResultV01 } from "./glb-inspection-v01.js";
 import { isAmfProductionParams } from "./amf-production-v01.js";
@@ -2889,7 +2888,7 @@ export type ApplicationRequestV01 =
   | (ApplicationRequestBaseV01 & {readonly kind:"query";readonly method:"amf.production.readShareImage";readonly params:Readonly<Record<string,unknown>>})
   | (ApplicationRequestBaseV01 & {readonly kind:"command";readonly commandId:string;readonly method:"amf.production.exportShareImage";readonly params:Readonly<Record<string,unknown>>})
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "terms.getProduct"; readonly params: {readonly schemaVersion: "0.1"; readonly productId: string} })
-  | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "terms.checkUse"; readonly params: {readonly schemaVersion: "0.1"; readonly presetId: TermsPresetId; readonly productIds: readonly string[]} | TermsUseCheckParamsV02 })
+  | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "terms.checkUse"; readonly params: {readonly schemaVersion: "0.1"; readonly presetId: TermsPresetId; readonly productIds: readonly string[]} })
   | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly commandId: string; readonly method: "terms.refreshProduct"; readonly params: {readonly schemaVersion: "0.1"; readonly productId: string} })
   | (ApplicationRequestBaseV01 & { readonly kind: "command"; readonly commandId: string; readonly method: "terms.refreshLibrary"; readonly params: {readonly schemaVersion: "0.1"} })
   | (ApplicationRequestBaseV01 & { readonly kind: "query"; readonly method: "environment.listPlaySetups" | "environment.getScenarioSop" | "environment.checkScenarioEnvironment"; readonly params: Readonly<Record<string, unknown>> })
@@ -3081,7 +3080,7 @@ export interface DemoTaskStartedV01 {
 }
 
 export type ApplicationSuccessValueV01 =
-  | ProductTermsV01 | TermsUseCheckV01 | TermsUseCheckV02 | TermsAcceptedV01
+  | ProductTermsV01 | TermsUseCheckV01 | TermsAcceptedV01
   | ManagerAppsResult
   | ManagerAppLaunchResultV02
   | PoseGraphResultV01
@@ -3303,7 +3302,7 @@ export function isApplicationRequestV01(value: unknown): value is ApplicationReq
     const command = value.method === "terms.refreshProduct" || value.method === "terms.refreshLibrary";
     return value.kind === (command ? "command" : "query") && (!command || isIdentifier(value.commandId))
       && hasExactKeys(value, ["contractVersion", "requestId", "correlationId", "kind", "method", "params", ...(command ? ["commandId"] : [])])
-      && (isTermsParams(value.method, value.params) || (value.method === "terms.checkUse" && isTermsUseCheckParamsV02(value.params)));
+      && isTermsParams(value.method, value.params);
   }
   if (value.method === "environment.unityLicense" || value.method === "environment.checkUnityLicense") {
     return value.kind === (value.method === "environment.unityLicense" ? "query" : "command")

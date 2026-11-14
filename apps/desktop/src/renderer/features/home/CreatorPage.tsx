@@ -6,7 +6,6 @@ import { RouteTile } from "../../components/RouteTile.tsx";
 import { useEscapeClose } from "../../components/use-escape-close.ts";
 import { Tooltip } from "../../components/primitives/Tooltip.tsx";
 import { SlideDrawer } from "../../components/SlideDrawer.tsx";
-import { Badge } from "../../components/primitives/Badge.tsx";
 import { Button } from "../../components/primitives/Button.tsx";
 import { CopyableText } from "../../components/primitives/CopyableText.tsx";
 import { toast } from "../../components/primitives/toast-store.ts";
@@ -78,7 +77,7 @@ export function CreatorPage({ onOpenAmf, onWorkshop }: { onOpenAmf: () => void; 
         {unity6.length ? <>
           <RouteTile title={strings.journey.unity6} kind="unity" id="route-unity6" developing selected={detail === "unity6"} expanded={detail === "unity6"} controls="route-unity6-details" onClick={() => toggle("unity6")} />
           <SlideDrawer id="route-unity6-details" open={detail === "unity6"} label={strings.journey.unity6} className="vua-creator-drawer"><section className="vua-environment-detail">
-            {detailHeader(strings.journey.unity6)}{unity6.map(editor => <p key={editor.path}><strong>Unity {editor.version}</strong>{editor.version.startsWith("6000.3.") ? <> <Badge tone="neutral">{copy.unity63LtsBadge}</Badge></> : null}<br /><CopyableText value={editor.path} copyLabel={strings.controlCenter.packages.copyPath} copiedLabel={strings.controlCenter.packages.copiedPath} /></p>)}{unity6.some(editor => editor.version.startsWith("6000.3.")) ? <p className="vua-caption vua-text-secondary" style={{ overflowWrap: "anywhere" }}>{copy.unity63LtsNote}</p> : null}
+            {detailHeader(strings.journey.unity6)}{unity6.map(editor => <p key={editor.path}><strong>Unity {editor.version}</strong><br /><CopyableText value={editor.path} copyLabel={strings.controlCenter.packages.copyPath} copiedLabel={strings.controlCenter.packages.copiedPath} /></p>)}
           </section></SlideDrawer>
         </> : <Tooltip block content={strings.journey.developingTip}><RouteTile title={strings.journey.unity6} kind="unity" id="route-unity6" developing disabled /></Tooltip>}
       </div>

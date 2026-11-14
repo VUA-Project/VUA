@@ -47,7 +47,7 @@ function sopJumpForStep(stepId: string): { readonly page: PageId; readonly label
     case "osc_align_oscquery_port":
     case "osc_verify_radial_menu_and_companion":
     case "fbt_check_multi_driver_and_safe_mode":
-    case "fbt_space_calibrator_and_pharos_anchor":
+    case "fbt_space_calibrator":
     case "playspace_reset_ovras_offsets":
       return { page: "tools-discover", labelKey: "openTools" };
     case "osc_check_avatar_parameters":

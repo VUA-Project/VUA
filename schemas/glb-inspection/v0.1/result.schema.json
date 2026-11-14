@@ -31,9 +31,7 @@
           "textureSummary",
           "secondaryMotion",
           "vrm",
-          "boundsMeters",
-          "objectHeadClearance",
-          "phrReadiness"
+          "boundsMeters"
         ],
         "properties": {
           "copyId": {
@@ -225,60 +223,6 @@
                   }
                 }
               }
-            ]
-          },
-          "objectHeadClearance": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "status",
-              "referenceHeadHmdMeters",
-              "marginsMeters",
-              "mountOffsetCenterMeters"
-            ],
-            "properties": {
-              "status": {
-                "enum": ["passes", "insufficient_margin", "likely_unscaled", "unknown"]
-              },
-              "referenceHeadHmdMeters": {
-                "type": "array",
-                "minItems": 3,
-                "maxItems": 3,
-                "items": { "type": "number", "minimum": 0 }
-              },
-              "marginsMeters": {
-                "oneOf": [
-                  { "type": "null" },
-                  {
-                    "type": "array",
-                    "minItems": 3,
-                    "maxItems": 3,
-                    "items": { "type": "number" }
-                  }
-                ]
-              },
-              "mountOffsetCenterMeters": {
-                "oneOf": [
-                  { "type": "null" },
-                  {
-                    "type": "array",
-                    "minItems": 3,
-                    "maxItems": 3,
-                    "items": { "type": "number" }
-                  }
-                ]
-              }
-            }
-          },
-          "phrReadiness": {
-            "enum": [
-              "ready_vrm1_humanoid",
-              "ready_object_head",
-              "vrm0_needs_upgrade",
-              "clearance_insufficient",
-              "scale_suspect",
-              "missing_head_bone",
-              "invalid_glb"
             ]
           }
         }

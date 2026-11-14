@@ -44,30 +44,21 @@ describe("pose-graph v0.1 contract", () => {
     }
   });
 
-  it("validates snapshot vectors and refuses path leaks or fabricated foot-heading on disconnected nodes", () => {
+  it("validates snapshot vectors and refuses path leaks, out-of-order poseSources, or unknown conflict risks", () => {
     for (const result of vectors.validResults) {
       expect(isPoseGraphResultV01(result)).toBe(true);
     }
     for (const result of vectors.invalidResults) {
       expect(isPoseGraphResultV01(result)).toBe(false);
     }
-    const base = structuredClone(vectors.validResults[0]) as {
+
+    const outOfOrder = structuredClone(vectors.validResults[0]) as {
       poseGraph: {
-        pharosHub: {
-          telemetryFresh: boolean;
-          wearableNodes: { slot: string; state: string; footHeadingAvailable: boolean }[];
-        };
+        poseSources: { sourceId: string; state: string; detailCode: string | null }[];
       };
     };
-    const disconnectedNode = base.poseGraph.pharosHub.wearableNodes.find(
-      node => node.state === "not_connected",
-    )!;
-    disconnectedNode.footHeadingAvailable = true;
-    expect(isPoseGraphResultV01(base)).toBe(false);
-
-    const stale = structuredClone(vectors.validResults[0]) as typeof base;
-    stale.poseGraph.pharosHub.telemetryFresh = false;
-    expect(isPoseGraphResultV01(stale)).toBe(false);
+    outOfOrder.poseGraph.poseSources.reverse();
+    expect(isPoseGraphResultV01(outOfOrder)).toBe(false);
 
     const invalidRisk = structuredClone(vectors.validResults[0]) as {
       poseGraph: { fbtDriverConflictRisk: string };

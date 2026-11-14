@@ -1,16 +1,11 @@
 /** The release room's terms check: a finished line's materials together against one use. */
 import { useEffect, useMemo, useState } from "react";
-import { isTermsProductId, TERMS_PRESET_IDS, TERMS_PRESET_IDS_V02, type TermsBlockingItem, type TermsPresetId, type TermsPresetIdV02, type TermsUseCheckV01, type TermsUseCheckV02 } from "@vua/contracts";
+import { isTermsProductId, TERMS_PRESET_IDS, type TermsBlockingItem, type TermsPresetId, type TermsUseCheckV01 } from "@vua/contracts";
 import { useGateway, type AmfProductionRun, type AmfProductionSource } from "../../../gateway/index.ts";
 import { format, strings } from "../../../i18n/index.ts";
 
 const copy = strings.useTerms;
 const line = copy.line;
-
-/** Presets offered on a finished line: includes v0.2 PH-R presets when the port supports `checkUseV02`. */
-export function linePresetOptions(supportsV02: boolean): readonly TermsPresetIdV02[] {
-  return supportsV02 ? TERMS_PRESET_IDS_V02 : TERMS_PRESET_IDS;
-}
 
 /** The BOOTH products of the line's Avatar and outfits, each with the material name it came from. Dependencies such
  * as shaders carry their own licenses rather than VN3 terms. */
@@ -33,8 +28,8 @@ function blockerText(blocker: TermsBlockingItem): string {
 
 export function LineTerms({ run, sources, onOpenMaterials }: { run: AmfProductionRun; sources: readonly AmfProductionSource[]; onOpenMaterials: () => void }) {
   const port = useGateway().terms;
-  const [presetId, setPresetId] = useState<TermsPresetIdV02>("vrchat_personal");
-  const [check, setCheck] = useState<TermsUseCheckV01 | TermsUseCheckV02 | null>(null);
+  const [presetId, setPresetId] = useState<TermsPresetId>("vrchat_personal");
+  const [check, setCheck] = useState<TermsUseCheckV01 | null>(null);
   const { products, unlinked } = useMemo(() => lineProducts(run, sources), [run, sources]);
   // The album reads its list again while work runs; the check follows the products, not the list object.
   const key = [...products.keys()].join(" ");
@@ -42,29 +37,24 @@ export function LineTerms({ run, sources, onOpenMaterials }: { run: AmfProductio
     setCheck(null);
     if (!port || key === "") return;
     let alive = true;
-    const ids = key.split(" ");
-    const request = port.checkUseV02 ? port.checkUseV02(presetId, ids) : port.checkUse(presetId as TermsPresetId, ids);
-    void request.then(next => { if (alive) setCheck(next); }, () => {});
+    void port.checkUse(presetId, key.split(" ")).then(next => { if (alive) setCheck(next); }, () => {});
     return () => { alive = false; };
   }, [port, presetId, key]);
   if (!port) return null;
-  const presetOptions = linePresetOptions(port.checkUseV02 !== undefined);
   const openMaterials = <button type="button" className="vua-release-upload__link" onClick={onOpenMaterials}>{line.library}</button>;
   if (key === "") return <section className="vua-album__block vua-line-terms">
     <h3>{line.title}</h3><p className="vua-caption vua-text-secondary">{line.none}</p>{openMaterials}
   </section>;
   const advisories = [...new Set(check?.combination.advisories.map(advisory => advisory.reason) ?? [])];
-  const hasPlatformRestriction = check !== null && "platformRestrictionHint" in check.combination && check.combination.platformRestrictionHint === true;
   return <section className="vua-album__block vua-line-terms">
     <h3>{line.title}</h3>
     <label className="vua-line-terms__use"><span>{line.use}</span>
-      <select value={presetId} onChange={event => setPresetId(event.target.value as TermsPresetIdV02)}>
-        {presetOptions.map(id => <option key={id} value={id}>{copy.presets[id]}</option>)}
+      <select value={presetId} onChange={event => setPresetId(event.target.value as TermsPresetId)}>
+        {TERMS_PRESET_IDS.map(id => <option key={id} value={id}>{copy.presets[id]}</option>)}
       </select>
     </label>
     {check && <>
       <p className="vua-line-terms__overall" data-decision={check.combination.decision}>{copy.decisions[check.combination.decision]}</p>
-      {hasPlatformRestriction && <p className="vua-caption vua-line-terms__restriction" role="status">{copy.platformRestrictionNotice}</p>}
       <ul className="vua-line-terms__products">{check.products.map(product => <li key={product.productId} data-decision={product.decision}>
         <span>{products.get(product.productId) ?? product.productId}</span>
         <strong>{copy.decisions[product.decision]}</strong>

@@ -1,9 +1,8 @@
 import { isTermsProductId } from "./terms-v01.js";
 
-/** Candidate glb-inspection v0.1 (0.2.0): AMF-owned pure-Rust streaming inspection
+/** Candidate glb-inspection v0.1 (0.1.0): AMF-owned pure-Rust streaming inspection
  * of warehouse .glb / .vrm artifacts (standalone files and unexpanded .zip members),
- * VRMC_vrm 1.0 Pharos/PH-R humanoid readiness and PH-R Stage 1 MR Object-Head
- * >= 5 cm clearance. */
+ * VRM 1.0 / VRM 0.x metadata, and scene world-space bounding boxes. */
 export const GLB_INSPECTION_SCHEMA = "vua.glb-inspection/v0.1" as const;
 
 export const GLB_FORMATS_V01 = [
@@ -19,27 +18,6 @@ export const GLB_SOURCE_KINDS_V01 = [
   "zip_member",
 ] as const;
 export type GlbSourceKindV01 = typeof GLB_SOURCE_KINDS_V01[number];
-
-export const OBJECT_HEAD_CLEARANCE_STATUSES_V01 = [
-  "passes",
-  "insufficient_margin",
-  "likely_unscaled",
-  "unknown",
-] as const;
-export type ObjectHeadClearanceStatusV01 = typeof OBJECT_HEAD_CLEARANCE_STATUSES_V01[number];
-
-export const PHR_READINESS_VALUES_V01 = [
-  "ready_vrm1_humanoid",
-  "ready_object_head",
-  "vrm0_needs_upgrade",
-  "clearance_insufficient",
-  "scale_suspect",
-  "missing_head_bone",
-  "invalid_glb",
-] as const;
-export type PhrReadinessV01 = typeof PHR_READINESS_VALUES_V01[number];
-
-export const REFERENCE_HEAD_HMD_METERS_V01: readonly [number, number, number] = [0.22, 0.26, 0.28];
 
 export type InspectGlbParamsV01 =
   | { readonly schemaVersion: "0.1"; readonly productId: string }
@@ -93,13 +71,6 @@ export interface GlbBoundsMetersV01 {
   readonly max: readonly [number, number, number];
 }
 
-export interface ObjectHeadClearanceV01 {
-  readonly status: ObjectHeadClearanceStatusV01;
-  readonly referenceHeadHmdMeters: readonly [number, number, number];
-  readonly marginsMeters: readonly [number, number, number] | null;
-  readonly mountOffsetCenterMeters: readonly [number, number, number] | null;
-}
-
 export interface GlbInspectedFileV01 {
   readonly copyId: string;
   readonly fileName: string;
@@ -114,8 +85,6 @@ export interface GlbInspectedFileV01 {
   readonly secondaryMotion: GlbSecondaryMotionSummaryV01 | null;
   readonly vrm: GlbVrmSummaryV01 | null;
   readonly boundsMeters: GlbBoundsMetersV01 | null;
-  readonly objectHeadClearance: ObjectHeadClearanceV01;
-  readonly phrReadiness: PhrReadinessV01;
 }
 
 export interface GlbInspectionResultV01 {
@@ -277,8 +246,6 @@ function isGlbInspectedFile(v: unknown): v is GlbInspectedFileV01 {
     "secondaryMotion",
     "vrm",
     "boundsMeters",
-    "objectHeadClearance",
-    "phrReadiness",
   ])) return false;
   if (typeof v.copyId !== "string" || v.copyId.length < 1 || v.copyId.length > 128) return false;
   if (!isSafeRelativeFileName(v.fileName)) return false;
@@ -297,18 +264,7 @@ function isGlbInspectedFile(v: unknown): v is GlbInspectedFileV01 {
     if (!exactKeys(v.boundsMeters, ["size", "min", "max"])) return false;
     if (!vec3(v.boundsMeters.size, true) || !vec3(v.boundsMeters.min) || !vec3(v.boundsMeters.max)) return false;
   }
-  if (!exactKeys(v.objectHeadClearance, [
-    "status",
-    "referenceHeadHmdMeters",
-    "marginsMeters",
-    "mountOffsetCenterMeters",
-  ])) return false;
-  const c = v.objectHeadClearance;
-  if (!OBJECT_HEAD_CLEARANCE_STATUSES_V01.includes(c.status as ObjectHeadClearanceStatusV01)) return false;
-  if (!vec3(c.referenceHeadHmdMeters, true)) return false;
-  if (c.marginsMeters !== null && !vec3(c.marginsMeters)) return false;
-  if (c.mountOffsetCenterMeters !== null && !vec3(c.mountOffsetCenterMeters)) return false;
-  return PHR_READINESS_VALUES_V01.includes(v.phrReadiness as PhrReadinessV01);
+  return true;
 }
 
 export function isGlbInspectionResultV01(v: unknown): v is GlbInspectionResultV01 {

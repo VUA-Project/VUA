@@ -1,7 +1,7 @@
 //! Candidate `glb-inspection v0.1` (`0.2.0`): AMF-owned pure-Rust streaming inspection of
 //! warehouse `.glb` and `.vrm` binary glTF 2.0 artifacts (both standalone files and unexpanded
-//! `.zip` archive members), `VRMC_vrm` 1.0 full-body & toe readiness for Pharos/PH-R, legacy
-//! VRM 0.x upgrade detection, and PH-R Stage 1 MR Object-Head `>= 5 cm` clearance.
+//! `.zip` archive members), `VRMC_vrm` 1.0 humanoid & bone structure facts, legacy VRM 0.x
+//! detection, and world-space scene bounding boxes.
 //!
 //! Safety & streaming invariants:
 //! - Opens only warehouse-contained regular files verified `"present"` by [`PresenceCheck`].
@@ -22,7 +22,6 @@ use std::path::Path;
 use vua_bdl_store::BdlStore;
 
 pub const GLB_INSPECTION_SCHEMA: &str = "vua.glb-inspection/v0.1";
-pub const REFERENCE_HEAD_HMD_METERS: [f64; 3] = [0.22, 0.26, 0.28];
 
 const GLB_MAGIC: u32 = 0x4654_6C67; // "glTF"
 const GLB_VERSION_2: u32 = 2;
@@ -32,8 +31,6 @@ const MAX_INSPECTED_ITEMS: usize = 64;
 const MAX_ZIP_ENTRIES_SCANNED: usize = 4_096;
 const MAX_SCENE_DEPTH: usize = 128;
 const MAX_SCENE_VISITS: usize = 16_384;
-const CLEARANCE_MIN_MARGIN_METERS: f64 = 0.05;
-const OBJECT_HEAD_MAX_DIM_METERS: f64 = 2.0;
 
 const FULL_BODY_HUMANOID_BONES: [&str; 15] = [
     "hips",
@@ -115,15 +112,6 @@ pub struct GlbBoundsMetersV01 {
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ObjectHeadClearanceV01 {
-    pub status: &'static str,
-    pub reference_head_hmd_meters: [f64; 3],
-    pub margins_meters: Option<[f64; 3]>,
-    pub mount_offset_center_meters: Option<[f64; 3]>,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct GlbInspectedFileV01 {
     pub copy_id: String,
     pub file_name: String,
@@ -138,8 +126,6 @@ pub struct GlbInspectedFileV01 {
     pub secondary_motion: Option<GlbSecondaryMotionSummaryV01>,
     pub vrm: Option<GlbVrmSummaryV01>,
     pub bounds_meters: Option<GlbBoundsMetersV01>,
-    pub object_head_clearance: ObjectHeadClearanceV01,
-    pub phr_readiness: &'static str,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -406,8 +392,6 @@ fn build_inspected_item(
         secondary_motion: parsed.secondary_motion,
         vrm: parsed.vrm,
         bounds_meters: parsed.bounds_meters,
-        object_head_clearance: parsed.object_head_clearance,
-        phr_readiness: parsed.phr_readiness,
     }
 }
 
@@ -454,8 +438,6 @@ struct ParsedGlb {
     secondary_motion: Option<GlbSecondaryMotionSummaryV01>,
     vrm: Option<GlbVrmSummaryV01>,
     bounds_meters: Option<GlbBoundsMetersV01>,
-    object_head_clearance: ObjectHeadClearanceV01,
-    phr_readiness: &'static str,
 }
 
 impl ParsedGlb {
@@ -469,13 +451,6 @@ impl ParsedGlb {
             secondary_motion: None,
             vrm: None,
             bounds_meters: None,
-            object_head_clearance: ObjectHeadClearanceV01 {
-                status: "unknown",
-                reference_head_hmd_meters: REFERENCE_HEAD_HMD_METERS,
-                margins_meters: None,
-                mount_offset_center_meters: None,
-            },
-            phr_readiness: "invalid_glb",
         }
     }
 }
@@ -541,7 +516,6 @@ fn inspect_glb_reader<R: Read>(reader: &mut R) -> ParsedGlb {
         .map_or(0, Vec::len);
 
     let (bounds_meters, node_world_y) = compute_scene_bounds_and_node_heights(&gltf);
-    let object_head_clearance = evaluate_object_head_clearance(bounds_meters.as_ref());
 
     let (format, vrm) = if let Some(vrmc) = gltf
         .pointer("/extensions/VRMC_vrm")
@@ -565,23 +539,6 @@ fn inspect_glb_reader<R: Read>(reader: &mut R) -> ParsedGlb {
     let texture_summary = Some(extract_texture_summary(&gltf));
     let secondary_motion = Some(extract_secondary_motion_summary(&gltf));
 
-    let phr_readiness = match format {
-        "vrm_1_0" => {
-            if vrm.as_ref().is_some_and(|v| v.has_humanoid_head_bone) {
-                "ready_vrm1_humanoid"
-            } else {
-                "missing_head_bone"
-            }
-        }
-        "vrm_0_x" => "vrm0_needs_upgrade",
-        "glb_2_0" => match object_head_clearance.status {
-            "passes" => "ready_object_head",
-            "likely_unscaled" => "scale_suspect",
-            _ => "clearance_insufficient",
-        },
-        _ => "invalid_glb",
-    };
-
     ParsedGlb {
         format,
         extensions_used,
@@ -591,8 +548,6 @@ fn inspect_glb_reader<R: Read>(reader: &mut R) -> ParsedGlb {
         secondary_motion,
         vrm,
         bounds_meters,
-        object_head_clearance,
-        phr_readiness,
     }
 }
 
@@ -1009,44 +964,6 @@ fn round6(v: f64) -> f64 {
         0.0
     } else {
         r
-    }
-}
-
-fn evaluate_object_head_clearance(bounds: Option<&GlbBoundsMetersV01>) -> ObjectHeadClearanceV01 {
-    let Some(bounds) = bounds else {
-        return ObjectHeadClearanceV01 {
-            status: "unknown",
-            reference_head_hmd_meters: REFERENCE_HEAD_HMD_METERS,
-            margins_meters: None,
-            mount_offset_center_meters: None,
-        };
-    };
-    let margins = [
-        round6((bounds.size[0] - REFERENCE_HEAD_HMD_METERS[0]) / 2.0),
-        round6((bounds.size[1] - REFERENCE_HEAD_HMD_METERS[1]) / 2.0),
-        round6((bounds.size[2] - REFERENCE_HEAD_HMD_METERS[2]) / 2.0),
-    ];
-    let center = [
-        round6((bounds.min[0] + bounds.max[0]) / 2.0),
-        round6((bounds.min[1] + bounds.max[1]) / 2.0),
-        round6((bounds.min[2] + bounds.max[2]) / 2.0),
-    ];
-    let max_dim = bounds.size[0].max(bounds.size[1]).max(bounds.size[2]);
-    let status = if max_dim > OBJECT_HEAD_MAX_DIM_METERS {
-        "likely_unscaled"
-    } else if margins
-        .iter()
-        .all(|m| *m + 1e-9 >= CLEARANCE_MIN_MARGIN_METERS)
-    {
-        "passes"
-    } else {
-        "insufficient_margin"
-    };
-    ObjectHeadClearanceV01 {
-        status,
-        reference_head_hmd_meters: REFERENCE_HEAD_HMD_METERS,
-        margins_meters: Some(margins),
-        mount_offset_center_meters: Some(center),
     }
 }
 
@@ -1477,7 +1394,6 @@ mod tests {
         assert_eq!(res.format, "vrm_1_0");
         assert_eq!(res.source_kind, "standalone_file");
         assert_eq!(res.container_file_name, None);
-        assert_eq!(res.phr_readiness, "ready_vrm1_humanoid");
         let vrm = res.vrm.expect("vrm summary");
         assert!(vrm.has_humanoid_head_bone);
         assert!(vrm.has_full_body_bones);
@@ -1557,11 +1473,7 @@ mod tests {
         assert_eq!(item.file_name, "Props/TVHead.glb");
         assert_eq!(item.source_kind, "zip_member");
         assert_eq!(item.container_file_name.as_deref(), Some("BoothPack.zip"));
-        assert_eq!(item.phr_readiness, "ready_object_head");
-        assert_eq!(
-            item.object_head_clearance.mount_offset_center_meters,
-            Some([0.0, 0.05, 0.0])
-        );
+        assert_eq!(item.bounds_meters.as_ref().unwrap().size, [0.4, 0.4, 0.4]);
     }
 
     #[test]
@@ -1581,7 +1493,7 @@ mod tests {
         );
         let r1 = inspect_glb_bytes(&vrm1_no_head);
         assert_eq!(r1.format, "vrm_1_0");
-        assert_eq!(r1.phr_readiness, "missing_head_bone");
+        assert!(!r1.vrm.unwrap().has_humanoid_head_bone);
 
         let vrm0 = pack_synthetic_glb(
             &json!({
@@ -1599,7 +1511,6 @@ mod tests {
         );
         let r0 = inspect_glb_bytes(&vrm0);
         assert_eq!(r0.format, "vrm_0_x");
-        assert_eq!(r0.phr_readiness, "vrm0_needs_upgrade");
         let vrm0_summary = r0.vrm.unwrap();
         assert!(vrm0_summary.has_humanoid_head_bone);
         assert!(!vrm0_summary.has_full_body_bones);
@@ -1607,7 +1518,7 @@ mod tests {
     }
 
     #[test]
-    fn evaluates_object_head_5cm_clearance_trs_scale_and_unscaled_exports() {
+    fn computes_trs_scaled_bounds_and_rejects_invalid_glb_headers() {
         let scaled_pass = pack_synthetic_glb(
             &json!({
                 "asset": { "version": "2.0" },
@@ -1629,60 +1540,10 @@ mod tests {
             pass_res.bounds_meters.as_ref().unwrap().size,
             [0.4, 0.42, 0.44]
         );
-        assert_eq!(pass_res.object_head_status(), "passes");
-        assert_eq!(pass_res.phr_readiness, "ready_object_head");
-
-        let tight = pack_synthetic_glb(
-            &json!({
-                "asset": { "version": "2.0" },
-                "scene": 0,
-                "scenes": [{ "nodes": [0] }],
-                "nodes": [{ "mesh": 0 }],
-                "meshes": [{ "primitives": [{ "attributes": { "POSITION": 0 } }] }],
-                "accessors": [{
-                    "type": "VEC3",
-                    "min": [-0.12, -0.13, -0.14],
-                    "max": [0.12, 0.13, 0.14]
-                }]
-            }),
-            0,
-        );
-        let tight_res = inspect_glb_bytes(&tight);
-        assert_eq!(
-            tight_res.object_head_clearance.status,
-            "insufficient_margin"
-        );
-        assert_eq!(tight_res.phr_readiness, "clearance_insufficient");
-
-        let unscaled = pack_synthetic_glb(
-            &json!({
-                "asset": { "version": "2.0" },
-                "scene": 0,
-                "scenes": [{ "nodes": [0] }],
-                "nodes": [{ "mesh": 0 }],
-                "meshes": [{ "primitives": [{ "attributes": { "POSITION": 0 } }] }],
-                "accessors": [{
-                    "type": "VEC3",
-                    "min": [-20.0, -20.0, -20.0],
-                    "max": [20.0, 20.0, 20.0]
-                }]
-            }),
-            0,
-        );
-        let unscaled_res = inspect_glb_bytes(&unscaled);
-        assert_eq!(unscaled_res.object_head_clearance.status, "likely_unscaled");
-        assert_eq!(unscaled_res.phr_readiness, "scale_suspect");
 
         let bad = inspect_glb_bytes(b"NOT_A_GLB_FILE_AT_ALL_12345");
         assert_eq!(bad.format, "invalid_glb");
-        assert_eq!(bad.phr_readiness, "invalid_glb");
         assert!(bad.content_summary.is_none());
-    }
-
-    impl GlbInspectedFileV01 {
-        fn object_head_status(&self) -> &'static str {
-            self.object_head_clearance.status
-        }
     }
 
     #[test]
@@ -1721,7 +1582,6 @@ mod tests {
         );
         let parsed = inspect_glb_bytes(&extreme);
         assert!(parsed.bounds_meters.is_none());
-        assert_eq!(parsed.object_head_clearance.status, "unknown");
 
         let mut cursor = std::io::Cursor::new(&extreme);
         let item = build_inspected_item(

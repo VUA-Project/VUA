@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { AmfProductionRun, AmfProductionSource } from "../../../gateway/index.ts";
-import { linePresetOptions, lineProducts } from "./LineTerms.tsx";
+import { lineProducts } from "./LineTerms.tsx";
 
 const used = (sourceId: string, role: "avatar" | "outfit" | "dependency", itemName: string) => ({ sourceId, role, itemName, name: `${itemName}.unitypackage`, sha256: "a".repeat(64) });
 const listed = (sourceId: string, productIds?: string[]): AmfProductionSource =>
@@ -14,13 +14,5 @@ describe("the products a finished line's terms check covers", () => {
     ]);
     expect([...products]).toEqual([["booth:1", "Meiyun.zip"], ["booth:2", "Tshirt.zip"]]);
     expect(unlinked).toBe(1);
-  });
-
-  it("offers PH-R v0.2 presets when checkUseV02 is supported and falls back to v0.1 otherwise", () => {
-    expect(linePresetOptions(true)).toContain("phr_personal_avatar");
-    expect(linePresetOptions(true)).toContain("phr_object_head");
-    expect(linePresetOptions(true)).toContain("phr_shared_space");
-    expect(linePresetOptions(false)).not.toContain("phr_personal_avatar");
-    expect(linePresetOptions(false)).toContain("vrchat_personal");
   });
 });

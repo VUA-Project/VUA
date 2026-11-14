@@ -3,7 +3,6 @@ import { isLibraryListParamsV03, type LibraryListParamsV03 } from "./library-vie
 import { isUnityLicenseParams, type UnityLicenseRequestV1 } from "./unity-license-v01.js";
 import { isDeploymentCommandId, isDeploymentParams, type DeploymentPlanParams, type DeploymentExecuteParams } from "./environment-deployment.js";
 import { isTermsParams, type TermsRequestV1 } from "./terms-v01.js";
-import { isTermsUseCheckParamsV02, type TermsCheckUseGatewayRequestV2 } from "./terms-v02.js";
 import { isObservePoseGraphParamsV01, type PoseGraphGatewayRequestV1 } from "./pose-graph-v01.js";
 import { isInspectGlbParamsV01, type InspectGlbGatewayRequestV1 } from "./glb-inspection-v01.js";
 import { isAmfProductionParams, type AmfProductionRequestV1 } from "./amf-production-v01.js";
@@ -1113,7 +1112,6 @@ export type VrchatGatewayValueV1 = VrchatStatusValueV1 | VrchatSignInValueV1 | V
 
 export type DesktopGatewayRequestV1 =
   | TermsRequestV1
-  | TermsCheckUseGatewayRequestV2
   | PoseGraphGatewayRequestV1
   | InspectGlbGatewayRequestV1
   | UnityLicenseRequestV1
@@ -2078,8 +2076,7 @@ export function isDesktopGatewayRequestV1(value: unknown): value is DesktopGatew
       return hasExactKeys(value, REQUEST_KEYS) && hasExactKeys(value.params, ["avatarId", "commandId"])
         && isVrchatBlueprintId(value.params.avatarId) && isIdentifier(value.params.commandId);
     case "terms.getProduct": case "terms.checkUse": case "terms.refreshProduct": case "terms.refreshLibrary":
-      return hasExactKeys(value, REQUEST_KEYS)
-        && (isTermsParams(value.method, value.params) || (value.method === "terms.checkUse" && isTermsUseCheckParamsV02(value.params)));
+      return hasExactKeys(value, REQUEST_KEYS) && isTermsParams(value.method, value.params);
     case "environment.listPlaySetups": case "environment.getScenarioSop": case "environment.checkScenarioEnvironment":
       return hasExactKeys(value, REQUEST_KEYS) && isScenarioEnvironmentParams(value.method,value.params);
     case "environment.unityLicense": case "environment.checkUnityLicense":

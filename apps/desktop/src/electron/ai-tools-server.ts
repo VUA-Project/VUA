@@ -69,11 +69,11 @@ const AI_PROMPTS = [
   },
   {
     name: "vua-release-check",
-    title: "Pre-release Avatar & cross-platform check",
-    description: "Review turntable preview, PC/Quest performance prediction, VN3 terms (including PH-R VRM 1.0 / Object-Head presets), and local SDK test before uploading.",
+    title: "Pre-release Avatar check",
+    description: "Review turntable preview, PC/Quest performance prediction, VN3 terms, and local SDK test before uploading.",
     arguments: [
       { name: "runId", description: "AMF production runId (for example n3-...).", required: true },
-      { name: "targetPlatform", description: "Optional target platform family: vrchat_pc, vrchat_quest, or phr_vrm.", required: false },
+      { name: "targetPlatform", description: "Optional target platform family: vrchat_pc or vrchat_quest.", required: false },
     ],
   },
 ] as const;
@@ -345,10 +345,10 @@ export class AiToolsServer {
       checkOnlyKeys(["runId", "targetPlatform"]);
       const runId = args.runId;
       const targetPlatform = args.targetPlatform ?? "vrchat_pc";
-      if (typeof runId !== "string" || !isRunId(runId) || !["vrchat_pc", "vrchat_quest", "phr_vrm"].includes(targetPlatform)) throw new Error("unsupported_tool_or_parameters");
+      if (typeof runId !== "string" || !isRunId(runId) || !["vrchat_pc", "vrchat_quest"].includes(targetPlatform)) throw new Error("unsupported_tool_or_parameters");
       return {
         description: AI_PROMPTS[3].description,
-        messages: [{ role: "user" as const, content: { type: "text" as const, text: `Run a pre-release check for AMF run "${runId}" targeting "${targetPlatform}". Read vua_amf_run and vua_amf_release, check VN3 terms with vua_terms_check (using PH-R v0.2 presets if targetPlatform is phr_vrm, or VRChat presets otherwise), summarize performance/parameter predictions and any warnings, and explain whether a local SDK Build & Test or VRM/GLB inspection is recommended before uploading.` } }],
+        messages: [{ role: "user" as const, content: { type: "text" as const, text: `Run a pre-release check for AMF run "${runId}" targeting "${targetPlatform}". Read vua_amf_run and vua_amf_release, check VN3 terms with vua_terms_check, summarize performance/parameter predictions and any warnings, and explain whether a local SDK Build & Test is recommended before uploading.` } }],
       };
     }
     throw new Error("unsupported_tool_or_parameters");

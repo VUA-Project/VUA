@@ -221,7 +221,6 @@ mod tests {
             steam_install_candidates: Vec::new(),
             openvrpaths: Vec::new(),
             pico_connect_settings_candidates: Vec::new(),
-            pharos_status_candidates: Vec::new(),
             registry: Arc::new(FakeRegistrySource::new()),
             ..EnvironmentRoots::default()
         };

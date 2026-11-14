@@ -43,68 +43,6 @@ export function shareCodeFromLink(text: string, origin: string): string | null {
   } catch { return null; }
 }
 
-/** PH-R addressable space URL (`/s/<shortId>?m=<markerId>&w=<widthMeters>`),
- * completely disjoint from VUA recipe shares (`/r/<code>`). */
-export interface PhrSpatialUrl {
-  readonly shortId: string;
-  readonly markerId: string | null;
-  readonly widthMeters: number | null;
-  readonly canonicalHttpsUrl: string;
-}
-
-export function parsePhrSpatialUrl(text: string, origin = "https://ph-r.com"): PhrSpatialUrl | null {
-  try {
-    if (typeof text !== "string" || text.length > 512) return null;
-    const base = new URL(origin);
-    if (base.protocol !== "https:") return null;
-    const url = new URL(text);
-    if (url.username || url.password || url.hash) return null;
-
-    const isCustomScheme =
-      /^phr:\/\/s\/[^/?#]+(?:\?[^#]*)?$/iu.test(text)
-      && url.protocol === "phr:"
-      && url.hostname.toLowerCase() === "s"
-      && !url.port;
-    const isHttpsOrigin = url.protocol === "https:" && url.origin === base.origin;
-    if (!isCustomScheme && !isHttpsOrigin) return null;
-
-    const pathMatch = (isCustomScheme ? /^\/([^/]+)$/u : /^\/s\/([^/]+)$/u).exec(url.pathname);
-    if (!pathMatch) return null;
-    const shortId = pathMatch[1]!;
-    if (!/^[A-Za-z0-9_-]{4,32}$/u.test(shortId)) return null;
-
-    let markerId: string | null = null;
-    let widthMeters: number | null = null;
-    const seenKeys = new Set<string>();
-    for (const [key, val] of url.searchParams.entries()) {
-      if (seenKeys.has(key)) return null;
-      seenKeys.add(key);
-      if (key === "m") {
-        if (!/^[A-Za-z0-9_-]{1,64}$/u.test(val)) return null;
-        markerId = val;
-      } else if (key === "w") {
-        if (!/^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/u.test(val)) return null;
-        const parsed = Number(val);
-        if (!Number.isFinite(parsed) || parsed < 0.02 || parsed > 10) return null;
-        widthMeters = parsed;
-      } else {
-        return null;
-      }
-    }
-
-    const canonical = new URL(`/s/${shortId}`, base.origin);
-    if (markerId !== null) canonical.searchParams.set("m", markerId);
-    if (widthMeters !== null) canonical.searchParams.set("w", String(widthMeters));
-    return {
-      shortId,
-      markerId,
-      widthMeters,
-      canonicalHttpsUrl: canonical.toString(),
-    };
-  } catch {
-    return null;
-  }
-}
 export function isShareImageOptions(value: unknown): value is ShareImageOptions {
   if (!record(value) || Object.keys(value).some(key => !["runId","format","frameIndex","document","recipeId","publicConfirmed"].includes(key))
     || !id(value.runId) || (typeof value.format !== "string" || !["png","gif"].includes(value.format)) || !Number.isInteger(value.frameIndex)

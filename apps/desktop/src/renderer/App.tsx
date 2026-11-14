@@ -962,7 +962,7 @@ function AppShell({
         group: "pages",
         label: strings.poseGraph.title,
         hint: strings.journey.tools,
-        keywords: "pose fbt pharos slimevr openxr openvr tracker space calibrator mocopi haritorax",
+        keywords: "pose fbt slimevr openxr openvr tracker space calibrator mocopi haritorax",
         run: () => {
           navigate("tools-discover");
           requestAnimationFrame(() => document.querySelector(".vua-pose-graph")?.scrollIntoView({ block: "start" }));

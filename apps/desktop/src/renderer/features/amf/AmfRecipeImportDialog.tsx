@@ -1,8 +1,7 @@
 import { RecipeContents } from "./RecipeContents.tsx";
 import { RecipeUseCheck } from "./RecipeUseCheck.tsx";
 import { useEffect, useState } from "react";
-import { parsePhrSpatialUrl, type AmfSharedRecipe, type PendingRecipeShare, type ReceivedRecipeLink } from "@vua/contracts";
-import { openExternalUrl } from "../../app/open-external.ts";
+import type { AmfSharedRecipe, PendingRecipeShare, ReceivedRecipeLink } from "@vua/contracts";
 import { useGateway } from "../../gateway/index.ts";
 import { ContentDialog } from "../../components/primitives/ContentDialog.tsx";
 import { Button } from "../../components/primitives/Button.tsx";
@@ -21,7 +20,6 @@ export function AmfRecipeImportDialog({ onClose, onImported, onOpen, initial }: 
   const [savedId, setSavedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const spatialLink = parsePhrSpatialUrl(text.trim());
   const fail = (e: unknown) => setError(recipeShareError(e));
   const change = (value: string) => {
     setText(value); setImage(null); setPreview(null); setSavedId(null); setError(null);
@@ -32,7 +30,6 @@ export function AmfRecipeImportDialog({ onClose, onImported, onOpen, initial }: 
     if (!initial) return;
     if ("received" in initial) receive(initial.received);
     else if ("error" in initial) fail(initial.error);
-    else if (parsePhrSpatialUrl(initial.input.trim())) change(initial.input);
     else if (sharing) {
       setBusy(true);
       void sharing.readInput(initial.input).then(value => { if (alive) receive(value); }).catch(e => { if (alive) fail(e); }).finally(() => { if (alive) setBusy(false); });
@@ -80,14 +77,6 @@ export function AmfRecipeImportDialog({ onClose, onImported, onOpen, initial }: 
           <label className="vua-n3__field">{copy.importPaste}
             <textarea rows={5} value={text} maxLength={349557} disabled={busy} onChange={event => change(event.target.value)}/>
           </label>
-          {spatialLink ? (
-            <div role="status" className="vua-recipe-transfer__spatial-hint">
-              <p className="vua-caption">{format(copy.phrSpatialHint, { shortId: spatialLink.shortId })}</p>
-              <Button variant="default" onClick={() => { void openExternalUrl(spatialLink.canonicalHttpsUrl); }}>
-                {copy.phrSpatialOpen}
-              </Button>
-            </div>
-          ) : null}
           <label className="vua-n3__field">{copy.importFile}
             <input type="file" accept=".json,.vuarecipe,.txt" disabled={busy} onChange={event => {
               const file = event.target.files?.[0];
@@ -100,8 +89,8 @@ export function AmfRecipeImportDialog({ onClose, onImported, onOpen, initial }: 
           {sharing && <label className="vua-n3__field">{recipeShareCopy.image}<input type="file" accept=".png,.jpg,.jpeg,.gif,.webp" disabled={busy} onChange={e => readFiles([...e.target.files ?? []])}/></label>}
           <div className="vua-n3__actions">
             <Button variant="subtle" onClick={onClose}>{strings.common.dialogClose}</Button>
-            <Button variant="primary" disabled={busy || !text.trim() || spatialLink !== null} onClick={() => {
-              if (!port || busy || spatialLink) return;
+            <Button variant="primary" disabled={busy || !text.trim()} onClick={() => {
+              if (!port || busy) return;
               setBusy(true); setError(null);
               const result = sharing ? sharing.readInput(text).then(receive) : port.previewRecipeShare(text).then(setPreview);
               void result.catch(fail).finally(() => setBusy(false));

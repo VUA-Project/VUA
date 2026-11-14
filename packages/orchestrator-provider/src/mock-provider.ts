@@ -178,23 +178,6 @@ export class MockOrchestratorProviderV01 implements OrchestratorProviderV01 {
       case "terms.checkUse": {
         const products = request.params.productIds.map(productId => ({ productId, sourceState: "not_observed" as const, decision: "unknown" as const,
           blockingItems: [{ productId, item: null, termKey: null, reason: "not_observed" }], conditions: [], advisories: [], hasSpecialNote: false, specialNotes: [] }));
-        if (request.params.schemaVersion === "0.2") {
-          return this.#success(request, {
-            schemaVersion: "0.2",
-            presetId: request.params.presetId,
-            products: products.map(p => ({ ...p, platformRestrictionHint: false })),
-            matchingProductIds: [],
-            combination: {
-              decision: "unknown",
-              blockingItems: products.flatMap(p => p.blockingItems),
-              conditions: [],
-              advisories: [],
-              hasSpecialNote: false,
-              specialNotes: [],
-              platformRestrictionHint: false,
-            },
-          });
-        }
         return this.#success(request, { schemaVersion: "0.1", presetId: request.params.presetId, products, matchingProductIds: [],
           combination: { decision: "unknown", blockingItems: products.flatMap(p => p.blockingItems), conditions: [], advisories: [], hasSpecialNote: false, specialNotes: [] } });
       }

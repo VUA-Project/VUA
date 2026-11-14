@@ -34,7 +34,6 @@ const uses: Record<TermsPresetId, TermsUseDecision> = {
   vrchat_personal: decision("conforms"), vtuber_individual: decision("conforms", [{ productId: "booth:1", item: "O", condition: "commercial_and_non_profit" }]),
   vtuber_corporate: decision("contact_licensor"), game_development: decision("contact_licensor"), outfit_for_sale: decision("conforms"),
   merchandise_publication: decision("contact_licensor"), adult_content: decision("conforms", [{ productId: "booth:1", item: "F", condition: "content_rating_required" }]),
-  phr_cross_platform: decision("conforms", [{ productId: "booth:1", item: "I", condition: "non_profit_only" }]),
 };
 export function termsPreviewPort(view: string): TermsPort {
   return {

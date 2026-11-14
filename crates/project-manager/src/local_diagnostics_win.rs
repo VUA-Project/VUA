@@ -76,8 +76,6 @@ mod win {
         "vrcfacetracking.exe",
         "slimevr.exe",
         "slimevr-server.exe",
-        "pharos-hub.exe",
-        "pharos.exe",
     ];
 
     #[repr(C)]

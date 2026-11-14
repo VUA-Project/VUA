@@ -51,7 +51,6 @@ fn synthetic_roots(base: &Path) -> EnvironmentRoots {
         openvrpaths: vec![base.join("openvr/openvrpaths.vrpath")],
         vcc_settings_candidates: vec![base.join("vcc/settings.json")],
         pico_connect_settings_candidates: vec![base.join("pico/settings.json")],
-        pharos_status_candidates: Vec::new(),
         vcc_exe_candidates: Vec::new(),
         alcom_exe_candidates: Vec::new(),
     }
@@ -1177,25 +1176,4 @@ fn installed_unity_editors_fact_source_mirrors_the_check_tri_state() {
     if base2.exists() {
         fs::remove_dir_all(&base2).unwrap();
     }
-}
-
-#[test]
-fn unity_editors_check_exposes_is_unity_63_lts_for_openxr_phr_target() {
-    let base = unique_dir("unity-63-lts");
-    let editors_root = base.join("editors");
-    for version in ["6000.3.2f1", "6000.0.23f1", "2022.3.22f1"] {
-        fs::create_dir_all(editors_root.join(version).join("Editor")).unwrap();
-    }
-    let engine = engine_with(synthetic_roots(&base), default_runner());
-    let items = engine.inspect_zone(Zone::Create);
-    let check = find(&items, "unity_editors");
-    let editors = check.facts["editors"].as_array().unwrap();
-    assert_eq!(editors.len(), 3);
-    assert_eq!(editors[0]["version"], "6000.3.2f1");
-    assert_eq!(editors[0]["isUnity63Lts"], true);
-    assert_eq!(editors[1]["version"], "6000.0.23f1");
-    assert_eq!(editors[1]["isUnity63Lts"], false);
-    assert_eq!(editors[2]["version"], "2022.3.22f1");
-    assert_eq!(editors[2]["isUnity63Lts"], false);
-    fs::remove_dir_all(&base).unwrap();
 }

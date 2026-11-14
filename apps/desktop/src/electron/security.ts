@@ -50,7 +50,6 @@ export const EXTERNAL_PROTOCOL_ALLOWLIST: readonly string[] = [
   "unityhub:",
   "vrchat:",
   "discord:",
-  "phr:",
 ];
 
 export type NavigationTargetKind =

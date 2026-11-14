@@ -2292,20 +2292,20 @@ fn build_sop_steps(
                     step_id: "steamvr_unblock_safe_mode_drivers",
                     layer: "steamvr_openxr",
                     title: "Unblock SteamVR add-on drivers disabled by Safe Mode",
-                    instruction: "SteamVR Safe Mode has blocked one or more external tracking drivers (Pharos, SlimeVR, or Space Calibrator). Open SteamVR Settings -> Startup / Shutdown -> Manage Add-ons and re-enable them.",
+                    instruction: "SteamVR Safe Mode has blocked one or more external tracking drivers (SlimeVR, mocopi, or Space Calibrator). Open SteamVR Settings -> Startup / Shutdown -> Manage Add-ons and re-enable them.",
                 });
             }
             steps.push(DiagnosticSopStep {
                 step_id: "fbt_check_multi_driver_and_safe_mode",
                 layer: "steamvr_openxr",
                 title: "Avoid running multiple OpenVR FBT drivers simultaneously",
-                instruction: "Inspect VUA Tools -> Pose & Tracking Topology to ensure two OpenVR FBT drivers (such as SlimeVR and Pharos or mocopi) are not spawning duplicate waist/foot trackers at the same time.",
+                instruction: "Inspect VUA Tools -> Pose & Tracking Topology to ensure two OpenVR FBT drivers (such as SlimeVR and mocopi) are not spawning duplicate waist/foot trackers at the same time.",
             });
             steps.push(DiagnosticSopStep {
-                step_id: "fbt_space_calibrator_and_pharos_anchor",
+                step_id: "fbt_space_calibrator",
                 layer: "companion_osc",
-                title: "Verify Pharos optical anchor / IMU yaw reset or Space Calibrator reference",
-                instruction: "For Pharos optical+IMU hybrid tracking, verify stereo station visibility or panoramic spatial anchor status; for mixed Lighthouse + standalone headsets, confirm OpenVR Space Calibrator continuous calibration targets the active HMD rather than a sleeping controller.",
+                title: "Verify OpenVR Space Calibrator reference device",
+                instruction: "For mixed Lighthouse + standalone headsets, confirm OpenVR Space Calibrator continuous calibration targets the active HMD rather than a sleeping controller.",
             });
             steps.push(DiagnosticSopStep {
                 step_id: "fbt_reset_ovras_offset_and_tpose",
@@ -2383,7 +2383,6 @@ mod tests {
             steam_install_candidates: vec![base.join("Steam")],
             openvrpaths: vec![base.join("openvrpaths.vrpath")],
             pico_connect_settings_candidates: vec![base.join("PICO Connect").join("settings.json")],
-            pharos_status_candidates: Vec::new(),
             registry: Arc::new(FakeRegistrySource::new()),
             ..EnvironmentRoots::default()
         }

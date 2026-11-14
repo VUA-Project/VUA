@@ -23,17 +23,6 @@ pub const PRODUCTION_TARGET: &str = "2022.3.22f1";
 /// Versions accepted only as project-migration inputs.
 pub const MIGRATION_SOURCES: [&str; 2] = ["2019.4.31f1", "2022.3.6f1"];
 
-/// Unity 6.3 LTS `(major, minor)` pair recognized as the sibling PH-R spatial / SDK target line.
-/// Remains `EditorClass::OtherUnityVersion` for VRChat AMF production so VRChat's `2022.3.22f1`
-/// support matrix stays strictly unchanged.
-pub const PHR_UNITY_LTS_MAJOR_MINOR: (u64, u64) = (6000, 3);
-
-/// Returns `true` when a parsed editor version belongs to the standard Unity `6000.3.*` (Unity 6.3 LTS)
-/// line (excluding Tuanjie `t` builds).
-pub fn is_unity_63_lts(version: &ParsedEditorVersion) -> bool {
-    (version.major, version.minor) == PHR_UNITY_LTS_MAJOR_MINOR && version.release_kind != 't'
-}
-
 /// Stable spike guidance codes; findings and fix plans key on them.
 pub mod codes {
     pub const EDITOR_PRODUCTION_TARGET: &str = "vua.env_managers.editor_production_target";
@@ -185,24 +174,5 @@ mod editor_version_path_tests {
             None
         );
         assert_eq!(editor_version_from_path(std::path::Path::new("")), None);
-    }
-
-    #[test]
-    fn identifies_unity_63_lts_without_altering_vrchat_support_matrix() {
-        let u63 = parse_editor_version("6000.3.2f1").expect("6000.3.2f1");
-        assert!(is_unity_63_lts(&u63));
-        assert_eq!(
-            classify_editor(&u63),
-            (EditorClass::OtherUnityVersion, codes::EDITOR_OFF_TARGET)
-        );
-
-        let u60 = parse_editor_version("6000.0.23f1").expect("6000.0.23f1");
-        assert!(!is_unity_63_lts(&u60));
-
-        let tuanjie = parse_editor_version("6000.3.1t1").expect("6000.3.1t1");
-        assert!(!is_unity_63_lts(&tuanjie));
-
-        let prod = parse_editor_version(PRODUCTION_TARGET).expect("2022.3.22f1");
-        assert!(!is_unity_63_lts(&prod));
     }
 }

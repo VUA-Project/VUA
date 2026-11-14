@@ -1,18 +1,16 @@
 import {
-  isProductTermsV01, isTermsAcceptedV01, isTermsUseCheckV01, isTermsUseCheckV02, isTermsProductId,
-  type ProductTermsV01, type TermsPresetId, type TermsPresetIdV02, type TermsUseCheckV01, type TermsUseCheckV02,
+  isProductTermsV01, isTermsAcceptedV01, isTermsUseCheckV01, isTermsProductId,
+  type ProductTermsV01, type TermsPresetId, type TermsUseCheckV01,
 } from "@vua/contracts";
 import type { GatewayClient, GatewayClientError } from "./gateway-client.ts";
 import { registerTaskIdentity } from "./task-identity.ts";
 
-/** VN3 terms read from products' public license links ([terms v0.1](../../../../../docs/protocols/terms-v0.1.md), [terms v0.2](../../../../../docs/protocols/terms-v0.2.md)). */
+/** VN3 terms read from products' public license links ([terms v0.1](../../../../../docs/protocols/terms-v0.1.md)). */
 export interface TermsPort {
   /** The product's captured links, documents and A–X items, from local evidence. */
   product(productId: string): Promise<ProductTermsV01>;
   /** Decides one use preset for products together; the strictest item decides and unknown never passes. */
   checkUse(presetId: TermsPresetId, productIds: readonly string[]): Promise<TermsUseCheckV01>;
-  /** Decides one v0.2 use preset (including PH-R presets) and reports platform restriction hints. */
-  checkUseV02?(presetId: TermsPresetIdV02, productIds: readonly string[]): Promise<TermsUseCheckV02>;
   /** Reads the product's description again and fetches its public VN3 documents. */
   refreshProduct(productId: string, title: string): Promise<{ readonly taskId: string }>;
   /** Read the public documents linked from product descriptions already recorded in this library. */
@@ -33,12 +31,6 @@ export function createTermsPort(client: GatewayClient, capture?: (id: string) =>
       const response = await client.invoke({ schemaVersion: 1, requestId: crypto.randomUUID(), method: "terms.checkUse", params: { schemaVersion: "0.1", presetId, productIds: [...productIds] } });
       if (!response.ok) throw fail(response);
       if (!isTermsUseCheckV01(response.value)) throw new Error("terms_invalid");
-      return response.value;
-    },
-    async checkUseV02(presetId, productIds) {
-      const response = await client.invoke({ schemaVersion: 1, requestId: crypto.randomUUID(), method: "terms.checkUse", params: { schemaVersion: "0.2", presetId, productIds: [...productIds] } });
-      if (!response.ok) throw fail(response);
-      if (!isTermsUseCheckV02(response.value)) throw new Error("terms_invalid");
       return response.value;
     },
     async refreshProduct(productId, title) {

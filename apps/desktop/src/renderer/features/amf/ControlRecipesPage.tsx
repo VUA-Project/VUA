@@ -3,7 +3,7 @@ import type { PendingRecipeShare } from "@vua/contracts";
 /** Recipes: every saved Recipe with its pictures and whether this PC has its materials, or the graph of what they share. Details open beside them. */
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { Icon } from "@vua/design-system";
-import { isTermsProductId, TERMS_PRESET_IDS, TERMS_PRESET_IDS_V02, type AmfRecipeDocument, type AmfRecipeMaterialPlan, type TermsPresetId, type TermsPresetIdV02, type TermsUseCheckV01, type TermsUseCheckV02 } from "@vua/contracts";
+import { isTermsProductId, TERMS_PRESET_IDS, type AmfRecipeDocument, type AmfRecipeMaterialPlan, type TermsPresetId, type TermsUseCheckV01 } from "@vua/contracts";
 import { catalogBrowser } from "../../app/catalog-browser-instance.ts";
 import { catalogImageUrl } from "../../app/catalog-image.ts";
 import { ContextMenu, type ContextMenuState } from "../../components/primitives/ContextMenu.tsx";
@@ -539,8 +539,8 @@ function RecipeDetails({ graph, saved, rows, plan, sources, pictures, onSelect, 
 function RecipeTermsSummary({ rows }: { rows: readonly RecipeMaterialRow[] }) {
   const port = useGateway().terms;
   const termsCopy = strings.useTerms;
-  const [presetId, setPresetId] = useState<TermsPresetIdV02>("vrchat_personal");
-  const [check, setCheck] = useState<TermsUseCheckV01 | TermsUseCheckV02 | null>(null);
+  const [presetId, setPresetId] = useState<TermsPresetId>("vrchat_personal");
+  const [check, setCheck] = useState<TermsUseCheckV01 | null>(null);
   const { productIds, unlinked } = useMemo(() => {
     const ids = new Set<string>();
     let missing = 0;
@@ -555,25 +555,20 @@ function RecipeTermsSummary({ rows }: { rows: readonly RecipeMaterialRow[] }) {
     setCheck(null);
     if (!port || key === "") return;
     let alive = true;
-    const ids = key.split(" ");
-    const req = port.checkUseV02 ? port.checkUseV02(presetId, ids) : port.checkUse(presetId as TermsPresetId, ids);
-    void req.then(next => { if (alive) setCheck(next); }, () => {});
+    void port.checkUse(presetId, key.split(" ")).then(next => { if (alive) setCheck(next); }, () => {});
     return () => { alive = false; };
   }, [port, presetId, key]);
   if (!port || productIds.length === 0) return null;
-  const presetOptions = port.checkUseV02 ? TERMS_PRESET_IDS_V02 : TERMS_PRESET_IDS;
-  const hasPlatformRestriction = check !== null && "platformRestrictionHint" in check.combination && check.combination.platformRestrictionHint === true;
   return <section className="vua-recipe-terms">
     <h3>{termsCopy.line.title}</h3>
     <label className="vua-recipe-terms__use">
       <span>{termsCopy.line.use}</span>
-      <select value={presetId} onChange={event => setPresetId(event.target.value as TermsPresetIdV02)}>
-        {presetOptions.map(id => <option key={id} value={id}>{termsCopy.presets[id]}</option>)}
+      <select value={presetId} onChange={event => setPresetId(event.target.value as TermsPresetId)}>
+        {TERMS_PRESET_IDS.map(id => <option key={id} value={id}>{termsCopy.presets[id]}</option>)}
       </select>
     </label>
     {check && <>
       <p className="vua-recipe-terms__decision" data-decision={check.combination.decision}>{termsCopy.decisions[check.combination.decision]}</p>
-      {hasPlatformRestriction && <p className="vua-caption vua-recipe-terms__restriction" role="status">{termsCopy.platformRestrictionNotice}</p>}
       {check.combination.hasSpecialNote && <p className="vua-caption vua-text-secondary">{termsCopy.line.special}</p>}
     </>}
     {unlinked > 0 && <p className="vua-caption vua-text-secondary">{format(termsCopy.line.unlinked, { count: String(unlinked) })}</p>}

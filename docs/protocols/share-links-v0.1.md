@@ -1,6 +1,6 @@
 # Share links v0.1
 
-> Document version: 0.1.3
+> Document version: 0.1.2
 > Status: Candidate
 > Updated: 2026-11-14
 > Owner: AMF / Hosting
@@ -182,7 +182,6 @@ Production installation and real phone/desktop end-to-end acceptance remain auth
 
 ## Document changelog
 
-- 0.1.3 (2026-11-14): add privacy-safe text-only OpenGraph/Twitter preview meta tags and `noarchive` robot directive to `materialPage`, never exposing player-supplied titles or external image links.
-- 0.1.2 (2026-11-14): add `recipe-v06` (`QTET2ZW9J8FD`) cross-client golden vector in `codes.json` and `schemas/share-links/v0.1/code-vectors.json`, and wire `parsePhrSpatialUrl` guidance in `AmfRecipeImportDialog`.
-- 0.1.1 (2026-11-14): document client-side `parsePhrSpatialUrl` (`https://ph-r.com/s/<id>` and `phr://s/<id>`, distinct from `/r/<CODE>`) and `phr:` per-attempt confirmation allowlist in Electron navigation policy.
+- 0.1.2 (2026-11-14): add privacy-safe text-only OpenGraph/Twitter preview meta tags and `noarchive` robot directive to `materialPage`, never exposing player-supplied titles or external image links.
+- 0.1.1 (2026-11-14): add `recipe-v06` (`QTET2ZW9J8FD`) cross-client golden vector in `codes.json` and `schemas/share-links/v0.1/code-vectors.json`.
 - 0.1.0 (2026-10-28): Candidate service, selection format, golden vectors and Node implementation.

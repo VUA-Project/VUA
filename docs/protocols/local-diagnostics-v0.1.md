@@ -1,6 +1,6 @@
 # Local multi-layer diagnostics and guarded client helpers v0.1
 
-> Document version: 0.3.0
+> Document version: 0.1.0
 > Status: Candidate
 > Owner: Environment
 > Updated: 2026-11-14
@@ -21,7 +21,7 @@ available whether or not the AMF module is enabled.
    inspected strictly through the OS UDP owner table (`GetExtendedUdpTable` `AF_INET`,
    `UDP_TABLE_OWNER_PID`). OSCQuery loopback discovery inspects read-only TCP `127.0.0.1` listeners
    (`GetExtendedTcpTable` `AF_INET`, `TCP_TABLE_OWNER_PID_LISTENER`) owned by known local VR/OSC
-   processes (`vrchat.exe`, `vrcfacetracking.exe`, `slimevr.exe`, `pharos-hub.exe`) with a bounded
+   processes (`vrchat.exe`, `vrcfacetracking.exe`, `slimevr.exe`) with a bounded
    `120 ms`, `<= 64 KiB` `GET /?HOST_INFO` read. VUA never binds a listener on `9000`, `9001` or
    any OSCQuery port.
 3. **Privacy-safe projections**:
@@ -119,6 +119,4 @@ repeating filesystem writes; replaying the same command ID with different parame
 
 ## Document changelog
 
-- 0.3.0 (2026-11-14): add privacy-safe Windows GPU & playspace tuning observations (`systemTuning`: `hardwareGpuScheduling`, `powerPlanRole`, `ovrAdvancedSettingsInstalled`), North Star Eval Category A symptom-to-SOP diagnoses (`streaming_blurry_or_compression`, `playspace_drag_or_height_offset`, `fbt_drift_or_calibration`), and findings for low streaming bitrate/sharpening off, Windows HAGS VR stutter risk, Power Saver throttling and OVRAS playspace offset checks.
-- 0.2.0 (2026-11-14): add read-only OSCQuery loopback discovery (`osc.oscQuery`), privacy-safe Windows default audio endpoint projections (`audioEndpoints`), PCVR Quest Link / PICO Connect streaming observations (`streamingSettings`), and deterministic findings for virtual-microphone hijacks, communications-endpoint drift, OSCQuery UDP port drift and high streaming bitrate/encode width.
-- 0.1.0 (2026-11-14): introduce Host-owned local multi-layer observation, deterministic symptom-to-SOP diagnosis and offline OSC/config helpers.
+- 0.1.0 (2026-11-14): introduce Host-owned local multi-layer observation (`vrchatRunning`, `osc` + OSCQuery loopback, `audioEndpoints`, `streamingSettings`, `systemTuning`, `cache`, `steamvr`, `recentClientLog`), deterministic symptom-to-SOP diagnosis, and guarded offline OSC/config helpers.
